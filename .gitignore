@@ -1,0 +1,11 @@
+node_modules/
+build/
+*.node
+*.dylib
+*.so
+*.dll
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+# Claude session data
+.claude/

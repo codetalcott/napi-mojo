@@ -1,0 +1,12 @@
+{
+  "name": "napi-mojo",
+  "version": "0.1.0",
+  "description": "Build Node.js native addons in Mojo — the Mojo equivalent of napi-rs",
+  "scripts": {
+    "build": "bash build.sh",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  }
+}
