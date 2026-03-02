@@ -1,5 +1,7 @@
 # napi-mojo: Node.js Addons in Mojo
 
+[![CI](https://github.com/codetalcott/mojo-node-api/actions/workflows/test.yml/badge.svg)](https://github.com/codetalcott/mojo-node-api/actions/workflows/test.yml)
+
 **Project Goal:** A safe, ergonomic, and high-performance library for building Node.js native addons in the Mojo programming language. This project is the Mojo equivalent of Rust's [`napi-rs`](https://napi.rs).
 
 ## Guiding Principles
@@ -10,13 +12,12 @@
 
 ## Project Structure
 
-```
+```text
 napi-mojo/
 ├── spike/          # FFI validation experiments (prove core mechanism works)
 ├── src/            # Mojo source code
 │   └── napi/       # N-API bindings and framework layer
 ├── tests/          # JavaScript Jest tests
-├── examples/       # Standalone usage examples
 └── build/          # Compiled output (index.node) — gitignored
 ```
 

@@ -215,3 +215,115 @@ fn raw_get_value_bool(
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_value_bool")
     return f(env, value, result)
+
+## raw_typeof — wraps napi_typeof
+##
+## Returns the napi_valuetype of a JavaScript value as an Int32.
+## `value`:  the napi_value to inspect
+## `result`: out-pointer to an Int32; receives the napi_valuetype
+fn raw_typeof(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_typeof")
+    return f(env, value, result)
+
+## raw_get_null — wraps napi_get_null
+##
+## Returns the napi_value for the JavaScript null singleton.
+## `result`: out-pointer; receives the null napi_value
+fn raw_get_null(
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_null")
+    return f(env, result)
+
+## raw_get_undefined — wraps napi_get_undefined
+##
+## Returns the napi_value for the JavaScript undefined singleton.
+## `result`: out-pointer; receives the undefined napi_value
+fn raw_get_undefined(
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_undefined")
+    return f(env, result)
+
+## raw_create_array_with_length — wraps napi_create_array_with_length
+##
+## Creates a new JavaScript array with the given initial length.
+## `length`: the initial length (sets array.length property)
+## `result`: out-pointer; receives the created array napi_value
+fn raw_create_array_with_length(
+    env: NapiEnv,
+    length: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_array_with_length")
+    return f(env, length, result)
+
+## raw_set_element — wraps napi_set_element
+##
+## Sets a value at a specific integer index in a JavaScript array.
+## `object`: the array napi_value
+## `index`:  the integer index
+## `value`:  the napi_value to store at `index`
+fn raw_set_element(
+    env: NapiEnv,
+    object: NapiValue,
+    index: UInt32,
+    value: NapiValue,
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, UInt32, NapiValue) -> NapiStatus
+    ]("napi_set_element")
+    return f(env, object, index, value)
+
+## raw_get_element — wraps napi_get_element
+##
+## Gets the value at a specific integer index in a JavaScript array.
+## `object`: the array napi_value
+## `index`:  the integer index
+## `result`: out-pointer; receives the napi_value at `index`
+fn raw_get_element(
+    env: NapiEnv,
+    object: NapiValue,
+    index: UInt32,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_element")
+    return f(env, object, index, result)
+
+## raw_get_array_length — wraps napi_get_array_length
+##
+## Returns the length of a JavaScript array as a UInt32.
+## `object`: the array napi_value
+## `result`: out-pointer to a UInt32; receives the array length
+fn raw_get_array_length(
+    env: NapiEnv,
+    object: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_array_length")
+    return f(env, object, result)

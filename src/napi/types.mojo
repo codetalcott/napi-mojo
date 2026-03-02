@@ -22,6 +22,23 @@ comptime NapiStatus = Int32
 comptime NAPI_OK: NapiStatus = 0
 
 # ---------------------------------------------------------------------------
+# napi_valuetype enum constants
+#
+# Matches the C napi_valuetype enum in node_api.h. Used by napi_typeof().
+# ---------------------------------------------------------------------------
+comptime NapiValueType = Int32
+comptime NAPI_TYPE_UNDEFINED: NapiValueType = 0
+comptime NAPI_TYPE_NULL: NapiValueType = 1
+comptime NAPI_TYPE_BOOLEAN: NapiValueType = 2
+comptime NAPI_TYPE_NUMBER: NapiValueType = 3
+comptime NAPI_TYPE_STRING: NapiValueType = 4
+comptime NAPI_TYPE_SYMBOL: NapiValueType = 5
+comptime NAPI_TYPE_OBJECT: NapiValueType = 6
+comptime NAPI_TYPE_FUNCTION: NapiValueType = 7
+comptime NAPI_TYPE_EXTERNAL: NapiValueType = 8
+comptime NAPI_TYPE_BIGINT: NapiValueType = 9
+
+# ---------------------------------------------------------------------------
 # napi_property_descriptor struct
 #
 # Must match the C definition in node_api.h EXACTLY (60 bytes on 64-bit,

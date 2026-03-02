@@ -11,8 +11,12 @@ from napi.error import check_status
 ## define_property — register a single named property on the exports object
 ##
 ## This is the safe way to attach a method or value to the Node.js addon's
-## exports. It registers exactly one NapiPropertyDescriptor at a time (avoids
-## the InlineArray Copyable requirement for arrays of non-Copyable structs).
+## exports. It registers one NapiPropertyDescriptor at a time for simpler
+## pointer and lifetime management.
+##
+## NapiPropertyDescriptor is Copyable (all fields are pointer/UInt32), so
+## `desc` is passed by value. `UnsafePointer(to=desc)` points to the local
+## copy, which is alive for the duration of this call.
 ##
 ## Safety invariant: `desc.utf8name` must point to a string that remains alive
 ## for the duration of this call. Use a named `var` binding in the caller.
@@ -21,8 +25,8 @@ fn define_property(
     exports: NapiValue,
     desc: NapiPropertyDescriptor,
 ) raises:
-    # Take the address of the borrowed desc. The pointer is valid for the
-    # duration of this function call (desc is alive in the caller's frame).
+    # Take the address of the local desc copy. The pointer is valid for the
+    # duration of this function call (desc lives in this stack frame).
     var p: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=desc).bitcast[NoneType]()
     var status = raw_define_properties(env, exports, 1, p)
     check_status(status)
