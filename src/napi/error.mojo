@@ -9,7 +9,8 @@
 ## in Phase 4+). Currently check_status() raises a built-in Error with a
 ## formatted message, which is compatible with Mojo v26.2's raises system.
 
-from napi.types import NapiStatus, NAPI_OK
+from napi.types import NapiEnv, NapiStatus, NAPI_OK
+from napi.raw import raw_throw_error
 
 # ---------------------------------------------------------------------------
 # NapiError — typed wrapper around a failed napi_status code
@@ -40,3 +41,25 @@ struct NapiError:
 fn check_status(status: NapiStatus) raises:
     if status != NAPI_OK:
         raise Error("NapiError: status=" + String(status))
+
+# ---------------------------------------------------------------------------
+# throw_js_error — set a pending JavaScript Error exception
+#
+# Calls napi_throw_error with a null error code and the given message.
+# `msg` must be a StringLiteral so it has static (binary .rodata) lifetime —
+# no ASAP destruction risk unlike heap Strings.
+#
+# The callback MUST return NapiValue() immediately after calling this.
+# Node.js propagates the pending exception when the callback returns.
+#
+# Usage:
+#   throw_js_error(env, "expected a string argument")
+#   return NapiValue()
+# ---------------------------------------------------------------------------
+fn throw_js_error(env: NapiEnv, msg: StringLiteral):
+    try:
+        var null_code = OpaquePointer[ImmutAnyOrigin]()
+        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+        _ = raw_throw_error(env, null_code, msg_ptr)
+    except:
+        pass

@@ -22,7 +22,7 @@ from napi.framework.js_string import JsString
 from napi.framework.js_object import JsObject
 from napi.framework.js_number import JsNumber
 from napi.raw import raw_get_cb_info
-from napi.error import check_status
+from napi.error import check_status, throw_js_error
 
 # ---------------------------------------------------------------------------
 # hello() — exposed as addon.hello()
@@ -75,6 +75,7 @@ fn greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var name = JsString.read_arg_0(env, info)
         return JsString.create(env, "Hello, " + name + "!").value
     except:
+        throw_js_error(env, "greet requires one string argument")
         return NapiValue()
 
 # ---------------------------------------------------------------------------
@@ -104,6 +105,7 @@ fn add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = JsNumber.from_napi_value(env, b_val)
         return JsNumber.create(env, a + b).value
     except:
+        throw_js_error(env, "add requires two number arguments")
         return NapiValue()
 
 # ---------------------------------------------------------------------------

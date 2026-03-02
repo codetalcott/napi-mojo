@@ -164,3 +164,22 @@ fn raw_create_double(
         fn (NapiEnv, Float64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_double")
     return f(env, value, result)
+
+## raw_throw_error — wraps napi_throw_error
+##
+## Sets a pending JavaScript Error exception in the current environment.
+## `code`: optional error code string (pass OpaquePointer[ImmutAnyOrigin]() for none)
+## `msg`:  UTF-8 error message (must remain alive until this returns)
+##
+## After calling this, the callback must return immediately with NapiValue().
+## Node.js will propagate the pending exception when the callback returns.
+fn raw_throw_error(
+    env: NapiEnv,
+    code: OpaquePointer[ImmutAnyOrigin],
+    msg: OpaquePointer[ImmutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
+    ]("napi_throw_error")
+    return f(env, code, msg)
