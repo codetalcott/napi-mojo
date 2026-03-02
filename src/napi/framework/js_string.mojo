@@ -6,16 +6,25 @@
 ##   var s = JsString.create(env, "Hello!")
 ##   return s.value
 ##
+##   # Read a NapiValue as a Mojo String:
+##   var name = JsString.from_napi_value(env, napi_val)
+##
 ##   # Read the first callback argument as a Mojo String:
 ##   var name = JsString.read_arg_0(env, info)
 ##
 ## String lifetime: JsString.create() borrows the input Mojo String for the
 ## duration of the N-API call. The underlying napi_value is owned by the
 ## Node.js GC and valid until the current handle scope is collected.
+##
+## ASCII-only limitation: from_napi_value builds the Mojo String one byte at
+## a time via chr(). Multi-byte UTF-8 codepoints will be split into individual
+## bytes and produce incorrect results. This is a known limitation — Mojo v26.2
+## lacks a String(ptr, len) constructor. Replace when one becomes available.
 
 from napi.types import NapiEnv, NapiValue
-from napi.raw import raw_create_string_utf8, raw_get_cb_info, raw_get_value_string_utf8
+from napi.raw import raw_create_string_utf8, raw_get_value_string_utf8
 from napi.error import check_status
+from napi.framework.args import CbArgs
 
 ## JsString — typed wrapper for a JavaScript string napi_value
 struct JsString:
@@ -38,44 +47,45 @@ struct JsString:
         check_status(status)
         return JsString(result)
 
-    ## read_arg_0 — read the first callback argument as a Mojo String
+    ## from_napi_value — read a NapiValue as a Mojo String
     ##
-    ## Calls napi_get_cb_info to extract the first argument, then reads its
-    ## UTF-8 content via napi_get_value_string_utf8 (two-call pattern:
-    ## size query first, then actual read into a fixed 1024-byte stack buffer).
+    ## Calls napi_get_value_string_utf8 (two-call pattern: size query first,
+    ## then actual read into a fixed 1024-byte stack buffer). Builds the
+    ## result byte-by-byte via chr() (ASCII-only; see module docstring).
     ##
-    ## Raises on any N-API failure or if no argument is provided.
+    ## The NapiValue must hold a JS string; raises otherwise.
+    ## Raises if the string exceeds 1023 bytes.
     @staticmethod
-    fn read_arg_0(env: NapiEnv, info: NapiValue) raises -> String:
-        # Step 1: extract the first argument NapiValue from callback info.
-        # argv_ptr points to arg0 — napi_get_cb_info writes the napi_value there.
-        var argc: UInt = 1
-        var arg0: NapiValue = NapiValue()
-        var argc_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=argc).bitcast[NoneType]()
-        var argv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=arg0).bitcast[NoneType]()
+    fn from_napi_value(env: NapiEnv, val: NapiValue) raises -> String:
+        # Size query — call with NULL buf to get the byte length needed.
         var null = OpaquePointer[MutAnyOrigin]()
-        check_status(raw_get_cb_info(env, info, argc_ptr, argv_ptr, null, null))
-
-        # Step 2: size query — call with NULL buf to get the byte length needed.
         var needed: UInt = 0
         var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=needed).bitcast[NoneType]()
-        check_status(raw_get_value_string_utf8(env, arg0, null, 0, needed_ptr))
+        check_status(raw_get_value_string_utf8(env, val, null, 0, needed_ptr))
 
         # Guard: reject strings that exceed the fixed stack buffer.
         if needed >= 1024:
             raise Error("string argument too long (max 1023 bytes)")
 
-        # Step 3: read into a fixed 1024-byte stack buffer.
+        # Read into a fixed 1024-byte stack buffer.
         # needed+1 to include space for the null terminator.
         var buf = InlineArray[UInt8, 1024](fill=0)
         var actual: UInt = 0
         var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf[0]).bitcast[NoneType]()
         var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
-        check_status(raw_get_value_string_utf8(env, arg0, buf_ptr, needed + 1, actual_ptr))
+        check_status(raw_get_value_string_utf8(env, val, buf_ptr, needed + 1, actual_ptr))
 
-        # Step 4: build a Mojo String from the buffer bytes.
-        # Build byte-by-byte — safe in v26.2, sufficient for Phase 5a.
+        # Build a Mojo String from the buffer bytes.
         var s = String()
         for i in range(Int(actual)):
             s += chr(Int(buf[i]))
         return s
+
+    ## read_arg_0 — read the first callback argument as a Mojo String
+    ##
+    ## Extracts the first argument via CbArgs.get_one, then delegates to
+    ## from_napi_value to read it. Raises on any N-API failure.
+    @staticmethod
+    fn read_arg_0(env: NapiEnv, info: NapiValue) raises -> String:
+        var arg0 = CbArgs.get_one(env, info)
+        return JsString.from_napi_value(env, arg0)

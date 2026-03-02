@@ -40,11 +40,12 @@ src/lib.mojo                          # entry point: callbacks + register_module
 src/napi/types.mojo                   # NapiEnv, NapiValue, NapiStatus, NapiPropertyDescriptor
 src/napi/raw.mojo                     # OwnedDLHandle symbol resolution (sole user of OwnedDLHandle)
 src/napi/error.mojo                   # check_status(), throw_js_error()
-src/napi/module.mojo                  # define_property() safe wrapper
-src/napi/framework/js_string.mojo     # JsString.create(), JsString.read_arg_0()
+src/napi/module.mojo                  # define_property(), register_method()
+src/napi/framework/js_string.mojo     # JsString.create(), from_napi_value(), read_arg_0()
 src/napi/framework/js_object.mojo     # JsObject.create(), set_named_property()
-src/napi/framework/js_number.mojo     # JsNumber.create(), JsNumber.from_napi_value()
-src/napi/framework/js_boolean.mojo    # JsBoolean.create(), JsBoolean.from_napi_value()
+src/napi/framework/js_number.mojo     # JsNumber.create(), from_napi_value()
+src/napi/framework/js_boolean.mojo    # JsBoolean.create(), from_napi_value()
+src/napi/framework/args.mojo          # CbArgs.get_one(), get_two()
 spike/ffi_probe.mojo                  # throwaway FFI validation (run on new machine / Mojo upgrade)
 tests/                                # Jest tests — TDD outside-in
 ```

@@ -5,3 +5,4 @@
 ##   from napi.framework.js_object import JsObject
 ##   from napi.framework.js_number import JsNumber
 ##   from napi.framework.js_boolean import JsBoolean
+##   from napi.framework.args import CbArgs

@@ -1,8 +1,8 @@
 ## src/napi/module.mojo — safe wrappers for module property registration
 ##
-## Provides define_property(), a safe alternative to calling raw_define_properties
-## directly. Wraps the raw call with check_status() so any N-API failure is
-## immediately surfaced as a raised error rather than silently ignored.
+## Provides define_property() and register_method() for attaching properties
+## to the addon's exports object. Both wrap raw N-API calls with check_status()
+## so any failure is immediately surfaced as a raised error.
 
 from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor
 from napi.raw import raw_define_properties
@@ -26,3 +26,27 @@ fn define_property(
     var p: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=desc).bitcast[NoneType]()
     var status = raw_define_properties(env, exports, 1, p)
     check_status(status)
+
+## register_method — register a named method on the exports object
+##
+## Convenience wrapper that constructs the NapiPropertyDescriptor, fills in
+## utf8name and method, and calls define_property. Reduces per-property
+## boilerplate from ~9 lines to a single call.
+##
+## `name`:       StringLiteral (static lifetime, ASAP-safe) for the JS property name.
+## `method_ptr`: The function pointer as OpaquePointer[MutAnyOrigin]. Extract from
+##               a Mojo function reference:
+##                 var fn_ref = my_fn
+##                 register_method(env, exports, "myFn",
+##                     UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+fn register_method(
+    env: NapiEnv,
+    exports: NapiValue,
+    name: StringLiteral,
+    method_ptr: OpaquePointer[MutAnyOrigin],
+) raises:
+    var desc = NapiPropertyDescriptor()
+    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+    desc.method = method_ptr
+    desc.attributes = 0
+    define_property(env, exports, desc)
