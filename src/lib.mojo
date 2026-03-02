@@ -1,6 +1,6 @@
-## src/lib.mojo — napi-mojo module entry point (Phase 5a: argument reading)
+## src/lib.mojo — napi-mojo module entry point (Phase 5b: numeric arguments)
 ##
-## Phase 5a adds greet(name) → "Hello, <name>!" via JsString.read_arg_0().
+## Phase 5b adds add(a, b) → a+b via JsNumber and multi-arg extraction.
 ##
 ## Module structure:
 ##   src/napi/types.mojo          — NapiEnv, NapiValue, NapiStatus, NapiPropertyDescriptor
@@ -9,6 +9,7 @@
 ##   src/napi/module.mojo         — define_property() safe wrapper
 ##   src/napi/framework/js_string.mojo — JsString.create(), JsString.read_arg_0()
 ##   src/napi/framework/js_object.mojo — JsObject.create(), set_named_property()
+##   src/napi/framework/js_number.mojo — JsNumber.create(), JsNumber.from_napi_value()
 ##
 ## This file contains only:
 ##   1. Imports from the napi/ package
@@ -19,6 +20,9 @@ from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor
 from napi.module import define_property
 from napi.framework.js_string import JsString
 from napi.framework.js_object import JsObject
+from napi.framework.js_number import JsNumber
+from napi.raw import raw_get_cb_info
+from napi.error import check_status
 
 # ---------------------------------------------------------------------------
 # hello() — exposed as addon.hello()
@@ -70,6 +74,35 @@ fn greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var name = JsString.read_arg_0(env, info)
         return JsString.create(env, "Hello, " + name + "!").value
+    except:
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# add(a, b) — exposed as addon.add(a, b)
+#
+# Takes two JavaScript number arguments and returns their sum as a JS number.
+# Demonstrates multi-argument extraction via InlineArray[NapiValue, 2] argv
+# and numeric I/O via JsNumber.from_napi_value / JsNumber.create.
+# ---------------------------------------------------------------------------
+fn add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        # Extract 2 arguments: pass a 2-element NapiValue array as argv.
+        # InlineArray stays alive through all accesses below (tracked uses).
+        var argc: UInt = 2
+        var args = InlineArray[NapiValue, 2](fill=NapiValue())
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            env, info,
+            UnsafePointer(to=argc).bitcast[NoneType](),
+            UnsafePointer(to=args[0]).bitcast[NoneType](),
+            null, null,
+        ))
+        # Read each argument as Float64, add, return as JS number.
+        var a_val = args[0]
+        var b_val = args[1]
+        var a = JsNumber.from_napi_value(env, a_val)
+        var b = JsNumber.from_napi_value(env, b_val)
+        return JsNumber.create(env, a + b).value
     except:
         return NapiValue()
 
@@ -129,6 +162,17 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     greet_desc.attributes = 0
     try:
         define_property(env, exports, greet_desc)
+    except:
+        pass
+
+    # Property 4: add
+    var add_desc = NapiPropertyDescriptor()
+    add_desc.utf8name = "add".unsafe_ptr().bitcast[NoneType]()
+    var add_fn_ref = add_fn
+    add_desc.method = UnsafePointer(to=add_fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    add_desc.attributes = 0
+    try:
+        define_property(env, exports, add_desc)
     except:
         pass
 

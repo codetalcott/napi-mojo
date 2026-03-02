@@ -132,3 +132,35 @@ fn raw_define_properties(
         fn (NapiEnv, NapiValue, UInt, OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
     ]("napi_define_properties")
     return f(env, object, property_count, properties)
+
+## raw_get_value_double — wraps napi_get_value_double
+##
+## Reads a JavaScript number value as a C double (Float64).
+## `value`:  the napi_value holding the JS number
+## `result`: out-pointer; receives the double value
+fn raw_get_value_double(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_value_double")
+    return f(env, value, result)
+
+## raw_create_double — wraps napi_create_double
+##
+## Creates a JavaScript number value from a C double (Float64).
+## `value`:  the double to wrap as a JS number
+## `result`: out-pointer; receives the created napi_value
+fn raw_create_double(
+    env: NapiEnv,
+    value: Float64,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, Float64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_double")
+    return f(env, value, result)
