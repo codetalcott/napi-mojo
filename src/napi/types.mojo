@@ -39,7 +39,10 @@ comptime NAPI_OK: NapiStatus = 0
 # Wrong field order causes silent memory corruption in napi_define_properties.
 # ---------------------------------------------------------------------------
 struct NapiPropertyDescriptor:
-    var utf8name: OpaquePointer[MutAnyOrigin]
+    # utf8name is const char* in C — immutable pointer to a null-terminated UTF-8
+    # string. Must remain alive until napi_define_properties returns. Use string
+    # literals (static lifetime) rather than Mojo heap Strings (ASAP-freed).
+    var utf8name: OpaquePointer[ImmutAnyOrigin]
     var name: OpaquePointer[MutAnyOrigin]
     var method: OpaquePointer[MutAnyOrigin]   # napi_callback fn pointer
     var getter: OpaquePointer[MutAnyOrigin]
@@ -49,7 +52,7 @@ struct NapiPropertyDescriptor:
     var data: OpaquePointer[MutAnyOrigin]
 
     fn __init__(out self):
-        self.utf8name = OpaquePointer[MutAnyOrigin]()
+        self.utf8name = OpaquePointer[ImmutAnyOrigin]()
         self.name = OpaquePointer[MutAnyOrigin]()
         self.method = OpaquePointer[MutAnyOrigin]()
         self.getter = OpaquePointer[MutAnyOrigin]()

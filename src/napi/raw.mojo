@@ -69,6 +69,53 @@ fn raw_set_named_property(
     ]("napi_set_named_property")
     return f(env, object, utf8name, value)
 
+## raw_get_cb_info — wraps napi_get_cb_info
+##
+## Extracts callback arguments and this-value from a napi_callback_info handle.
+## `argc`:     in/out — pass max args wanted; receives actual args available
+## `argv`:     out — pointer to an array of napi_value (caller allocates)
+## `this_arg`: out — pointer to receive the this value (pass NULL to ignore)
+## `data`:     out — pointer to receive callback data (pass NULL to ignore)
+fn raw_get_cb_info(
+    env: NapiEnv,
+    info: NapiValue,
+    argc: OpaquePointer[MutAnyOrigin],
+    argv: OpaquePointer[MutAnyOrigin],
+    this_arg: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (
+            NapiEnv,
+            NapiValue,
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+        ) -> NapiStatus
+    ]("napi_get_cb_info")
+    return f(env, info, argc, argv, this_arg, data)
+
+## raw_get_value_string_utf8 — wraps napi_get_value_string_utf8
+##
+## Reads a JavaScript string value into a UTF-8 byte buffer.
+## When `buf` is a null pointer and `bufsize` is 0, writes the required byte
+## count (excluding null terminator) into `result` without reading any data.
+## On a full read, `result` receives the number of bytes written (excl. null).
+fn raw_get_value_string_utf8(
+    env: NapiEnv,
+    value: NapiValue,
+    buf: OpaquePointer[MutAnyOrigin],
+    bufsize: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_value_string_utf8")
+    return f(env, value, buf, bufsize, result)
+
 ## raw_define_properties — wraps napi_define_properties
 ##
 ## Registers `property_count` properties on `object` using an array of
