@@ -1,15 +1,17 @@
-## src/lib.mojo — napi-mojo module entry point (Phase 5b: numeric arguments)
+## src/lib.mojo — napi-mojo module entry point (Phase 5d: boolean arguments)
 ##
-## Phase 5b adds add(a, b) → a+b via JsNumber and multi-arg extraction.
+## Phase 5d adds isPositive(n) → Bool via JsBoolean, completing the primitive
+## type trilogy: JsString, JsNumber, JsBoolean.
 ##
 ## Module structure:
 ##   src/napi/types.mojo          — NapiEnv, NapiValue, NapiStatus, NapiPropertyDescriptor
 ##   src/napi/raw.mojo            — sole OwnedDLHandle user; raw_* bindings
-##   src/napi/error.mojo          — check_status()
+##   src/napi/error.mojo          — check_status(), throw_js_error()
 ##   src/napi/module.mojo         — define_property() safe wrapper
-##   src/napi/framework/js_string.mojo — JsString.create(), JsString.read_arg_0()
-##   src/napi/framework/js_object.mojo — JsObject.create(), set_named_property()
-##   src/napi/framework/js_number.mojo — JsNumber.create(), JsNumber.from_napi_value()
+##   src/napi/framework/js_string.mojo  — JsString.create(), JsString.read_arg_0()
+##   src/napi/framework/js_object.mojo  — JsObject.create(), set_named_property()
+##   src/napi/framework/js_number.mojo  — JsNumber.create(), JsNumber.from_napi_value()
+##   src/napi/framework/js_boolean.mojo — JsBoolean.create(), JsBoolean.from_napi_value()
 ##
 ## This file contains only:
 ##   1. Imports from the napi/ package
@@ -21,6 +23,7 @@ from napi.module import define_property
 from napi.framework.js_string import JsString
 from napi.framework.js_object import JsObject
 from napi.framework.js_number import JsNumber
+from napi.framework.js_boolean import JsBoolean
 from napi.raw import raw_get_cb_info
 from napi.error import check_status, throw_js_error
 
@@ -109,6 +112,29 @@ fn add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ---------------------------------------------------------------------------
+# isPositive(n) — exposed as addon.isPositive(n)
+#
+# Takes a JavaScript number argument and returns true if it is > 0, false
+# otherwise. First function in the addon to return a JavaScript boolean.
+# ---------------------------------------------------------------------------
+fn is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var argc: UInt = 1
+        var arg0: NapiValue = NapiValue()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            env, info,
+            UnsafePointer(to=argc).bitcast[NoneType](),
+            UnsafePointer(to=arg0).bitcast[NoneType](),
+            null, null,
+        ))
+        var n = JsNumber.from_napi_value(env, arg0)
+        return JsBoolean.create(env, n > 0).value
+    except:
+        throw_js_error(env, "isPositive requires one number argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
 # Module entry point
 #
 # Node.js finds "napi_register_module_v1" via dlsym after dlopen-ing our
@@ -175,6 +201,17 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     add_desc.attributes = 0
     try:
         define_property(env, exports, add_desc)
+    except:
+        pass
+
+    # Property 5: isPositive
+    var is_positive_desc = NapiPropertyDescriptor()
+    is_positive_desc.utf8name = "isPositive".unsafe_ptr().bitcast[NoneType]()
+    var is_positive_fn_ref = is_positive_fn
+    is_positive_desc.method = UnsafePointer(to=is_positive_fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    is_positive_desc.attributes = 0
+    try:
+        define_property(env, exports, is_positive_desc)
     except:
         pass
 

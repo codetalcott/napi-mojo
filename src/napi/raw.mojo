@@ -183,3 +183,35 @@ fn raw_throw_error(
         fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
     ]("napi_throw_error")
     return f(env, code, msg)
+
+## raw_get_boolean — wraps napi_get_boolean
+##
+## Returns the napi_value for the JavaScript true or false singleton.
+## `value`:  true → JS true, false → JS false
+## `result`: out-pointer; receives the boolean napi_value
+fn raw_get_boolean(
+    env: NapiEnv,
+    value: Bool,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, Bool, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_boolean")
+    return f(env, value, result)
+
+## raw_get_value_bool — wraps napi_get_value_bool
+##
+## Reads the C bool value of a JavaScript boolean napi_value.
+## `value`:  a napi_value holding a JS boolean
+## `result`: out-pointer to a Bool; receives true (1) or false (0)
+fn raw_get_value_bool(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_value_bool")
+    return f(env, value, result)
