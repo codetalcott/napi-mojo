@@ -61,6 +61,10 @@ struct JsString:
         var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=needed).bitcast[NoneType]()
         check_status(raw_get_value_string_utf8(env, arg0, null, 0, needed_ptr))
 
+        # Guard: reject strings that exceed the fixed stack buffer.
+        if needed >= 1024:
+            raise Error("string argument too long (max 1023 bytes)")
+
         # Step 3: read into a fixed 1024-byte stack buffer.
         # needed+1 to include space for the null terminator.
         var buf = InlineArray[UInt8, 1024](fill=0)

@@ -11,3 +11,11 @@ test('greet(123) throws (number is not a string)', () => {
 test('add("a", "b") throws (strings are not numbers)', () => {
   expect(() => addon.add('a', 'b')).toThrow();
 });
+
+test('add(1) throws (too few args)', () => {
+  expect(() => addon.add(1)).toThrow();
+});
+
+test('isPositive() throws (no args)', () => {
+  expect(() => addon.isPositive()).toThrow();
+});

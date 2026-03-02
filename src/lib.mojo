@@ -101,6 +101,8 @@ fn add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             UnsafePointer(to=args[0]).bitcast[NoneType](),
             null, null,
         ))
+        if argc < 2:
+            raise Error("expected 2 arguments")
         # Read each argument as Float64, add, return as JS number.
         var a_val = args[0]
         var b_val = args[1]
@@ -128,6 +130,8 @@ fn is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             UnsafePointer(to=arg0).bitcast[NoneType](),
             null, null,
         ))
+        if argc < 1:
+            raise Error("expected 1 argument")
         var n = JsNumber.from_napi_value(env, arg0)
         return JsBoolean.create(env, n > 0).value
     except:
