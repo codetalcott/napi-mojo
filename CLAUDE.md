@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Currently in early development (Phase 1–2 implemented, not yet compiled/tested).
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 1–2 complete and tested; Phase 3 (safety refactor) next.
 
 ## Commands
 
@@ -26,7 +26,7 @@ node -e "console.log(require('./build/probe.node').hello())"  # full end-to-end 
 
 ### The core FFI problem
 
-N-API functions (`napi_create_string_utf8`, `napi_define_properties`, etc.) are **not in libc** — they live in the Node.js host process. When Node.js loads our `.node` file via `dlopen`, N-API symbols are already in the process address space. We access them via `OwnedDLHandle("")` (equivalent to `dlopen(NULL, ...)`), which opens the host process symbol table at runtime.
+N-API functions (`napi_create_string_utf8`, `napi_define_properties`, etc.) are **not in libc** — they live in the Node.js host process. When Node.js loads our `.node` file via `dlopen`, N-API symbols are already in the process address space. We access them via `OwnedDLHandle()` (equivalent to `dlopen(NULL, ...)`), which opens the host process symbol table at runtime.
 
 ### How a `.node` addon works
 
@@ -72,4 +72,4 @@ fn_ptr(s.unsafe_ptr(), len(s))
 
 ## Development workflow
 
-Follow the RED → GREEN → REFACTOR TDD cycle (see METHODOLOGY.md). Every feature starts with a failing Jest test. The spike (`spike/ffi_probe.mojo`) is the exception — it is validated experimentally, not by tests.
+Follow the RED → GREEN → REFACTOR TDD cycle (see `docs/METHODOLOGY.md`). Every feature starts with a failing Jest test. The spike (`spike/ffi_probe.mojo`) is the exception — it is validated experimentally, not by tests.
