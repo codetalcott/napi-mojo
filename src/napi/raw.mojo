@@ -52,6 +52,23 @@ fn raw_create_object(
     ]("napi_create_object")
     return f(env, result)
 
+## raw_set_named_property — wraps napi_set_named_property
+##
+## Sets a named property on a JavaScript object.
+## `utf8name`: null-terminated UTF-8 property name (must remain alive until return)
+## `value`:    the napi_value to assign to the property
+fn raw_set_named_property(
+    env: NapiEnv,
+    object: NapiValue,
+    utf8name: OpaquePointer[ImmutAnyOrigin],
+    value: NapiValue,
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], NapiValue) -> NapiStatus
+    ]("napi_set_named_property")
+    return f(env, object, utf8name, value)
+
 ## raw_define_properties — wraps napi_define_properties
 ##
 ## Registers `property_count` properties on `object` using an array of
