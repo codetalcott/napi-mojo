@@ -451,3 +451,138 @@ fn raw_close_handle_scope(
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_close_handle_scope")
     return f(env, scope)
+
+## raw_create_promise — wraps napi_create_promise
+##
+## Creates a new JavaScript Promise and its associated deferred handle.
+## `deferred`: out-pointer; receives the napi_deferred (used to resolve/reject)
+## `promise`:  out-pointer; receives the napi_value of the created Promise
+fn raw_create_promise(
+    env: NapiEnv,
+    deferred: OpaquePointer[MutAnyOrigin],
+    promise: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_promise")
+    return f(env, deferred, promise)
+
+## raw_resolve_deferred — wraps napi_resolve_deferred
+##
+## Resolves the promise associated with a deferred handle. The deferred is
+## consumed and must not be used again after this call.
+## `deferred`:   the napi_deferred handle (passed by value, not pointer)
+## `resolution`: the napi_value to resolve the promise with
+fn raw_resolve_deferred(
+    env: NapiEnv,
+    deferred: OpaquePointer[MutAnyOrigin],
+    resolution: NapiValue,
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], NapiValue) -> NapiStatus
+    ]("napi_resolve_deferred")
+    return f(env, deferred, resolution)
+
+## raw_reject_deferred — wraps napi_reject_deferred
+##
+## Rejects the promise associated with a deferred handle. The deferred is
+## consumed and must not be used again after this call.
+## `deferred`:  the napi_deferred handle (passed by value, not pointer)
+## `rejection`: the napi_value to reject the promise with (typically an Error)
+fn raw_reject_deferred(
+    env: NapiEnv,
+    deferred: OpaquePointer[MutAnyOrigin],
+    rejection: NapiValue,
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], NapiValue) -> NapiStatus
+    ]("napi_reject_deferred")
+    return f(env, deferred, rejection)
+
+## raw_create_error — wraps napi_create_error
+##
+## Creates a new JavaScript Error object (without throwing it). Use when you
+## need an Error value (e.g., for promise rejection) rather than setting a
+## pending exception.
+## `code`:   error code napi_value (pass NapiValue() for no code)
+## `msg`:    error message napi_value (must be a JS string)
+## `result`: out-pointer; receives the created Error napi_value
+fn raw_create_error(
+    env: NapiEnv,
+    code: NapiValue,
+    msg: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_error")
+    return f(env, code, msg, result)
+
+## raw_create_async_work — wraps napi_create_async_work
+##
+## Creates an async work item. The execute callback runs on a worker thread
+## (MUST NOT call N-API functions). The complete callback runs on the main
+## thread after execute finishes.
+##
+## `async_resource`:      pass NapiValue() (NULL) for default
+## `async_resource_name`: a napi_value string identifying this work (for diagnostics)
+## `execute`:             worker thread callback: fn(NapiEnv, void*) -> void
+## `complete`:            main thread callback: fn(NapiEnv, NapiStatus, void*) -> void
+## `data`:                void* pointer shared between execute and complete
+## `result`:              out-pointer; receives the napi_async_work handle
+fn raw_create_async_work(
+    env: NapiEnv,
+    async_resource: NapiValue,
+    async_resource_name: NapiValue,
+    execute: OpaquePointer[MutAnyOrigin],
+    complete: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (
+            NapiEnv,
+            NapiValue,
+            NapiValue,
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+        ) -> NapiStatus
+    ]("napi_create_async_work")
+    return f(env, async_resource, async_resource_name, execute, complete, data, result)
+
+## raw_queue_async_work — wraps napi_queue_async_work
+##
+## Queues the async work for execution on the Node.js thread pool.
+## `work`: the napi_async_work handle from napi_create_async_work
+fn raw_queue_async_work(
+    env: NapiEnv,
+    work: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_queue_async_work")
+    return f(env, work)
+
+## raw_delete_async_work — wraps napi_delete_async_work
+##
+## Frees the resources associated with an async work item.
+## Must be called after the work has completed (typically in the complete
+## callback or after it has run).
+## `work`: the napi_async_work handle to delete
+fn raw_delete_async_work(
+    env: NapiEnv,
+    work: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_delete_async_work")
+    return f(env, work)

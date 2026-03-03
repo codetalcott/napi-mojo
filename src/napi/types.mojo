@@ -47,6 +47,24 @@ comptime NAPI_TYPE_BIGINT: NapiValueType = 9
 comptime NapiHandleScope = OpaquePointer[MutAnyOrigin]
 
 # ---------------------------------------------------------------------------
+# Deferred type (for promises)
+#
+# napi_deferred is an opaque handle used to resolve or reject a promise.
+# Created by napi_create_promise, consumed by napi_resolve_deferred or
+# napi_reject_deferred. Each deferred can only be used once.
+# ---------------------------------------------------------------------------
+comptime NapiDeferred = OpaquePointer[MutAnyOrigin]
+
+# ---------------------------------------------------------------------------
+# Async work type
+#
+# napi_async_work is an opaque handle representing a unit of async work.
+# Created by napi_create_async_work, queued by napi_queue_async_work,
+# and cleaned up by napi_delete_async_work.
+# ---------------------------------------------------------------------------
+comptime NapiAsyncWork = OpaquePointer[MutAnyOrigin]
+
+# ---------------------------------------------------------------------------
 # napi_property_descriptor struct
 #
 # Must match the C definition in node_api.h EXACTLY (60 bytes on 64-bit,

@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 7 complete — all primitive types, object property reading, function calling, array mapping with handle scopes, argument reading, type checking, and error propagation are all working.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 8 complete — all primitive types, object property reading, function calling, array mapping with handle scopes, argument reading, type checking, error propagation, promises (create/resolve/reject), and async work (worker thread execution with promise resolution) are all working.
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (41 tests)
+npm test                              # run all Jest tests (61 tests)
 npx jest tests/basic.test.js          # run a single test file
 
 # Spike (run before anything else if starting fresh):
@@ -37,7 +37,7 @@ N-API functions (`napi_create_string_utf8`, `napi_define_properties`, etc.) are 
 
 ```
 src/lib.mojo                             # entry point: callbacks + register_module
-src/napi/types.mojo                      # NapiEnv, NapiValue, NapiStatus, NapiPropertyDescriptor, NapiValueType constants
+src/napi/types.mojo                      # NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiPropertyDescriptor, NapiValueType constants
 src/napi/raw.mojo                        # OwnedDLHandle symbol resolution (sole user of OwnedDLHandle)
 src/napi/error.mojo                      # napi_status_name(), check_status(), throw_js_error(), throw_js_error_dynamic()
 src/napi/module.mojo                     # define_property(), register_method()
@@ -51,6 +51,7 @@ src/napi/framework/js_array.mojo         # JsArray.create_with_length(), set(), 
 src/napi/framework/js_function.mojo      # JsFunction.call0(), call1(), call2()
 src/napi/framework/js_value.mojo         # js_typeof(), js_type_name(), js_is_array()
 src/napi/framework/handle_scope.mojo     # HandleScope.open(), close()
+src/napi/framework/js_promise.mojo       # JsPromise.create(), resolve(), reject()
 src/napi/framework/args.mojo             # CbArgs.get_one(), get_two()
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
 tests/                                   # Jest tests — TDD outside-in
@@ -72,6 +73,9 @@ tests/                                   # Jest tests — TDD outside-in
 | `getProperty(obj, key)` | `get_property_fn` | Returns `obj[key]` (uses napi_get_property) |
 | `callFunction(fn, arg)` | `call_function_fn` | Calls `fn(arg)` and returns result |
 | `mapArray(arr, fn)` | `map_array_fn` | Returns `arr.map(fn)` (handle-scoped loop) |
+| `resolveWith(value)` | `resolve_with_fn` | Returns a promise that immediately resolves with `value` |
+| `rejectWith(msg)` | `reject_with_fn` | Returns a promise that immediately rejects with Error(`msg`) |
+| `asyncDouble(n)` | `async_double_fn` | Returns a promise; computes `n * 2` on worker thread |
 
 ## Critical Mojo FFI rules
 
@@ -104,6 +108,14 @@ desc.method = UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 **Property reading with napi_value keys**: Use `napi_get_property(env, obj, key_napi_value, result)` (via `JsObject.get()`) instead of `napi_get_named_property(env, obj, c_string, result)` when the key comes from JavaScript. The named variant requires a null-terminated C string; round-tripping a JS string through `JsString.from_napi_value` → `String.unsafe_ptr()` loses the null terminator, causing property lookup failures. Pass the JS string napi_value directly as the key.
 
 **Handle scopes for loops**: When a loop creates many temporary `napi_value` handles (e.g., `mapArray`), wrap each iteration in `HandleScope.open(env)` / `hs.close(env)`. Values set on objects/arrays outside the scope survive closure. The result container (array/object) MUST be created outside the loop's handle scope. Mojo has no RAII — `close()` must be called explicitly.
+
+**Heap allocation** (Mojo v26.2): Use `alloc[T](count)` from `memory` module (NOT `UnsafePointer[T].alloc(count)` — that syntax was removed). The struct must implement `Movable` with `fn __moveinit__(out self, deinit take: Self)`. Free with `ptr.destroy_pointee()` then `ptr.free()`.
+
+**Async work callbacks**: The execute callback (`fn(NapiEnv, OpaquePointer[MutAnyOrigin])`) runs on a **worker thread** and MUST NOT call any N-API functions — only pure computation on the heap-allocated data struct. The complete callback (`fn(NapiEnv, NapiStatus, OpaquePointer[MutAnyOrigin])`) runs on the **main thread** and can safely call N-API functions. Both return `None` (not `NapiValue`). The same bitcast pattern works for extracting function pointers.
+
+**Async data struct lifetime**: Heap-allocate with `alloc[T](1)` + `init_pointee_move()`. The data struct must contain only simple types (no Mojo `String` or objects with destructors) since the execute callback runs on a worker thread. Pass `data_ptr.bitcast[NoneType]()` as the `void*` data argument. Clean up in the complete callback with `ptr.destroy_pointee()` + `ptr.free()`. The `NapiAsyncWork` handle has a chicken-and-egg: initialize as `NapiAsyncWork()`, create async work, then write the handle back into the data struct before queuing.
+
+**Promise creation**: `napi_create_promise` returns both a deferred handle and a promise napi_value. Use `JsPromise.create(env)` which pairs them. Each deferred can only be resolved OR rejected once. For rejection, create an Error object with `raw_create_error` (not `throw_js_error`) to get a value without setting a pending exception.
 
 ## Development workflow
 
