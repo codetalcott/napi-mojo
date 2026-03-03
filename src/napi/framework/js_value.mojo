@@ -20,7 +20,7 @@ from napi.types import (
     NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_EXTERNAL,
     NAPI_TYPE_BIGINT,
 )
-from napi.raw import raw_typeof
+from napi.raw import raw_typeof, raw_is_array
 from napi.error import check_status
 
 ## js_typeof — return the napi_valuetype of a JavaScript value
@@ -52,3 +52,13 @@ fn js_type_name(t: NapiValueType) -> String:
     if t == NAPI_TYPE_EXTERNAL:  return "external"
     if t == NAPI_TYPE_BIGINT:    return "bigint"
     return "unknown"
+
+## js_is_array — check whether a JavaScript value is an Array
+##
+## napi_typeof returns NAPI_TYPE_OBJECT for arrays, so this function uses
+## napi_is_array to distinguish arrays from plain objects.
+fn js_is_array(env: NapiEnv, val: NapiValue) raises -> Bool:
+    var result: Bool = False
+    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+    check_status(raw_is_array(env, val, result_ptr))
+    return result

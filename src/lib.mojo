@@ -23,7 +23,7 @@
 ##   2. The napi_callback implementations
 ##   3. The @export entry point (register_module)
 
-from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING
+from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION
 from napi.module import register_method
 from napi.framework.js_string import JsString
 from napi.framework.js_object import JsObject
@@ -32,8 +32,10 @@ from napi.framework.js_boolean import JsBoolean
 from napi.framework.js_null import JsNull
 from napi.framework.js_undefined import JsUndefined
 from napi.framework.js_array import JsArray
+from napi.framework.js_function import JsFunction
 from napi.framework.args import CbArgs
-from napi.framework.js_value import js_typeof, js_type_name
+from napi.framework.js_value import js_typeof, js_type_name, js_is_array
+from napi.framework.handle_scope import HandleScope
 from napi.error import throw_js_error, throw_js_error_dynamic
 
 # ---------------------------------------------------------------------------
@@ -157,6 +159,10 @@ fn get_undefined_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var arg0 = CbArgs.get_one(env, info)
+        if not js_is_array(env, arg0):
+            var t = js_typeof(env, arg0)
+            throw_js_error_dynamic(env, "sumArray: expected array, got " + js_type_name(t))
+            return NapiValue()
         var arr = JsArray(arg0)
         var len = arr.length(env)
         var total: Float64 = 0.0
@@ -166,6 +172,80 @@ fn sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(env, total).value
     except:
         throw_js_error(env, "sumArray requires one array argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# getProperty(obj, key) — exposed as addon.getProperty(obj, key)
+#
+# Takes a JavaScript object and a string key, returns the property value.
+# Returns undefined if the property does not exist.
+# ---------------------------------------------------------------------------
+fn get_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var t0 = js_typeof(env, args[0])
+        if t0 != NAPI_TYPE_OBJECT:
+            throw_js_error_dynamic(env, "getProperty: expected object, got " + js_type_name(t0))
+            return NapiValue()
+        var t1 = js_typeof(env, args[1])
+        if t1 != NAPI_TYPE_STRING:
+            throw_js_error_dynamic(env, "getProperty: expected string key, got " + js_type_name(t1))
+            return NapiValue()
+        var obj = JsObject(args[0])
+        return obj.get(env, args[1])
+    except:
+        throw_js_error(env, "getProperty requires (object, string)")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# callFunction(fn, arg) — exposed as addon.callFunction(fn, arg)
+#
+# Takes a JavaScript function and one argument, calls the function with
+# that argument, and returns the result.
+# ---------------------------------------------------------------------------
+fn call_function_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var t = js_typeof(env, args[0])
+        if t != NAPI_TYPE_FUNCTION:
+            throw_js_error_dynamic(env, "callFunction: expected function, got " + js_type_name(t))
+            return NapiValue()
+        var func = JsFunction(args[0])
+        return func.call1(env, args[1])
+    except:
+        throw_js_error(env, "callFunction requires (function, arg)")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# mapArray(arr, fn) — exposed as addon.mapArray(arr, fn)
+#
+# Takes a JavaScript array and a mapping function, returns a new array
+# with the function applied to each element.
+# ---------------------------------------------------------------------------
+fn map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        if not js_is_array(env, args[0]):
+            var t = js_typeof(env, args[0])
+            throw_js_error_dynamic(env, "mapArray: expected array, got " + js_type_name(t))
+            return NapiValue()
+        var t1 = js_typeof(env, args[1])
+        if t1 != NAPI_TYPE_FUNCTION:
+            throw_js_error_dynamic(env, "mapArray: expected function, got " + js_type_name(t1))
+            return NapiValue()
+        var arr = JsArray(args[0])
+        var func = JsFunction(args[1])
+        var len = arr.length(env)
+        var result = JsArray.create_with_length(env, UInt(len))
+        for i in range(Int(len)):
+            var hs = HandleScope.open(env)
+            var elem = arr.get(env, UInt32(i))
+            var mapped = func.call1(env, elem)
+            result.set(env, UInt32(i), mapped)
+            hs.close(env)
+        return result.value
+    except:
+        throw_js_error(env, "mapArray requires (array, function)")
         return NapiValue()
 
 # ---------------------------------------------------------------------------
@@ -192,6 +272,9 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var get_null_ref = get_null_fn
     var get_undefined_ref = get_undefined_fn
     var sum_array_ref = sum_array_fn
+    var get_property_ref = get_property_fn
+    var call_function_ref = call_function_fn
+    var map_array_ref = map_array_fn
 
     try:
         register_method(env, exports, "hello",
@@ -212,6 +295,12 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
             UnsafePointer(to=get_undefined_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
         register_method(env, exports, "sumArray",
             UnsafePointer(to=sum_array_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "getProperty",
+            UnsafePointer(to=get_property_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "callFunction",
+            UnsafePointer(to=call_function_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "mapArray",
+            UnsafePointer(to=map_array_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
     except:
         pass
 

@@ -327,3 +327,127 @@ fn raw_get_array_length(
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_array_length")
     return f(env, object, result)
+
+## raw_get_property — wraps napi_get_property
+##
+## Reads a property from a JavaScript object using a napi_value key.
+## `object`: the object napi_value to read from
+## `key`:    the property key as a napi_value (string, symbol, etc.)
+## `result`: out-pointer; receives the property's napi_value
+fn raw_get_property(
+    env: NapiEnv,
+    object: NapiValue,
+    key: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_property")
+    return f(env, object, key, result)
+
+## raw_is_array — wraps napi_is_array
+##
+## Checks whether a JavaScript value is an Array.
+## `value`:  the napi_value to check
+## `result`: out-pointer to a Bool; receives true if value is an Array
+fn raw_is_array(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_is_array")
+    return f(env, value, result)
+
+## raw_get_named_property — wraps napi_get_named_property
+##
+## Reads a named property from a JavaScript object.
+## `object`:   the object napi_value to read from
+## `utf8name`: null-terminated UTF-8 property name (must remain alive until return)
+## `result`:   out-pointer; receives the property's napi_value
+fn raw_get_named_property(
+    env: NapiEnv,
+    object: NapiValue,
+    utf8name: OpaquePointer[ImmutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_named_property")
+    return f(env, object, utf8name, result)
+
+## raw_has_named_property — wraps napi_has_named_property
+##
+## Checks whether a named property exists on a JavaScript object.
+## `object`:   the object napi_value to check
+## `utf8name`: null-terminated UTF-8 property name (must remain alive until return)
+## `result`:   out-pointer to a Bool; receives true if property exists
+fn raw_has_named_property(
+    env: NapiEnv,
+    object: NapiValue,
+    utf8name: OpaquePointer[ImmutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_has_named_property")
+    return f(env, object, utf8name, result)
+
+## raw_call_function — wraps napi_call_function
+##
+## Calls a JavaScript function value.
+## `recv`:   the `this` value for the call (pass undefined for unbound calls)
+## `func`:   the napi_value of the function to call
+## `argc`:   number of arguments
+## `argv`:   pointer to array of napi_value arguments (NULL if argc == 0)
+## `result`: out-pointer; receives the return value
+fn raw_call_function(
+    env: NapiEnv,
+    recv: NapiValue,
+    func: NapiValue,
+    argc: UInt,
+    argv: OpaquePointer[ImmutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, UInt, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_call_function")
+    return f(env, recv, func, argc, argv, result)
+
+## raw_open_handle_scope — wraps napi_open_handle_scope
+##
+## Creates a new handle scope. All napi_values created within this scope
+## are released when the scope is closed. Use in loops that create many
+## temporary napi_values to prevent handle exhaustion.
+## `result`: out-pointer; receives the new napi_handle_scope
+fn raw_open_handle_scope(
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_open_handle_scope")
+    return f(env, result)
+
+## raw_close_handle_scope — wraps napi_close_handle_scope
+##
+## Closes a handle scope, releasing all napi_values created within it.
+## Values referenced by objects outside the scope survive (e.g., elements
+## already set on an array via napi_set_element).
+## `scope`: the handle scope to close (passed by value, not as pointer)
+fn raw_close_handle_scope(
+    env: NapiEnv,
+    scope: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_close_handle_scope")
+    return f(env, scope)

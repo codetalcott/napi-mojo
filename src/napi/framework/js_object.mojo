@@ -18,7 +18,7 @@
 ## management is needed on the caller side.
 
 from napi.types import NapiEnv, NapiValue
-from napi.raw import raw_create_object, raw_set_named_property
+from napi.raw import raw_create_object, raw_set_named_property, raw_get_named_property, raw_has_named_property, raw_get_property
 from napi.error import check_status
 
 ## JsObject — typed wrapper for a JavaScript object napi_value
@@ -59,3 +59,49 @@ struct JsObject:
         var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[NoneType]()
         var status = raw_set_named_property(env, self.value, name_ptr, val)
         check_status(status)
+
+    ## get — read a property using a napi_value key
+    ##
+    ## Most general form — works with any key type (string, symbol, etc.).
+    ## Pass the JS key napi_value directly; avoids any string conversion.
+    fn get(self, env: NapiEnv, key: NapiValue) raises -> NapiValue:
+        var result: NapiValue = NapiValue()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var status = raw_get_property(env, self.value, key, result_ptr)
+        check_status(status)
+        return result
+
+    ## get_property — read a named property using a StringLiteral key
+    ##
+    ## Preferred overload for compile-time-known property names. Returns the
+    ## property's napi_value (undefined if the property does not exist).
+    fn get_property(self, env: NapiEnv, key: StringLiteral) raises -> NapiValue:
+        var result: NapiValue = NapiValue()
+        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var status = raw_get_named_property(env, self.value, key_ptr, result_ptr)
+        check_status(status)
+        return result
+
+    ## get_named_property — read a named property using a heap String key
+    ##
+    ## Use when the property name is computed at runtime. `name` is borrowed —
+    ## the caller's String must remain alive for the duration of this call.
+    fn get_named_property(self, env: NapiEnv, name: String) raises -> NapiValue:
+        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[NoneType]()
+        var result: NapiValue = NapiValue()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var status = raw_get_named_property(env, self.value, name_ptr, result_ptr)
+        check_status(status)
+        return result
+
+    ## has_property — check if a named property exists (StringLiteral key)
+    ##
+    ## Returns true if the property exists on the object, false otherwise.
+    fn has_property(self, env: NapiEnv, key: StringLiteral) raises -> Bool:
+        var exists: Bool = False
+        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[NoneType]()
+        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=exists).bitcast[NoneType]()
+        var status = raw_has_named_property(env, self.value, key_ptr, exists_ptr)
+        check_status(status)
+        return exists

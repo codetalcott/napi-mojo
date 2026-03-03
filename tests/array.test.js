@@ -15,3 +15,11 @@ test('sumArray([1.5, 2.5]) returns 4', () => {
 test('sumArray() with no args throws', () => {
   expect(() => addon.sumArray()).toThrow();
 });
+
+test('sumArray({}) throws (plain object, not array)', () => {
+  expect(() => addon.sumArray({})).toThrow();
+});
+
+test('sumArray("hello") throws (wrong type)', () => {
+  expect(() => addon.sumArray("hello")).toThrow();
+});

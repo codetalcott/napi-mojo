@@ -39,6 +39,14 @@ comptime NAPI_TYPE_EXTERNAL: NapiValueType = 8
 comptime NAPI_TYPE_BIGINT: NapiValueType = 9
 
 # ---------------------------------------------------------------------------
+# Handle scope type
+#
+# napi_handle_scope is an opaque pointer. Opening a scope creates a new
+# local handle context; closing it releases all handles created within.
+# ---------------------------------------------------------------------------
+comptime NapiHandleScope = OpaquePointer[MutAnyOrigin]
+
+# ---------------------------------------------------------------------------
 # napi_property_descriptor struct
 #
 # Must match the C definition in node_api.h EXACTLY (60 bytes on 64-bit,

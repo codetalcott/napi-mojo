@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 6 complete — all primitive types (string, number, boolean, null, undefined, array), argument reading, type checking, error propagation, and object/array construction are all working.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 7 complete — all primitive types, object property reading, function calling, array mapping with handle scopes, argument reading, type checking, and error propagation are all working.
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (26 tests)
+npm test                              # run all Jest tests (41 tests)
 npx jest tests/basic.test.js          # run a single test file
 
 # Spike (run before anything else if starting fresh):
@@ -42,13 +42,15 @@ src/napi/raw.mojo                        # OwnedDLHandle symbol resolution (sole
 src/napi/error.mojo                      # napi_status_name(), check_status(), throw_js_error(), throw_js_error_dynamic()
 src/napi/module.mojo                     # define_property(), register_method()
 src/napi/framework/js_string.mojo        # JsString.create(), create_literal(), from_napi_value(), read_arg_0()
-src/napi/framework/js_object.mojo        # JsObject.create(), set_property(), set_named_property()
+src/napi/framework/js_object.mojo        # JsObject.create(), set_property(), set_named_property(), get(), get_property(), get_named_property(), has_property()
 src/napi/framework/js_number.mojo        # JsNumber.create(), from_napi_value()
 src/napi/framework/js_boolean.mojo       # JsBoolean.create(), from_napi_value()
 src/napi/framework/js_null.mojo          # JsNull.create()
 src/napi/framework/js_undefined.mojo     # JsUndefined.create()
 src/napi/framework/js_array.mojo         # JsArray.create_with_length(), set(), get(), length()
-src/napi/framework/js_value.mojo         # js_typeof(), js_type_name()
+src/napi/framework/js_function.mojo      # JsFunction.call0(), call1(), call2()
+src/napi/framework/js_value.mojo         # js_typeof(), js_type_name(), js_is_array()
+src/napi/framework/handle_scope.mojo     # HandleScope.open(), close()
 src/napi/framework/args.mojo             # CbArgs.get_one(), get_two()
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
 tests/                                   # Jest tests — TDD outside-in
@@ -66,7 +68,10 @@ tests/                                   # Jest tests — TDD outside-in
 | `isPositive(n)` | `is_positive_fn` | Returns `n > 0` (Bool) |
 | `getNull()` | `get_null_fn` | Returns JavaScript `null` |
 | `getUndefined()` | `get_undefined_fn` | Returns JavaScript `undefined` |
-| `sumArray(arr)` | `sum_array_fn` | Returns sum of a number array (Float64) |
+| `sumArray(arr)` | `sum_array_fn` | Returns sum of a number array (Float64, validates is_array) |
+| `getProperty(obj, key)` | `get_property_fn` | Returns `obj[key]` (uses napi_get_property) |
+| `callFunction(fn, arg)` | `call_function_fn` | Calls `fn(arg)` and returns result |
+| `mapArray(arr, fn)` | `map_array_fn` | Returns `arr.map(fn)` (handle-scoped loop) |
 
 ## Critical Mojo FFI rules
 
@@ -94,7 +99,11 @@ desc.method = UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 **`StringLiteral` cannot be returned from runtime-branch functions** — it is parameterized on its compile-time value. Use `String` as the return type for any function that picks from multiple string literals at runtime (see `js_type_name`, `napi_status_name`).
 
-**Type checking before reading**: Use `js_typeof(env, val)` to inspect a value's type before attempting to read it. Compare against `NAPI_TYPE_STRING`, `NAPI_TYPE_NUMBER`, etc. from `napi.types`. This enables descriptive type-mismatch errors.
+**Type checking before reading**: Use `js_typeof(env, val)` to inspect a value's type before attempting to read it. Compare against `NAPI_TYPE_STRING`, `NAPI_TYPE_NUMBER`, etc. from `napi.types`. This enables descriptive type-mismatch errors. Use `js_is_array(env, val)` to distinguish arrays from plain objects (`napi_typeof` returns `object` for both).
+
+**Property reading with napi_value keys**: Use `napi_get_property(env, obj, key_napi_value, result)` (via `JsObject.get()`) instead of `napi_get_named_property(env, obj, c_string, result)` when the key comes from JavaScript. The named variant requires a null-terminated C string; round-tripping a JS string through `JsString.from_napi_value` → `String.unsafe_ptr()` loses the null terminator, causing property lookup failures. Pass the JS string napi_value directly as the key.
+
+**Handle scopes for loops**: When a loop creates many temporary `napi_value` handles (e.g., `mapArray`), wrap each iteration in `HandleScope.open(env)` / `hs.close(env)`. Values set on objects/arrays outside the scope survive closure. The result container (array/object) MUST be created outside the loop's handle scope. Mojo has no RAII — `close()` must be called explicitly.
 
 ## Development workflow
 
