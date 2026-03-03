@@ -15,3 +15,7 @@ test('callFunction(42, 1) throws (not a function)', () => {
 test('callFunction() with no args throws', () => {
   expect(() => addon.callFunction()).toThrow();
 });
+
+test('callFunction propagates JS callback errors', () => {
+  expect(() => addon.callFunction(() => { throw new Error('boom'); }, 1)).toThrow('boom');
+});

@@ -16,6 +16,14 @@ test('mapArray(42, fn) throws (not an array)', () => {
   expect(() => addon.mapArray(42, x => x)).toThrow();
 });
 
+test('mapArray([1,2,3], "not a function") throws', () => {
+  expect(() => addon.mapArray([1, 2, 3], "not a function")).toThrow();
+});
+
+test('mapArray propagates callback errors with handle scope cleanup', () => {
+  expect(() => addon.mapArray([1, 2, 3], () => { throw new Error('fail'); })).toThrow('fail');
+});
+
 test('mapArray with 10000 elements works', () => {
   const arr = Array.from({length: 10000}, (_, i) => i);
   const result = addon.mapArray(arr, x => x + 1);

@@ -1,7 +1,7 @@
 ## src/lib.mojo — napi-mojo module entry point
 ##
 ## Exports: hello, createObject, makeGreeting, greet, add, isPositive,
-##          getNull, getUndefined, sumArray
+##          getNull, getUndefined, sumArray, getProperty, callFunction, mapArray
 ##
 ## Module structure:
 ##   src/napi/types.mojo                — NapiEnv, NapiValue, NapiStatus, NapiPropertyDescriptor
@@ -239,10 +239,16 @@ fn map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var result = JsArray.create_with_length(env, UInt(len))
         for i in range(Int(len)):
             var hs = HandleScope.open(env)
-            var elem = arr.get(env, UInt32(i))
-            var mapped = func.call1(env, elem)
-            result.set(env, UInt32(i), mapped)
+            var ok = True
+            try:
+                var elem = arr.get(env, UInt32(i))
+                var mapped = func.call1(env, elem)
+                result.set(env, UInt32(i), mapped)
+            except:
+                ok = False
             hs.close(env)
+            if not ok:
+                raise Error("mapArray: callback failed at index " + String(i))
         return result.value
     except:
         throw_js_error(env, "mapArray requires (array, function)")

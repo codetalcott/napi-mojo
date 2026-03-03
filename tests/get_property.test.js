@@ -15,3 +15,11 @@ test('getProperty({}, "missing") returns undefined', () => {
 test('getProperty() with no args throws', () => {
   expect(() => addon.getProperty()).toThrow();
 });
+
+test('getProperty(42, "x") throws (not an object)', () => {
+  expect(() => addon.getProperty(42, "x")).toThrow();
+});
+
+test('getProperty({x: 1}, 42) throws (non-string key)', () => {
+  expect(() => addon.getProperty({x: 1}, 42)).toThrow();
+});
