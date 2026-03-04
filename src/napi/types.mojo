@@ -81,6 +81,26 @@ comptime NapiRef = OpaquePointer[MutAnyOrigin]
 comptime NapiEscapableHandleScope = OpaquePointer[MutAnyOrigin]
 
 # ---------------------------------------------------------------------------
+# Threadsafe function type
+#
+# napi_threadsafe_function is an opaque handle for calling JS functions
+# from any thread. Created by napi_create_threadsafe_function.
+# ---------------------------------------------------------------------------
+comptime NapiThreadsafeFunction = OpaquePointer[MutAnyOrigin]
+
+# ---------------------------------------------------------------------------
+# napi_threadsafe_function_call_mode enum constants
+# ---------------------------------------------------------------------------
+comptime NAPI_TSFN_NONBLOCKING: Int32 = 0
+comptime NAPI_TSFN_BLOCKING: Int32 = 1
+
+# ---------------------------------------------------------------------------
+# napi_threadsafe_function_release_mode enum constants
+# ---------------------------------------------------------------------------
+comptime NAPI_TSFN_RELEASE: Int32 = 0
+comptime NAPI_TSFN_ABORT: Int32 = 1
+
+# ---------------------------------------------------------------------------
 # napi_typedarray_type enum constants
 #
 # Matches the C napi_typedarray_type enum in node_api.h.

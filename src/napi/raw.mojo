@@ -1429,3 +1429,85 @@ fn raw_get_prototype(
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_prototype")
     return f(env, object, result)
+
+## raw_create_threadsafe_function — wraps napi_create_threadsafe_function
+##
+## Creates a thread-safe function that can be called from any thread.
+## `func`:                 JS function to invoke (or NULL if call_js_cb handles it)
+## `async_resource`:       optional async resource (NULL)
+## `async_resource_name`:  napi_value string for async diagnostics
+## `max_queue_size`:       0 = unlimited
+## `initial_thread_count`: number of initial acquires (typically 1)
+## `thread_finalize_data`: data passed to thread_finalize_cb (NULL)
+## `thread_finalize_cb`:   cleanup callback when TSFN is destroyed (NULL)
+## `context`:              arbitrary context pointer (NULL)
+## `call_js_cb`:           fn(env, js_callback, context, data) — main thread callback
+## `result`:               out-pointer; receives the napi_threadsafe_function
+fn raw_create_threadsafe_function(
+    env: NapiEnv,
+    func: NapiValue,
+    async_resource: NapiValue,
+    async_resource_name: NapiValue,
+    max_queue_size: UInt,
+    initial_thread_count: UInt,
+    thread_finalize_data: OpaquePointer[MutAnyOrigin],
+    thread_finalize_cb: OpaquePointer[MutAnyOrigin],
+    context: OpaquePointer[MutAnyOrigin],
+    call_js_cb: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, NapiValue, UInt, UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_threadsafe_function")
+    return f(env, func, async_resource, async_resource_name,
+             max_queue_size, initial_thread_count,
+             thread_finalize_data, thread_finalize_cb,
+             context, call_js_cb, result)
+
+## raw_call_threadsafe_function — wraps napi_call_threadsafe_function
+##
+## Queues a call to the JS function from ANY thread.
+## NOTE: Unlike all other raw_* functions, this does NOT take env — it is
+## designed to be called from non-JS threads.
+## `func`:       the napi_threadsafe_function handle
+## `data`:       arbitrary data pointer passed to call_js_cb
+## `is_blocking`: NAPI_TSFN_BLOCKING (1) or NAPI_TSFN_NONBLOCKING (0)
+fn raw_call_threadsafe_function(
+    func: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+    is_blocking: Int32,
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], Int32) -> NapiStatus
+    ]("napi_call_threadsafe_function")
+    return f(func, data, is_blocking)
+
+## raw_acquire_threadsafe_function — wraps napi_acquire_threadsafe_function
+##
+## Increments the thread reference count. Must be called from a new thread
+## before it starts calling the TSFN (unless it is the initial thread).
+fn raw_acquire_threadsafe_function(
+    func: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_acquire_threadsafe_function")
+    return f(func)
+
+## raw_release_threadsafe_function — wraps napi_release_threadsafe_function
+##
+## Decrements the thread reference count. When the count reaches 0, the TSFN
+## is destroyed.
+## `mode`: NAPI_TSFN_RELEASE (0) or NAPI_TSFN_ABORT (1)
+fn raw_release_threadsafe_function(
+    func: OpaquePointer[MutAnyOrigin],
+    mode: Int32,
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (OpaquePointer[MutAnyOrigin], Int32) -> NapiStatus
+    ]("napi_release_threadsafe_function")
+    return f(func, mode)

@@ -14,7 +14,8 @@
 ##          addBigInts, createDate, getDateValue, createSymbol, symbolFor,
 ##          getKeys, hasOwn, deleteProperty, strictEquals, isInstanceOf,
 ##          freezeObject, sealObject, arrayHasElement, arrayDeleteElement,
-##          getPrototype
+##          getPrototype,
+##          asyncProgress
 ##
 ## Module structure:
 ##   src/napi/types.mojo                             — NapiEnv, NapiValue, NapiStatus, etc.
@@ -45,6 +46,7 @@
 ##   src/napi/framework/args.mojo                    — CbArgs
 ##   src/napi/framework/js_value.mojo                — js_typeof, js_is_array, js_get_global
 ##   src/napi/framework/handle_scope.mojo            — HandleScope
+##   src/napi/framework/threadsafe_function.mojo     — ThreadsafeFunction
 ##
 ## This file contains only:
 ##   1. Imports from the napi/ package
@@ -52,8 +54,9 @@
 ##   3. The @export entry point (register_module)
 
 from memory import alloc
-from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_BIGINT, NAPI_OK
-from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work
+from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiThreadsafeFunction, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_BIGINT, NAPI_OK, NAPI_TSFN_BLOCKING, NAPI_TSFN_RELEASE
+from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work, raw_call_threadsafe_function, raw_release_threadsafe_function
+from napi.framework.threadsafe_function import ThreadsafeFunction
 from napi.module import register_method
 from napi.framework.js_string import JsString
 from napi.framework.js_object import JsObject
@@ -1214,6 +1217,213 @@ fn seal_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ---------------------------------------------------------------------------
+# AsyncProgressData — shared state for asyncProgress
+#
+# Heap-allocated with alloc[]. Contains only simple types (no Mojo String)
+# because the execute callback runs on a worker thread.
+#
+# Lifetime: allocated in async_progress_fn, freed in progress_finalize_cb.
+# The finalize_cb fires AFTER all TSFN call_js_cb invocations have completed,
+# guaranteeing all progress callbacks run before the promise resolves.
+# ---------------------------------------------------------------------------
+struct AsyncProgressData(Movable):
+    var deferred: NapiDeferred
+    var work: NapiAsyncWork
+    var tsfn: NapiThreadsafeFunction
+    var count: Int
+    var status: NapiStatus   # set by complete callback
+
+    fn __init__(out self, deferred: NapiDeferred, work: NapiAsyncWork,
+                tsfn: NapiThreadsafeFunction, count: Int):
+        self.deferred = deferred
+        self.work = work
+        self.tsfn = tsfn
+        self.count = count
+        self.status = NAPI_OK
+
+    fn __moveinit__(out self, deinit take: Self):
+        self.deferred = take.deferred
+        self.work = take.work
+        self.tsfn = take.tsfn
+        self.count = take.count
+        self.status = take.status
+
+# ---------------------------------------------------------------------------
+# progress_call_js_cb — TSFN main thread callback
+#
+# Invoked on the main thread for each napi_call_threadsafe_function call.
+# `data` is a heap-allocated Float64 from the worker thread.
+# During Node.js teardown, env may be NULL — just free data and return.
+# ---------------------------------------------------------------------------
+fn progress_call_js_cb(
+    env: NapiEnv,
+    js_callback: NapiValue,
+    context: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+):
+    # Free the data even if env is NULL (teardown)
+    var val_ptr = data.bitcast[Float64]()
+    var value = val_ptr[]
+    val_ptr.destroy_pointee()
+    val_ptr.free()
+    # If env is NULL (teardown), skip the JS call
+    if not env:
+        return
+    try:
+        var js_val = JsNumber.create(env, value)
+        _ = JsFunction(js_callback).call1(env, js_val.value)
+    except:
+        pass  # swallow errors in callback
+
+# ---------------------------------------------------------------------------
+# progress_finalize_cb — TSFN thread finalize callback
+#
+# Called when the TSFN is being destroyed, AFTER all pending call_js_cb
+# invocations have completed. This is where we resolve/reject the promise
+# to guarantee all progress callbacks have fired first.
+# ---------------------------------------------------------------------------
+fn progress_finalize_cb(
+    env: NapiEnv,
+    finalize_data: OpaquePointer[MutAnyOrigin],
+    finalize_hint: OpaquePointer[MutAnyOrigin],
+):
+    var ptr = finalize_data.bitcast[AsyncProgressData]()
+    if env:
+        try:
+            if ptr[].status == NAPI_OK:
+                var result_val = JsNumber.create(env, Float64(ptr[].count))
+                _ = raw_resolve_deferred(env, ptr[].deferred, result_val.value)
+            else:
+                var msg = JsString.create_literal(env, "async progress work failed")
+                var null_code = NapiValue()
+                var error_val = NapiValue()
+                var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()
+                _ = raw_create_error(env, null_code, msg.value, error_ptr)
+                _ = raw_reject_deferred(env, ptr[].deferred, error_val)
+            _ = raw_delete_async_work(env, ptr[].work)
+        except:
+            pass
+    ptr.destroy_pointee()
+    ptr.free()
+
+# ---------------------------------------------------------------------------
+# async_progress_execute — worker thread callback
+#
+# Runs on a worker thread. MUST NOT call any N-API functions except
+# napi_call_threadsafe_function. For each iteration, heap-allocates
+# a Float64 value and queues it via TSFN.
+# ---------------------------------------------------------------------------
+fn async_progress_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.bitcast[AsyncProgressData]()
+    var count = ptr[].count
+    var tsfn = ptr[].tsfn
+    for i in range(count):
+        var val_ptr = alloc[Float64](1)
+        val_ptr.init_pointee_move(Float64(i))
+        try:
+            _ = raw_call_threadsafe_function(
+                tsfn, val_ptr.bitcast[NoneType](), NAPI_TSFN_BLOCKING)
+        except:
+            val_ptr.destroy_pointee()
+            val_ptr.free()
+
+# ---------------------------------------------------------------------------
+# async_progress_complete — main thread callback
+#
+# Runs on the main thread after async_progress_execute finishes.
+# Stores the completion status and releases the TSFN. Does NOT resolve
+# the promise — that happens in progress_finalize_cb after all pending
+# TSFN callbacks have been processed.
+# ---------------------------------------------------------------------------
+fn async_progress_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.bitcast[AsyncProgressData]()
+    ptr[].status = status
+    try:
+        # Release the TSFN — triggers finalize_cb after all pending calls drain
+        _ = raw_release_threadsafe_function(ptr[].tsfn, NAPI_TSFN_RELEASE)
+    except:
+        pass
+    # NOTE: do NOT free ptr here — progress_finalize_cb handles cleanup
+
+# ---------------------------------------------------------------------------
+# asyncProgress(count, callback) — exposed as addon.asyncProgress(count, cb)
+#
+# Creates a promise, sets up a TSFN for the callback, queues async work
+# that calls callback(i) for each i in 0..count-1 from a worker thread,
+# then resolves the promise with count.
+#
+# Promise resolution is deferred to the TSFN's thread_finalize_cb, which
+# fires only after all progress callbacks have been delivered.
+# ---------------------------------------------------------------------------
+fn async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var count_val = args[0]
+        var callback_val = args[1]
+        var count = JsNumber.from_napi_value(env, count_val)
+
+        # Create promise
+        var p = JsPromise.create(env)
+
+        # Create resource name for diagnostics
+        var resource_name = JsString.create_literal(env, "asyncProgress")
+
+        # Get call_js_cb function pointer
+        var call_js_ref = progress_call_js_cb
+        var call_js_ptr = UnsafePointer(to=call_js_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+        # Get finalize_cb function pointer
+        var finalize_ref = progress_finalize_cb
+        var finalize_ptr = UnsafePointer(to=finalize_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+        # Heap-allocate shared data (before creating TSFN — needed as finalize_data)
+        var data_ptr = alloc[AsyncProgressData](1)
+        data_ptr.init_pointee_move(AsyncProgressData(
+            p.deferred, NapiAsyncWork(), NapiThreadsafeFunction(), Int(count)
+        ))
+        var data_opaque: OpaquePointer[MutAnyOrigin] = data_ptr.bitcast[NoneType]()
+
+        # Create the TSFN with finalize callback
+        var tsfn = ThreadsafeFunction.create(
+            env, callback_val, resource_name.value, UInt(0),
+            call_js_ptr, data_opaque, finalize_ptr)
+
+        # Store TSFN handle in data struct
+        data_ptr[].tsfn = tsfn.tsfn
+
+        # Get async work callback pointers
+        var exec_ref = async_progress_execute
+        var comp_ref = async_progress_complete
+        var exec_ptr = UnsafePointer(to=exec_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        var comp_ptr = UnsafePointer(to=comp_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+        # Create async work
+        var work = NapiAsyncWork()
+        var work_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=work).bitcast[NoneType]()
+        var null_resource = NapiValue()
+
+        check_status(raw_create_async_work(
+            env,
+            null_resource,
+            resource_name.value,
+            exec_ptr,
+            comp_ptr,
+            data_opaque,
+            work_out,
+        ))
+
+        # Store work handle back into data struct
+        data_ptr[].work = work
+
+        # Queue the work
+        check_status(raw_queue_async_work(env, work))
+
+        return p.value
+    except:
+        throw_js_error(env, "asyncProgress requires (count, callback)")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
 # Module entry point
 #
 # Node.js finds "napi_register_module_v1" via dlsym after dlopen-ing our
@@ -1281,6 +1491,7 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var array_has_element_ref = array_has_element_fn
     var array_delete_element_ref = array_delete_element_fn
     var get_prototype_ref = get_prototype_fn
+    var async_progress_ref = async_progress_fn
 
     try:
         register_method(env, exports, "hello",
@@ -1380,6 +1591,8 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
             UnsafePointer(to=array_delete_element_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
         register_method(env, exports, "getPrototype",
             UnsafePointer(to=get_prototype_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "asyncProgress",
+            UnsafePointer(to=async_progress_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
 
         # Counter class registration
         var ctor_ptr = UnsafePointer(to=counter_constructor_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]

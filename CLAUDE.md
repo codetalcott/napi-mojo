@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 15 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ArrayBuffer, Buffer, TypedArray, class construction (wrap/unwrap, prototype methods, getter/setter), persistent references, escapable handle scopes, global object access, BigInt, Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, and array element has/delete are all working.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 16 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ThreadsafeFunction (call JS from worker threads), ArrayBuffer, Buffer, TypedArray, class construction (wrap/unwrap, prototype methods, getter/setter), persistent references, escapable handle scopes, global object access, BigInt, Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, and array element has/delete are all working.
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (174 tests)
+npm test                              # run all Jest tests (182 tests)
 npx jest tests/basic.test.js          # run a single test file
 
 # Spike (run before anything else if starting fresh):
@@ -64,6 +64,7 @@ src/napi/framework/escapable_handle_scope.mojo # EscapableHandleScope.open(), es
 src/napi/framework/js_bigint.mojo        # JsBigInt.from_int64(), from_uint64(), to_int64(), to_uint64()
 src/napi/framework/js_date.mojo          # JsDate.create(), timestamp_ms(), is_date()
 src/napi/framework/js_symbol.mojo        # JsSymbol.create(), create_for()
+src/napi/framework/threadsafe_function.mojo # ThreadsafeFunction.create(), call_blocking(), call_nonblocking(), acquire(), release(), abort()
 src/napi/framework/args.mojo             # CbArgs.get_one(), get_two(), get_this(), get_this_and_one(), argc(), get_argv(), get_data()
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
 tests/                                   # Jest tests — TDD outside-in
@@ -122,6 +123,7 @@ tests/                                   # Jest tests — TDD outside-in
 | `arrayHasElement(arr, i)` | `array_has_element_fn` | Checks if index exists in array |
 | `arrayDeleteElement(arr, i)` | `array_delete_element_fn` | Deletes element at index (sparse) |
 | `getPrototype(obj)` | `get_prototype_fn` | Returns `Object.getPrototypeOf(obj)` |
+| `asyncProgress(count, cb)` | `async_progress_fn` | Calls `cb(i)` for i in 0..count-1 from worker thread via TSFN, returns promise |
 
 ## Critical Mojo FFI rules
 
@@ -170,6 +172,12 @@ desc.method = UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 **Jest cross-realm instanceof**: `instanceof TypeError` / `instanceof RangeError` / `instanceof Date` fails in Jest's sandboxed VM (separate realms). Use `try/catch` with `expect(e.name).toBe('TypeError')` instead of `.toThrow(TypeError)`. For Date, use `Object.prototype.toString.call(d) === '[object Date]'` or check for `typeof d.getTime === 'function'`.
 
 **`ref` is a keyword in Mojo**: Cannot use `ref` as a variable/field name. Use `handle`, `napi_ref`, or `js_ref` instead.
+
+**ThreadsafeFunction (TSFN) race condition**: `napi_call_threadsafe_function` queues calls — the `call_js_cb` may not have fired by the time the async work `complete` callback runs. Use `thread_finalize_cb` (not `complete`) to resolve promises, since `thread_finalize_cb` fires only after ALL pending `call_js_cb` invocations complete. The `complete` callback should only store status and call `napi_release_threadsafe_function`.
+
+**`napi_call_threadsafe_function` has no `env` parameter**: Unlike every other N-API function, it takes `(tsfn, data, mode)` only — designed to be called from any thread. `OwnedDLHandle()` works from worker threads since `dlopen(NULL)` is POSIX thread-safe.
+
+**TSFN `call_js_cb` teardown safety**: During Node.js shutdown, `call_js_cb` may receive `env=NULL` and `js_callback=NULL`. Must check before calling N-API functions — only free the data pointer and return.
 
 **napi_create_reference only supports objects/functions/symbols**: Primitive values (numbers, strings, booleans) cannot be stored in napi_ref. Wrap in an object first if you need to reference a primitive.
 
