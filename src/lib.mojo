@@ -8,7 +8,8 @@
 ##          createArrayBuffer, arrayBufferLength,
 ##          sumBuffer, createBuffer,
 ##          doubleFloat64Array,
-##          Counter (class: constructor, increment, reset, value getter/setter),
+##          Counter (class: constructor, increment, reset, value getter/setter,
+##                   static: isCounter, fromValue),
 ##          sumArgs, createCallback, createAdder, getGlobal,
 ##          testRef, testRefObject, testRefString, buildInScope,
 ##          addBigInts, createDate, getDateValue, createSymbol, symbolFor,
@@ -59,7 +60,7 @@
 
 from memory import alloc
 from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiThreadsafeFunction, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_BIGINT, NAPI_TYPE_EXTERNAL, NAPI_OK, NAPI_TSFN_BLOCKING, NAPI_TSFN_RELEASE
-from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work, raw_call_threadsafe_function, raw_release_threadsafe_function
+from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work, raw_call_threadsafe_function, raw_release_threadsafe_function, raw_new_instance
 from napi.framework.threadsafe_function import ThreadsafeFunction
 from napi.module import register_method
 from napi.framework.js_string import JsString
@@ -79,7 +80,7 @@ from napi.framework.js_uint32 import JsUInt32
 from napi.framework.js_arraybuffer import JsArrayBuffer
 from napi.framework.js_buffer import JsBuffer
 from napi.framework.js_typedarray import JsTypedArray
-from napi.framework.js_class import define_class, register_instance_method, register_getter_setter
+from napi.framework.js_class import define_class, register_instance_method, register_getter_setter, register_static_method
 from napi.framework.js_ref import JsRef
 from napi.framework.escapable_handle_scope import EscapableHandleScope
 from napi.framework.js_bigint import JsBigInt
@@ -773,6 +774,56 @@ fn counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsUndefined.create(env).value
     except:
         throw_js_error(env, "Counter.reset failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# counter_is_counter_fn — Counter.isCounter(val) static method
+#
+# Returns true if val is an instance of Counter, false otherwise.
+# Guards primitives (which cause napi_instanceof to fail) via js_typeof.
+# Uses CbArgs.get_this() to get the constructor (this = Counter when called
+# as Counter.isCounter(x)).
+# ---------------------------------------------------------------------------
+fn counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var this_val = CbArgs.get_this(env, info)
+        var arg0 = CbArgs.get_one(env, info)
+        # napi_instanceof requires object LHS — primitives are never instanceof
+        var t = js_typeof(env, arg0)
+        if t != NAPI_TYPE_OBJECT and t != NAPI_TYPE_FUNCTION:
+            return JsBoolean.create(env, False).value
+        var result = JsObject(arg0).instance_of(env, this_val)
+        return JsBoolean.create(env, result).value
+    except:
+        throw_js_error(env, "Counter.isCounter failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# counter_from_value_fn — Counter.fromValue(n) static method
+#
+# Factory method that creates a new Counter instance with the given value.
+# Uses raw_new_instance to call new Counter(n).
+# ---------------------------------------------------------------------------
+fn counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var this_val = CbArgs.get_this(env, info)
+        var arg0 = CbArgs.get_one(env, info)
+        var t = js_typeof(env, arg0)
+        if t != NAPI_TYPE_NUMBER:
+            throw_js_type_error(env, "Counter.fromValue requires a number argument")
+            return NapiValue()
+        var result = NapiValue()
+        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=arg0).bitcast[NoneType]()
+        check_status(raw_new_instance(
+            env,
+            this_val,
+            1,
+            argv_ptr,
+            UnsafePointer(to=result).bitcast[NoneType](),
+        ))
+        return result
+    except:
+        throw_js_error(env, "Counter.fromValue failed")
         return NapiValue()
 
 # ---------------------------------------------------------------------------
@@ -1610,6 +1661,8 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var counter_set_value_ref = counter_set_value_fn
     var counter_increment_ref = counter_increment_fn
     var counter_reset_ref = counter_reset_fn
+    var counter_is_counter_ref = counter_is_counter_fn
+    var counter_from_value_ref = counter_from_value_fn
     var sum_args_ref = sum_args_fn
     var create_callback_ref = create_callback_fn
     var create_adder_ref = create_adder_fn
@@ -1767,6 +1820,10 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         register_getter_setter(env, ctor_val, "value",
             UnsafePointer(to=counter_get_value_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[],
             UnsafePointer(to=counter_set_value_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_static_method(env, ctor_val, "isCounter",
+            UnsafePointer(to=counter_is_counter_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_static_method(env, ctor_val, "fromValue",
+            UnsafePointer(to=counter_from_value_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
         JsObject(exports).set_property(env, "Counter", ctor_val)
     except:
         pass

@@ -16,7 +16,7 @@ napi-mojo follows the same layered approach:
 
 ---
 
-## Current Coverage (Phase 15 Complete)
+## Current Coverage (Phase 18 Complete)
 
 ### Implemented N-API Functions (87 of ~120)
 
@@ -71,7 +71,7 @@ napi-mojo follows the same layered approach:
 | `JsArrayBuffer` | create, create_and_fill, byte_length, data_ptr, is_arraybuffer |
 | `JsBuffer` | create, create_and_fill, data_ptr, length, is_buffer |
 | `JsTypedArray` | create_float64, create_uint8, create_int32, length, data_ptr, is_typedarray |
-| `JsClass` | define_class, register_instance_method, register_getter, register_getter_setter |
+| `JsClass` | define_class, register_instance_method, register_getter, register_getter_setter, register_static_method, register_static_getter, register_static_getter_setter |
 | `JsRef` | create, get, delete, inc, dec |
 | `JsBigInt` | from_int64, from_uint64, to_int64, to_uint64 |
 | `JsDate` | create, timestamp_ms, is_date |
@@ -93,7 +93,6 @@ napi-mojo follows the same layered approach:
 | Version info | `get_version`, `get_node_version` |
 | Finalizer | `add_finalizer` |
 | Script execution | `run_script` |
-| Static class methods | Uses `NAPI_PROPERTY_STATIC` attribute |
 | Class inheritance | prototype chain setup |
 | Arbitrary-precision BigInt | `create_bigint_words`, `get_value_bigint_words` |
 | DataView | `create_dataview`, `get_dataview_info`, `is_dataview` |
@@ -544,9 +543,9 @@ Tests: external data round-trip with finalizer, coercion of various types.
 
 ---
 
-### Phase 18: TypeScript Definition Generation
+### Phase 18: Static Methods + TypeScript Definition Generation ✅
 
-**Goal:** Auto-generate `.d.ts` files from the addon's exported functions.
+**Goal:** Add static class methods and auto-generate `.d.ts` files from the addon's exported functions.
 
 Since Mojo lacks proc macros, this must be a build-time tool. Approach:
 
@@ -645,7 +644,7 @@ Complete mapping of napi-rs features to napi-mojo status and target phase:
 | TypedArray | Done | Phase 10 |
 | Class (constructor/methods) | Done | Phase 11 |
 | Class (getters/setters) | Done | Phase 11 |
-| Class (static methods) | Not started | Phase 16+ |
+| Class (static methods) | Done | Phase 18 |
 | Class (custom finalizer) | Done | Phase 11 |
 | Function creation | Done | Phase 12 |
 | Global object access | Done | Phase 12 |
@@ -663,7 +662,7 @@ Complete mapping of napi-rs features to napi-mojo status and target phase:
 | ThreadsafeFunction | Not started | Phase 16 |
 | External data | Not started | Phase 17 |
 | Type coercion | Not started | Phase 17 |
-| TypeScript .d.ts generation | Not started | Phase 18 |
+| TypeScript .d.ts generation | Done | Phase 18 |
 | Prebuilt binary distribution | Not started | Phase 19 |
 | Serde-like serialization | Not applicable | — |
 | Proc macro (#[napi]) | Not applicable | — |

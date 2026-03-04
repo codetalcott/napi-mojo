@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 17 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ThreadsafeFunction (call JS from worker threads), ArrayBuffer, Buffer, TypedArray, class construction (wrap/unwrap, prototype methods, getter/setter), persistent references, escapable handle scopes, global object access, BigInt, Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), and type coercion (Boolean/Number/String/Object) are all working.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 18 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ThreadsafeFunction (call JS from worker threads), ArrayBuffer, Buffer, TypedArray, class construction (wrap/unwrap, prototype methods, getter/setter, static methods), persistent references, escapable handle scopes, global object access, BigInt, Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), type coercion (Boolean/Number/String/Object), and TypeScript definition generation are all working.
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (223 tests)
+npm test                              # run all Jest tests (246 tests)
 npx jest tests/basic.test.js          # run a single test file
 
 # Spike (run before anything else if starting fresh):
@@ -58,7 +58,7 @@ src/napi/framework/js_promise.mojo       # JsPromise.create(), resolve(), reject
 src/napi/framework/js_arraybuffer.mojo   # JsArrayBuffer.create(), byte_length(), data_ptr(), is_arraybuffer()
 src/napi/framework/js_buffer.mojo        # JsBuffer.create(), data_ptr(), length(), is_buffer()
 src/napi/framework/js_typedarray.mojo    # JsTypedArray.create_float64(), length(), data_ptr(), is_typedarray()
-src/napi/framework/js_class.mojo         # define_class(), register_instance_method(), register_getter(), register_getter_setter()
+src/napi/framework/js_class.mojo         # define_class(), register_instance_method(), register_getter(), register_getter_setter(), register_static_method(), register_static_getter(), register_static_getter_setter()
 src/napi/framework/js_ref.mojo           # JsRef.create(), get(), delete(), inc(), dec()
 src/napi/framework/escapable_handle_scope.mojo # EscapableHandleScope.open(), escape(), close()
 src/napi/framework/js_bigint.mojo        # JsBigInt.from_int64(), from_uint64(), to_int64(), to_uint64()
@@ -69,6 +69,7 @@ src/napi/framework/js_coerce.mojo        # js_coerce_to_bool(), js_coerce_to_num
 src/napi/framework/threadsafe_function.mojo # ThreadsafeFunction.create(), call_blocking(), call_nonblocking(), acquire(), release(), abort()
 src/napi/framework/args.mojo             # CbArgs.get_one(), get_two(), get_this(), get_this_and_one(), argc(), get_argv(), get_data()
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
+scripts/generate-dts.js                  # auto-generate build/index.d.ts from lib.mojo
 tests/                                   # Jest tests — TDD outside-in
 ```
 
@@ -102,6 +103,8 @@ tests/                                   # Jest tests — TDD outside-in
 | `createBuffer(size)` | `create_buffer_fn` | Creates a Buffer filled with incrementing bytes |
 | `doubleFloat64Array(arr)` | `double_float64_array_fn` | Doubles each element of a Float64Array in-place |
 | `new Counter(n)` | `counter_constructor_fn` | Class: constructor, `.increment()`, `.reset()`, `.value` getter/setter |
+| `Counter.isCounter(val)` | `counter_is_counter_fn` | Returns `true` if `val instanceof Counter` |
+| `Counter.fromValue(n)` | `counter_from_value_fn` | Factory: creates `new Counter(n)` via `napi_new_instance` |
 | `sumArgs(...)` | `sum_args_fn` | Returns sum of all number arguments (variable args) |
 | `createCallback()` | `create_callback_fn` | Returns a Mojo-created JS function |
 | `createAdder(n)` | `create_adder_fn` | Returns a function that adds `n` to its argument (closure pattern) |

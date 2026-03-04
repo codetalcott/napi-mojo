@@ -87,3 +87,48 @@ fn register_getter_setter(
     desc.setter = setter_ptr
     desc.attributes = 0
     define_property(env, proto, desc)
+
+## register_static_method — add a static method directly to the constructor
+##
+## Unlike register_instance_method (which targets the prototype), this applies
+## the property descriptor to the constructor itself. The method appears as
+## Class.method() and is NOT available on instances.
+fn register_static_method(
+    env: NapiEnv,
+    constructor: NapiValue,
+    name: StringLiteral,
+    method_ptr: OpaquePointer[MutAnyOrigin],
+) raises:
+    var desc = NapiPropertyDescriptor()
+    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+    desc.method = method_ptr
+    desc.attributes = 0
+    define_property(env, constructor, desc)
+
+## register_static_getter — add a read-only static getter to a class
+fn register_static_getter(
+    env: NapiEnv,
+    constructor: NapiValue,
+    name: StringLiteral,
+    getter_ptr: OpaquePointer[MutAnyOrigin],
+) raises:
+    var desc = NapiPropertyDescriptor()
+    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+    desc.getter = getter_ptr
+    desc.attributes = 0
+    define_property(env, constructor, desc)
+
+## register_static_getter_setter — add a static getter+setter pair to a class
+fn register_static_getter_setter(
+    env: NapiEnv,
+    constructor: NapiValue,
+    name: StringLiteral,
+    getter_ptr: OpaquePointer[MutAnyOrigin],
+    setter_ptr: OpaquePointer[MutAnyOrigin],
+) raises:
+    var desc = NapiPropertyDescriptor()
+    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+    desc.getter = getter_ptr
+    desc.setter = setter_ptr
+    desc.attributes = 0
+    define_property(env, constructor, desc)
