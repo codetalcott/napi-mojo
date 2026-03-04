@@ -18,7 +18,10 @@
 ##          getPrototype,
 ##          asyncProgress,
 ##          createExternal, getExternalData, isExternal,
-##          coerceToBool, coerceToNumber, coerceToString, coerceToObject
+##          coerceToBool, coerceToNumber, coerceToString, coerceToObject,
+##          setPropertyByKey, hasPropertyByKey,
+##          throwValue, catchAndReturn,
+##          getNapiVersion, getNodeVersion
 ##
 ## Module structure:
 ##   src/napi/types.mojo                             — NapiEnv, NapiValue, NapiStatus, etc.
@@ -51,6 +54,8 @@
 ##   src/napi/framework/handle_scope.mojo            — HandleScope
 ##   src/napi/framework/js_external.mojo              — JsExternal
 ##   src/napi/framework/js_coerce.mojo               — js_coerce_to_*
+##   src/napi/framework/js_exception.mojo            — js_throw, js_is_exception_pending
+##   src/napi/framework/js_version.mojo             — get_napi_version, get_node_version
 ##   src/napi/framework/threadsafe_function.mojo     — ThreadsafeFunction
 ##
 ## This file contains only:
@@ -88,6 +93,8 @@ from napi.framework.js_date import JsDate
 from napi.framework.js_symbol import JsSymbol
 from napi.framework.js_external import JsExternal
 from napi.framework.js_coerce import js_coerce_to_bool, js_coerce_to_number, js_coerce_to_string, js_coerce_to_object
+from napi.framework.js_exception import js_throw, js_is_exception_pending, js_get_and_clear_last_exception
+from napi.framework.js_version import get_napi_version, get_node_version_ptr
 from napi.raw import raw_wrap, raw_unwrap
 from napi.error import throw_js_error, throw_js_error_dynamic, throw_js_type_error, throw_js_type_error_dynamic, throw_js_range_error, check_status
 
@@ -1617,6 +1624,107 @@ fn coerce_to_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ---------------------------------------------------------------------------
+# setPropertyByKey(obj, key, value) — exposed as addon.setPropertyByKey()
+#
+# Sets obj[key] = value using napi_set_property (napi_value key).
+# Works with string keys, symbol keys, or any napi_value key.
+# Returns the mutated object.
+# ---------------------------------------------------------------------------
+fn set_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var argc = CbArgs.argc(env, info)
+        var argv = alloc[NapiValue](Int(argc))
+        CbArgs.get_argv(env, info, argc, argv)
+        var obj = argv[0]
+        var key = argv[1]
+        var val = argv[2]
+        JsObject(obj).set(env, key, val)
+        argv.free()
+        return obj
+    except:
+        throw_js_error(env, "setPropertyByKey failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# hasPropertyByKey(obj, key) — exposed as addon.hasPropertyByKey()
+#
+# Checks if obj has the property using napi_has_property (napi_value key).
+# Walks the prototype chain (unlike hasOwn).
+# ---------------------------------------------------------------------------
+fn has_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var result = JsObject(args[0]).has(env, args[1])
+        return JsBoolean.create(env, result).value
+    except:
+        throw_js_error(env, "hasPropertyByKey failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# throwValue(val) — exposed as addon.throwValue()
+#
+# Throws any JavaScript value as an exception. Unlike throwTypeError/
+# throwRangeError which create new Error objects, this throws the value
+# directly — enabling re-throw of caught exceptions, or throwing strings,
+# numbers, objects, etc.
+# ---------------------------------------------------------------------------
+fn throw_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        js_throw(env, arg0)
+    except:
+        pass
+    return NapiValue()
+
+# ---------------------------------------------------------------------------
+# catchAndReturn(val) — exposed as addon.catchAndReturn()
+#
+# Demonstrates programmatic exception recovery: throws the argument as an
+# exception via napi_throw, then immediately catches it with
+# napi_get_and_clear_last_exception, and returns the caught value.
+# ---------------------------------------------------------------------------
+fn catch_and_return_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        # Throw the value to set a pending exception
+        js_throw(env, arg0)
+        # Now catch (clear) the pending exception and return it
+        var caught = js_get_and_clear_last_exception(env)
+        return caught
+    except:
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# getNapiVersion() — exposed as addon.getNapiVersion()
+#
+# Returns the highest N-API version supported by this Node.js runtime.
+# ---------------------------------------------------------------------------
+fn get_napi_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var ver = get_napi_version(env)
+        return JsNumber.create_int(env, Int(ver)).value
+    except:
+        throw_js_error(env, "getNapiVersion failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# getNodeVersion() — exposed as addon.getNodeVersion()
+#
+# Returns {major, minor, patch} object with the Node.js version.
+# ---------------------------------------------------------------------------
+fn get_node_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var ver = get_node_version_ptr(env)
+        var obj = JsObject.create(env)
+        obj.set_property(env, "major", JsNumber.create_int(env, Int(ver[0])).value)
+        obj.set_property(env, "minor", JsNumber.create_int(env, Int(ver[1])).value)
+        obj.set_property(env, "patch", JsNumber.create_int(env, Int(ver[2])).value)
+        return obj.value
+    except:
+        throw_js_error(env, "getNodeVersion failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
 # Module entry point
 #
 # Node.js finds "napi_register_module_v1" via dlsym after dlopen-ing our
@@ -1694,6 +1802,12 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var coerce_to_number_ref = coerce_to_number_fn
     var coerce_to_string_ref = coerce_to_string_fn
     var coerce_to_object_ref = coerce_to_object_fn
+    var set_property_by_key_ref = set_property_by_key_fn
+    var has_property_by_key_ref = has_property_by_key_fn
+    var throw_value_ref = throw_value_fn
+    var catch_and_return_ref = catch_and_return_fn
+    var get_napi_version_ref = get_napi_version_fn
+    var get_node_version_ref = get_node_version_fn
 
     try:
         register_method(env, exports, "hello",
@@ -1809,6 +1923,18 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
             UnsafePointer(to=coerce_to_string_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
         register_method(env, exports, "coerceToObject",
             UnsafePointer(to=coerce_to_object_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "setPropertyByKey",
+            UnsafePointer(to=set_property_by_key_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "hasPropertyByKey",
+            UnsafePointer(to=has_property_by_key_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "throwValue",
+            UnsafePointer(to=throw_value_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "catchAndReturn",
+            UnsafePointer(to=catch_and_return_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "getNapiVersion",
+            UnsafePointer(to=get_napi_version_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "getNodeVersion",
+            UnsafePointer(to=get_node_version_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
 
         # Counter class registration
         var ctor_ptr = UnsafePointer(to=counter_constructor_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]

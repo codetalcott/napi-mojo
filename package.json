@@ -2,12 +2,32 @@
   "name": "napi-mojo",
   "version": "0.1.0",
   "description": "Build Node.js native addons in Mojo — the Mojo equivalent of napi-rs",
+  "main": "build/index.node",
   "types": "build/index.d.ts",
+  "files": [
+    "build/index.node",
+    "build/index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "bash build.sh",
     "generate:dts": "node scripts/generate-dts.js",
     "test": "jest"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT",
+  "author": "Wm Talcott <wtalcott@gmail.com>",
+  "keywords": [
+    "napi",
+    "mojo",
+    "native-addon",
+    "ffi",
+    "n-api",
+    "node-addon"
+  ],
   "devDependencies": {
     "jest": "^29.0.0"
   }

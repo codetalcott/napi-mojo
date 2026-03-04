@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 18 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ThreadsafeFunction (call JS from worker threads), ArrayBuffer, Buffer, TypedArray, class construction (wrap/unwrap, prototype methods, getter/setter, static methods), persistent references, escapable handle scopes, global object access, BigInt, Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), type coercion (Boolean/Number/String/Object), and TypeScript definition generation are all working.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 19 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ThreadsafeFunction (call JS from worker threads), ArrayBuffer, Buffer, TypedArray, class construction (wrap/unwrap, prototype methods, getter/setter, static methods), persistent references, escapable handle scopes, global object access, BigInt, Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), type coercion (Boolean/Number/String/Object), TypeScript definition generation, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), and version info (N-API + Node.js) are all working.
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (246 tests)
+npm test                              # run all Jest tests (274 tests)
 npx jest tests/basic.test.js          # run a single test file
 
 # Spike (run before anything else if starting fresh):
@@ -42,7 +42,7 @@ src/napi/raw.mojo                        # OwnedDLHandle symbol resolution (sole
 src/napi/error.mojo                      # napi_status_name(), check_status(), throw_js_error(), throw_js_error_dynamic(), throw_js_type_error(), throw_js_range_error()
 src/napi/module.mojo                     # define_property(), register_method()
 src/napi/framework/js_string.mojo        # JsString.create(), create_literal(), from_napi_value(), read_arg_0()
-src/napi/framework/js_object.mojo        # JsObject.create(), set_property(), set_named_property(), get(), get_property(), get_named_property(), has_property(), keys(), has_own(), delete_prop(), instance_of(), freeze(), seal(), prototype()
+src/napi/framework/js_object.mojo        # JsObject.create(), set_property(), set_named_property(), set(), get(), get_property(), get_named_property(), has(), has_property(), keys(), has_own(), delete_prop(), instance_of(), freeze(), seal(), prototype()
 src/napi/framework/js_number.mojo        # JsNumber.create(), create_int(), from_napi_value(), to_int()
 src/napi/framework/js_boolean.mojo       # JsBoolean.create(), from_napi_value()
 src/napi/framework/js_int32.mojo         # JsInt32.create(), from_napi_value()
@@ -66,6 +66,8 @@ src/napi/framework/js_date.mojo          # JsDate.create(), timestamp_ms(), is_d
 src/napi/framework/js_symbol.mojo        # JsSymbol.create(), create_for()
 src/napi/framework/js_external.mojo      # JsExternal.create(), create_no_release(), get_data()
 src/napi/framework/js_coerce.mojo        # js_coerce_to_bool(), js_coerce_to_number(), js_coerce_to_string(), js_coerce_to_object()
+src/napi/framework/js_exception.mojo     # js_throw(), js_is_exception_pending(), js_get_and_clear_last_exception()
+src/napi/framework/js_version.mojo       # get_napi_version(), get_node_version_ptr()
 src/napi/framework/threadsafe_function.mojo # ThreadsafeFunction.create(), call_blocking(), call_nonblocking(), acquire(), release(), abort()
 src/napi/framework/args.mojo             # CbArgs.get_one(), get_two(), get_this(), get_this_and_one(), argc(), get_argv(), get_data()
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
@@ -136,6 +138,12 @@ tests/                                   # Jest tests — TDD outside-in
 | `coerceToNumber(val)` | `coerce_to_number_fn` | Returns `Number(val)` (throws on Symbol) |
 | `coerceToString(val)` | `coerce_to_string_fn` | Returns `String(val)` (throws on Symbol) |
 | `coerceToObject(val)` | `coerce_to_object_fn` | Returns `Object(val)` (throws on null/undefined) |
+| `setPropertyByKey(obj, key, val)` | `set_property_by_key_fn` | Sets `obj[key] = val` using napi_value key (string/symbol) |
+| `hasPropertyByKey(obj, key)` | `has_property_by_key_fn` | Returns `key in obj` using napi_value key (walks prototype) |
+| `throwValue(val)` | `throw_value_fn` | Throws any JS value as an exception |
+| `catchAndReturn(val)` | `catch_and_return_fn` | Throws then catches a value, returns the caught value |
+| `getNapiVersion()` | `get_napi_version_fn` | Returns the highest N-API version supported |
+| `getNodeVersion()` | `get_node_version_fn` | Returns `{major, minor, patch}` of the Node.js runtime |
 
 ## Critical Mojo FFI rules
 

@@ -1552,6 +1552,107 @@ fn raw_get_value_external(
 # Type coercion
 # ---------------------------------------------------------------------------
 
+## raw_get_version — wraps napi_get_version
+##
+## Returns the highest N-API version supported by this runtime.
+fn raw_get_version(
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_version")
+    return f(env, result)
+
+## raw_get_node_version — wraps napi_get_node_version
+##
+## Writes a pointer to a statically-allocated napi_node_version struct.
+## The result is a napi_node_version** (double pointer).
+fn raw_get_node_version(
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_node_version")
+    return f(env, result)
+
+## raw_set_property — wraps napi_set_property
+##
+## Sets a property on an object using a napi_value key (string, symbol, etc.).
+## Unlike raw_set_named_property which takes a C string key.
+fn raw_set_property(
+    env: NapiEnv,
+    object: NapiValue,
+    key: NapiValue,
+    value: NapiValue,
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, NapiValue) -> NapiStatus
+    ]("napi_set_property")
+    return f(env, object, key, value)
+
+## raw_has_property — wraps napi_has_property
+##
+## Checks whether a property exists on an object using a napi_value key.
+## Walks the prototype chain (unlike has_own_property which checks own only).
+fn raw_has_property(
+    env: NapiEnv,
+    object: NapiValue,
+    key: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_has_property")
+    return f(env, object, key, result)
+
+## raw_throw — wraps napi_throw
+##
+## Throws any JavaScript value as an exception. Unlike napi_throw_error which
+## creates a new Error from a string, this throws an arbitrary value (string,
+## number, object, Error instance, null, undefined, etc.).
+fn raw_throw(
+    env: NapiEnv,
+    error: NapiValue,
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue) -> NapiStatus
+    ]("napi_throw")
+    return f(env, error)
+
+## raw_is_exception_pending — wraps napi_is_exception_pending
+##
+## Returns whether a JavaScript exception is currently pending.
+fn raw_is_exception_pending(
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_is_exception_pending")
+    return f(env, result)
+
+## raw_get_and_clear_last_exception — wraps napi_get_and_clear_last_exception
+##
+## Retrieves the pending JavaScript exception and clears it, allowing
+## native code to inspect or handle the error without re-throwing.
+fn raw_get_and_clear_last_exception(
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_and_clear_last_exception")
+    return f(env, result)
+
 ## raw_coerce_to_bool — wraps napi_coerce_to_bool
 ##
 ## Equivalent to Boolean(value) in JavaScript.

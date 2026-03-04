@@ -16,9 +16,9 @@ napi-mojo follows the same layered approach:
 
 ---
 
-## Current Coverage (Phase 18 Complete)
+## Current Coverage (Phase 19 Complete)
 
-### Implemented N-API Functions (87 of ~120)
+### Implemented N-API Functions (96 of ~120)
 
 | Category | Implemented | Key Functions |
 |----------|-------------|---------------|
@@ -36,6 +36,7 @@ napi-mojo follows the same layered approach:
 | Handle scopes | 5 | `open_handle_scope`, `close_handle_scope`, `open_escapable_handle_scope`, `close_escapable_handle_scope`, `escape_handle` |
 | Promises | 3 | `create_promise`, `resolve_deferred`, `reject_deferred` |
 | Errors | 6 | `throw_error`, `throw_type_error`, `throw_range_error`, `create_error`, `create_type_error`, `create_range_error` |
+| Exception handling | 3 | `throw` (value), `is_exception_pending`, `get_and_clear_last_exception` |
 | Callback info | 1 | `get_cb_info` |
 | Properties | 1 | `define_properties` |
 | Async work | 3 | `create_async_work`, `queue_async_work`, `delete_async_work` |
@@ -48,13 +49,18 @@ napi-mojo follows the same layered approach:
 | BigInt | 4 | `create_bigint_int64`, `create_bigint_uint64`, `get_value_bigint_int64`, `get_value_bigint_uint64` |
 | Date | 3 | `create_date`, `get_date_value`, `is_date` |
 | Symbol | 2 | `create_symbol`, `node_api_symbol_for` |
+| Property by key | 2 | `set_property`, `has_property` (by napi_value key) |
+| Type coercion | 4 | `coerce_to_bool`, `coerce_to_number`, `coerce_to_string`, `coerce_to_object` |
+| External data | 2 | `create_external`, `get_value_external` |
+| ThreadsafeFunction | 4 | `create_threadsafe_function`, `call_threadsafe_function`, `acquire_threadsafe_function`, `release_threadsafe_function` |
+| Version info | 2 | `get_version`, `get_node_version` |
 
-### Implemented Framework Types (24 structs/modules)
+### Implemented Framework Types (29 structs/modules)
 
 | Type | Capabilities |
 |------|-------------|
 | `JsString` | create, create_literal, from_napi_value, read_arg_0 |
-| `JsObject` | create, set_property, set_named_property, get, get_property, get_named_property, has_property, keys, has_own, delete_prop, instance_of, freeze, seal, prototype |
+| `JsObject` | create, set_property, set_named_property, set (by key), get, get_property, get_named_property, has (by key), has_property, keys, has_own, delete_prop, instance_of, freeze, seal, prototype |
 | `JsNumber` | create (Float64), create_int, from_napi_value, to_int |
 | `JsBoolean` | create, from_napi_value |
 | `JsNull` | create |
@@ -77,27 +83,25 @@ napi-mojo follows the same layered approach:
 | `JsDate` | create, timestamp_ms, is_date |
 | `JsSymbol` | create, create_for |
 | `js_value` | js_typeof, js_type_name, js_is_array, js_strict_equals, js_get_global |
+| `js_coerce` | js_coerce_to_bool, js_coerce_to_number, js_coerce_to_string, js_coerce_to_object |
+| `js_exception` | js_throw, js_is_exception_pending, js_get_and_clear_last_exception |
+| `js_version` | get_napi_version, get_node_version_ptr |
+| `JsExternal` | create, create_no_release, get_data |
+| `ThreadsafeFunction` | create, call_blocking, call_nonblocking, acquire, release, abort |
 
 ### Not Yet Implemented
 
 | napi-rs Feature | N-API Functions Needed |
 |-----------------|------------------------|
 | Set prototype | `node_api_set_prototype` |
-| Set property by key | `set_property`, `has_property` (by napi_value key) |
-| Coercion | `coerce_to_bool`, `coerce_to_number`, `coerce_to_string`, `coerce_to_object` |
-| External data | `create_external`, `get_value_external` |
-| ThreadsafeFunction | `create_threadsafe_function`, `call_threadsafe_function`, `acquire/release_threadsafe_function` |
 | Async cancel | `cancel_async_work` |
 | Cleanup hooks | `add_env_cleanup_hook`, `remove_env_cleanup_hook` |
 | Instance data | `set_instance_data`, `get_instance_data` |
-| Version info | `get_version`, `get_node_version` |
 | Finalizer | `add_finalizer` |
 | Script execution | `run_script` |
 | Class inheritance | prototype chain setup |
 | Arbitrary-precision BigInt | `create_bigint_words`, `get_value_bigint_words` |
 | DataView | `create_dataview`, `get_dataview_info`, `is_dataview` |
-| Exception handling | `throw` (value), `is_exception_pending`, `get_and_clear_last_exception` |
-| TypeScript generation | N/A (build tool) |
 
 ---
 
@@ -659,11 +663,15 @@ Complete mapping of napi-rs features to napi-mojo status and target phase:
 | strict_equals / instanceof | Done | Phase 15 |
 | Prototype access | Done | Phase 15 |
 | Array has/delete element | Done | Phase 15 |
-| ThreadsafeFunction | Not started | Phase 16 |
-| External data | Not started | Phase 17 |
-| Type coercion | Not started | Phase 17 |
+| ThreadsafeFunction | Done | Phase 16 |
+| External data | Done | Phase 17 |
+| Type coercion | Done | Phase 17 |
 | TypeScript .d.ts generation | Done | Phase 18 |
-| Prebuilt binary distribution | Not started | Phase 19 |
+| Exception handling | Done | Phase 19 |
+| Property by napi_value key | Done | Phase 19 |
+| Version info | Done | Phase 19 |
+| Package readiness | Done | Phase 19 |
+| Prebuilt binary distribution | Not started | Phase 20+ |
 | Serde-like serialization | Not applicable | — |
 | Proc macro (#[napi]) | Not applicable | — |
 | Tokio runtime integration | Not applicable | — |

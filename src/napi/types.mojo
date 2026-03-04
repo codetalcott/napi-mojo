@@ -127,6 +127,50 @@ comptime NAPI_PROPERTY_CONFIGURABLE: UInt32 = 4
 comptime NAPI_PROPERTY_STATIC: UInt32 = 1024
 
 # ---------------------------------------------------------------------------
+# napi_node_version struct
+#
+# Matches the C struct returned by napi_get_node_version:
+#   typedef struct {
+#     uint32_t major;
+#     uint32_t minor;
+#     uint32_t patch;
+#     const char* release;
+#   } napi_node_version;
+#
+# napi_get_node_version returns a pointer to a statically-allocated instance
+# of this struct. Fields are read directly from the pointer.
+# ---------------------------------------------------------------------------
+struct NapiNodeVersion:
+    var major: UInt32
+    var minor: UInt32
+    var patch: UInt32
+    var release: OpaquePointer[ImmutAnyOrigin]  # const char*
+
+    fn __init__(out self):
+        self.major = 0
+        self.minor = 0
+        self.patch = 0
+        self.release = OpaquePointer[ImmutAnyOrigin]()
+
+    fn __init__(out self, major: UInt32, minor: UInt32, patch: UInt32, release: OpaquePointer[ImmutAnyOrigin]):
+        self.major = major
+        self.minor = minor
+        self.patch = patch
+        self.release = release
+
+    fn __copyinit__(out self, copy: Self):
+        self.major = copy.major
+        self.minor = copy.minor
+        self.patch = copy.patch
+        self.release = copy.release
+
+    fn __moveinit__(out self, deinit take: Self):
+        self.major = take.major
+        self.minor = take.minor
+        self.patch = take.patch
+        self.release = take.release
+
+# ---------------------------------------------------------------------------
 # napi_property_descriptor struct
 #
 # Must match the C definition in node_api.h EXACTLY (60 bytes on 64-bit,

@@ -18,7 +18,7 @@
 ## management is needed on the caller side.
 
 from napi.types import NapiEnv, NapiValue
-from napi.raw import raw_create_object, raw_set_named_property, raw_get_named_property, raw_has_named_property, raw_get_property, raw_get_property_names, raw_get_all_property_names, raw_has_own_property, raw_delete_property, raw_instanceof, raw_object_freeze, raw_object_seal, raw_get_prototype
+from napi.raw import raw_create_object, raw_set_named_property, raw_get_named_property, raw_has_named_property, raw_get_property, raw_set_property, raw_has_property, raw_get_property_names, raw_get_all_property_names, raw_has_own_property, raw_delete_property, raw_instanceof, raw_object_freeze, raw_object_seal, raw_get_prototype
 from napi.error import check_status
 
 ## JsObject — typed wrapper for a JavaScript object napi_value
@@ -59,6 +59,26 @@ struct JsObject:
         var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[NoneType]()
         var status = raw_set_named_property(env, self.value, name_ptr, val)
         check_status(status)
+
+    ## set — set a property using a napi_value key (string, symbol, etc.)
+    ##
+    ## Most general form for setting properties — works with any key type.
+    ## Use set_property() for StringLiteral keys or set_named_property() for
+    ## heap String keys.
+    fn set(self, env: NapiEnv, key: NapiValue, val: NapiValue) raises:
+        var status = raw_set_property(env, self.value, key, val)
+        check_status(status)
+
+    ## has — check if a property exists using a napi_value key
+    ##
+    ## Walks the prototype chain (like `key in obj`). Use has_own() to check
+    ## own properties only.
+    fn has(self, env: NapiEnv, key: NapiValue) raises -> Bool:
+        var exists: Bool = False
+        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=exists).bitcast[NoneType]()
+        var status = raw_has_property(env, self.value, key, exists_ptr)
+        check_status(status)
+        return exists
 
     ## get — read a property using a napi_value key
     ##

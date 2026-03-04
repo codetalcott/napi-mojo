@@ -57,6 +57,12 @@ const OVERRIDES = {
   coerceToObject: '(val: any): object',
   isInstanceOf: '(obj: any, ctor: Function): boolean',
   strictEquals: '(a: any, b: any): boolean',
+  setPropertyByKey: '(obj: object, key: string | symbol, value: any): object',
+  hasPropertyByKey: '(obj: object, key: string | symbol): boolean',
+  throwValue: '(value: any): never',
+  catchAndReturn: '(value: any): any',
+  getNapiVersion: '(): number',
+  getNodeVersion: '(): { major: number; minor: number; patch: number }',
 };
 
 const source = fs.readFileSync(SRC, 'utf8');
