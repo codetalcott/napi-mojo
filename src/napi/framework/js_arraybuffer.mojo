@@ -16,7 +16,6 @@ struct JsArrayBuffer:
         self.value = value
 
     ## create — allocate a new ArrayBuffer with `byte_length` bytes.
-    ## Also fills the buffer with incrementing byte values (0, 1, 2, ...).
     @staticmethod
     fn create(env: NapiEnv, byte_length: UInt) raises -> JsArrayBuffer:
         var data = OpaquePointer[MutAnyOrigin]()

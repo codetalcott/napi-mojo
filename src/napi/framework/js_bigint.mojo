@@ -40,6 +40,8 @@ struct JsBigInt:
         check_status(raw_get_value_bigint_int64(env, val,
             UnsafePointer(to=result).bitcast[NoneType](),
             UnsafePointer(to=lossless).bitcast[NoneType]()))
+        if not lossless:
+            raise Error("BigInt value exceeds Int64 range")
         return result
 
     @staticmethod
@@ -49,4 +51,6 @@ struct JsBigInt:
         check_status(raw_get_value_bigint_uint64(env, val,
             UnsafePointer(to=result).bitcast[NoneType](),
             UnsafePointer(to=lossless).bitcast[NoneType]()))
+        if not lossless:
+            raise Error("BigInt value exceeds UInt64 range")
         return result

@@ -29,6 +29,10 @@ test('throwRangeError() has the right message', () => {
   expect(() => addon.throwRangeError()).toThrow('out of range');
 });
 
+test('addIntsStrict(3, 4) returns 7', () => {
+  expect(addon.addIntsStrict(3, 4)).toBe(7);
+});
+
 test('addIntsStrict("a", 1) throws a TypeError', () => {
   try {
     addon.addIntsStrict('a', 1);

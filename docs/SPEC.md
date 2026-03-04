@@ -16,80 +16,99 @@ napi-mojo follows the same layered approach:
 
 ---
 
-## Current Coverage (Phase 8 Complete)
+## Current Coverage (Phase 14 Complete)
 
-### Implemented N-API Functions (36 of ~120)
+### Implemented N-API Functions (73 of ~120)
 
 | Category | Implemented | Key Functions |
 |----------|-------------|---------------|
 | Strings | 2 | `create_string_utf8`, `get_value_string_utf8` |
 | Objects | 5 | `create_object`, `set_named_property`, `get_property`, `get_named_property`, `has_named_property` |
 | Numbers | 2 | `create_double`, `get_value_double` |
+| Int32 | 2 | `create_int32`, `get_value_int32` |
+| UInt32 | 2 | `create_uint32`, `get_value_uint32` |
+| Int64 | 2 | `create_int64`, `get_value_int64` |
 | Booleans | 2 | `get_boolean`, `get_value_bool` |
 | Null/Undefined | 2 | `get_null`, `get_undefined` |
 | Type checking | 2 | `typeof`, `is_array` |
 | Arrays | 4 | `create_array_with_length`, `set_element`, `get_element`, `get_array_length` |
-| Functions | 1 | `call_function` |
-| Handle scopes | 2 | `open_handle_scope`, `close_handle_scope` |
+| Functions | 3 | `call_function`, `create_function`, `get_new_target` |
+| Handle scopes | 5 | `open_handle_scope`, `close_handle_scope`, `open_escapable_handle_scope`, `close_escapable_handle_scope`, `escape_handle` |
 | Promises | 3 | `create_promise`, `resolve_deferred`, `reject_deferred` |
-| Errors | 2 | `throw_error`, `create_error` |
+| Errors | 6 | `throw_error`, `throw_type_error`, `throw_range_error`, `create_error`, `create_type_error`, `create_range_error` |
 | Callback info | 1 | `get_cb_info` |
 | Properties | 1 | `define_properties` |
 | Async work | 3 | `create_async_work`, `queue_async_work`, `delete_async_work` |
+| ArrayBuffer | 4 | `create_arraybuffer`, `get_arraybuffer_info`, `is_arraybuffer`, `detach_arraybuffer` |
+| Buffer | 4 | `create_buffer`, `create_buffer_copy`, `get_buffer_info`, `is_buffer` |
+| TypedArray | 3 | `create_typedarray`, `get_typedarray_info`, `is_typedarray` |
+| Class | 5 | `define_class`, `wrap`, `unwrap`, `remove_wrap`, `new_instance` |
+| References | 5 | `create_reference`, `delete_reference`, `reference_ref`, `reference_unref`, `get_reference_value` |
+| Global | 1 | `get_global` |
+| BigInt | 4 | `create_bigint_int64`, `create_bigint_uint64`, `get_value_bigint_int64`, `get_value_bigint_uint64` |
+| Date | 3 | `create_date`, `get_date_value`, `is_date` |
+| Symbol | 2 | `create_symbol`, `node_api_symbol_for` |
 
-### Implemented Framework Types (11 structs)
+### Implemented Framework Types (24 structs/modules)
 
 | Type | Capabilities |
 |------|-------------|
 | `JsString` | create, create_literal, from_napi_value, read_arg_0 |
 | `JsObject` | create, set_property, set_named_property, get, get_property, get_named_property, has_property |
-| `JsNumber` | create (Float64), from_napi_value |
+| `JsNumber` | create (Float64), create_int, from_napi_value, to_int |
 | `JsBoolean` | create, from_napi_value |
 | `JsNull` | create |
 | `JsUndefined` | create |
 | `JsArray` | create_with_length, set, get, length |
-| `JsFunction` | call0, call1, call2 |
+| `JsFunction` | call0, call1, call2, create, create_with_data |
 | `JsPromise` | create, resolve, reject |
 | `HandleScope` | open, close |
-| `CbArgs` | get_one, get_two |
+| `EscapableHandleScope` | open, escape, close |
+| `CbArgs` | get_one, get_two, get_this, get_this_and_one, argc, get_argv, get_data |
+| `JsInt32` | create, from_napi_value |
+| `JsUInt32` | create, from_napi_value |
+| `JsInt64` | create, from_napi_value |
+| `JsArrayBuffer` | create, create_and_fill, byte_length, data_ptr, is_arraybuffer |
+| `JsBuffer` | create, create_and_fill, data_ptr, length, is_buffer |
+| `JsTypedArray` | create_float64, create_uint8, create_int32, length, data_ptr, is_typedarray |
+| `JsClass` | define_class, register_instance_method, register_getter, register_getter_setter |
+| `JsRef` | create, get, delete, inc, dec |
+| `JsBigInt` | from_int64, from_uint64, to_int64, to_uint64 |
+| `JsDate` | create, timestamp_ms, is_date |
+| `JsSymbol` | create, create_for |
+| `js_value` | js_typeof, js_type_name, js_is_array, js_get_global |
 
 ### Not Yet Implemented
 
 | napi-rs Feature | N-API Functions Needed |
-|----------------|----------------------|
-| Integer types (Int32, UInt32, Int64) | `create_int32`, `create_uint32`, `create_int64`, `get_value_int32`, `get_value_uint32`, `get_value_int64` |
-| BigInt | `create_bigint_int64`, `create_bigint_uint64`, `get_value_bigint_int64`, `get_value_bigint_uint64` |
-| Buffer / ArrayBuffer | `create_buffer`, `create_buffer_copy`, `create_arraybuffer`, `get_buffer_info`, `get_arraybuffer_info`, `is_buffer`, `is_arraybuffer` |
-| TypedArray | `create_typedarray`, `get_typedarray_info`, `is_typedarray` |
-| Date | `create_date`, `get_date_value`, `is_date` |
-| Symbol | `create_symbol`, `node_api_symbol_for` |
-| External | `create_external`, `get_value_external` |
-| Class construction | `define_class`, `wrap`, `unwrap`, `new_instance` |
-| References (prevent GC) | `create_reference`, `delete_reference`, `reference_ref`, `reference_unref`, `get_reference_value` |
-| Escapable handle scopes | `open_escapable_handle_scope`, `close_escapable_handle_scope`, `escape_handle` |
-| Function creation | `create_function` |
-| Error subtypes | `throw_type_error`, `throw_range_error`, `create_type_error`, `create_range_error` |
+|-----------------|------------------------|
 | Property enumeration | `get_property_names`, `get_all_property_names` |
 | Property deletion | `delete_property`, `delete_element`, `has_element` |
 | Object identity | `strict_equals`, `instanceof` |
 | Object freezing | `object_freeze`, `object_seal` |
 | Prototype access | `get_prototype`, `node_api_set_prototype` |
+| Set property by key | `set_property`, `has_property` (by napi_value key) |
 | Coercion | `coerce_to_bool`, `coerce_to_number`, `coerce_to_string`, `coerce_to_object` |
+| External data | `create_external`, `get_value_external` |
 | ThreadsafeFunction | `create_threadsafe_function`, `call_threadsafe_function`, `acquire/release_threadsafe_function` |
 | Async cancel | `cancel_async_work` |
 | Cleanup hooks | `add_env_cleanup_hook`, `remove_env_cleanup_hook` |
 | Instance data | `set_instance_data`, `get_instance_data` |
-| Global object | `get_global` |
 | Version info | `get_version`, `get_node_version` |
 | Finalizer | `add_finalizer` |
 | Script execution | `run_script` |
+| Static class methods | Uses `NAPI_PROPERTY_STATIC` attribute |
+| Class inheritance | prototype chain setup |
+| Arbitrary-precision BigInt | `create_bigint_words`, `get_value_bigint_words` |
+| DataView | `create_dataview`, `get_dataview_info`, `is_dataview` |
+| Exception handling | `throw` (value), `is_exception_pending`, `get_and_clear_last_exception` |
 | TypeScript generation | N/A (build tool) |
 
 ---
 
 ## Phased Development Plan
 
-### Phase 9: Integer Types + Error Subtypes
+### Phase 9: Integer Types + Error Subtypes ✅
 
 **Goal:** Complete numeric type coverage and richer error handling.
 
@@ -143,7 +162,7 @@ Tests: `instanceof TypeError`, `instanceof RangeError` validation.
 
 ---
 
-### Phase 10: Buffer, ArrayBuffer, and TypedArray
+### Phase 10: Buffer, ArrayBuffer, and TypedArray ✅
 
 **Goal:** Enable efficient binary data interchange — the primary performance use case for native addons.
 
@@ -228,7 +247,7 @@ Tests: Buffer round-trip, TypedArray element access, zero-copy mutation verifica
 
 ---
 
-### Phase 11: Class Construction
+### Phase 11: Class Construction ✅
 
 **Goal:** Enable Mojo structs to become JavaScript classes with constructors, methods, getters/setters, and finalizers.
 
@@ -292,7 +311,7 @@ Tests: constructor, methods, getters/setters, multiple instances, GC finalizer (
 
 ---
 
-### Phase 12: Function Creation + Global Access
+### Phase 12: Function Creation + Global Access ✅
 
 **Goal:** Create JavaScript functions from Mojo (not just export callbacks), and access the global object.
 
@@ -336,7 +355,7 @@ Tests: dynamic function creation, calling created functions, global object prope
 
 ---
 
-### Phase 13: References + Escapable Handle Scopes
+### Phase 13: References + Escapable Handle Scopes ✅
 
 **Goal:** Prevent garbage collection of JS values held across async boundaries; escape values from inner scopes.
 
@@ -384,7 +403,7 @@ Tests: reference prevents GC, reference deletion allows GC, escapable scope retu
 
 ---
 
-### Phase 14: BigInt + Date + Symbol
+### Phase 14: BigInt + Date + Symbol ✅
 
 **Goal:** Support remaining JavaScript primitive-ish types.
 
@@ -636,23 +655,23 @@ Complete mapping of napi-rs features to napi-mojo status and target phase:
 | Error throwing | Done | — |
 | Type checking (typeof) | Done | — |
 | Callback argument extraction | Done | — |
-| Integer types (i32/u32/i64) | Not started | Phase 9 |
-| TypeError / RangeError | Not started | Phase 9 |
-| Buffer | Not started | Phase 10 |
-| ArrayBuffer | Not started | Phase 10 |
-| TypedArray | Not started | Phase 10 |
-| Class (constructor/methods) | Not started | Phase 11 |
-| Class (getters/setters) | Not started | Phase 11 |
-| Class (static methods) | Not started | Phase 11 |
-| Class (custom finalizer) | Not started | Phase 11 |
-| Function creation | Not started | Phase 12 |
-| Global object access | Not started | Phase 12 |
-| Variable arg count | Not started | Phase 12 |
-| References (prevent GC) | Not started | Phase 13 |
-| Escapable handle scopes | Not started | Phase 13 |
-| BigInt | Not started | Phase 14 |
-| Date | Not started | Phase 14 |
-| Symbol | Not started | Phase 14 |
+| Integer types (i32/u32/i64) | Done | Phase 9 |
+| TypeError / RangeError | Done | Phase 9 |
+| Buffer | Done | Phase 10 |
+| ArrayBuffer | Done | Phase 10 |
+| TypedArray | Done | Phase 10 |
+| Class (constructor/methods) | Done | Phase 11 |
+| Class (getters/setters) | Done | Phase 11 |
+| Class (static methods) | Not started | Phase 15 |
+| Class (custom finalizer) | Done | Phase 11 |
+| Function creation | Done | Phase 12 |
+| Global object access | Done | Phase 12 |
+| Variable arg count | Done | Phase 12 |
+| References (prevent GC) | Done | Phase 13 |
+| Escapable handle scopes | Done | Phase 13 |
+| BigInt | Done | Phase 14 |
+| Date | Done | Phase 14 |
+| Symbol | Done | Phase 14 |
 | Property enumeration | Not started | Phase 15 |
 | Object freeze/seal | Not started | Phase 15 |
 | strict_equals / instanceof | Not started | Phase 15 |

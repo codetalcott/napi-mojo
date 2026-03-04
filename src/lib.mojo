@@ -9,23 +9,39 @@
 ##          sumBuffer, createBuffer,
 ##          doubleFloat64Array,
 ##          Counter (class: constructor, increment, reset, value getter/setter),
-##          sumArgs, createCallback, createAdder, getGlobal
+##          sumArgs, createCallback, createAdder, getGlobal,
+##          testRef, testRefObject, testRefString, buildInScope,
+##          addBigInts, createDate, getDateValue, createSymbol, symbolFor
 ##
 ## Module structure:
-##   src/napi/types.mojo                  — NapiEnv, NapiValue, NapiStatus, NapiDeferred, etc.
-##   src/napi/raw.mojo                    — sole OwnedDLHandle user; raw_* bindings
-##   src/napi/error.mojo                  — check_status(), throw_js_error()
-##   src/napi/module.mojo                 — define_property(), register_method()
-##   src/napi/framework/js_string.mojo    — JsString.create(), create_literal(), from_napi_value()
-##   src/napi/framework/js_object.mojo    — JsObject.create(), set_property(), get(), get_property()
-##   src/napi/framework/js_number.mojo    — JsNumber.create(), from_napi_value()
-##   src/napi/framework/js_boolean.mojo   — JsBoolean.create(), from_napi_value()
-##   src/napi/framework/args.mojo         — CbArgs.get_one(), get_two()
-##   src/napi/framework/js_value.mojo     — js_typeof(), js_type_name()
-##   src/napi/framework/js_null.mojo      — JsNull.create()
-##   src/napi/framework/js_undefined.mojo — JsUndefined.create()
-##   src/napi/framework/js_array.mojo     — JsArray.create_with_length(), set(), get(), length()
-##   src/napi/framework/js_promise.mojo   — JsPromise.create(), resolve(), reject()
+##   src/napi/types.mojo                             — NapiEnv, NapiValue, NapiStatus, etc.
+##   src/napi/raw.mojo                               — sole OwnedDLHandle user; raw_* bindings
+##   src/napi/error.mojo                             — check_status(), throw_js_error()
+##   src/napi/module.mojo                            — define_property(), register_method()
+##   src/napi/framework/js_string.mojo               — JsString
+##   src/napi/framework/js_object.mojo               — JsObject
+##   src/napi/framework/js_number.mojo               — JsNumber
+##   src/napi/framework/js_boolean.mojo              — JsBoolean
+##   src/napi/framework/js_null.mojo                 — JsNull
+##   src/napi/framework/js_undefined.mojo            — JsUndefined
+##   src/napi/framework/js_array.mojo                — JsArray
+##   src/napi/framework/js_function.mojo             — JsFunction
+##   src/napi/framework/js_promise.mojo              — JsPromise
+##   src/napi/framework/js_int32.mojo                — JsInt32
+##   src/napi/framework/js_uint32.mojo               — JsUInt32
+##   src/napi/framework/js_int64.mojo                — JsInt64
+##   src/napi/framework/js_arraybuffer.mojo          — JsArrayBuffer
+##   src/napi/framework/js_buffer.mojo               — JsBuffer
+##   src/napi/framework/js_typedarray.mojo           — JsTypedArray
+##   src/napi/framework/js_class.mojo                — define_class, register_instance_method
+##   src/napi/framework/js_ref.mojo                  — JsRef
+##   src/napi/framework/escapable_handle_scope.mojo  — EscapableHandleScope
+##   src/napi/framework/js_bigint.mojo               — JsBigInt
+##   src/napi/framework/js_date.mojo                 — JsDate
+##   src/napi/framework/js_symbol.mojo               — JsSymbol
+##   src/napi/framework/args.mojo                    — CbArgs
+##   src/napi/framework/js_value.mojo                — js_typeof, js_is_array, js_get_global
+##   src/napi/framework/handle_scope.mojo            — HandleScope
 ##
 ## This file contains only:
 ##   1. Imports from the napi/ package
@@ -1005,6 +1021,7 @@ fn symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         from napi.raw import raw_symbol_for
         check_status(raw_symbol_for(env, key_ptr, key_len,
             UnsafePointer(to=result).bitcast[NoneType]()))
+        _ = key^  # prevent ASAP destruction before raw_symbol_for reads key_ptr
         return result
     except:
         throw_js_error(env, "symbolFor requires one string argument")
