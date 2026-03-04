@@ -20,8 +20,9 @@ from napi.types import (
     NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_EXTERNAL,
     NAPI_TYPE_BIGINT,
 )
-from napi.raw import raw_typeof, raw_is_array
+from napi.raw import raw_typeof, raw_is_array, raw_get_global
 from napi.error import check_status
+from napi.framework.js_object import JsObject
 
 ## js_typeof — return the napi_valuetype of a JavaScript value
 ##
@@ -62,3 +63,10 @@ fn js_is_array(env: NapiEnv, val: NapiValue) raises -> Bool:
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_is_array(env, val, result_ptr))
     return result
+
+## js_get_global — return the global object (globalThis)
+fn js_get_global(env: NapiEnv) raises -> JsObject:
+    var result = NapiValue()
+    check_status(raw_get_global(env,
+        UnsafePointer(to=result).bitcast[NoneType]()))
+    return JsObject(result)

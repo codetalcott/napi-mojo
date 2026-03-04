@@ -94,3 +94,44 @@ struct CbArgs:
         result[0] = this_val
         result[1] = arg0
         return result^
+
+    ## argc — query the number of arguments without reading any
+    @staticmethod
+    fn argc(env: NapiEnv, info: NapiValue) raises -> UInt:
+        var count: UInt = 0
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            env, info,
+            UnsafePointer(to=count).bitcast[NoneType](),
+            null, null, null,
+        ))
+        return count
+
+    ## get_argv — read `count` arguments into a caller-provided buffer
+    @staticmethod
+    fn get_argv(env: NapiEnv, info: NapiValue, count: UInt,
+                argv_ptr: UnsafePointer[NapiValue, MutAnyOrigin]) raises:
+        var actual = count
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            env, info,
+            UnsafePointer(to=actual).bitcast[NoneType](),
+            argv_ptr.bitcast[NoneType](),
+            null, null,
+        ))
+
+    ## get_data — extract the data pointer from a callback
+    ##
+    ## Used by dynamically-created functions (napi_create_function with data).
+    @staticmethod
+    fn get_data(env: NapiEnv, info: NapiValue) raises -> OpaquePointer[MutAnyOrigin]:
+        var argc: UInt = 0
+        var data = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            env, info,
+            UnsafePointer(to=argc).bitcast[NoneType](),
+            null, null,
+            UnsafePointer(to=data).bitcast[NoneType](),
+        ))
+        return data

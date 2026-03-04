@@ -8,7 +8,8 @@
 ##          createArrayBuffer, arrayBufferLength,
 ##          sumBuffer, createBuffer,
 ##          doubleFloat64Array,
-##          Counter (class: constructor, increment, reset, value getter/setter)
+##          Counter (class: constructor, increment, reset, value getter/setter),
+##          sumArgs, createCallback, createAdder, getGlobal
 ##
 ## Module structure:
 ##   src/napi/types.mojo                  — NapiEnv, NapiValue, NapiStatus, NapiDeferred, etc.
@@ -32,7 +33,7 @@
 ##   3. The @export entry point (register_module)
 
 from memory import alloc
-from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_OK
+from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_BIGINT, NAPI_OK
 from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work
 from napi.module import register_method
 from napi.framework.js_string import JsString
@@ -45,7 +46,7 @@ from napi.framework.js_array import JsArray
 from napi.framework.js_function import JsFunction
 from napi.framework.js_promise import JsPromise
 from napi.framework.args import CbArgs
-from napi.framework.js_value import js_typeof, js_type_name, js_is_array
+from napi.framework.js_value import js_typeof, js_type_name, js_is_array, js_get_global
 from napi.framework.handle_scope import HandleScope
 from napi.framework.js_int32 import JsInt32
 from napi.framework.js_uint32 import JsUInt32
@@ -53,6 +54,11 @@ from napi.framework.js_arraybuffer import JsArrayBuffer
 from napi.framework.js_buffer import JsBuffer
 from napi.framework.js_typedarray import JsTypedArray
 from napi.framework.js_class import define_class, register_instance_method, register_getter_setter
+from napi.framework.js_ref import JsRef
+from napi.framework.escapable_handle_scope import EscapableHandleScope
+from napi.framework.js_bigint import JsBigInt
+from napi.framework.js_date import JsDate
+from napi.framework.js_symbol import JsSymbol
 from napi.raw import raw_wrap, raw_unwrap
 from napi.error import throw_js_error, throw_js_error_dynamic, throw_js_type_error, throw_js_type_error_dynamic, throw_js_range_error, check_status
 
@@ -742,6 +748,269 @@ fn counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ---------------------------------------------------------------------------
+# sumArgs(...) — exposed as addon.sumArgs(...)
+#
+# Takes a variable number of arguments, reads each as Float64, returns sum.
+# Demonstrates CbArgs.argc() and CbArgs.get_argv().
+# ---------------------------------------------------------------------------
+fn sum_args_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var count = CbArgs.argc(env, info)
+        if count == 0:
+            return JsNumber.create(env, 0.0).value
+        var argv = alloc[NapiValue](Int(count))
+        CbArgs.get_argv(env, info, count, argv)
+        var total: Float64 = 0.0
+        for i in range(Int(count)):
+            var t = js_typeof(env, argv[i])
+            if t != NAPI_TYPE_NUMBER:
+                argv.free()
+                throw_js_error_dynamic(env, "sumArgs: expected number, got " + js_type_name(t))
+                return NapiValue()
+            total += JsNumber.from_napi_value(env, argv[i])
+        argv.free()
+        return JsNumber.create(env, total).value
+    except:
+        throw_js_error(env, "sumArgs failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# inner_callback_fn — the callback returned by createCallback()
+#
+# Returns the string "hello from callback".
+# ---------------------------------------------------------------------------
+fn inner_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        return JsString.create_literal(env, "hello from callback").value
+    except:
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# createCallback() — exposed as addon.createCallback()
+#
+# Creates and returns a new JavaScript function (inner_callback_fn).
+# ---------------------------------------------------------------------------
+fn create_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var cb_ref = inner_callback_fn
+        var cb_ptr = UnsafePointer(to=cb_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        return JsFunction.create(env, "innerCallback", cb_ptr).value
+    except:
+        throw_js_error(env, "createCallback failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# inner_adder_fn — the closure returned by createAdder(n)
+#
+# Reads the captured Float64 from the data pointer, adds the first argument.
+# ---------------------------------------------------------------------------
+fn inner_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var data = CbArgs.get_data(env, info)
+        var n_ptr = data.bitcast[Float64]()
+        var n = n_ptr[]
+        var arg0 = CbArgs.get_one(env, info)
+        var x = JsNumber.from_napi_value(env, arg0)
+        return JsNumber.create(env, n + x).value
+    except:
+        throw_js_error(env, "adder callback failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# createAdder(n) — exposed as addon.createAdder(n)
+#
+# Takes a number n, heap-allocates it, creates a function that adds n to
+# its argument. The data pointer captures n for the inner callback.
+# ---------------------------------------------------------------------------
+fn create_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var n = JsNumber.from_napi_value(env, arg0)
+        # Heap-allocate the captured value
+        var n_ptr = alloc[Float64](1)
+        n_ptr.init_pointee_move(n)
+        var cb_ref = inner_adder_fn
+        var cb_ptr = UnsafePointer(to=cb_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        return JsFunction.create_with_data(
+            env, "adder", cb_ptr, n_ptr.bitcast[NoneType]()
+        ).value
+    except:
+        throw_js_error(env, "createAdder requires one number argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# getGlobal() — exposed as addon.getGlobal()
+#
+# Returns the global object (globalThis).
+# ---------------------------------------------------------------------------
+fn get_global_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        return js_get_global(env).value
+    except:
+        throw_js_error(env, "getGlobal failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# testRef() — exposed as addon.testRef()
+#
+# Creates {value: 42}, stores in a reference, retrieves, returns .value.
+# napi_create_reference only supports objects/functions/symbols.
+# ---------------------------------------------------------------------------
+fn test_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var obj = JsObject.create(env)
+        obj.set_property(env, "value", JsNumber.create(env, 42.0).value)
+        var js_ref = JsRef.create(env, obj.value, 1)
+        var retrieved = JsObject(js_ref.get(env))
+        js_ref.delete(env)
+        return retrieved.get_named_property(env, "value")
+    except:
+        throw_js_error(env, "testRef failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# testRefObject() — exposed as addon.testRefObject()
+#
+# Creates an object {answer: 42}, stores in reference, round-trips, returns.
+# ---------------------------------------------------------------------------
+fn test_ref_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var obj = JsObject.create(env)
+        obj.set_property(env, "answer", JsNumber.create(env, 42.0).value)
+        var js_ref = JsRef.create(env, obj.value, 1)
+        var val = js_ref.get(env)
+        js_ref.delete(env)
+        return val
+    except:
+        throw_js_error(env, "testRefObject failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# testRefString(s) — exposed as addon.testRefString(s)
+#
+# Takes a string, wraps in {value: s}, stores in reference, round-trips,
+# returns .value. napi_create_reference only supports objects.
+# ---------------------------------------------------------------------------
+fn test_ref_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var obj = JsObject.create(env)
+        obj.set_property(env, "value", arg0)
+        var js_ref = JsRef.create(env, obj.value, 1)
+        var retrieved = JsObject(js_ref.get(env))
+        js_ref.delete(env)
+        return retrieved.get_named_property(env, "value")
+    except:
+        throw_js_error(env, "testRefString requires one string argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# buildInScope() — exposed as addon.buildInScope()
+#
+# Opens an escapable handle scope, creates {created: true, answer: 42},
+# escapes it, closes the scope, returns the escaped value.
+# ---------------------------------------------------------------------------
+fn build_in_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var esc = EscapableHandleScope.open(env)
+        var obj = JsObject.create(env)
+        obj.set_property(env, "created", JsBoolean.create(env, True).value)
+        obj.set_property(env, "answer", JsNumber.create(env, 42.0).value)
+        var escaped = esc.escape(env, obj.value)
+        esc.close(env)
+        return escaped
+    except:
+        throw_js_error(env, "buildInScope failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# addBigInts(a, b) — exposed as addon.addBigInts(a, b)
+#
+# Takes two BigInt arguments, returns their sum as a BigInt.
+# ---------------------------------------------------------------------------
+fn add_bigints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var ta = js_typeof(env, args[0])
+        var tb = js_typeof(env, args[1])
+        if ta != NAPI_TYPE_BIGINT or tb != NAPI_TYPE_BIGINT:
+            throw_js_error_dynamic(env,
+                "addBigInts: expected bigint, got " + js_type_name(ta) + " and " + js_type_name(tb))
+            return NapiValue()
+        var a = JsBigInt.to_int64(env, args[0])
+        var b = JsBigInt.to_int64(env, args[1])
+        return JsBigInt.from_int64(env, a + b).value
+    except:
+        throw_js_error(env, "addBigInts requires two bigint arguments")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# createDate(timestamp_ms) — exposed as addon.createDate(timestamp_ms)
+#
+# Creates a JavaScript Date object from a millisecond timestamp.
+# ---------------------------------------------------------------------------
+fn create_date_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var ts = JsNumber.from_napi_value(env, arg0)
+        return JsDate.create(env, ts).value
+    except:
+        throw_js_error(env, "createDate requires one number argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# getDateValue(date) — exposed as addon.getDateValue(date)
+#
+# Returns the timestamp (ms since epoch) of a JavaScript Date object.
+# ---------------------------------------------------------------------------
+fn get_date_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var d = JsDate(arg0)
+        var ts = d.timestamp_ms(env)
+        return JsNumber.create(env, ts).value
+    except:
+        throw_js_error(env, "getDateValue requires one Date argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# createSymbol(description) — exposed as addon.createSymbol(description)
+#
+# Creates a new unique Symbol with the given string description.
+# ---------------------------------------------------------------------------
+fn create_symbol_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        return JsSymbol.create(env, arg0).value
+    except:
+        throw_js_error(env, "createSymbol requires one string argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# symbolFor(key) — exposed as addon.symbolFor(key)
+#
+# Returns the global Symbol for the given key (like Symbol.for(key)).
+# Uses a StringLiteral-based approach: reads the JS string, then calls
+# node_api_symbol_for with a C string.
+# ---------------------------------------------------------------------------
+fn symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var key = JsString.from_napi_value(env, arg0)
+        # node_api_symbol_for takes a C string + length, not a napi_value.
+        # We use the Mojo String's unsafe_ptr for the C string.
+        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[NoneType]()
+        var key_len = UInt(len(key))
+        var result = NapiValue()
+        from napi.raw import raw_symbol_for
+        check_status(raw_symbol_for(env, key_ptr, key_len,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return result
+    except:
+        throw_js_error(env, "symbolFor requires one string argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
 # Module entry point
 #
 # Node.js finds "napi_register_module_v1" via dlsym after dlopen-ing our
@@ -786,6 +1055,19 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var counter_set_value_ref = counter_set_value_fn
     var counter_increment_ref = counter_increment_fn
     var counter_reset_ref = counter_reset_fn
+    var sum_args_ref = sum_args_fn
+    var create_callback_ref = create_callback_fn
+    var create_adder_ref = create_adder_fn
+    var get_global_ref = get_global_fn
+    var test_ref_ref = test_ref_fn
+    var test_ref_object_ref = test_ref_object_fn
+    var test_ref_string_ref = test_ref_string_fn
+    var build_in_scope_ref = build_in_scope_fn
+    var add_bigints_ref = add_bigints_fn
+    var create_date_ref = create_date_fn
+    var get_date_value_ref = get_date_value_fn
+    var create_symbol_ref = create_symbol_fn
+    var symbol_for_ref = symbol_for_fn
 
     try:
         register_method(env, exports, "hello",
@@ -838,6 +1120,33 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
             UnsafePointer(to=create_buffer_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
         register_method(env, exports, "doubleFloat64Array",
             UnsafePointer(to=double_float64_array_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+
+        register_method(env, exports, "sumArgs",
+            UnsafePointer(to=sum_args_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "createCallback",
+            UnsafePointer(to=create_callback_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "createAdder",
+            UnsafePointer(to=create_adder_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "getGlobal",
+            UnsafePointer(to=get_global_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "testRef",
+            UnsafePointer(to=test_ref_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "testRefObject",
+            UnsafePointer(to=test_ref_object_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "testRefString",
+            UnsafePointer(to=test_ref_string_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "buildInScope",
+            UnsafePointer(to=build_in_scope_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "addBigInts",
+            UnsafePointer(to=add_bigints_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "createDate",
+            UnsafePointer(to=create_date_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "getDateValue",
+            UnsafePointer(to=get_date_value_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "createSymbol",
+            UnsafePointer(to=create_symbol_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "symbolFor",
+            UnsafePointer(to=symbol_for_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
 
         # Counter class registration
         var ctor_ptr = UnsafePointer(to=counter_constructor_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]

@@ -65,6 +65,22 @@ comptime NapiDeferred = OpaquePointer[MutAnyOrigin]
 comptime NapiAsyncWork = OpaquePointer[MutAnyOrigin]
 
 # ---------------------------------------------------------------------------
+# Reference type
+#
+# napi_ref is an opaque handle to a persistent reference to a napi_value.
+# Created by napi_create_reference, allows preventing GC of a value.
+# ---------------------------------------------------------------------------
+comptime NapiRef = OpaquePointer[MutAnyOrigin]
+
+# ---------------------------------------------------------------------------
+# Escapable handle scope type
+#
+# napi_escapable_handle_scope allows one value to be "escaped" (promoted)
+# to the outer scope.
+# ---------------------------------------------------------------------------
+comptime NapiEscapableHandleScope = OpaquePointer[MutAnyOrigin]
+
+# ---------------------------------------------------------------------------
 # napi_typedarray_type enum constants
 #
 # Matches the C napi_typedarray_type enum in node_api.h.

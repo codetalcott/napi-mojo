@@ -989,3 +989,275 @@ fn raw_new_instance(
         fn (NapiEnv, NapiValue, UInt, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_new_instance")
     return f(env, constructor, argc, argv, result)
+
+## raw_create_function — wraps napi_create_function
+##
+## Creates a new JavaScript function from a napi_callback.
+## utf8name: null-terminated function name (or NULL)
+## length: length of name (NAPI_AUTO_LENGTH to use strlen)
+## cb: function pointer to the napi_callback
+## data: arbitrary data pointer passed to the callback (or NULL)
+fn raw_create_function(
+    env: NapiEnv,
+    utf8name: OpaquePointer[ImmutAnyOrigin],
+    length: UInt,
+    cb: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_function")
+    return f(env, utf8name, length, cb, data, result)
+
+## raw_get_new_target — wraps napi_get_new_target
+##
+## Returns the new.target value of the current callback.
+## If the callback was not called with `new`, result is NULL.
+fn raw_get_new_target(
+    env: NapiEnv,
+    info: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_new_target")
+    return f(env, info, result)
+
+## raw_get_global — wraps napi_get_global
+##
+## Returns the global object (globalThis).
+fn raw_get_global(
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_global")
+    return f(env, result)
+
+## raw_create_reference — wraps napi_create_reference
+##
+## Creates a persistent reference to a napi_value with an initial refcount.
+fn raw_create_reference(
+    env: NapiEnv,
+    value: NapiValue,
+    initial_refcount: UInt32,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_reference")
+    return f(env, value, initial_refcount, result)
+
+## raw_delete_reference — wraps napi_delete_reference
+##
+## Deletes a reference. The ref must not be used after this call.
+fn raw_delete_reference(
+    env: NapiEnv,
+    napi_ref: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_delete_reference")
+    return f(env, napi_ref)
+
+## raw_reference_ref — wraps napi_reference_ref
+##
+## Increments the reference count; returns the new count.
+fn raw_reference_ref(
+    env: NapiEnv,
+    napi_ref: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_reference_ref")
+    return f(env, napi_ref, result)
+
+## raw_reference_unref — wraps napi_reference_unref
+##
+## Decrements the reference count; returns the new count.
+fn raw_reference_unref(
+    env: NapiEnv,
+    napi_ref: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_reference_unref")
+    return f(env, napi_ref, result)
+
+## raw_get_reference_value — wraps napi_get_reference_value
+##
+## Retrieves the napi_value from a reference.
+fn raw_get_reference_value(
+    env: NapiEnv,
+    napi_ref: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_reference_value")
+    return f(env, napi_ref, result)
+
+## raw_open_escapable_handle_scope — wraps napi_open_escapable_handle_scope
+fn raw_open_escapable_handle_scope(
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_open_escapable_handle_scope")
+    return f(env, result)
+
+## raw_close_escapable_handle_scope — wraps napi_close_escapable_handle_scope
+fn raw_close_escapable_handle_scope(
+    env: NapiEnv,
+    scope: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_close_escapable_handle_scope")
+    return f(env, scope)
+
+## raw_escape_handle — wraps napi_escape_handle
+##
+## Promotes a value from an escapable handle scope to the outer scope.
+## Can only be called ONCE per escapable scope.
+fn raw_escape_handle(
+    env: NapiEnv,
+    scope: OpaquePointer[MutAnyOrigin],
+    escapee: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_escape_handle")
+    return f(env, scope, escapee, result)
+
+## raw_create_bigint_int64 — wraps napi_create_bigint_int64
+fn raw_create_bigint_int64(
+    env: NapiEnv,
+    value: Int64,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_bigint_int64")
+    return f(env, value, result)
+
+## raw_create_bigint_uint64 — wraps napi_create_bigint_uint64
+fn raw_create_bigint_uint64(
+    env: NapiEnv,
+    value: UInt64,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, UInt64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_bigint_uint64")
+    return f(env, value, result)
+
+## raw_get_value_bigint_int64 — wraps napi_get_value_bigint_int64
+##
+## Extra out-param `lossless` indicates if the value fits in Int64.
+fn raw_get_value_bigint_int64(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+    lossless: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_value_bigint_int64")
+    return f(env, value, result, lossless)
+
+## raw_get_value_bigint_uint64 — wraps napi_get_value_bigint_uint64
+fn raw_get_value_bigint_uint64(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+    lossless: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_value_bigint_uint64")
+    return f(env, value, result, lossless)
+
+## raw_create_date — wraps napi_create_date
+fn raw_create_date(
+    env: NapiEnv,
+    time: Float64,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, Float64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_date")
+    return f(env, time, result)
+
+## raw_get_date_value — wraps napi_get_date_value
+fn raw_get_date_value(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_date_value")
+    return f(env, value, result)
+
+## raw_is_date — wraps napi_is_date
+fn raw_is_date(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_is_date")
+    return f(env, value, result)
+
+## raw_create_symbol — wraps napi_create_symbol (node_api.h — napi_ prefix)
+fn raw_create_symbol(
+    env: NapiEnv,
+    description: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_symbol")
+    return f(env, description, result)
+
+## raw_symbol_for — wraps node_api_symbol_for (note: node_api_ prefix)
+##
+## Returns the global Symbol for the given key (like Symbol.for()).
+fn raw_symbol_for(
+    env: NapiEnv,
+    description: OpaquePointer[ImmutAnyOrigin],
+    length: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("node_api_symbol_for")
+    return f(env, description, length, result)

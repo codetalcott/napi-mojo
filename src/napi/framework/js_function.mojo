@@ -11,7 +11,7 @@
 ## already be a valid JS function napi_value (check with js_typeof first).
 
 from napi.types import NapiEnv, NapiValue
-from napi.raw import raw_call_function, raw_get_undefined
+from napi.raw import raw_call_function, raw_get_undefined, raw_create_function
 from napi.error import check_status
 
 ## JsFunction — typed wrapper for a JavaScript function napi_value
@@ -57,3 +57,34 @@ struct JsFunction:
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
         check_status(raw_call_function(env, recv, self.value, 2, argv_ptr, result_ptr))
         return result
+
+    ## create — create a new JavaScript function from a napi_callback
+    @staticmethod
+    fn create(env: NapiEnv, name: StringLiteral,
+              cb_ptr: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
+        var result = NapiValue()
+        var auto_length: UInt = ~UInt(0)
+        check_status(raw_create_function(env,
+            name.unsafe_ptr().bitcast[NoneType](),
+            auto_length,
+            cb_ptr,
+            OpaquePointer[MutAnyOrigin](),
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsFunction(result)
+
+    ## create_with_data — create a JS function with an associated data pointer
+    ##
+    ## The data pointer is passed to the callback via napi_get_cb_info.
+    @staticmethod
+    fn create_with_data(env: NapiEnv, name: StringLiteral,
+                        cb_ptr: OpaquePointer[MutAnyOrigin],
+                        data: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
+        var result = NapiValue()
+        var auto_length: UInt = ~UInt(0)
+        check_status(raw_create_function(env,
+            name.unsafe_ptr().bitcast[NoneType](),
+            auto_length,
+            cb_ptr,
+            data,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsFunction(result)

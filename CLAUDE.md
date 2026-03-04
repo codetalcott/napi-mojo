@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 11 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading, function calling, array mapping with handle scopes, argument reading, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ArrayBuffer, Buffer, TypedArray, and class construction (wrap/unwrap, prototype methods, getter/setter) are all working.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 14 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ArrayBuffer, Buffer, TypedArray, class construction (wrap/unwrap, prototype methods, getter/setter), persistent references, escapable handle scopes, global object access, BigInt, Date, and Symbol are all working.
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (99 tests)
+npm test                              # run all Jest tests (135 tests)
 npx jest tests/basic.test.js          # run a single test file
 
 # Spike (run before anything else if starting fresh):
@@ -51,15 +51,20 @@ src/napi/framework/js_int64.mojo         # JsInt64.create(), from_napi_value()
 src/napi/framework/js_null.mojo          # JsNull.create()
 src/napi/framework/js_undefined.mojo     # JsUndefined.create()
 src/napi/framework/js_array.mojo         # JsArray.create_with_length(), set(), get(), length()
-src/napi/framework/js_function.mojo      # JsFunction.call0(), call1(), call2()
-src/napi/framework/js_value.mojo         # js_typeof(), js_type_name(), js_is_array()
+src/napi/framework/js_function.mojo      # JsFunction.call0(), call1(), call2(), create(), create_with_data()
+src/napi/framework/js_value.mojo         # js_typeof(), js_type_name(), js_is_array(), js_get_global()
 src/napi/framework/handle_scope.mojo     # HandleScope.open(), close()
 src/napi/framework/js_promise.mojo       # JsPromise.create(), resolve(), reject()
 src/napi/framework/js_arraybuffer.mojo   # JsArrayBuffer.create(), byte_length(), data_ptr(), is_arraybuffer()
 src/napi/framework/js_buffer.mojo        # JsBuffer.create(), data_ptr(), length(), is_buffer()
 src/napi/framework/js_typedarray.mojo    # JsTypedArray.create_float64(), length(), data_ptr(), is_typedarray()
 src/napi/framework/js_class.mojo         # define_class(), register_instance_method(), register_getter(), register_getter_setter()
-src/napi/framework/args.mojo             # CbArgs.get_one(), get_two(), get_this(), get_this_and_one()
+src/napi/framework/js_ref.mojo           # JsRef.create(), get(), delete(), inc(), dec()
+src/napi/framework/escapable_handle_scope.mojo # EscapableHandleScope.open(), escape(), close()
+src/napi/framework/js_bigint.mojo        # JsBigInt.from_int64(), from_uint64(), to_int64(), to_uint64()
+src/napi/framework/js_date.mojo          # JsDate.create(), timestamp_ms(), is_date()
+src/napi/framework/js_symbol.mojo        # JsSymbol.create(), create_for()
+src/napi/framework/args.mojo             # CbArgs.get_one(), get_two(), get_this(), get_this_and_one(), argc(), get_argv(), get_data()
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
 tests/                                   # Jest tests — TDD outside-in
 ```
@@ -94,6 +99,19 @@ tests/                                   # Jest tests — TDD outside-in
 | `createBuffer(size)` | `create_buffer_fn` | Creates a Buffer filled with incrementing bytes |
 | `doubleFloat64Array(arr)` | `double_float64_array_fn` | Doubles each element of a Float64Array in-place |
 | `new Counter(n)` | `counter_constructor_fn` | Class: constructor, `.increment()`, `.reset()`, `.value` getter/setter |
+| `sumArgs(...)` | `sum_args_fn` | Returns sum of all number arguments (variable args) |
+| `createCallback()` | `create_callback_fn` | Returns a Mojo-created JS function |
+| `createAdder(n)` | `create_adder_fn` | Returns a function that adds `n` to its argument (closure pattern) |
+| `getGlobal()` | `get_global_fn` | Returns the global object (`globalThis`) |
+| `testRef()` | `test_ref_fn` | Creates object, stores/retrieves via napi_ref, returns |
+| `testRefObject()` | `test_ref_object_fn` | Object reference round-trip |
+| `testRefString(s)` | `test_ref_string_fn` | String reference round-trip (wrapped in object) |
+| `buildInScope()` | `build_in_scope_fn` | Creates object in escapable handle scope, escapes it |
+| `addBigInts(a, b)` | `add_bigints_fn` | Returns `a + b` (BigInt) |
+| `createDate(ms)` | `create_date_fn` | Creates a Date from millisecond timestamp |
+| `getDateValue(d)` | `get_date_value_fn` | Returns the timestamp of a Date object |
+| `createSymbol(desc)` | `create_symbol_fn` | Creates a new unique Symbol |
+| `symbolFor(key)` | `symbol_for_fn` | Returns the global Symbol for a key (`Symbol.for`) |
 
 ## Critical Mojo FFI rules
 
@@ -139,7 +157,17 @@ desc.method = UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 **UnsafePointer origin requirement**: In Mojo v26.2, `UnsafePointer[Byte]` cannot infer the mutability parameter in return type position. Use `UnsafePointer[Byte, MutAnyOrigin]` explicitly for data pointer return types (e.g., in Buffer/ArrayBuffer/TypedArray wrappers).
 
-**Jest cross-realm instanceof**: `instanceof TypeError` / `instanceof RangeError` fails in Jest's sandboxed VM (separate realms). Use `try/catch` with `expect(e.name).toBe('TypeError')` instead of `.toThrow(TypeError)`.
+**Jest cross-realm instanceof**: `instanceof TypeError` / `instanceof RangeError` / `instanceof Date` fails in Jest's sandboxed VM (separate realms). Use `try/catch` with `expect(e.name).toBe('TypeError')` instead of `.toThrow(TypeError)`. For Date, use `Object.prototype.toString.call(d) === '[object Date]'` or check for `typeof d.getTime === 'function'`.
+
+**`ref` is a keyword in Mojo**: Cannot use `ref` as a variable/field name. Use `handle`, `napi_ref`, or `js_ref` instead.
+
+**napi_create_reference only supports objects/functions/symbols**: Primitive values (numbers, strings, booleans) cannot be stored in napi_ref. Wrap in an object first if you need to reference a primitive.
+
+**Variable-length arguments**: Use `CbArgs.argc(env, info)` to query count, `alloc[NapiValue](count)` for the buffer, `CbArgs.get_argv(env, info, count, argv_ptr)` to fill it. The argv_ptr parameter requires `UnsafePointer[NapiValue, MutAnyOrigin]` (explicit origin).
+
+**Function creation with closure data**: `JsFunction.create_with_data(env, name, cb_ptr, data_ptr)` passes an arbitrary data pointer to the callback. Retrieve in the callback via `CbArgs.get_data(env, info)`. Heap-allocated data leaks unless manually freed (no destructor hook on plain functions).
+
+**`node_api_symbol_for`**: Uses `node_api_` prefix (not `napi_`). Takes a C string + length, not a napi_value description.
 
 ## Development workflow
 
