@@ -9,6 +9,8 @@ from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor
 from napi.raw import raw_define_class, raw_define_properties, raw_get_named_property
 from napi.error import check_status
 from napi.module import define_property
+from napi.framework.js_value import js_get_global
+from napi.framework.js_function import JsFunction
 
 ## _get_prototype — get constructor.prototype as a napi_value
 fn _get_prototype(env: NapiEnv, constructor: NapiValue) raises -> NapiValue:
@@ -117,6 +119,36 @@ fn register_static_getter(
     desc.getter = getter_ptr
     desc.attributes = 0
     define_property(env, constructor, desc)
+
+## set_class_prototype — set up inheritance: Dog.prototype.__proto__ = Animal.prototype
+##
+## Uses Object.setPrototypeOf(childProto, parentProto) via JS global.
+## Works on all Node versions with N-API (no node_api_set_prototype needed).
+fn set_class_prototype(
+    env: NapiEnv,
+    child_ctor: NapiValue,
+    parent_ctor: NapiValue,
+) raises:
+    var child_proto = _get_prototype(env, child_ctor)
+    var parent_proto = _get_prototype(env, parent_ctor)
+
+    # Get Object.setPrototypeOf from the global object
+    var global_obj = js_get_global(env)
+    var object_key = NapiValue()
+    check_status(raw_get_named_property(
+        env, global_obj.value,
+        "Object".unsafe_ptr().bitcast[NoneType](),
+        UnsafePointer(to=object_key).bitcast[NoneType](),
+    ))
+    var set_proto_of = NapiValue()
+    check_status(raw_get_named_property(
+        env, object_key,
+        "setPrototypeOf".unsafe_ptr().bitcast[NoneType](),
+        UnsafePointer(to=set_proto_of).bitcast[NoneType](),
+    ))
+
+    # Call Object.setPrototypeOf(childProto, parentProto)
+    _ = JsFunction(set_proto_of).call2(env, child_proto, parent_proto)
 
 ## register_static_getter_setter — add a static getter+setter pair to a class
 fn register_static_getter_setter(

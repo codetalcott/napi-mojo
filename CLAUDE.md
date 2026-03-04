@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 19 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ThreadsafeFunction (call JS from worker threads), ArrayBuffer, Buffer, TypedArray, class construction (wrap/unwrap, prototype methods, getter/setter, static methods), persistent references, escapable handle scopes, global object access, BigInt, Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), type coercion (Boolean/Number/String/Object), TypeScript definition generation, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), and version info (N-API + Node.js) are all working.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 20 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks, type coercion (Boolean/Number/String/Object), TypeScript definition generation, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), and version info (N-API + Node.js) are all working.
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (274 tests)
+npm test                              # run all Jest tests (338 tests)
 npx jest tests/basic.test.js          # run a single test file
 
 # Spike (run before anything else if starting fresh):
@@ -58,16 +58,17 @@ src/napi/framework/js_promise.mojo       # JsPromise.create(), resolve(), reject
 src/napi/framework/js_arraybuffer.mojo   # JsArrayBuffer.create(), byte_length(), data_ptr(), is_arraybuffer()
 src/napi/framework/js_buffer.mojo        # JsBuffer.create(), data_ptr(), length(), is_buffer()
 src/napi/framework/js_typedarray.mojo    # JsTypedArray.create_float64(), length(), data_ptr(), is_typedarray()
-src/napi/framework/js_class.mojo         # define_class(), register_instance_method(), register_getter(), register_getter_setter(), register_static_method(), register_static_getter(), register_static_getter_setter()
+src/napi/framework/js_class.mojo         # define_class(), register_instance_method(), register_getter(), register_getter_setter(), register_static_method(), register_static_getter(), register_static_getter_setter(), set_class_prototype()
 src/napi/framework/js_ref.mojo           # JsRef.create(), get(), delete(), inc(), dec()
 src/napi/framework/escapable_handle_scope.mojo # EscapableHandleScope.open(), escape(), close()
-src/napi/framework/js_bigint.mojo        # JsBigInt.from_int64(), from_uint64(), to_int64(), to_uint64()
+src/napi/framework/js_bigint.mojo        # JsBigInt.from_int64(), from_uint64(), to_int64(), to_uint64(), from_words(), word_count(), to_words()
 src/napi/framework/js_date.mojo          # JsDate.create(), timestamp_ms(), is_date()
 src/napi/framework/js_symbol.mojo        # JsSymbol.create(), create_for()
 src/napi/framework/js_external.mojo      # JsExternal.create(), create_no_release(), get_data()
 src/napi/framework/js_coerce.mojo        # js_coerce_to_bool(), js_coerce_to_number(), js_coerce_to_string(), js_coerce_to_object()
 src/napi/framework/js_exception.mojo     # js_throw(), js_is_exception_pending(), js_get_and_clear_last_exception()
 src/napi/framework/js_version.mojo       # get_napi_version(), get_node_version_ptr()
+src/napi/framework/js_dataview.mojo      # JsDataView.create(), byte_length(), byte_offset(), data_ptr(), arraybuffer(), is_dataview()
 src/napi/framework/threadsafe_function.mojo # ThreadsafeFunction.create(), call_blocking(), call_nonblocking(), acquire(), release(), abort()
 src/napi/framework/args.mojo             # CbArgs.get_one(), get_two(), get_this(), get_this_and_one(), argc(), get_argv(), get_data()
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
@@ -144,6 +145,20 @@ tests/                                   # Jest tests — TDD outside-in
 | `catchAndReturn(val)` | `catch_and_return_fn` | Throws then catches a value, returns the caught value |
 | `getNapiVersion()` | `get_napi_version_fn` | Returns the highest N-API version supported |
 | `getNodeVersion()` | `get_node_version_fn` | Returns `{major, minor, patch}` of the Node.js runtime |
+| `createDataView(ab, offset, len)` | `create_dataview_fn` | Creates a DataView over an ArrayBuffer |
+| `getDataViewInfo(dv)` | `get_dataview_info_fn` | Returns `{byteLength, byteOffset}` of a DataView |
+| `isDataView(val)` | `is_dataview_fn` | Returns `true` if value is a DataView |
+| `bigIntFromWords(sign, words)` | `bigint_from_words_fn` | Creates BigInt from sign + word array |
+| `bigIntToWords(bi)` | `bigint_to_words_fn` | Returns `{sign, words}` from a BigInt |
+| `createExternalArrayBuffer(size)` | `create_external_arraybuffer_fn` | Creates ArrayBuffer backed by Mojo-owned memory with GC finalizer |
+| `attachFinalizer(obj)` | `attach_finalizer_fn` | Attaches a native GC finalizer to any JS object |
+| `setInstanceData(n)` | `set_instance_data_fn` | Stores a number as per-env instance data |
+| `getInstanceData()` | `get_instance_data_fn` | Retrieves the per-env instance data number |
+| `addCleanupHook()` | `add_cleanup_hook_fn` | Registers an env cleanup hook, returns true |
+| `removeCleanupHook()` | `remove_cleanup_hook_fn` | Registers and removes a cleanup hook, returns true |
+| `cancelAsyncWork()` | `cancel_async_work_fn` | Queues then cancels async work, returns rejected promise |
+| `new Animal(name)` | `animal_constructor_fn` | Class: constructor, `.name` getter, `.speak()`, `Animal.isAnimal()` |
+| `new Dog(name, breed)` | `dog_constructor_fn` | Class: inherits from Animal, `.breed` getter |
 
 ## Critical Mojo FFI rules
 

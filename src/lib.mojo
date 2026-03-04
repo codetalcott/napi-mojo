@@ -65,7 +65,7 @@
 
 from memory import alloc
 from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiThreadsafeFunction, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_BIGINT, NAPI_TYPE_EXTERNAL, NAPI_OK, NAPI_TSFN_BLOCKING, NAPI_TSFN_RELEASE
-from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work, raw_call_threadsafe_function, raw_release_threadsafe_function, raw_new_instance
+from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work, raw_call_threadsafe_function, raw_release_threadsafe_function, raw_new_instance, raw_get_value_bigint_words, raw_add_finalizer, raw_create_external_arraybuffer, raw_set_instance_data, raw_get_instance_data, raw_add_env_cleanup_hook, raw_remove_env_cleanup_hook, raw_cancel_async_work
 from napi.framework.threadsafe_function import ThreadsafeFunction
 from napi.module import register_method
 from napi.framework.js_string import JsString
@@ -85,7 +85,7 @@ from napi.framework.js_uint32 import JsUInt32
 from napi.framework.js_arraybuffer import JsArrayBuffer
 from napi.framework.js_buffer import JsBuffer
 from napi.framework.js_typedarray import JsTypedArray
-from napi.framework.js_class import define_class, register_instance_method, register_getter_setter, register_static_method
+from napi.framework.js_class import define_class, register_instance_method, register_getter, register_getter_setter, register_static_method, set_class_prototype
 from napi.framework.js_ref import JsRef
 from napi.framework.escapable_handle_scope import EscapableHandleScope
 from napi.framework.js_bigint import JsBigInt
@@ -94,6 +94,7 @@ from napi.framework.js_symbol import JsSymbol
 from napi.framework.js_external import JsExternal
 from napi.framework.js_coerce import js_coerce_to_bool, js_coerce_to_number, js_coerce_to_string, js_coerce_to_object
 from napi.framework.js_exception import js_throw, js_is_exception_pending, js_get_and_clear_last_exception
+from napi.framework.js_dataview import JsDataView
 from napi.framework.js_version import get_napi_version, get_node_version_ptr
 from napi.raw import raw_wrap, raw_unwrap
 from napi.error import throw_js_error, throw_js_error_dynamic, throw_js_type_error, throw_js_type_error_dynamic, throw_js_range_error, check_status
@@ -831,6 +832,210 @@ fn counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return result
     except:
         throw_js_error(env, "Counter.fromValue failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# AnimalData — native backing store for Animal class instances
+# ---------------------------------------------------------------------------
+struct AnimalData(Movable):
+    var name_ptr: OpaquePointer[MutAnyOrigin]  # heap-allocated Byte buffer
+    var name_len: UInt
+
+    fn __init__(out self, name_ptr: OpaquePointer[MutAnyOrigin], name_len: UInt):
+        self.name_ptr = name_ptr
+        self.name_len = name_len
+
+    fn __moveinit__(out self, deinit take: Self):
+        self.name_ptr = take.name_ptr
+        self.name_len = take.name_len
+
+# ---------------------------------------------------------------------------
+# DogData — native backing store for Dog class instances
+# Embeds AnimalData-compatible fields at offset 0 so inherited Animal methods
+# can read name via AnimalData* cast.
+# ---------------------------------------------------------------------------
+struct DogData(Movable):
+    var name_ptr: OpaquePointer[MutAnyOrigin]  # heap-allocated Byte buffer
+    var name_len: UInt
+    var breed_ptr: OpaquePointer[MutAnyOrigin]  # heap-allocated Byte buffer
+    var breed_len: UInt
+
+    fn __init__(out self, name_ptr: OpaquePointer[MutAnyOrigin], name_len: UInt,
+                breed_ptr: OpaquePointer[MutAnyOrigin], breed_len: UInt):
+        self.name_ptr = name_ptr
+        self.name_len = name_len
+        self.breed_ptr = breed_ptr
+        self.breed_len = breed_len
+
+    fn __moveinit__(out self, deinit take: Self):
+        self.name_ptr = take.name_ptr
+        self.name_len = take.name_len
+        self.breed_ptr = take.breed_ptr
+        self.breed_len = take.breed_len
+
+fn animal_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.bitcast[AnimalData]()
+    ptr[].name_ptr.bitcast[Byte]().free()
+    ptr.destroy_pointee()
+    ptr.free()
+
+fn dog_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.bitcast[DogData]()
+    ptr[].name_ptr.bitcast[Byte]().free()
+    ptr[].breed_ptr.bitcast[Byte]().free()
+    ptr.destroy_pointee()
+    ptr.free()
+
+# ---------------------------------------------------------------------------
+# animal_constructor_fn — Animal(name) constructor
+# ---------------------------------------------------------------------------
+fn animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var this_val = CbArgs.get_this(env, info)
+        var arg0 = CbArgs.get_one(env, info)
+        var t = js_typeof(env, arg0)
+        if t != NAPI_TYPE_STRING:
+            throw_js_type_error(env, "Animal constructor requires a string name")
+            return NapiValue()
+        var name_str = JsString.from_napi_value(env, arg0)
+        var name_len = UInt(len(name_str))
+        var name_buf = alloc[Byte](Int(name_len))
+        for i in range(Int(name_len)):
+            name_buf[i] = name_str.as_bytes()[i]
+
+        var data_ptr = alloc[AnimalData](1)
+        data_ptr.init_pointee_move(AnimalData(name_buf.bitcast[NoneType](), name_len))
+
+        var fin_ref = animal_finalize
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+        check_status(raw_wrap(
+            env, this_val,
+            data_ptr.bitcast[NoneType](),
+            fin_ptr,
+            OpaquePointer[MutAnyOrigin](),
+            OpaquePointer[MutAnyOrigin](),
+        ))
+        return this_val
+    except:
+        throw_js_error(env, "Animal constructor failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# animal_get_name_fn — Animal.prototype.name getter
+# ---------------------------------------------------------------------------
+fn animal_get_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var this_val = CbArgs.get_this(env, info)
+        var data = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_unwrap(env, this_val,
+            UnsafePointer(to=data).bitcast[NoneType]()))
+        var ptr = data.bitcast[AnimalData]()
+        var name_bytes = ptr[].name_ptr.bitcast[Byte]()
+        var span = Span[Byte](ptr=name_bytes, length=Int(ptr[].name_len))
+        var name = String(from_utf8=span)
+        return JsString.create(env, name).value
+    except:
+        throw_js_error(env, "Animal.name getter failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# animal_speak_fn — Animal.prototype.speak()
+# ---------------------------------------------------------------------------
+fn animal_speak_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var this_val = CbArgs.get_this(env, info)
+        var data = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_unwrap(env, this_val,
+            UnsafePointer(to=data).bitcast[NoneType]()))
+        var ptr = data.bitcast[AnimalData]()
+        var name_bytes = ptr[].name_ptr.bitcast[Byte]()
+        var span = Span[Byte](ptr=name_bytes, length=Int(ptr[].name_len))
+        var name = String(from_utf8=span)
+        var msg = name + " says hello"
+        return JsString.create(env, msg).value
+    except:
+        throw_js_error(env, "Animal.speak failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# animal_is_animal_fn — Animal.isAnimal(val) static method
+# ---------------------------------------------------------------------------
+fn animal_is_animal_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var this_val = CbArgs.get_this(env, info)
+        var arg0 = CbArgs.get_one(env, info)
+        var t = js_typeof(env, arg0)
+        if t != NAPI_TYPE_OBJECT and t != NAPI_TYPE_FUNCTION:
+            return JsBoolean.create(env, False).value
+        var result = JsObject(arg0).instance_of(env, this_val)
+        return JsBoolean.create(env, result).value
+    except:
+        throw_js_error(env, "Animal.isAnimal failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# dog_constructor_fn — Dog(name, breed) constructor
+# ---------------------------------------------------------------------------
+fn dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var this_val = CbArgs.get_this(env, info)
+        var args = CbArgs.get_two(env, info)
+        var t0 = js_typeof(env, args[0])
+        var t1 = js_typeof(env, args[1])
+        if t0 != NAPI_TYPE_STRING or t1 != NAPI_TYPE_STRING:
+            throw_js_type_error(env, "Dog constructor requires (name: string, breed: string)")
+            return NapiValue()
+
+        var name_str = JsString.from_napi_value(env, args[0])
+        var name_len = UInt(len(name_str))
+        var name_buf = alloc[Byte](Int(name_len))
+        for i in range(Int(name_len)):
+            name_buf[i] = name_str.as_bytes()[i]
+
+        var breed_str = JsString.from_napi_value(env, args[1])
+        var breed_len = UInt(len(breed_str))
+        var breed_buf = alloc[Byte](Int(breed_len))
+        for i in range(Int(breed_len)):
+            breed_buf[i] = breed_str.as_bytes()[i]
+
+        var data_ptr = alloc[DogData](1)
+        data_ptr.init_pointee_move(DogData(
+            name_buf.bitcast[NoneType](), name_len,
+            breed_buf.bitcast[NoneType](), breed_len,
+        ))
+
+        var fin_ref = dog_finalize
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+        check_status(raw_wrap(
+            env, this_val,
+            data_ptr.bitcast[NoneType](),
+            fin_ptr,
+            OpaquePointer[MutAnyOrigin](),
+            OpaquePointer[MutAnyOrigin](),
+        ))
+        return this_val
+    except:
+        throw_js_error(env, "Dog constructor failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# dog_get_breed_fn — Dog.prototype.breed getter
+# ---------------------------------------------------------------------------
+fn dog_get_breed_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var this_val = CbArgs.get_this(env, info)
+        var data = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_unwrap(env, this_val,
+            UnsafePointer(to=data).bitcast[NoneType]()))
+        var ptr = data.bitcast[DogData]()
+        var breed_bytes = ptr[].breed_ptr.bitcast[Byte]()
+        var span = Span[Byte](ptr=breed_bytes, length=Int(ptr[].breed_len))
+        var breed = String(from_utf8=span)
+        return JsString.create(env, breed).value
+    except:
+        throw_js_error(env, "Dog.breed getter failed")
         return NapiValue()
 
 # ---------------------------------------------------------------------------
@@ -1725,6 +1930,324 @@ fn get_node_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ---------------------------------------------------------------------------
+# External ArrayBuffer + Finalizer callbacks
+# ---------------------------------------------------------------------------
+
+## Finalizer for external arraybuffer — frees the Mojo-allocated byte buffer
+fn external_ab_finalize(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
+    var ptr = data.bitcast[Byte]()
+    ptr.free()
+
+## createExternalArrayBuffer(size) — alloc Mojo memory, wrap as ArrayBuffer
+fn create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var size = JsNumber.from_napi_value(env, arg0)
+        var byte_len = UInt(Int(size))
+        # Allocate Mojo-owned memory and fill with incrementing bytes
+        var data_ptr = alloc[Byte](Int(byte_len))
+        for i in range(Int(byte_len)):
+            data_ptr[i] = Byte(i)
+        # Get finalizer function pointer
+        var fin_ref = external_ab_finalize
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        # Create external arraybuffer
+        var result = NapiValue()
+        check_status(raw_create_external_arraybuffer(env,
+            data_ptr.bitcast[NoneType](),
+            byte_len,
+            fin_ptr,
+            OpaquePointer[MutAnyOrigin](),
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return result
+    except:
+        throw_js_error(env, "createExternalArrayBuffer failed")
+        return NapiValue()
+
+## No-op finalizer for attachFinalizer — just frees a dummy byte
+fn noop_finalize(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
+    # Free the dummy 1-byte allocation
+    var ptr = data.bitcast[Byte]()
+    ptr.free()
+
+## attachFinalizer(obj) — attach a no-op native finalizer to any JS object
+fn attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        # Allocate a dummy 1-byte native object (napi_add_finalizer needs non-NULL data)
+        var dummy = alloc[Byte](1)
+        dummy[0] = Byte(0)
+        var fin_ref = noop_finalize
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        check_status(raw_add_finalizer(env, arg0,
+            dummy.bitcast[NoneType](),
+            fin_ptr,
+            OpaquePointer[MutAnyOrigin](),
+            OpaquePointer[MutAnyOrigin]()))
+        return arg0
+    except:
+        throw_js_error(env, "attachFinalizer failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Instance Data + Cleanup Hooks + Cancel Async callbacks
+# ---------------------------------------------------------------------------
+
+## Instance data finalizer — frees the Float64 allocation
+fn instance_data_finalize(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
+    var ptr = data.bitcast[Float64]()
+    ptr.destroy_pointee()
+    ptr.free()
+
+## setInstanceData(n) — stores a Float64 as per-env singleton
+fn set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var n = JsNumber.from_napi_value(env, arg0)
+        var data_ptr = alloc[Float64](1)
+        data_ptr.init_pointee_move(n)
+        var fin_ref = instance_data_finalize
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        check_status(raw_set_instance_data(env,
+            data_ptr.bitcast[NoneType](),
+            fin_ptr,
+            OpaquePointer[MutAnyOrigin]()))
+        return JsUndefined.create(env).value
+    except:
+        throw_js_error(env, "setInstanceData failed")
+        return NapiValue()
+
+## getInstanceData() — retrieves the Float64 stored as instance data
+fn get_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var data = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_instance_data(env,
+            UnsafePointer(to=data).bitcast[NoneType]()))
+        if Int(data) == 0:
+            return JsNull.create(env).value
+        var ptr = data.bitcast[Float64]()
+        return JsNumber.create(env, ptr[]).value
+    except:
+        throw_js_error(env, "getInstanceData failed")
+        return NapiValue()
+
+## No-op cleanup hook callback — fn(void*)
+fn cleanup_hook_noop(arg: OpaquePointer[MutAnyOrigin]):
+    pass
+
+## addCleanupHook() — registers a no-op cleanup hook with a unique arg, returns true
+fn add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var hook_ref = cleanup_hook_noop
+        var hook_ptr = UnsafePointer(to=hook_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        # Allocate a unique 1-byte arg to make each (fun, arg) pair unique
+        var arg_ptr = alloc[Byte](1)
+        arg_ptr[0] = Byte(0)
+        check_status(raw_add_env_cleanup_hook(env, hook_ptr, arg_ptr.bitcast[NoneType]()))
+        return JsBoolean.create(env, True).value
+    except:
+        throw_js_error(env, "addCleanupHook failed")
+        return NapiValue()
+
+## removeCleanupHook() — unregisters the most recently added cleanup hook
+## Note: we can't easily track the arg, so this is a best-effort test helper.
+## In practice, addCleanupHook allocates unique args, making removal hard without tracking.
+## For testing, we register and immediately remove with the same arg.
+fn remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var hook_ref = cleanup_hook_noop
+        var hook_ptr = UnsafePointer(to=hook_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        # Register with a known arg, then immediately remove it
+        var arg_ptr = alloc[Byte](1)
+        arg_ptr[0] = Byte(0)
+        check_status(raw_add_env_cleanup_hook(env, hook_ptr, arg_ptr.bitcast[NoneType]()))
+        check_status(raw_remove_env_cleanup_hook(env, hook_ptr, arg_ptr.bitcast[NoneType]()))
+        arg_ptr.free()
+        return JsBoolean.create(env, True).value
+    except:
+        throw_js_error(env, "removeCleanupHook failed")
+        return NapiValue()
+
+## Cancel async work data struct
+struct CancelAsyncData(Movable):
+    var deferred: NapiDeferred
+    var work: NapiAsyncWork
+
+    fn __init__(out self, deferred: NapiDeferred):
+        self.deferred = deferred
+        self.work = NapiAsyncWork()
+
+    fn __moveinit__(out self, deinit take: Self):
+        self.deferred = take.deferred
+        self.work = take.work
+
+## Cancel async execute — no-op (does nothing on worker thread)
+fn cancel_async_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
+    pass
+
+## Cancel async complete — resolves or rejects based on status
+fn cancel_async_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.bitcast[CancelAsyncData]()
+    try:
+        _ = raw_delete_async_work(env, ptr[].work)
+        if status == NAPI_OK:
+            var result_val = JsString.create_literal(env, "completed")
+            _ = raw_resolve_deferred(env, ptr[].deferred, result_val.value)
+        else:
+            # Cancelled or failed — reject with an Error
+            var msg = JsString.create_literal(env, "cancelled")
+            var null_code = NapiValue()
+            var error_val = NapiValue()
+            var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()
+            _ = raw_create_error(env, null_code, msg.value, error_ptr)
+            _ = raw_reject_deferred(env, ptr[].deferred, error_val)
+    except:
+        pass
+    ptr.destroy_pointee()
+    ptr.free()
+
+## cancelAsyncWork() — queues then immediately cancels async work
+fn cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var p = JsPromise.create(env)
+        var data_ptr = alloc[CancelAsyncData](1)
+        data_ptr.init_pointee_move(CancelAsyncData(p.deferred))
+
+        var exec_ref = cancel_async_execute
+        var complete_ref = cancel_async_complete
+        var exec_ptr = UnsafePointer(to=exec_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        var complete_ptr = UnsafePointer(to=complete_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+        var resource_name = JsString.create_literal(env, "cancelTest")
+        var work = NapiAsyncWork()
+        var work_out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=work).bitcast[NoneType]()
+        check_status(raw_create_async_work(env,
+            NapiValue(), resource_name.value,
+            exec_ptr, complete_ptr,
+            data_ptr.bitcast[NoneType](),
+            work_out_ptr))
+        data_ptr[].work = work
+
+        check_status(raw_queue_async_work(env, work))
+        # Immediately try to cancel
+        _ = raw_cancel_async_work(env, work)
+
+        return p.value
+    except:
+        throw_js_error(env, "cancelAsyncWork failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# BigInt words callbacks
+# ---------------------------------------------------------------------------
+
+## bigIntFromWords(sign, wordsArray) — create BigInt from sign + UInt64 word array
+fn bigint_from_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var sign_bit = Int32(JsNumber.from_napi_value(env, args[0]))
+        var arr_val = args[1]
+        var arr = JsArray(arr_val)
+        var arr_len = arr.length(env)
+        var words_ptr = alloc[UInt64](Int(arr_len))
+        for i in range(Int(arr_len)):
+            var elem = arr.get(env, UInt32(i))
+            var num = JsNumber.from_napi_value(env, elem)
+            words_ptr[i] = UInt64(num)
+        var result = JsBigInt.from_words(env, sign_bit, words_ptr.bitcast[NoneType](), UInt(arr_len))
+        words_ptr.free()
+        return result.value
+    except:
+        throw_js_error(env, "bigIntFromWords failed")
+        return NapiValue()
+
+## bigIntToWords(bi) — extract sign and UInt64 words from a BigInt
+fn bigint_to_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        # Allocate an initial buffer (16 words = 128 bytes, handles up to 1024-bit BigInts)
+        var sign: Int32 = 0
+        var count: UInt = 16
+        var words_ptr = alloc[UInt64](16)
+        check_status(raw_get_value_bigint_words(env, arg0,
+            UnsafePointer(to=sign).bitcast[NoneType](),
+            UnsafePointer(to=count).bitcast[NoneType](),
+            words_ptr.bitcast[NoneType]()))
+        # Build result object {sign, words}
+        var obj = JsObject.create(env)
+        obj.set_property(env, "sign", JsNumber.create_int(env, Int(sign)).value)
+        var arr = JsArray.create_with_length(env, count)
+        for i in range(Int(count)):
+            var word_val = JsNumber.create(env, Float64(words_ptr[i]))
+            arr.set(env, UInt32(i), word_val.value)
+        obj.set_property(env, "words", arr.value)
+        words_ptr.free()
+        return obj.value
+    except:
+        throw_js_error(env, "bigIntToWords failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# DataView callbacks
+# ---------------------------------------------------------------------------
+
+## createDataView(arraybuffer, byteOffset, byteLength) — create DataView over ArrayBuffer
+fn create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var argc = CbArgs.argc(env, info)
+        if argc < 3:
+            throw_js_type_error(env, "createDataView requires 3 arguments")
+            return NapiValue()
+        var argv_ptr = alloc[NapiValue](Int(argc))
+        CbArgs.get_argv(env, info, argc, argv_ptr)
+        var ab = argv_ptr[0]
+        var byte_offset = JsNumber.from_napi_value(env, argv_ptr[1])
+        var byte_length = JsNumber.from_napi_value(env, argv_ptr[2])
+        argv_ptr.free()
+        var dv = JsDataView.create(env, UInt(Int(byte_length)), ab, UInt(Int(byte_offset)))
+        return dv.value
+    except:
+        throw_js_error(env, "createDataView failed")
+        return NapiValue()
+
+## getDataViewInfo(dv) — returns {byteLength, byteOffset}
+fn get_dataview_info_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var dv = JsDataView(arg0)
+        var bl = dv.byte_length(env)
+        var bo = dv.byte_offset(env)
+        var obj = JsObject.create(env)
+        obj.set_property(env, "byteLength", JsNumber.create_int(env, Int(bl)).value)
+        obj.set_property(env, "byteOffset", JsNumber.create_int(env, Int(bo)).value)
+        return obj.value
+    except:
+        throw_js_error(env, "getDataViewInfo failed")
+        return NapiValue()
+
+## isDataView(val) — returns true if val is a DataView
+fn is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var result = JsDataView.is_dataview(env, arg0)
+        return JsBoolean.create(env, result).value
+    except:
+        throw_js_error(env, "isDataView failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
 # Module entry point
 #
 # Node.js finds "napi_register_module_v1" via dlsym after dlopen-ing our
@@ -1808,6 +2331,24 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var catch_and_return_ref = catch_and_return_fn
     var get_napi_version_ref = get_napi_version_fn
     var get_node_version_ref = get_node_version_fn
+    var create_external_arraybuffer_ref = create_external_arraybuffer_fn
+    var attach_finalizer_ref = attach_finalizer_fn
+    var set_instance_data_ref = set_instance_data_fn
+    var get_instance_data_ref = get_instance_data_fn
+    var add_cleanup_hook_ref = add_cleanup_hook_fn
+    var remove_cleanup_hook_ref = remove_cleanup_hook_fn
+    var cancel_async_work_ref = cancel_async_work_fn
+    var bigint_from_words_ref = bigint_from_words_fn
+    var bigint_to_words_ref = bigint_to_words_fn
+    var create_dataview_ref = create_dataview_fn
+    var get_dataview_info_ref = get_dataview_info_fn
+    var is_dataview_ref = is_dataview_fn
+    var animal_constructor_ref = animal_constructor_fn
+    var animal_get_name_ref = animal_get_name_fn
+    var animal_speak_ref = animal_speak_fn
+    var animal_is_animal_ref = animal_is_animal_fn
+    var dog_constructor_ref = dog_constructor_fn
+    var dog_get_breed_ref = dog_get_breed_fn
 
     try:
         register_method(env, exports, "hello",
@@ -1935,6 +2476,30 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
             UnsafePointer(to=get_napi_version_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
         register_method(env, exports, "getNodeVersion",
             UnsafePointer(to=get_node_version_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "createExternalArrayBuffer",
+            UnsafePointer(to=create_external_arraybuffer_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "attachFinalizer",
+            UnsafePointer(to=attach_finalizer_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "setInstanceData",
+            UnsafePointer(to=set_instance_data_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "getInstanceData",
+            UnsafePointer(to=get_instance_data_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "addCleanupHook",
+            UnsafePointer(to=add_cleanup_hook_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "removeCleanupHook",
+            UnsafePointer(to=remove_cleanup_hook_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "cancelAsyncWork",
+            UnsafePointer(to=cancel_async_work_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "bigIntFromWords",
+            UnsafePointer(to=bigint_from_words_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "bigIntToWords",
+            UnsafePointer(to=bigint_to_words_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "createDataView",
+            UnsafePointer(to=create_dataview_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "getDataViewInfo",
+            UnsafePointer(to=get_dataview_info_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "isDataView",
+            UnsafePointer(to=is_dataview_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
 
         # Counter class registration
         var ctor_ptr = UnsafePointer(to=counter_constructor_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
@@ -1951,6 +2516,28 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         register_static_method(env, ctor_val, "fromValue",
             UnsafePointer(to=counter_from_value_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
         JsObject(exports).set_property(env, "Counter", ctor_val)
+
+        # Animal class registration
+        var animal_ctor_ptr = UnsafePointer(to=animal_constructor_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        var animal_ctor = define_class(env, "Animal", animal_ctor_ptr)
+        register_getter(env, animal_ctor, "name",
+            UnsafePointer(to=animal_get_name_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_instance_method(env, animal_ctor, "speak",
+            UnsafePointer(to=animal_speak_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_static_method(env, animal_ctor, "isAnimal",
+            UnsafePointer(to=animal_is_animal_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+
+        # Dog class registration with inheritance
+        var dog_ctor_ptr = UnsafePointer(to=dog_constructor_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        var dog_ctor = define_class(env, "Dog", dog_ctor_ptr)
+        register_getter(env, dog_ctor, "breed",
+            UnsafePointer(to=dog_get_breed_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+
+        # Link Dog.prototype.__proto__ = Animal.prototype
+        set_class_prototype(env, dog_ctor, animal_ctor)
+
+        JsObject(exports).set_property(env, "Animal", animal_ctor)
+        JsObject(exports).set_property(env, "Dog", dog_ctor)
     except:
         pass
 

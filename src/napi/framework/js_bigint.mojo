@@ -10,7 +10,9 @@ from napi.types import NapiEnv, NapiValue
 from napi.raw import (
     raw_create_bigint_int64, raw_create_bigint_uint64,
     raw_get_value_bigint_int64, raw_get_value_bigint_uint64,
+    raw_create_bigint_words, raw_get_value_bigint_words,
 )
+from memory import alloc
 from napi.error import check_status
 
 struct JsBigInt:
@@ -54,3 +56,29 @@ struct JsBigInt:
         if not lossless:
             raise Error("BigInt value exceeds UInt64 range")
         return result
+
+    ## from_words — create BigInt from sign bit and array of UInt64 words
+    @staticmethod
+    fn from_words(env: NapiEnv, sign_bit: Int32, words_ptr: OpaquePointer[MutAnyOrigin], word_count: UInt) raises -> JsBigInt:
+        var result = NapiValue()
+        check_status(raw_create_bigint_words(env, sign_bit, word_count,
+            words_ptr,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsBigInt(result)
+
+    ## word_count — query number of 64-bit words needed to represent a BigInt
+    @staticmethod
+    fn word_count(env: NapiEnv, val: NapiValue) raises -> UInt:
+        var sign: Int32 = 0
+        var count: UInt = 0
+        check_status(raw_get_value_bigint_words(env, val,
+            UnsafePointer(to=sign).bitcast[NoneType](),
+            UnsafePointer(to=count).bitcast[NoneType](),
+            OpaquePointer[MutAnyOrigin]()))
+        return count
+
+    ## to_words — extract sign and words from a BigInt into pre-allocated buffers
+    @staticmethod
+    fn to_words(env: NapiEnv, val: NapiValue, sign_ptr: OpaquePointer[MutAnyOrigin], words_ptr: OpaquePointer[MutAnyOrigin], count_ptr: OpaquePointer[MutAnyOrigin]) raises:
+        check_status(raw_get_value_bigint_words(env, val,
+            sign_ptr, count_ptr, words_ptr))

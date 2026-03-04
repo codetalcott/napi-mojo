@@ -1711,3 +1711,206 @@ fn raw_coerce_to_object(
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_coerce_to_object")
     return f(env, value, result)
+
+## raw_create_dataview — wraps napi_create_dataview
+##
+## Creates a DataView over an existing ArrayBuffer.
+## byte_offset + byte_length must not exceed the ArrayBuffer's size.
+fn raw_create_dataview(
+    env: NapiEnv,
+    byte_length: UInt,
+    arraybuffer: NapiValue,
+    byte_offset: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, UInt, NapiValue, UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_dataview")
+    return f(env, byte_length, arraybuffer, byte_offset, result)
+
+## raw_get_dataview_info — wraps napi_get_dataview_info
+##
+## Retrieves DataView properties: byte_length, data pointer, arraybuffer, byte_offset.
+## Any out-param can be NULL (OpaquePointer()) to skip that field.
+fn raw_get_dataview_info(
+    env: NapiEnv,
+    dataview: NapiValue,
+    byte_length: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+    arraybuffer: OpaquePointer[MutAnyOrigin],
+    byte_offset: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue,
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_dataview_info")
+    return f(env, dataview, byte_length, data, arraybuffer, byte_offset)
+
+## raw_is_dataview — wraps napi_is_dataview
+##
+## Checks whether a value is a DataView.
+fn raw_is_dataview(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_is_dataview")
+    return f(env, value, result)
+
+## raw_create_bigint_words — wraps napi_create_bigint_words
+##
+## Creates an arbitrary-precision BigInt from an array of 64-bit words.
+## sign_bit: 0 = positive, 1 = negative
+## words: pointer to array of uint64_t in little-endian word order
+fn raw_create_bigint_words(
+    env: NapiEnv,
+    sign_bit: Int32,
+    word_count: UInt,
+    words: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, Int32, UInt, OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_bigint_words")
+    return f(env, sign_bit, word_count, words, result)
+
+## raw_get_value_bigint_words — wraps napi_get_value_bigint_words
+##
+## Extracts sign and 64-bit words from a BigInt.
+## Two-phase pattern: call with words=NULL to get word_count, then allocate and call again.
+fn raw_get_value_bigint_words(
+    env: NapiEnv,
+    value: NapiValue,
+    sign_bit: OpaquePointer[MutAnyOrigin],
+    word_count: OpaquePointer[MutAnyOrigin],
+    words: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue,
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_value_bigint_words")
+    return f(env, value, sign_bit, word_count, words)
+
+## raw_add_finalizer — wraps napi_add_finalizer
+##
+## Attaches a GC finalizer to any JS object (not just wrapped objects).
+## Can be called multiple times on the same object.
+## result: optional napi_ref* out-param (pass NULL to skip)
+fn raw_add_finalizer(
+    env: NapiEnv,
+    js_object: NapiValue,
+    native_object: OpaquePointer[MutAnyOrigin],
+    finalize_cb: OpaquePointer[MutAnyOrigin],
+    finalize_hint: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue,
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_add_finalizer")
+    return f(env, js_object, native_object, finalize_cb, finalize_hint, result)
+
+## raw_create_external_arraybuffer — wraps napi_create_external_arraybuffer
+##
+## Creates an ArrayBuffer backed by existing native memory (zero-copy).
+## The finalize_cb is called when the ArrayBuffer is GC'd to free the memory.
+fn raw_create_external_arraybuffer(
+    env: NapiEnv,
+    external_data: OpaquePointer[MutAnyOrigin],
+    byte_length: UInt,
+    finalize_cb: OpaquePointer[MutAnyOrigin],
+    finalize_hint: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv,
+            OpaquePointer[MutAnyOrigin], UInt,
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_external_arraybuffer")
+    return f(env, external_data, byte_length, finalize_cb, finalize_hint, result)
+
+## raw_set_instance_data — wraps napi_set_instance_data
+##
+## Sets per-environment singleton data with an optional finalizer.
+fn raw_set_instance_data(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    finalize_cb: OpaquePointer[MutAnyOrigin],
+    finalize_hint: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_set_instance_data")
+    return f(env, data, finalize_cb, finalize_hint)
+
+## raw_get_instance_data — wraps napi_get_instance_data
+##
+## Retrieves per-environment singleton data. Returns NULL if not set.
+fn raw_get_instance_data(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_instance_data")
+    return f(env, data)
+
+## raw_add_env_cleanup_hook — wraps napi_add_env_cleanup_hook
+##
+## Registers a cleanup function called during env teardown.
+## fun signature: fn(void*) — NOT a napi_callback.
+fn raw_add_env_cleanup_hook(
+    env: NapiEnv,
+    fun: OpaquePointer[MutAnyOrigin],
+    arg: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_add_env_cleanup_hook")
+    return f(env, fun, arg)
+
+## raw_remove_env_cleanup_hook — wraps napi_remove_env_cleanup_hook
+##
+## Unregisters a previously registered cleanup hook.
+fn raw_remove_env_cleanup_hook(
+    env: NapiEnv,
+    fun: OpaquePointer[MutAnyOrigin],
+    arg: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_remove_env_cleanup_hook")
+    return f(env, fun, arg)
+
+## raw_cancel_async_work — wraps napi_cancel_async_work
+##
+## Attempts to cancel a queued async work item.
+## Returns napi_generic_failure if the worker has already started.
+fn raw_cancel_async_work(
+    env: NapiEnv,
+    work: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_cancel_async_work")
+    return f(env, work)

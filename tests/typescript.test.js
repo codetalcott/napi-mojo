@@ -18,7 +18,7 @@ test('generate-dts.js produces build/index.d.ts', () => {
 test('.d.ts contains export for every addon function', () => {
   const dts = fs.readFileSync(DTS_PATH, 'utf8');
   const keys = Object.keys(addon).filter(
-    k => typeof addon[k] === 'function' && k !== 'Counter'
+    k => typeof addon[k] === 'function' && !['Counter', 'Animal', 'Dog'].includes(k)
   );
   for (const key of keys) {
     expect(dts).toMatch(new RegExp(`export function ${key}\\b`));
@@ -34,6 +34,15 @@ test('.d.ts contains Counter class declaration', () => {
   expect(dts).toContain('value:');
   expect(dts).toContain('static isCounter(');
   expect(dts).toContain('static fromValue(');
+});
+
+test('.d.ts contains Animal and Dog class declarations', () => {
+  const dts = fs.readFileSync(DTS_PATH, 'utf8');
+  expect(dts).toContain('export class Animal');
+  expect(dts).toContain('export class Dog');
+  expect(dts).toContain('static isAnimal(');
+  expect(dts).toMatch(/readonly name: string/);
+  expect(dts).toMatch(/readonly breed: string/);
 });
 
 test('.d.ts has correct return type for hello()', () => {
