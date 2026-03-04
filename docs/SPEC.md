@@ -16,22 +16,22 @@ napi-mojo follows the same layered approach:
 
 ---
 
-## Current Coverage (Phase 14 Complete)
+## Current Coverage (Phase 15 Complete)
 
-### Implemented N-API Functions (73 of ~120)
+### Implemented N-API Functions (87 of ~120)
 
 | Category | Implemented | Key Functions |
 |----------|-------------|---------------|
 | Strings | 2 | `create_string_utf8`, `get_value_string_utf8` |
-| Objects | 5 | `create_object`, `set_named_property`, `get_property`, `get_named_property`, `has_named_property` |
+| Objects | 12 | `create_object`, `set_named_property`, `get_property`, `get_named_property`, `has_named_property`, `get_property_names`, `get_all_property_names`, `has_own_property`, `delete_property`, `object_freeze`, `object_seal`, `get_prototype` |
 | Numbers | 2 | `create_double`, `get_value_double` |
 | Int32 | 2 | `create_int32`, `get_value_int32` |
 | UInt32 | 2 | `create_uint32`, `get_value_uint32` |
 | Int64 | 2 | `create_int64`, `get_value_int64` |
 | Booleans | 2 | `get_boolean`, `get_value_bool` |
 | Null/Undefined | 2 | `get_null`, `get_undefined` |
-| Type checking | 2 | `typeof`, `is_array` |
-| Arrays | 4 | `create_array_with_length`, `set_element`, `get_element`, `get_array_length` |
+| Type checking | 4 | `typeof`, `is_array`, `strict_equals`, `instanceof` |
+| Arrays | 6 | `create_array_with_length`, `set_element`, `get_element`, `get_array_length`, `has_element`, `delete_element` |
 | Functions | 3 | `call_function`, `create_function`, `get_new_target` |
 | Handle scopes | 5 | `open_handle_scope`, `close_handle_scope`, `open_escapable_handle_scope`, `close_escapable_handle_scope`, `escape_handle` |
 | Promises | 3 | `create_promise`, `resolve_deferred`, `reject_deferred` |
@@ -54,12 +54,12 @@ napi-mojo follows the same layered approach:
 | Type | Capabilities |
 |------|-------------|
 | `JsString` | create, create_literal, from_napi_value, read_arg_0 |
-| `JsObject` | create, set_property, set_named_property, get, get_property, get_named_property, has_property |
+| `JsObject` | create, set_property, set_named_property, get, get_property, get_named_property, has_property, keys, has_own, delete_prop, instance_of, freeze, seal, prototype |
 | `JsNumber` | create (Float64), create_int, from_napi_value, to_int |
 | `JsBoolean` | create, from_napi_value |
 | `JsNull` | create |
 | `JsUndefined` | create |
-| `JsArray` | create_with_length, set, get, length |
+| `JsArray` | create_with_length, set, get, length, has, delete_element |
 | `JsFunction` | call0, call1, call2, create, create_with_data |
 | `JsPromise` | create, resolve, reject |
 | `HandleScope` | open, close |
@@ -76,17 +76,13 @@ napi-mojo follows the same layered approach:
 | `JsBigInt` | from_int64, from_uint64, to_int64, to_uint64 |
 | `JsDate` | create, timestamp_ms, is_date |
 | `JsSymbol` | create, create_for |
-| `js_value` | js_typeof, js_type_name, js_is_array, js_get_global |
+| `js_value` | js_typeof, js_type_name, js_is_array, js_strict_equals, js_get_global |
 
 ### Not Yet Implemented
 
 | napi-rs Feature | N-API Functions Needed |
 |-----------------|------------------------|
-| Property enumeration | `get_property_names`, `get_all_property_names` |
-| Property deletion | `delete_property`, `delete_element`, `has_element` |
-| Object identity | `strict_equals`, `instanceof` |
-| Object freezing | `object_freeze`, `object_seal` |
-| Prototype access | `get_prototype`, `node_api_set_prototype` |
+| Set prototype | `node_api_set_prototype` |
 | Set property by key | `set_property`, `has_property` (by napi_value key) |
 | Coercion | `coerce_to_bool`, `coerce_to_number`, `coerce_to_string`, `coerce_to_object` |
 | External data | `create_external`, `get_value_external` |
@@ -459,36 +455,23 @@ Tests: BigInt round-trip, Date creation from timestamp, Symbol uniqueness, Symbo
 
 ---
 
-### Phase 15: Property Enumeration + Object Utilities
+### Phase 15: Property Enumeration + Object Utilities ✅
 
 **Goal:** Enable introspection of JS objects — enumerate keys, check equality, freeze/seal.
 
-New raw FFI functions:
-- `raw_get_property_names(env, object, result)` → calls `napi_get_property_names`
-- `raw_get_all_property_names(env, object, key_mode, key_filter, key_conversion, result)` → calls `napi_get_all_property_names`
-- `raw_has_own_property(env, object, key, result)` → calls `napi_has_own_property`
-- `raw_delete_property(env, object, key, result)` → calls `napi_delete_property`
-- `raw_has_element(env, object, index, result)` → calls `napi_has_element`
-- `raw_delete_element(env, object, index, result)` → calls `napi_delete_element`
-- `raw_strict_equals(env, lhs, rhs, result)` → calls `napi_strict_equals`
-- `raw_instanceof(env, object, constructor, result)` → calls `napi_instanceof`
-- `raw_object_freeze(env, object)` → calls `napi_object_freeze`
-- `raw_object_seal(env, object)` → calls `napi_object_seal`
-- `raw_get_prototype(env, object, result)` → calls `napi_get_prototype`
+New raw FFI functions (11):
+- `raw_get_property_names`, `raw_get_all_property_names`, `raw_has_own_property`, `raw_delete_property`
+- `raw_has_element`, `raw_delete_element`
+- `raw_strict_equals`, `raw_instanceof`, `raw_object_freeze`, `raw_object_seal`, `raw_get_prototype`
 
-New framework methods on `JsObject`:
-```
-fn keys(env) raises -> JsArray                              # enumerable own keys
-fn has_own(env, key: NapiValue) raises -> Bool
-fn delete(env, key: NapiValue) raises -> Bool
-fn freeze(env) raises
-fn seal(env) raises
-fn prototype(env) raises -> NapiValue
-fn strict_equals(env, other: NapiValue) raises -> Bool
-fn instance_of(env, constructor: NapiValue) raises -> Bool
-```
+New framework methods:
+- `JsObject`: keys, has_own, delete_prop, instance_of, freeze, seal, prototype
+- `JsArray`: has, delete_element
+- `js_value`: js_strict_equals
 
-Tests: key enumeration, delete property, freeze prevents modification, seal prevents addition, strict equality, instanceof.
+Exported test functions: getKeys, hasOwn, deleteProperty, strictEquals, isInstanceOf, freezeObject, sealObject, arrayHasElement, arrayDeleteElement, getPrototype
+
+Tests: 174 total (39 new). Key enumeration (own-only via `napi_get_all_property_names`), delete property, freeze/seal, strict equality, instanceof, sparse array, prototype chain.
 
 ---
 
@@ -662,7 +645,7 @@ Complete mapping of napi-rs features to napi-mojo status and target phase:
 | TypedArray | Done | Phase 10 |
 | Class (constructor/methods) | Done | Phase 11 |
 | Class (getters/setters) | Done | Phase 11 |
-| Class (static methods) | Not started | Phase 15 |
+| Class (static methods) | Not started | Phase 16+ |
 | Class (custom finalizer) | Done | Phase 11 |
 | Function creation | Done | Phase 12 |
 | Global object access | Done | Phase 12 |
@@ -672,9 +655,11 @@ Complete mapping of napi-rs features to napi-mojo status and target phase:
 | BigInt | Done | Phase 14 |
 | Date | Done | Phase 14 |
 | Symbol | Done | Phase 14 |
-| Property enumeration | Not started | Phase 15 |
-| Object freeze/seal | Not started | Phase 15 |
-| strict_equals / instanceof | Not started | Phase 15 |
+| Property enumeration | Done | Phase 15 |
+| Object freeze/seal | Done | Phase 15 |
+| strict_equals / instanceof | Done | Phase 15 |
+| Prototype access | Done | Phase 15 |
+| Array has/delete element | Done | Phase 15 |
 | ThreadsafeFunction | Not started | Phase 16 |
 | External data | Not started | Phase 17 |
 | Type coercion | Not started | Phase 17 |

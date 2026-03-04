@@ -20,7 +20,7 @@ from napi.types import (
     NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_EXTERNAL,
     NAPI_TYPE_BIGINT,
 )
-from napi.raw import raw_typeof, raw_is_array, raw_get_global
+from napi.raw import raw_typeof, raw_is_array, raw_get_global, raw_strict_equals
 from napi.error import check_status
 from napi.framework.js_object import JsObject
 
@@ -62,6 +62,15 @@ fn js_is_array(env: NapiEnv, val: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_is_array(env, val, result_ptr))
+    return result
+
+## js_strict_equals — check strict equality (===) between any two JS values
+##
+## Works on all value types (primitives, objects, etc.).
+fn js_strict_equals(env: NapiEnv, lhs: NapiValue, rhs: NapiValue) raises -> Bool:
+    var result: Bool = False
+    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+    check_status(raw_strict_equals(env, lhs, rhs, result_ptr))
     return result
 
 ## js_get_global — return the global object (globalThis)

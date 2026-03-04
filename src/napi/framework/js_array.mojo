@@ -22,6 +22,8 @@ from napi.raw import (
     raw_set_element,
     raw_get_element,
     raw_get_array_length,
+    raw_has_element,
+    raw_delete_element,
 )
 from napi.error import check_status
 
@@ -72,3 +74,23 @@ struct JsArray:
         var status = raw_get_array_length(env, self.value, len_ptr)
         check_status(status)
         return len
+
+    ## has — check if an element exists at the given index
+    ##
+    ## Calls napi_has_element. Returns false for sparse array holes.
+    fn has(self, env: NapiEnv, index: UInt32) raises -> Bool:
+        var result: Bool = False
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var status = raw_has_element(env, self.value, index, result_ptr)
+        check_status(status)
+        return result
+
+    ## delete_element — delete the element at the given index
+    ##
+    ## Makes the array sparse (length unchanged, element becomes undefined).
+    fn delete_element(self, env: NapiEnv, index: UInt32) raises -> Bool:
+        var deleted: Bool = False
+        var deleted_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=deleted).bitcast[NoneType]()
+        var status = raw_delete_element(env, self.value, index, deleted_ptr)
+        check_status(status)
+        return deleted

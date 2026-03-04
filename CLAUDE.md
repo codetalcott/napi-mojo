@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 14 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ArrayBuffer, Buffer, TypedArray, class construction (wrap/unwrap, prototype methods, getter/setter), persistent references, escapable handle scopes, global object access, BigInt, Date, and Symbol are all working.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 15 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ArrayBuffer, Buffer, TypedArray, class construction (wrap/unwrap, prototype methods, getter/setter), persistent references, escapable handle scopes, global object access, BigInt, Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, and array element has/delete are all working.
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (135 tests)
+npm test                              # run all Jest tests (174 tests)
 npx jest tests/basic.test.js          # run a single test file
 
 # Spike (run before anything else if starting fresh):
@@ -42,7 +42,7 @@ src/napi/raw.mojo                        # OwnedDLHandle symbol resolution (sole
 src/napi/error.mojo                      # napi_status_name(), check_status(), throw_js_error(), throw_js_error_dynamic(), throw_js_type_error(), throw_js_range_error()
 src/napi/module.mojo                     # define_property(), register_method()
 src/napi/framework/js_string.mojo        # JsString.create(), create_literal(), from_napi_value(), read_arg_0()
-src/napi/framework/js_object.mojo        # JsObject.create(), set_property(), set_named_property(), get(), get_property(), get_named_property(), has_property()
+src/napi/framework/js_object.mojo        # JsObject.create(), set_property(), set_named_property(), get(), get_property(), get_named_property(), has_property(), keys(), has_own(), delete_prop(), instance_of(), freeze(), seal(), prototype()
 src/napi/framework/js_number.mojo        # JsNumber.create(), create_int(), from_napi_value(), to_int()
 src/napi/framework/js_boolean.mojo       # JsBoolean.create(), from_napi_value()
 src/napi/framework/js_int32.mojo         # JsInt32.create(), from_napi_value()
@@ -50,9 +50,9 @@ src/napi/framework/js_uint32.mojo        # JsUInt32.create(), from_napi_value()
 src/napi/framework/js_int64.mojo         # JsInt64.create(), from_napi_value()
 src/napi/framework/js_null.mojo          # JsNull.create()
 src/napi/framework/js_undefined.mojo     # JsUndefined.create()
-src/napi/framework/js_array.mojo         # JsArray.create_with_length(), set(), get(), length()
+src/napi/framework/js_array.mojo         # JsArray.create_with_length(), set(), get(), length(), has(), delete_element()
 src/napi/framework/js_function.mojo      # JsFunction.call0(), call1(), call2(), create(), create_with_data()
-src/napi/framework/js_value.mojo         # js_typeof(), js_type_name(), js_is_array(), js_get_global()
+src/napi/framework/js_value.mojo         # js_typeof(), js_type_name(), js_is_array(), js_strict_equals(), js_get_global()
 src/napi/framework/handle_scope.mojo     # HandleScope.open(), close()
 src/napi/framework/js_promise.mojo       # JsPromise.create(), resolve(), reject()
 src/napi/framework/js_arraybuffer.mojo   # JsArrayBuffer.create(), byte_length(), data_ptr(), is_arraybuffer()
@@ -112,6 +112,16 @@ tests/                                   # Jest tests — TDD outside-in
 | `getDateValue(d)` | `get_date_value_fn` | Returns the timestamp of a Date object |
 | `createSymbol(desc)` | `create_symbol_fn` | Creates a new unique Symbol |
 | `symbolFor(key)` | `symbol_for_fn` | Returns the global Symbol for a key (`Symbol.for`) |
+| `getKeys(obj)` | `get_keys_fn` | Returns array of own enumerable keys (`Object.keys`) |
+| `hasOwn(obj, key)` | `has_own_fn` | Checks if obj has own property |
+| `deleteProperty(obj, key)` | `delete_property_fn` | Deletes a property, returns mutated object |
+| `strictEquals(a, b)` | `strict_equals_fn` | Returns `a === b` |
+| `isInstanceOf(obj, ctor)` | `is_instance_of_fn` | Returns `obj instanceof ctor` |
+| `freezeObject(obj)` | `freeze_object_fn` | Freezes and returns object |
+| `sealObject(obj)` | `seal_object_fn` | Seals and returns object |
+| `arrayHasElement(arr, i)` | `array_has_element_fn` | Checks if index exists in array |
+| `arrayDeleteElement(arr, i)` | `array_delete_element_fn` | Deletes element at index (sparse) |
+| `getPrototype(obj)` | `get_prototype_fn` | Returns `Object.getPrototypeOf(obj)` |
 
 ## Critical Mojo FFI rules
 

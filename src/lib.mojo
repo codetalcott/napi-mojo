@@ -11,7 +11,10 @@
 ##          Counter (class: constructor, increment, reset, value getter/setter),
 ##          sumArgs, createCallback, createAdder, getGlobal,
 ##          testRef, testRefObject, testRefString, buildInScope,
-##          addBigInts, createDate, getDateValue, createSymbol, symbolFor
+##          addBigInts, createDate, getDateValue, createSymbol, symbolFor,
+##          getKeys, hasOwn, deleteProperty, strictEquals, isInstanceOf,
+##          freezeObject, sealObject, arrayHasElement, arrayDeleteElement,
+##          getPrototype
 ##
 ## Module structure:
 ##   src/napi/types.mojo                             — NapiEnv, NapiValue, NapiStatus, etc.
@@ -62,7 +65,7 @@ from napi.framework.js_array import JsArray
 from napi.framework.js_function import JsFunction
 from napi.framework.js_promise import JsPromise
 from napi.framework.args import CbArgs
-from napi.framework.js_value import js_typeof, js_type_name, js_is_array, js_get_global
+from napi.framework.js_value import js_typeof, js_type_name, js_is_array, js_get_global, js_strict_equals
 from napi.framework.handle_scope import HandleScope
 from napi.framework.js_int32 import JsInt32
 from napi.framework.js_uint32 import JsUInt32
@@ -1028,6 +1031,189 @@ fn symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ---------------------------------------------------------------------------
+# getKeys(obj) — exposed as addon.getKeys(obj)
+#
+# Returns an array of the object's own enumerable property names.
+# ---------------------------------------------------------------------------
+fn get_keys_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var t0 = js_typeof(env, arg0)
+        if t0 != NAPI_TYPE_OBJECT:
+            throw_js_error_dynamic(env, "getKeys: expected object, got " + js_type_name(t0))
+            return NapiValue()
+        var obj = JsObject(arg0)
+        return obj.keys(env)
+    except:
+        throw_js_error(env, "getKeys requires one object argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# hasOwn(obj, key) — exposed as addon.hasOwn(obj, key)
+#
+# Returns true if the object has the key as its own (non-inherited) property.
+# ---------------------------------------------------------------------------
+fn has_own_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var t0 = js_typeof(env, args[0])
+        if t0 != NAPI_TYPE_OBJECT:
+            throw_js_error_dynamic(env, "hasOwn: expected object, got " + js_type_name(t0))
+            return NapiValue()
+        var obj = JsObject(args[0])
+        var result = obj.has_own(env, args[1])
+        return JsBoolean.create(env, result).value
+    except:
+        throw_js_error(env, "hasOwn requires (object, key)")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# deleteProperty(obj, key) — exposed as addon.deleteProperty(obj, key)
+#
+# Deletes a property from the object and returns the mutated object.
+# ---------------------------------------------------------------------------
+fn delete_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var t0 = js_typeof(env, args[0])
+        if t0 != NAPI_TYPE_OBJECT:
+            throw_js_error_dynamic(env, "deleteProperty: expected object, got " + js_type_name(t0))
+            return NapiValue()
+        var obj = JsObject(args[0])
+        _ = obj.delete_prop(env, args[1])
+        return obj.value
+    except:
+        throw_js_error(env, "deleteProperty requires (object, key)")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# arrayHasElement(arr, index) — exposed as addon.arrayHasElement(arr, index)
+#
+# Returns true if the array has an element at the given index.
+# ---------------------------------------------------------------------------
+fn array_has_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        if not js_is_array(env, args[0]):
+            throw_js_error(env, "arrayHasElement: first argument must be an array")
+            return NapiValue()
+        var arr = JsArray(args[0])
+        var index = JsUInt32.from_napi_value(env, args[1])
+        var result = arr.has(env, index)
+        return JsBoolean.create(env, result).value
+    except:
+        throw_js_error(env, "arrayHasElement requires (array, index)")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# arrayDeleteElement(arr, index) — exposed as addon.arrayDeleteElement(arr, index)
+#
+# Deletes element at index (makes array sparse), returns the mutated array.
+# ---------------------------------------------------------------------------
+fn array_delete_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        if not js_is_array(env, args[0]):
+            throw_js_error(env, "arrayDeleteElement: first argument must be an array")
+            return NapiValue()
+        var arr = JsArray(args[0])
+        var index = JsUInt32.from_napi_value(env, args[1])
+        _ = arr.delete_element(env, index)
+        return arr.value
+    except:
+        throw_js_error(env, "arrayDeleteElement requires (array, index)")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# getPrototype(obj) — exposed as addon.getPrototype(obj)
+#
+# Returns Object.getPrototypeOf(obj).
+# ---------------------------------------------------------------------------
+fn get_prototype_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var t0 = js_typeof(env, arg0)
+        if t0 != NAPI_TYPE_OBJECT:
+            throw_js_error_dynamic(env, "getPrototype: expected object, got " + js_type_name(t0))
+            return NapiValue()
+        var obj = JsObject(arg0)
+        return obj.prototype(env)
+    except:
+        throw_js_error(env, "getPrototype requires one object argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# strictEquals(a, b) — exposed as addon.strictEquals(a, b)
+#
+# Returns true if a === b (strict equality).
+# ---------------------------------------------------------------------------
+fn strict_equals_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var eq = js_strict_equals(env, args[0], args[1])
+        return JsBoolean.create(env, eq).value
+    except:
+        throw_js_error(env, "strictEquals requires two arguments")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# isInstanceOf(obj, ctor) — exposed as addon.isInstanceOf(obj, ctor)
+#
+# Returns true if obj instanceof ctor.
+# ---------------------------------------------------------------------------
+fn is_instance_of_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var t1 = js_typeof(env, args[1])
+        if t1 != NAPI_TYPE_FUNCTION:
+            throw_js_error_dynamic(env, "isInstanceOf: second arg must be a constructor, got " + js_type_name(t1))
+            return NapiValue()
+        var obj = JsObject(args[0])
+        var result = obj.instance_of(env, args[1])
+        return JsBoolean.create(env, result).value
+    except:
+        throw_js_error(env, "isInstanceOf requires (value, constructor)")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# freezeObject(obj) — exposed as addon.freezeObject(obj)
+#
+# Freezes the object and returns it.
+# ---------------------------------------------------------------------------
+fn freeze_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var t0 = js_typeof(env, arg0)
+        if t0 != NAPI_TYPE_OBJECT:
+            throw_js_error_dynamic(env, "freezeObject: expected object, got " + js_type_name(t0))
+            return NapiValue()
+        var obj = JsObject(arg0)
+        obj.freeze(env)
+        return obj.value
+    except:
+        throw_js_error(env, "freezeObject requires one object argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# sealObject(obj) — exposed as addon.sealObject(obj)
+#
+# Seals the object and returns it.
+# ---------------------------------------------------------------------------
+fn seal_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var t0 = js_typeof(env, arg0)
+        if t0 != NAPI_TYPE_OBJECT:
+            throw_js_error_dynamic(env, "sealObject: expected object, got " + js_type_name(t0))
+            return NapiValue()
+        var obj = JsObject(arg0)
+        obj.seal(env)
+        return obj.value
+    except:
+        throw_js_error(env, "sealObject requires one object argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
 # Module entry point
 #
 # Node.js finds "napi_register_module_v1" via dlsym after dlopen-ing our
@@ -1085,6 +1271,16 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var get_date_value_ref = get_date_value_fn
     var create_symbol_ref = create_symbol_fn
     var symbol_for_ref = symbol_for_fn
+    var get_keys_ref = get_keys_fn
+    var has_own_ref = has_own_fn
+    var delete_property_ref = delete_property_fn
+    var strict_equals_ref = strict_equals_fn
+    var is_instance_of_ref = is_instance_of_fn
+    var freeze_object_ref = freeze_object_fn
+    var seal_object_ref = seal_object_fn
+    var array_has_element_ref = array_has_element_fn
+    var array_delete_element_ref = array_delete_element_fn
+    var get_prototype_ref = get_prototype_fn
 
     try:
         register_method(env, exports, "hello",
@@ -1164,6 +1360,26 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
             UnsafePointer(to=create_symbol_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
         register_method(env, exports, "symbolFor",
             UnsafePointer(to=symbol_for_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "getKeys",
+            UnsafePointer(to=get_keys_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "hasOwn",
+            UnsafePointer(to=has_own_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "deleteProperty",
+            UnsafePointer(to=delete_property_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "strictEquals",
+            UnsafePointer(to=strict_equals_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "isInstanceOf",
+            UnsafePointer(to=is_instance_of_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "freezeObject",
+            UnsafePointer(to=freeze_object_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "sealObject",
+            UnsafePointer(to=seal_object_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "arrayHasElement",
+            UnsafePointer(to=array_has_element_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "arrayDeleteElement",
+            UnsafePointer(to=array_delete_element_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "getPrototype",
+            UnsafePointer(to=get_prototype_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
 
         # Counter class registration
         var ctor_ptr = UnsafePointer(to=counter_constructor_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]

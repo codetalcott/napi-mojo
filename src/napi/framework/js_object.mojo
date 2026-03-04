@@ -18,7 +18,7 @@
 ## management is needed on the caller side.
 
 from napi.types import NapiEnv, NapiValue
-from napi.raw import raw_create_object, raw_set_named_property, raw_get_named_property, raw_has_named_property, raw_get_property
+from napi.raw import raw_create_object, raw_set_named_property, raw_get_named_property, raw_has_named_property, raw_get_property, raw_get_property_names, raw_get_all_property_names, raw_has_own_property, raw_delete_property, raw_instanceof, raw_object_freeze, raw_object_seal, raw_get_prototype
 from napi.error import check_status
 
 ## JsObject — typed wrapper for a JavaScript object napi_value
@@ -105,3 +105,70 @@ struct JsObject:
         var status = raw_has_named_property(env, self.value, key_ptr, exists_ptr)
         check_status(status)
         return exists
+
+    ## keys — return the object's own enumerable property names as a JS array
+    ##
+    ## Uses napi_get_all_property_names with own-only + enumerable filter.
+    ## Equivalent to Object.keys(obj).
+    fn keys(self, env: NapiEnv) raises -> NapiValue:
+        var result: NapiValue = NapiValue()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        # key_mode=1 (napi_key_own_only), key_filter=2 (napi_key_enumerable),
+        # key_conversion=1 (napi_key_numbers_to_strings)
+        var status = raw_get_all_property_names(env, self.value, 1, 2, 1, result_ptr)
+        check_status(status)
+        return result
+
+    ## has_own — check if the object has the key as an own (non-inherited) property
+    ##
+    ## Calls napi_has_own_property. Key must be a napi_value (string or symbol).
+    fn has_own(self, env: NapiEnv, key: NapiValue) raises -> Bool:
+        var exists: Bool = False
+        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=exists).bitcast[NoneType]()
+        var status = raw_has_own_property(env, self.value, key, exists_ptr)
+        check_status(status)
+        return exists
+
+    ## delete_prop — delete a property by napi_value key
+    ##
+    ## Calls napi_delete_property. Returns true if the property was deleted.
+    fn delete_prop(self, env: NapiEnv, key: NapiValue) raises -> Bool:
+        var deleted: Bool = False
+        var deleted_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=deleted).bitcast[NoneType]()
+        var status = raw_delete_property(env, self.value, key, deleted_ptr)
+        check_status(status)
+        return deleted
+
+    ## instance_of — check if this value is an instance of a constructor
+    ##
+    ## Calls napi_instanceof.
+    fn instance_of(self, env: NapiEnv, constructor: NapiValue) raises -> Bool:
+        var result: Bool = False
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var status = raw_instanceof(env, self.value, constructor, result_ptr)
+        check_status(status)
+        return result
+
+    ## freeze — freeze the object (prevent all modifications)
+    ##
+    ## Calls napi_object_freeze (N-API v8+).
+    fn freeze(self, env: NapiEnv) raises:
+        var status = raw_object_freeze(env, self.value)
+        check_status(status)
+
+    ## seal — seal the object (prevent adding/deleting properties)
+    ##
+    ## Calls napi_object_seal (N-API v8+).
+    fn seal(self, env: NapiEnv) raises:
+        var status = raw_object_seal(env, self.value)
+        check_status(status)
+
+    ## prototype — return the prototype of this object
+    ##
+    ## Calls napi_get_prototype. Returns null for Object.create(null).
+    fn prototype(self, env: NapiEnv) raises -> NapiValue:
+        var result: NapiValue = NapiValue()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var status = raw_get_prototype(env, self.value, result_ptr)
+        check_status(status)
+        return result

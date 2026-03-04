@@ -1261,3 +1261,171 @@ fn raw_symbol_for(
         fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("node_api_symbol_for")
     return f(env, description, length, result)
+
+## raw_get_property_names — wraps napi_get_property_names
+##
+## Returns an array of the object's enumerable property names (including
+## inherited). For own-only enumerable keys (Object.keys behavior), use
+## raw_get_all_property_names with key_mode=0, key_filter=2.
+fn raw_get_property_names(
+    env: NapiEnv,
+    object: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_property_names")
+    return f(env, object, result)
+
+## raw_get_all_property_names — wraps napi_get_all_property_names
+##
+## Returns property names with filtering control. Parameters:
+## `key_mode`:       0 = napi_key_own_only, 1 = napi_key_include_prototypes
+## `key_filter`:     bitmask: 0=all, 2=enumerable, 4=configurable, etc.
+## `key_conversion`: 0 = keep_numbers, 1 = numbers_to_strings
+fn raw_get_all_property_names(
+    env: NapiEnv,
+    object: NapiValue,
+    key_mode: Int32,
+    key_filter: Int32,
+    key_conversion: Int32,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, Int32, Int32, Int32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_all_property_names")
+    return f(env, object, key_mode, key_filter, key_conversion, result)
+
+## raw_has_own_property — wraps napi_has_own_property
+##
+## Checks whether the object has the specified key as an own (non-inherited)
+## property. `key` must be a string or symbol napi_value.
+fn raw_has_own_property(
+    env: NapiEnv,
+    object: NapiValue,
+    key: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_has_own_property")
+    return f(env, object, key, result)
+
+## raw_delete_property — wraps napi_delete_property
+##
+## Deletes a property from an object by key (napi_value string or symbol).
+## `result` receives a bool indicating whether the property was deleted.
+fn raw_delete_property(
+    env: NapiEnv,
+    object: NapiValue,
+    key: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_delete_property")
+    return f(env, object, key, result)
+
+## raw_strict_equals — wraps napi_strict_equals
+##
+## Checks strict equality (===) between two values.
+fn raw_strict_equals(
+    env: NapiEnv,
+    lhs: NapiValue,
+    rhs: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_strict_equals")
+    return f(env, lhs, rhs, result)
+
+## raw_instanceof — wraps napi_instanceof
+##
+## Checks if `object` is an instance of `constructor`.
+fn raw_instanceof(
+    env: NapiEnv,
+    object: NapiValue,
+    constructor: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_instanceof")
+    return f(env, object, constructor, result)
+
+## raw_object_freeze — wraps napi_object_freeze (N-API v8+)
+##
+## Freezes the object, preventing modifications to its properties.
+fn raw_object_freeze(
+    env: NapiEnv,
+    object: NapiValue,
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue) -> NapiStatus
+    ]("napi_object_freeze")
+    return f(env, object)
+
+## raw_object_seal — wraps napi_object_seal (N-API v8+)
+##
+## Seals the object, preventing addition/deletion of properties.
+fn raw_object_seal(
+    env: NapiEnv,
+    object: NapiValue,
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue) -> NapiStatus
+    ]("napi_object_seal")
+    return f(env, object)
+
+## raw_has_element — wraps napi_has_element
+##
+## Checks whether an element exists at the given index.
+fn raw_has_element(
+    env: NapiEnv,
+    object: NapiValue,
+    index: UInt32,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_has_element")
+    return f(env, object, index, result)
+
+## raw_delete_element — wraps napi_delete_element
+##
+## Deletes the element at the given index (makes the array sparse).
+fn raw_delete_element(
+    env: NapiEnv,
+    object: NapiValue,
+    index: UInt32,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_delete_element")
+    return f(env, object, index, result)
+
+## raw_get_prototype — wraps napi_get_prototype
+##
+## Returns the prototype of the given object.
+fn raw_get_prototype(
+    env: NapiEnv,
+    object: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_prototype")
+    return f(env, object, result)
