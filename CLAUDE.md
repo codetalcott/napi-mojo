@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 8 complete — all primitive types, object property reading, function calling, array mapping with handle scopes, argument reading, type checking, error propagation, promises (create/resolve/reject), and async work (worker thread execution with promise resolution) are all working.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 11 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading, function calling, array mapping with handle scopes, argument reading, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ArrayBuffer, Buffer, TypedArray, and class construction (wrap/unwrap, prototype methods, getter/setter) are all working.
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (61 tests)
+npm test                              # run all Jest tests (99 tests)
 npx jest tests/basic.test.js          # run a single test file
 
 # Spike (run before anything else if starting fresh):
@@ -37,14 +37,17 @@ N-API functions (`napi_create_string_utf8`, `napi_define_properties`, etc.) are 
 
 ```
 src/lib.mojo                             # entry point: callbacks + register_module
-src/napi/types.mojo                      # NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiPropertyDescriptor, NapiValueType constants
+src/napi/types.mojo                      # NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiPropertyDescriptor, NapiValueType constants, TypedArray type constants, property attribute constants
 src/napi/raw.mojo                        # OwnedDLHandle symbol resolution (sole user of OwnedDLHandle)
-src/napi/error.mojo                      # napi_status_name(), check_status(), throw_js_error(), throw_js_error_dynamic()
+src/napi/error.mojo                      # napi_status_name(), check_status(), throw_js_error(), throw_js_error_dynamic(), throw_js_type_error(), throw_js_range_error()
 src/napi/module.mojo                     # define_property(), register_method()
 src/napi/framework/js_string.mojo        # JsString.create(), create_literal(), from_napi_value(), read_arg_0()
 src/napi/framework/js_object.mojo        # JsObject.create(), set_property(), set_named_property(), get(), get_property(), get_named_property(), has_property()
-src/napi/framework/js_number.mojo        # JsNumber.create(), from_napi_value()
+src/napi/framework/js_number.mojo        # JsNumber.create(), create_int(), from_napi_value(), to_int()
 src/napi/framework/js_boolean.mojo       # JsBoolean.create(), from_napi_value()
+src/napi/framework/js_int32.mojo         # JsInt32.create(), from_napi_value()
+src/napi/framework/js_uint32.mojo        # JsUInt32.create(), from_napi_value()
+src/napi/framework/js_int64.mojo         # JsInt64.create(), from_napi_value()
 src/napi/framework/js_null.mojo          # JsNull.create()
 src/napi/framework/js_undefined.mojo     # JsUndefined.create()
 src/napi/framework/js_array.mojo         # JsArray.create_with_length(), set(), get(), length()
@@ -52,7 +55,11 @@ src/napi/framework/js_function.mojo      # JsFunction.call0(), call1(), call2()
 src/napi/framework/js_value.mojo         # js_typeof(), js_type_name(), js_is_array()
 src/napi/framework/handle_scope.mojo     # HandleScope.open(), close()
 src/napi/framework/js_promise.mojo       # JsPromise.create(), resolve(), reject()
-src/napi/framework/args.mojo             # CbArgs.get_one(), get_two()
+src/napi/framework/js_arraybuffer.mojo   # JsArrayBuffer.create(), byte_length(), data_ptr(), is_arraybuffer()
+src/napi/framework/js_buffer.mojo        # JsBuffer.create(), data_ptr(), length(), is_buffer()
+src/napi/framework/js_typedarray.mojo    # JsTypedArray.create_float64(), length(), data_ptr(), is_typedarray()
+src/napi/framework/js_class.mojo         # define_class(), register_instance_method(), register_getter(), register_getter_setter()
+src/napi/framework/args.mojo             # CbArgs.get_one(), get_two(), get_this(), get_this_and_one()
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
 tests/                                   # Jest tests — TDD outside-in
 ```
@@ -76,6 +83,17 @@ tests/                                   # Jest tests — TDD outside-in
 | `resolveWith(value)` | `resolve_with_fn` | Returns a promise that immediately resolves with `value` |
 | `rejectWith(msg)` | `reject_with_fn` | Returns a promise that immediately rejects with Error(`msg`) |
 | `asyncDouble(n)` | `async_double_fn` | Returns a promise; computes `n * 2` on worker thread |
+| `addInts(a, b)` | `add_ints_fn` | Returns `a + b` (Int32 addition) |
+| `bitwiseOr(a, b)` | `bitwise_or_fn` | Returns `a \| b` (UInt32 bitwise OR) |
+| `throwTypeError()` | `throw_type_error_fn` | Throws a JavaScript `TypeError` |
+| `throwRangeError()` | `throw_range_error_fn` | Throws a JavaScript `RangeError` |
+| `addIntsStrict(a, b)` | `add_ints_strict_fn` | Like `addInts` but throws `TypeError` on type mismatch |
+| `createArrayBuffer(size)` | `create_arraybuffer_fn` | Creates an ArrayBuffer filled with incrementing bytes |
+| `arrayBufferLength(buf)` | `arraybuffer_length_fn` | Returns the byte length of an ArrayBuffer |
+| `sumBuffer(buf)` | `sum_buffer_fn` | Sums the bytes of a Node.js Buffer |
+| `createBuffer(size)` | `create_buffer_fn` | Creates a Buffer filled with incrementing bytes |
+| `doubleFloat64Array(arr)` | `double_float64_array_fn` | Doubles each element of a Float64Array in-place |
+| `new Counter(n)` | `counter_constructor_fn` | Class: constructor, `.increment()`, `.reset()`, `.value` getter/setter |
 
 ## Critical Mojo FFI rules
 
@@ -116,6 +134,12 @@ desc.method = UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 **Async data struct lifetime**: Heap-allocate with `alloc[T](1)` + `init_pointee_move()`. The data struct must contain only simple types (no Mojo `String` or objects with destructors) since the execute callback runs on a worker thread. Pass `data_ptr.bitcast[NoneType]()` as the `void*` data argument. Clean up in the complete callback with `ptr.destroy_pointee()` + `ptr.free()`. The `NapiAsyncWork` handle has a chicken-and-egg: initialize as `NapiAsyncWork()`, create async work, then write the handle back into the data struct before queuing.
 
 **Promise creation**: `napi_create_promise` returns both a deferred handle and a promise napi_value. Use `JsPromise.create(env)` which pairs them. Each deferred can only be resolved OR rejected once. For rejection, create an Error object with `raw_create_error` (not `throw_js_error`) to get a value without setting a pending exception.
+
+**Class construction (napi_define_class + napi_wrap)**: Use `define_class(env, "Name", constructor_ptr)` to register a class with a bare constructor (property_count=0). Instance methods/getters go on the **prototype** — retrieve via `napi_get_named_property(env, constructor, "prototype", &proto)`, then call `napi_define_properties` on the prototype (NOT the constructor). In the constructor callback, use `CbArgs.get_this()` to get the `this` object, heap-allocate a native data struct with `alloc[T](1)`, and `napi_wrap` it onto `this` with a finalizer. In method callbacks, use `napi_unwrap` to retrieve the native pointer. The finalizer (`fn(NapiEnv, OpaquePointer, OpaquePointer)`) calls `ptr.destroy_pointee()` + `ptr.free()`.
+
+**UnsafePointer origin requirement**: In Mojo v26.2, `UnsafePointer[Byte]` cannot infer the mutability parameter in return type position. Use `UnsafePointer[Byte, MutAnyOrigin]` explicitly for data pointer return types (e.g., in Buffer/ArrayBuffer/TypedArray wrappers).
+
+**Jest cross-realm instanceof**: `instanceof TypeError` / `instanceof RangeError` fails in Jest's sandboxed VM (separate realms). Use `try/catch` with `expect(e.name).toBe('TypeError')` instead of `.toThrow(TypeError)`.
 
 ## Development workflow
 

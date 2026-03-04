@@ -54,3 +54,43 @@ struct CbArgs:
         if argc < 2:
             raise Error("expected at least 2 arguments")
         return args^
+
+    ## get_this — extract the `this` value from a callback
+    ##
+    ## Used by class method/getter/setter callbacks to get the JS instance.
+    @staticmethod
+    fn get_this(env: NapiEnv, info: NapiValue) raises -> NapiValue:
+        var argc: UInt = 0
+        var this_val: NapiValue = NapiValue()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            env, info,
+            UnsafePointer(to=argc).bitcast[NoneType](),
+            null,
+            UnsafePointer(to=this_val).bitcast[NoneType](),
+            null,
+        ))
+        return this_val
+
+    ## get_this_and_one — extract `this` plus one argument
+    ##
+    ## Returns [this, arg0] in an InlineArray[NapiValue, 2].
+    @staticmethod
+    fn get_this_and_one(env: NapiEnv, info: NapiValue) raises -> InlineArray[NapiValue, 2]:
+        var argc: UInt = 1
+        var arg0: NapiValue = NapiValue()
+        var this_val: NapiValue = NapiValue()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            env, info,
+            UnsafePointer(to=argc).bitcast[NoneType](),
+            UnsafePointer(to=arg0).bitcast[NoneType](),
+            UnsafePointer(to=this_val).bitcast[NoneType](),
+            null,
+        ))
+        if argc < 1:
+            raise Error("expected at least 1 argument")
+        var result = InlineArray[NapiValue, 2](fill=NapiValue())
+        result[0] = this_val
+        result[1] = arg0
+        return result^

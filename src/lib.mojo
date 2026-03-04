@@ -2,7 +2,13 @@
 ##
 ## Exports: hello, createObject, makeGreeting, greet, add, isPositive,
 ##          getNull, getUndefined, sumArray, getProperty, callFunction, mapArray,
-##          resolveWith, rejectWith
+##          resolveWith, rejectWith, asyncDouble,
+##          addInts, bitwiseOr,
+##          throwTypeError, throwRangeError, addIntsStrict,
+##          createArrayBuffer, arrayBufferLength,
+##          sumBuffer, createBuffer,
+##          doubleFloat64Array,
+##          Counter (class: constructor, increment, reset, value getter/setter)
 ##
 ## Module structure:
 ##   src/napi/types.mojo                  — NapiEnv, NapiValue, NapiStatus, NapiDeferred, etc.
@@ -26,7 +32,7 @@
 ##   3. The @export entry point (register_module)
 
 from memory import alloc
-from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NAPI_TYPE_STRING, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_OK
+from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_OK
 from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work
 from napi.module import register_method
 from napi.framework.js_string import JsString
@@ -41,7 +47,14 @@ from napi.framework.js_promise import JsPromise
 from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof, js_type_name, js_is_array
 from napi.framework.handle_scope import HandleScope
-from napi.error import throw_js_error, throw_js_error_dynamic, check_status
+from napi.framework.js_int32 import JsInt32
+from napi.framework.js_uint32 import JsUInt32
+from napi.framework.js_arraybuffer import JsArrayBuffer
+from napi.framework.js_buffer import JsBuffer
+from napi.framework.js_typedarray import JsTypedArray
+from napi.framework.js_class import define_class, register_instance_method, register_getter_setter
+from napi.raw import raw_wrap, raw_unwrap
+from napi.error import throw_js_error, throw_js_error_dynamic, throw_js_type_error, throw_js_type_error_dynamic, throw_js_range_error, check_status
 
 # ---------------------------------------------------------------------------
 # hello() — exposed as addon.hello()
@@ -417,6 +430,318 @@ fn async_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ---------------------------------------------------------------------------
+# addInts(a, b) — exposed as addon.addInts(a, b)
+#
+# Takes two JavaScript number arguments, reads them as Int32, returns their sum.
+# ---------------------------------------------------------------------------
+fn add_ints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var ta = js_typeof(env, args[0])
+        var tb = js_typeof(env, args[1])
+        if ta != NAPI_TYPE_NUMBER or tb != NAPI_TYPE_NUMBER:
+            throw_js_error(env, "addInts requires two number arguments")
+            return NapiValue()
+        var a = JsInt32.from_napi_value(env, args[0])
+        var b = JsInt32.from_napi_value(env, args[1])
+        return JsInt32.create(env, a + b).value
+    except:
+        throw_js_error(env, "addInts requires two number arguments")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# bitwiseOr(a, b) — exposed as addon.bitwiseOr(a, b)
+#
+# Takes two JavaScript number arguments, reads them as UInt32, returns a | b.
+# ---------------------------------------------------------------------------
+fn bitwise_or_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var ta = js_typeof(env, args[0])
+        var tb = js_typeof(env, args[1])
+        if ta != NAPI_TYPE_NUMBER or tb != NAPI_TYPE_NUMBER:
+            throw_js_error(env, "bitwiseOr requires two number arguments")
+            return NapiValue()
+        var a = JsUInt32.from_napi_value(env, args[0])
+        var b = JsUInt32.from_napi_value(env, args[1])
+        return JsUInt32.create(env, a | b).value
+    except:
+        throw_js_error(env, "bitwiseOr requires two number arguments")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# throwTypeError() — exposed as addon.throwTypeError()
+#
+# Throws a JavaScript TypeError with a fixed message.
+# ---------------------------------------------------------------------------
+fn throw_type_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    throw_js_type_error(env, "wrong type")
+    return NapiValue()
+
+# ---------------------------------------------------------------------------
+# throwRangeError() — exposed as addon.throwRangeError()
+#
+# Throws a JavaScript RangeError with a fixed message.
+# ---------------------------------------------------------------------------
+fn throw_range_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    throw_js_range_error(env, "out of range")
+    return NapiValue()
+
+# ---------------------------------------------------------------------------
+# addIntsStrict(a, b) — exposed as addon.addIntsStrict(a, b)
+#
+# Like addInts but throws TypeError (not Error) on type mismatch.
+# ---------------------------------------------------------------------------
+fn add_ints_strict_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var ta = js_typeof(env, args[0])
+        var tb = js_typeof(env, args[1])
+        if ta != NAPI_TYPE_NUMBER or tb != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(env,
+                "addIntsStrict: expected two numbers, got " + js_type_name(ta) + " and " + js_type_name(tb))
+            return NapiValue()
+        var a = JsInt32.from_napi_value(env, args[0])
+        var b = JsInt32.from_napi_value(env, args[1])
+        return JsInt32.create(env, a + b).value
+    except:
+        throw_js_type_error(env, "addIntsStrict requires two number arguments")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# createArrayBuffer(size) — exposed as addon.createArrayBuffer(size)
+#
+# Creates an ArrayBuffer of the given size, filled with incrementing bytes.
+# ---------------------------------------------------------------------------
+fn create_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var ta = js_typeof(env, arg0)
+        if ta != NAPI_TYPE_NUMBER:
+            throw_js_error(env, "createArrayBuffer requires a number argument")
+            return NapiValue()
+        var size = JsNumber.from_napi_value(env, arg0)
+        return JsArrayBuffer.create_and_fill(env, UInt(Int(size))).value
+    except:
+        throw_js_error(env, "createArrayBuffer requires a number argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# arrayBufferLength(buf) — exposed as addon.arrayBufferLength(buf)
+#
+# Returns the byte length of an ArrayBuffer.
+# ---------------------------------------------------------------------------
+fn arraybuffer_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        if not JsArrayBuffer.is_arraybuffer(env, arg0):
+            throw_js_error(env, "arrayBufferLength requires an ArrayBuffer argument")
+            return NapiValue()
+        var ab = JsArrayBuffer(arg0)
+        var length = ab.byte_length(env)
+        return JsNumber.create(env, Float64(length)).value
+    except:
+        throw_js_error(env, "arrayBufferLength requires an ArrayBuffer argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# sumBuffer(buf) — exposed as addon.sumBuffer(buf)
+#
+# Sums the bytes of a Node.js Buffer and returns the total.
+# ---------------------------------------------------------------------------
+fn sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        if not JsBuffer.is_buffer(env, arg0):
+            throw_js_error(env, "sumBuffer requires a Buffer argument")
+            return NapiValue()
+        var buf = JsBuffer(arg0)
+        var ptr = buf.data_ptr(env)
+        var len = buf.length(env)
+        var total: Float64 = 0.0
+        for i in range(Int(len)):
+            total += Float64(Int(ptr[i]))
+        return JsNumber.create(env, total).value
+    except:
+        throw_js_error(env, "sumBuffer requires a Buffer argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# createBuffer(size) — exposed as addon.createBuffer(size)
+#
+# Creates a Buffer of the given size filled with incrementing byte values.
+# ---------------------------------------------------------------------------
+fn create_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var ta = js_typeof(env, arg0)
+        if ta != NAPI_TYPE_NUMBER:
+            throw_js_error(env, "createBuffer requires a number argument")
+            return NapiValue()
+        var size = JsNumber.from_napi_value(env, arg0)
+        return JsBuffer.create_and_fill(env, UInt(Int(size))).value
+    except:
+        throw_js_error(env, "createBuffer requires a number argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# doubleFloat64Array(arr) — exposed as addon.doubleFloat64Array(arr)
+#
+# Doubles each element of a Float64Array in-place and returns it.
+# ---------------------------------------------------------------------------
+fn double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        if not JsTypedArray.is_typedarray(env, arg0):
+            throw_js_error(env, "doubleFloat64Array requires a TypedArray argument")
+            return NapiValue()
+        var ta = JsTypedArray(arg0)
+        var len = ta.length(env)
+        var byte_ptr = ta.data_ptr(env)
+        var float_ptr = byte_ptr.bitcast[Float64]()
+        for i in range(Int(len)):
+            float_ptr[i] = float_ptr[i] * 2.0
+        return arg0
+    except:
+        throw_js_error(env, "doubleFloat64Array requires a TypedArray argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# CounterData — native backing store for Counter class instances
+# ---------------------------------------------------------------------------
+struct CounterData(Movable):
+    var count: Float64
+    var initial: Float64
+
+    fn __init__(out self, initial: Float64):
+        self.count = initial
+        self.initial = initial
+
+    fn __moveinit__(out self, deinit take: Self):
+        self.count = take.count
+        self.initial = take.initial
+
+# ---------------------------------------------------------------------------
+# counter_finalize — GC invokes this when a Counter instance is collected
+#
+# Cleans up the heap-allocated CounterData wrapped onto the JS object.
+# Signature: fn(NapiEnv, void* data, void* hint)
+# ---------------------------------------------------------------------------
+fn counter_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.bitcast[CounterData]()
+    ptr.destroy_pointee()
+    ptr.free()
+
+# ---------------------------------------------------------------------------
+# counter_constructor_fn — Counter(initial) constructor callback
+#
+# Called when JS does `new Counter(n)`. Validates argument, heap-allocates
+# CounterData, and wraps it onto `this`.
+# ---------------------------------------------------------------------------
+fn counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var this_val = CbArgs.get_this(env, info)
+        var arg0 = CbArgs.get_one(env, info)
+        var t = js_typeof(env, arg0)
+        if t != NAPI_TYPE_NUMBER:
+            throw_js_type_error(env, "Counter constructor requires a number argument")
+            return NapiValue()
+        var initial = JsNumber.from_napi_value(env, arg0)
+
+        # Heap-allocate native data
+        var data_ptr = alloc[CounterData](1)
+        data_ptr.init_pointee_move(CounterData(initial))
+
+        # Get finalize function pointer
+        var fin_ref = counter_finalize
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+        # Wrap native data onto this
+        check_status(raw_wrap(
+            env,
+            this_val,
+            data_ptr.bitcast[NoneType](),              # native_object
+            fin_ptr,                                     # finalize_cb
+            OpaquePointer[MutAnyOrigin](),              # finalize_hint = NULL
+            OpaquePointer[MutAnyOrigin](),              # result = NULL (no ref needed)
+        ))
+
+        return this_val
+    except:
+        throw_js_error(env, "Counter constructor failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# counter_get_value_fn — Counter.prototype.value getter
+# ---------------------------------------------------------------------------
+fn counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var this_val = CbArgs.get_this(env, info)
+        var data = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_unwrap(env, this_val,
+            UnsafePointer(to=data).bitcast[NoneType]()))
+        var ptr = data.bitcast[CounterData]()
+        return JsNumber.create(env, ptr[].count).value
+    except:
+        throw_js_error(env, "Counter.value getter failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# counter_set_value_fn — Counter.prototype.value setter
+# ---------------------------------------------------------------------------
+fn counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var result = CbArgs.get_this_and_one(env, info)
+        var this_val = result[0]
+        var arg0 = result[1]
+        var t = js_typeof(env, arg0)
+        if t != NAPI_TYPE_NUMBER:
+            throw_js_type_error(env, "Counter.value setter requires a number")
+            return NapiValue()
+        var new_val = JsNumber.from_napi_value(env, arg0)
+        var data = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_unwrap(env, this_val,
+            UnsafePointer(to=data).bitcast[NoneType]()))
+        var ptr = data.bitcast[CounterData]()
+        ptr[].count = new_val
+        return JsUndefined.create(env).value
+    except:
+        throw_js_error(env, "Counter.value setter failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# counter_increment_fn — Counter.prototype.increment()
+# ---------------------------------------------------------------------------
+fn counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var this_val = CbArgs.get_this(env, info)
+        var data = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_unwrap(env, this_val,
+            UnsafePointer(to=data).bitcast[NoneType]()))
+        var ptr = data.bitcast[CounterData]()
+        ptr[].count += 1.0
+        return JsUndefined.create(env).value
+    except:
+        throw_js_error(env, "Counter.increment failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# counter_reset_fn — Counter.prototype.reset()
+# ---------------------------------------------------------------------------
+fn counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var this_val = CbArgs.get_this(env, info)
+        var data = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_unwrap(env, this_val,
+            UnsafePointer(to=data).bitcast[NoneType]()))
+        var ptr = data.bitcast[CounterData]()
+        ptr[].count = ptr[].initial
+        return JsUndefined.create(env).value
+    except:
+        throw_js_error(env, "Counter.reset failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
 # Module entry point
 #
 # Node.js finds "napi_register_module_v1" via dlsym after dlopen-ing our
@@ -446,6 +771,21 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var resolve_with_ref = resolve_with_fn
     var reject_with_ref = reject_with_fn
     var async_double_ref = async_double_fn
+    var add_ints_ref = add_ints_fn
+    var bitwise_or_ref = bitwise_or_fn
+    var throw_type_error_ref = throw_type_error_fn
+    var throw_range_error_ref = throw_range_error_fn
+    var add_ints_strict_ref = add_ints_strict_fn
+    var create_arraybuffer_ref = create_arraybuffer_fn
+    var arraybuffer_length_ref = arraybuffer_length_fn
+    var sum_buffer_ref = sum_buffer_fn
+    var create_buffer_ref = create_buffer_fn
+    var double_float64_array_ref = double_float64_array_fn
+    var counter_constructor_ref = counter_constructor_fn
+    var counter_get_value_ref = counter_get_value_fn
+    var counter_set_value_ref = counter_set_value_fn
+    var counter_increment_ref = counter_increment_fn
+    var counter_reset_ref = counter_reset_fn
 
     try:
         register_method(env, exports, "hello",
@@ -478,6 +818,38 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
             UnsafePointer(to=reject_with_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
         register_method(env, exports, "asyncDouble",
             UnsafePointer(to=async_double_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "addInts",
+            UnsafePointer(to=add_ints_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "bitwiseOr",
+            UnsafePointer(to=bitwise_or_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "throwTypeError",
+            UnsafePointer(to=throw_type_error_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "throwRangeError",
+            UnsafePointer(to=throw_range_error_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "addIntsStrict",
+            UnsafePointer(to=add_ints_strict_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "createArrayBuffer",
+            UnsafePointer(to=create_arraybuffer_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "arrayBufferLength",
+            UnsafePointer(to=arraybuffer_length_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "sumBuffer",
+            UnsafePointer(to=sum_buffer_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "createBuffer",
+            UnsafePointer(to=create_buffer_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "doubleFloat64Array",
+            UnsafePointer(to=double_float64_array_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+
+        # Counter class registration
+        var ctor_ptr = UnsafePointer(to=counter_constructor_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        var ctor_val = define_class(env, "Counter", ctor_ptr)
+        register_instance_method(env, ctor_val, "increment",
+            UnsafePointer(to=counter_increment_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_instance_method(env, ctor_val, "reset",
+            UnsafePointer(to=counter_reset_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_getter_setter(env, ctor_val, "value",
+            UnsafePointer(to=counter_get_value_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[],
+            UnsafePointer(to=counter_set_value_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        JsObject(exports).set_property(env, "Counter", ctor_val)
     except:
         pass
 

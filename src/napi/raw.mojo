@@ -586,3 +586,406 @@ fn raw_delete_async_work(
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_delete_async_work")
     return f(env, work)
+
+## raw_create_int32 — wraps napi_create_int32
+##
+## Creates a JavaScript number from a signed 32-bit integer.
+fn raw_create_int32(
+    env: NapiEnv,
+    value: Int32,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, Int32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_int32")
+    return f(env, value, result)
+
+## raw_get_value_int32 — wraps napi_get_value_int32
+##
+## Reads a JavaScript number as a signed 32-bit integer (truncates).
+fn raw_get_value_int32(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_value_int32")
+    return f(env, value, result)
+
+## raw_create_uint32 — wraps napi_create_uint32
+##
+## Creates a JavaScript number from an unsigned 32-bit integer.
+fn raw_create_uint32(
+    env: NapiEnv,
+    value: UInt32,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, UInt32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_uint32")
+    return f(env, value, result)
+
+## raw_get_value_uint32 — wraps napi_get_value_uint32
+##
+## Reads a JavaScript number as an unsigned 32-bit integer (truncates).
+fn raw_get_value_uint32(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_value_uint32")
+    return f(env, value, result)
+
+## raw_create_int64 — wraps napi_create_int64
+##
+## Creates a JavaScript number from a signed 64-bit integer.
+fn raw_create_int64(
+    env: NapiEnv,
+    value: Int64,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_int64")
+    return f(env, value, result)
+
+## raw_get_value_int64 — wraps napi_get_value_int64
+##
+## Reads a JavaScript number as a signed 64-bit integer (truncates).
+fn raw_get_value_int64(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_value_int64")
+    return f(env, value, result)
+
+## raw_throw_type_error — wraps napi_throw_type_error
+##
+## Sets a pending JavaScript TypeError exception.
+fn raw_throw_type_error(
+    env: NapiEnv,
+    code: OpaquePointer[ImmutAnyOrigin],
+    msg: OpaquePointer[ImmutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
+    ]("napi_throw_type_error")
+    return f(env, code, msg)
+
+## raw_throw_range_error — wraps napi_throw_range_error
+##
+## Sets a pending JavaScript RangeError exception.
+fn raw_throw_range_error(
+    env: NapiEnv,
+    code: OpaquePointer[ImmutAnyOrigin],
+    msg: OpaquePointer[ImmutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
+    ]("napi_throw_range_error")
+    return f(env, code, msg)
+
+## raw_create_type_error — wraps napi_create_type_error
+##
+## Creates a TypeError object (without throwing). For promise rejection.
+fn raw_create_type_error(
+    env: NapiEnv,
+    code: NapiValue,
+    msg: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_type_error")
+    return f(env, code, msg, result)
+
+## raw_create_range_error — wraps napi_create_range_error
+##
+## Creates a RangeError object (without throwing). For promise rejection.
+fn raw_create_range_error(
+    env: NapiEnv,
+    code: NapiValue,
+    msg: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_range_error")
+    return f(env, code, msg, result)
+
+## raw_create_arraybuffer — wraps napi_create_arraybuffer
+##
+## Creates a new ArrayBuffer with the specified byte length.
+## `data_ptr`: out void** — receives pointer to the backing store.
+## `result`:   out napi_value* — receives the ArrayBuffer.
+fn raw_create_arraybuffer(
+    env: NapiEnv,
+    byte_length: UInt,
+    data_ptr: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_arraybuffer")
+    return f(env, byte_length, data_ptr, result)
+
+## raw_get_arraybuffer_info — wraps napi_get_arraybuffer_info
+##
+## Retrieves backing store pointer and byte length of an ArrayBuffer.
+fn raw_get_arraybuffer_info(
+    env: NapiEnv,
+    arraybuffer: NapiValue,
+    data_ptr: OpaquePointer[MutAnyOrigin],
+    byte_length: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_arraybuffer_info")
+    return f(env, arraybuffer, data_ptr, byte_length)
+
+## raw_is_arraybuffer — wraps napi_is_arraybuffer
+##
+## Checks whether a value is an ArrayBuffer.
+fn raw_is_arraybuffer(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_is_arraybuffer")
+    return f(env, value, result)
+
+## raw_detach_arraybuffer — wraps napi_detach_arraybuffer
+fn raw_detach_arraybuffer(
+    env: NapiEnv,
+    arraybuffer: NapiValue,
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue) -> NapiStatus
+    ]("napi_detach_arraybuffer")
+    return f(env, arraybuffer)
+
+## raw_create_buffer — wraps napi_create_buffer
+##
+## Creates a new Node.js Buffer with uninitialized contents.
+## `data_ptr`: out void** — receives the backing store pointer.
+fn raw_create_buffer(
+    env: NapiEnv,
+    length: UInt,
+    data_ptr: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_buffer")
+    return f(env, length, data_ptr, result)
+
+## raw_create_buffer_copy — wraps napi_create_buffer_copy
+##
+## Creates a new Buffer whose content is a copy of the supplied bytes.
+fn raw_create_buffer_copy(
+    env: NapiEnv,
+    length: UInt,
+    data: OpaquePointer[ImmutAnyOrigin],
+    data_ptr: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, UInt, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_buffer_copy")
+    return f(env, length, data, data_ptr, result)
+
+## raw_get_buffer_info — wraps napi_get_buffer_info
+##
+## Retrieves the backing store pointer and byte length of a Buffer.
+fn raw_get_buffer_info(
+    env: NapiEnv,
+    value: NapiValue,
+    data_ptr: OpaquePointer[MutAnyOrigin],
+    length: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_buffer_info")
+    return f(env, value, data_ptr, length)
+
+## raw_is_buffer — wraps napi_is_buffer
+##
+## Checks whether a value is a Node.js Buffer.
+fn raw_is_buffer(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_is_buffer")
+    return f(env, value, result)
+
+## raw_create_typedarray — wraps napi_create_typedarray
+##
+## Creates a TypedArray view over an existing ArrayBuffer.
+## `array_type`:  NAPI_*_ARRAY constant (e.g., NAPI_FLOAT64_ARRAY)
+## `length`:      number of elements (NOT bytes)
+## `arraybuffer`: the ArrayBuffer napi_value
+## `byte_offset`: byte offset into the ArrayBuffer
+fn raw_create_typedarray(
+    env: NapiEnv,
+    array_type: Int32,
+    length: UInt,
+    arraybuffer: NapiValue,
+    byte_offset: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, Int32, UInt, NapiValue, UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_typedarray")
+    return f(env, array_type, length, arraybuffer, byte_offset, result)
+
+## raw_get_typedarray_info — wraps napi_get_typedarray_info
+##
+## Retrieves all metadata from a TypedArray. Pass NULL for unused out-params.
+fn raw_get_typedarray_info(
+    env: NapiEnv,
+    typedarray: NapiValue,
+    array_type: OpaquePointer[MutAnyOrigin],
+    length: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+    arraybuffer: OpaquePointer[MutAnyOrigin],
+    byte_offset: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_typedarray_info")
+    return f(env, typedarray, array_type, length, data, arraybuffer, byte_offset)
+
+## raw_is_typedarray — wraps napi_is_typedarray
+##
+## Checks whether a value is a TypedArray (any type).
+fn raw_is_typedarray(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_is_typedarray")
+    return f(env, value, result)
+
+## raw_define_class — wraps napi_define_class
+##
+## Defines a JavaScript class with a native constructor.
+## `utf8name`:       class name (null-terminated)
+## `length`:         byte length of name (NAPI_AUTO_LENGTH for strlen)
+## `constructor`:    napi_callback for `new ClassName()`
+## `data`:           optional data (pass NULL)
+## `property_count`: number of property descriptors (0 for none)
+## `properties`:     array of NapiPropertyDescriptor (NULL if count==0)
+## `result`:         out-pointer; receives the constructor napi_value
+fn raw_define_class(
+    env: NapiEnv,
+    utf8name: OpaquePointer[ImmutAnyOrigin],
+    length: UInt,
+    constructor: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+    property_count: UInt,
+    properties: OpaquePointer[ImmutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], UInt, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_define_class")
+    return f(env, utf8name, length, constructor, data, property_count, properties, result)
+
+## raw_wrap — wraps napi_wrap
+##
+## Associates a heap-allocated native object with a JavaScript object.
+## `finalize_cb`: called on GC: fn(env, data, hint) -> void
+## `finalize_hint`: pass NULL
+## `result`: out napi_ref* (pass NULL to skip creating a reference)
+fn raw_wrap(
+    env: NapiEnv,
+    js_object: NapiValue,
+    native_object: OpaquePointer[MutAnyOrigin],
+    finalize_cb: OpaquePointer[MutAnyOrigin],
+    finalize_hint: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_wrap")
+    return f(env, js_object, native_object, finalize_cb, finalize_hint, result)
+
+## raw_unwrap — wraps napi_unwrap
+##
+## Retrieves the native pointer previously set via raw_wrap.
+fn raw_unwrap(
+    env: NapiEnv,
+    js_object: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_unwrap")
+    return f(env, js_object, result)
+
+## raw_remove_wrap — wraps napi_remove_wrap
+##
+## Removes the native wrap from a JS object without freeing.
+fn raw_remove_wrap(
+    env: NapiEnv,
+    js_object: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_remove_wrap")
+    return f(env, js_object, result)
+
+## raw_new_instance — wraps napi_new_instance
+##
+## Calls a constructor function with `new`, returning the new instance.
+fn raw_new_instance(
+    env: NapiEnv,
+    constructor: NapiValue,
+    argc: UInt,
+    argv: OpaquePointer[ImmutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, UInt, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_new_instance")
+    return f(env, constructor, argc, argv, result)

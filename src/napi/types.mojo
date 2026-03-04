@@ -65,6 +65,32 @@ comptime NapiDeferred = OpaquePointer[MutAnyOrigin]
 comptime NapiAsyncWork = OpaquePointer[MutAnyOrigin]
 
 # ---------------------------------------------------------------------------
+# napi_typedarray_type enum constants
+#
+# Matches the C napi_typedarray_type enum in node_api.h.
+# Used by napi_create_typedarray and napi_get_typedarray_info.
+# ---------------------------------------------------------------------------
+comptime NAPI_INT8_ARRAY: Int32 = 0
+comptime NAPI_UINT8_ARRAY: Int32 = 1
+comptime NAPI_UINT8_CLAMPED_ARRAY: Int32 = 2
+comptime NAPI_INT16_ARRAY: Int32 = 3
+comptime NAPI_UINT16_ARRAY: Int32 = 4
+comptime NAPI_INT32_ARRAY: Int32 = 5
+comptime NAPI_UINT32_ARRAY: Int32 = 6
+comptime NAPI_FLOAT32_ARRAY: Int32 = 7
+comptime NAPI_FLOAT64_ARRAY: Int32 = 8
+comptime NAPI_BIGINT64_ARRAY: Int32 = 9
+comptime NAPI_BIGUINT64_ARRAY: Int32 = 10
+
+# ---------------------------------------------------------------------------
+# napi_property_attributes constants
+# ---------------------------------------------------------------------------
+comptime NAPI_PROPERTY_WRITABLE: UInt32 = 1
+comptime NAPI_PROPERTY_ENUMERABLE: UInt32 = 2
+comptime NAPI_PROPERTY_CONFIGURABLE: UInt32 = 4
+comptime NAPI_PROPERTY_STATIC: UInt32 = 1024
+
+# ---------------------------------------------------------------------------
 # napi_property_descriptor struct
 #
 # Must match the C definition in node_api.h EXACTLY (60 bytes on 64-bit,
