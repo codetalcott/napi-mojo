@@ -15,7 +15,9 @@
 ##          getKeys, hasOwn, deleteProperty, strictEquals, isInstanceOf,
 ##          freezeObject, sealObject, arrayHasElement, arrayDeleteElement,
 ##          getPrototype,
-##          asyncProgress
+##          asyncProgress,
+##          createExternal, getExternalData, isExternal,
+##          coerceToBool, coerceToNumber, coerceToString, coerceToObject
 ##
 ## Module structure:
 ##   src/napi/types.mojo                             — NapiEnv, NapiValue, NapiStatus, etc.
@@ -46,6 +48,8 @@
 ##   src/napi/framework/args.mojo                    — CbArgs
 ##   src/napi/framework/js_value.mojo                — js_typeof, js_is_array, js_get_global
 ##   src/napi/framework/handle_scope.mojo            — HandleScope
+##   src/napi/framework/js_external.mojo              — JsExternal
+##   src/napi/framework/js_coerce.mojo               — js_coerce_to_*
 ##   src/napi/framework/threadsafe_function.mojo     — ThreadsafeFunction
 ##
 ## This file contains only:
@@ -54,7 +58,7 @@
 ##   3. The @export entry point (register_module)
 
 from memory import alloc
-from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiThreadsafeFunction, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_BIGINT, NAPI_OK, NAPI_TSFN_BLOCKING, NAPI_TSFN_RELEASE
+from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiThreadsafeFunction, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_BIGINT, NAPI_TYPE_EXTERNAL, NAPI_OK, NAPI_TSFN_BLOCKING, NAPI_TSFN_RELEASE
 from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work, raw_call_threadsafe_function, raw_release_threadsafe_function
 from napi.framework.threadsafe_function import ThreadsafeFunction
 from napi.module import register_method
@@ -81,6 +85,8 @@ from napi.framework.escapable_handle_scope import EscapableHandleScope
 from napi.framework.js_bigint import JsBigInt
 from napi.framework.js_date import JsDate
 from napi.framework.js_symbol import JsSymbol
+from napi.framework.js_external import JsExternal
+from napi.framework.js_coerce import js_coerce_to_bool, js_coerce_to_number, js_coerce_to_string, js_coerce_to_object
 from napi.raw import raw_wrap, raw_unwrap
 from napi.error import throw_js_error, throw_js_error_dynamic, throw_js_type_error, throw_js_type_error_dynamic, throw_js_range_error, check_status
 
@@ -1424,6 +1430,142 @@ fn async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ---------------------------------------------------------------------------
+# External data
+#
+# ExternalData is a simple struct for testing napi_create_external.
+# The finalize callback frees the heap-allocated data on GC.
+# ---------------------------------------------------------------------------
+struct ExternalData(Movable):
+    var x: Float64
+    var y: Float64
+
+    fn __init__(out self, x: Float64, y: Float64):
+        self.x = x
+        self.y = y
+
+    fn __moveinit__(out self, deinit take: Self):
+        self.x = take.x
+        self.y = take.y
+
+fn external_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.bitcast[ExternalData]()
+    ptr.destroy_pointee()
+    ptr.free()
+
+# ---------------------------------------------------------------------------
+# createExternal(x, y) — exposed as addon.createExternal()
+#
+# Creates an external value wrapping a heap-allocated ExternalData{x, y}.
+# ---------------------------------------------------------------------------
+fn create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var args = CbArgs.get_two(env, info)
+        var x = JsNumber.from_napi_value(env, args[0])
+        var y = JsNumber.from_napi_value(env, args[1])
+        var data_ptr = alloc[ExternalData](1)
+        data_ptr.init_pointee_move(ExternalData(x, y))
+        var fin_ref = external_finalize
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        return JsExternal.create(env, data_ptr.bitcast[NoneType](), fin_ptr).value
+    except:
+        throw_js_error(env, "createExternal requires two number arguments")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# getExternalData(ext) — exposed as addon.getExternalData()
+#
+# Retrieves the ExternalData from an external and returns {x, y} object.
+# ---------------------------------------------------------------------------
+fn get_external_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var t = js_typeof(env, arg0)
+        if t != NAPI_TYPE_EXTERNAL:
+            throw_js_type_error_dynamic(env,
+                "getExternalData: expected external, got " + js_type_name(t))
+            return NapiValue()
+        var data = JsExternal.get_data(env, arg0)
+        var ptr = data.bitcast[ExternalData]()
+        var obj = JsObject.create(env)
+        obj.set_property(env, "x", JsNumber.create(env, ptr[].x).value)
+        obj.set_property(env, "y", JsNumber.create(env, ptr[].y).value)
+        return obj.value
+    except:
+        throw_js_error(env, "getExternalData failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# isExternal(val) — exposed as addon.isExternal()
+#
+# Returns true if the value is an external (napi_typeof == NAPI_TYPE_EXTERNAL).
+# ---------------------------------------------------------------------------
+fn is_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var t = js_typeof(env, arg0)
+        return JsBoolean.create(env, t == NAPI_TYPE_EXTERNAL).value
+    except:
+        throw_js_error(env, "isExternal requires one argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# coerceToBool(val) — exposed as addon.coerceToBool()
+#
+# Equivalent to Boolean(value) in JavaScript.
+# ---------------------------------------------------------------------------
+fn coerce_to_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        return js_coerce_to_bool(env, arg0)
+    except:
+        throw_js_error(env, "coerceToBool requires one argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# coerceToNumber(val) — exposed as addon.coerceToNumber()
+#
+# Equivalent to Number(value) in JavaScript.
+# Symbol input throws TypeError (pending exception from N-API).
+# ---------------------------------------------------------------------------
+fn coerce_to_number_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        return js_coerce_to_number(env, arg0)
+    except:
+        # May have a pending exception (e.g., Symbol coercion TypeError)
+        # Don't overwrite it — just return
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# coerceToString(val) — exposed as addon.coerceToString()
+#
+# Equivalent to String(value) in JavaScript.
+# Symbol input throws TypeError (pending exception from N-API).
+# ---------------------------------------------------------------------------
+fn coerce_to_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        return js_coerce_to_string(env, arg0)
+    except:
+        # May have a pending exception (e.g., Symbol coercion TypeError)
+        # Don't overwrite it — just return
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# coerceToObject(val) — exposed as addon.coerceToObject()
+#
+# Equivalent to Object(value) in JavaScript.
+# ---------------------------------------------------------------------------
+fn coerce_to_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        return js_coerce_to_object(env, arg0)
+    except:
+        # May have a pending exception (e.g., null/undefined TypeError)
+        # Don't overwrite it — just return
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
 # Module entry point
 #
 # Node.js finds "napi_register_module_v1" via dlsym after dlopen-ing our
@@ -1492,6 +1634,13 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var array_delete_element_ref = array_delete_element_fn
     var get_prototype_ref = get_prototype_fn
     var async_progress_ref = async_progress_fn
+    var create_external_ref = create_external_fn
+    var get_external_data_ref = get_external_data_fn
+    var is_external_ref = is_external_fn
+    var coerce_to_bool_ref = coerce_to_bool_fn
+    var coerce_to_number_ref = coerce_to_number_fn
+    var coerce_to_string_ref = coerce_to_string_fn
+    var coerce_to_object_ref = coerce_to_object_fn
 
     try:
         register_method(env, exports, "hello",
@@ -1593,6 +1742,20 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
             UnsafePointer(to=get_prototype_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
         register_method(env, exports, "asyncProgress",
             UnsafePointer(to=async_progress_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "createExternal",
+            UnsafePointer(to=create_external_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "getExternalData",
+            UnsafePointer(to=get_external_data_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "isExternal",
+            UnsafePointer(to=is_external_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "coerceToBool",
+            UnsafePointer(to=coerce_to_bool_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "coerceToNumber",
+            UnsafePointer(to=coerce_to_number_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "coerceToString",
+            UnsafePointer(to=coerce_to_string_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        register_method(env, exports, "coerceToObject",
+            UnsafePointer(to=coerce_to_object_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
 
         # Counter class registration
         var ctor_ptr = UnsafePointer(to=counter_constructor_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]

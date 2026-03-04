@@ -1511,3 +1511,102 @@ fn raw_release_threadsafe_function(
         fn (OpaquePointer[MutAnyOrigin], Int32) -> NapiStatus
     ]("napi_release_threadsafe_function")
     return f(func, mode)
+
+# ---------------------------------------------------------------------------
+# External data
+# ---------------------------------------------------------------------------
+
+## raw_create_external — wraps napi_create_external
+##
+## Creates a JavaScript external value wrapping an opaque native pointer.
+## The finalize_cb (if non-null) is called when the external is garbage collected.
+## finalize_cb signature: fn(env, finalize_data, finalize_hint)
+fn raw_create_external(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    finalize_cb: OpaquePointer[MutAnyOrigin],
+    finalize_hint: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_create_external")
+    return f(env, data, finalize_cb, finalize_hint, result)
+
+## raw_get_value_external — wraps napi_get_value_external
+##
+## Retrieves the opaque native pointer from an external value.
+fn raw_get_value_external(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_value_external")
+    return f(env, value, result)
+
+# ---------------------------------------------------------------------------
+# Type coercion
+# ---------------------------------------------------------------------------
+
+## raw_coerce_to_bool — wraps napi_coerce_to_bool
+##
+## Equivalent to Boolean(value) in JavaScript.
+fn raw_coerce_to_bool(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_coerce_to_bool")
+    return f(env, value, result)
+
+## raw_coerce_to_number — wraps napi_coerce_to_number
+##
+## Equivalent to Number(value) in JavaScript.
+## Throws TypeError on Symbol values.
+fn raw_coerce_to_number(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_coerce_to_number")
+    return f(env, value, result)
+
+## raw_coerce_to_string — wraps napi_coerce_to_string
+##
+## Equivalent to String(value) in JavaScript.
+## Throws TypeError on Symbol values.
+fn raw_coerce_to_string(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_coerce_to_string")
+    return f(env, value, result)
+
+## raw_coerce_to_object — wraps napi_coerce_to_object
+##
+## Equivalent to Object(value) in JavaScript.
+## Wraps primitives in their object wrappers.
+fn raw_coerce_to_object(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_coerce_to_object")
+    return f(env, value, result)

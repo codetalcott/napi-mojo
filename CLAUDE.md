@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 16 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ThreadsafeFunction (call JS from worker threads), ArrayBuffer, Buffer, TypedArray, class construction (wrap/unwrap, prototype methods, getter/setter), persistent references, escapable handle scopes, global object access, BigInt, Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, and array element has/delete are all working.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 17 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution), ThreadsafeFunction (call JS from worker threads), ArrayBuffer, Buffer, TypedArray, class construction (wrap/unwrap, prototype methods, getter/setter), persistent references, escapable handle scopes, global object access, BigInt, Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), and type coercion (Boolean/Number/String/Object) are all working.
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (182 tests)
+npm test                              # run all Jest tests (223 tests)
 npx jest tests/basic.test.js          # run a single test file
 
 # Spike (run before anything else if starting fresh):
@@ -64,6 +64,8 @@ src/napi/framework/escapable_handle_scope.mojo # EscapableHandleScope.open(), es
 src/napi/framework/js_bigint.mojo        # JsBigInt.from_int64(), from_uint64(), to_int64(), to_uint64()
 src/napi/framework/js_date.mojo          # JsDate.create(), timestamp_ms(), is_date()
 src/napi/framework/js_symbol.mojo        # JsSymbol.create(), create_for()
+src/napi/framework/js_external.mojo      # JsExternal.create(), create_no_release(), get_data()
+src/napi/framework/js_coerce.mojo        # js_coerce_to_bool(), js_coerce_to_number(), js_coerce_to_string(), js_coerce_to_object()
 src/napi/framework/threadsafe_function.mojo # ThreadsafeFunction.create(), call_blocking(), call_nonblocking(), acquire(), release(), abort()
 src/napi/framework/args.mojo             # CbArgs.get_one(), get_two(), get_this(), get_this_and_one(), argc(), get_argv(), get_data()
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
@@ -124,6 +126,13 @@ tests/                                   # Jest tests — TDD outside-in
 | `arrayDeleteElement(arr, i)` | `array_delete_element_fn` | Deletes element at index (sparse) |
 | `getPrototype(obj)` | `get_prototype_fn` | Returns `Object.getPrototypeOf(obj)` |
 | `asyncProgress(count, cb)` | `async_progress_fn` | Calls `cb(i)` for i in 0..count-1 from worker thread via TSFN, returns promise |
+| `createExternal(x, y)` | `create_external_fn` | Creates an external wrapping `{x, y}` with GC finalizer |
+| `getExternalData(ext)` | `get_external_data_fn` | Retrieves `{x, y}` from an external value |
+| `isExternal(val)` | `is_external_fn` | Returns `true` if value is an external |
+| `coerceToBool(val)` | `coerce_to_bool_fn` | Returns `Boolean(val)` (JS coercion) |
+| `coerceToNumber(val)` | `coerce_to_number_fn` | Returns `Number(val)` (throws on Symbol) |
+| `coerceToString(val)` | `coerce_to_string_fn` | Returns `String(val)` (throws on Symbol) |
+| `coerceToObject(val)` | `coerce_to_object_fn` | Returns `Object(val)` (throws on null/undefined) |
 
 ## Critical Mojo FFI rules
 
