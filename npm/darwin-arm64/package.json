@@ -1,0 +1,10 @@
+{
+  "name": "@napi-mojo/darwin-arm64",
+  "version": "0.1.0",
+  "description": "macOS ARM64 binary for napi-mojo",
+  "os": ["darwin"],
+  "cpu": ["arm64"],
+  "main": "index.node",
+  "files": ["index.node"],
+  "license": "MIT"
+}

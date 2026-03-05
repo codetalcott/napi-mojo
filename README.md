@@ -14,7 +14,7 @@ addon.greet('world');     // "Hello, world!"
 
 ## Features
 
-- **74 exported functions** and **3 classes** covering the full N-API surface
+- **81 exported functions** and **3 classes** covering the full N-API surface
 - Primitives: strings, numbers (Float64/Int32/UInt32/Int64), booleans, null, undefined, BigInt, Symbol, Date
 - Objects: create, read/write properties, enumerate keys, freeze/seal, prototype access
 - Arrays: create, map, element access, has/delete
@@ -30,14 +30,15 @@ addon.greet('world');     // "Hello, world!"
 
 ## Installation
 
-> **Note:** napi-mojo currently requires building from source. Prebuilt binaries are planned.
+```bash
+npm install napi-mojo
+```
 
-### Prerequisites
-
-- [Mojo nightly](https://docs.modular.com/magic/) (v26.2.x) via [pixi](https://pixi.sh)
-- Node.js 18+
+Prebuilt binaries are available for **macOS ARM64** and **Linux x64**. On supported platforms, `npm install` downloads only the binary for your platform — no compiler needed.
 
 ### Build from source
+
+For unsupported platforms or development:
 
 ```bash
 git clone https://github.com/codetalcott/mojo-node-api.git
@@ -46,6 +47,8 @@ npm install
 npm run build    # compiles Mojo → build/index.node + generates TypeScript defs
 npm test         # 349 tests
 ```
+
+**Prerequisites:** [Mojo nightly](https://docs.modular.com/magic/) (v26.2.x) via [pixi](https://pixi.sh), Node.js 18+
 
 See [`examples/`](examples/) for runnable scripts.
 
@@ -100,7 +103,7 @@ m.Counter.isCounter(counter);  // true
 const dog = new m.Dog('Rex', 'Labrador');
 dog.name;             // "Rex"  (inherited from Animal)
 dog.breed;            // "Labrador"
-dog.speak();          // "Rex says woof!"
+dog.speak();          // "Rex says hello"
 ```
 
 ### Binary data
@@ -117,7 +120,7 @@ m.getDataViewInfo(dv);                    // { byteLength: 8, byteOffset: 0 }
 
 ## API Reference
 
-See [CLAUDE.md](CLAUDE.md) for the complete function table (74 exports + 3 classes) and architecture documentation.
+See [CLAUDE.md](CLAUDE.md) for the complete function table (81 exports + 3 classes) and architecture documentation.
 
 TypeScript definitions are auto-generated at `build/index.d.ts`.
 
