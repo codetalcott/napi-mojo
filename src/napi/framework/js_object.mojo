@@ -17,7 +17,7 @@
 ## set_property takes a StringLiteral (static lifetime), so no lifetime
 ## management is needed on the caller side.
 
-from napi.types import NapiEnv, NapiValue
+from napi.types import NapiEnv, NapiValue, NAPI_KEY_OWN_ONLY, NAPI_KEY_ENUMERABLE, NAPI_KEY_SKIP_SYMBOLS, NAPI_KEY_NUMBERS_TO_STRINGS
 from napi.raw import raw_create_object, raw_set_named_property, raw_get_named_property, raw_has_named_property, raw_get_property, raw_set_property, raw_has_property, raw_get_property_names, raw_get_all_property_names, raw_has_own_property, raw_delete_property, raw_instanceof, raw_object_freeze, raw_object_seal, raw_get_prototype
 from napi.error import check_status
 
@@ -133,9 +133,13 @@ struct JsObject:
     fn keys(self, env: NapiEnv) raises -> NapiValue:
         var result: NapiValue = NapiValue()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        # key_mode=1 (napi_key_own_only), key_filter=18 (napi_key_enumerable | napi_key_skip_symbols),
-        # key_conversion=1 (napi_key_numbers_to_strings)
-        var status = raw_get_all_property_names(env, self.value, 1, 18, 1, result_ptr)
+        var status = raw_get_all_property_names(
+            env, self.value,
+            NAPI_KEY_OWN_ONLY,
+            NAPI_KEY_ENUMERABLE | NAPI_KEY_SKIP_SYMBOLS,
+            NAPI_KEY_NUMBERS_TO_STRINGS,
+            result_ptr,
+        )
         check_status(status)
         return result
 

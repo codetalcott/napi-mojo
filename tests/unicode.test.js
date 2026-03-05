@@ -23,3 +23,8 @@ test('greet with multiple emoji', () => {
 test('greet with CJK characters', () => {
   expect(addon.greet("こんにちは")).toBe("Hello, こんにちは!");
 });
+
+test('greet with large string (>4096 bytes, heap fallback)', () => {
+  const big = 'x'.repeat(5000);
+  expect(addon.greet(big)).toBe(`Hello, ${big}!`);
+});

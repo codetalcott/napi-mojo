@@ -127,6 +127,35 @@ comptime NAPI_PROPERTY_CONFIGURABLE: UInt32 = 4
 comptime NAPI_PROPERTY_STATIC: UInt32 = 1024
 
 # ---------------------------------------------------------------------------
+# napi_key_collection_mode enum constants
+#
+# Controls whether property enumeration includes prototype chain.
+# Used by napi_get_all_property_names.
+# ---------------------------------------------------------------------------
+comptime NAPI_KEY_INCLUDE_PROTOTYPES: Int32 = 0
+comptime NAPI_KEY_OWN_ONLY: Int32 = 1
+
+# ---------------------------------------------------------------------------
+# napi_key_filter bitmask constants
+#
+# Bitmask flags for filtering properties in napi_get_all_property_names.
+# Combine with | (e.g., NAPI_KEY_ENUMERABLE | NAPI_KEY_SKIP_SYMBOLS = 18
+# for Object.keys() behavior).
+# ---------------------------------------------------------------------------
+comptime NAPI_KEY_ALL_PROPERTIES: Int32 = 0
+comptime NAPI_KEY_WRITABLE: Int32 = 1
+comptime NAPI_KEY_ENUMERABLE: Int32 = 2
+comptime NAPI_KEY_CONFIGURABLE: Int32 = 4
+comptime NAPI_KEY_SKIP_STRINGS: Int32 = 8
+comptime NAPI_KEY_SKIP_SYMBOLS: Int32 = 16
+
+# ---------------------------------------------------------------------------
+# napi_key_conversion enum constants
+# ---------------------------------------------------------------------------
+comptime NAPI_KEY_KEEP_NUMBERS: Int32 = 0
+comptime NAPI_KEY_NUMBERS_TO_STRINGS: Int32 = 1
+
+# ---------------------------------------------------------------------------
 # napi_node_version struct
 #
 # Matches the C struct returned by napi_get_node_version:

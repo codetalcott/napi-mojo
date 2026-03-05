@@ -1265,8 +1265,8 @@ fn raw_symbol_for(
 ## raw_get_property_names — wraps napi_get_property_names
 ##
 ## Returns an array of the object's enumerable property names (including
-## inherited). For own-only enumerable keys (Object.keys behavior), use
-## raw_get_all_property_names with key_mode=0, key_filter=2.
+## inherited). For own-only enumerable string keys (Object.keys behavior),
+## use raw_get_all_property_names with key_mode=1, key_filter=18.
 fn raw_get_property_names(
     env: NapiEnv,
     object: NapiValue,
@@ -1281,8 +1281,8 @@ fn raw_get_property_names(
 ## raw_get_all_property_names — wraps napi_get_all_property_names
 ##
 ## Returns property names with filtering control. Parameters:
-## `key_mode`:       0 = napi_key_own_only, 1 = napi_key_include_prototypes
-## `key_filter`:     bitmask: 0=all, 2=enumerable, 4=configurable, etc.
+## `key_mode`:       0 = napi_key_include_prototypes, 1 = napi_key_own_only
+## `key_filter`:     bitmask: 0=all, 1=writable, 2=enumerable, 4=configurable, 8=skip_strings, 16=skip_symbols
 ## `key_conversion`: 0 = keep_numbers, 1 = numbers_to_strings
 fn raw_get_all_property_names(
     env: NapiEnv,

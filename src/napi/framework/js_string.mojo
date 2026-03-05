@@ -20,9 +20,10 @@
 ## duration of the N-API call. The underlying napi_value is owned by the
 ## Node.js GC and valid until the current handle scope is collected.
 ##
-## Buffer limit: from_napi_value reads into a fixed 4096-byte stack buffer.
-## Strings longer than 4095 UTF-8 bytes (not characters) raise an error.
+## from_napi_value uses a fast stack buffer for strings up to 4095 bytes
+## and falls back to heap allocation for larger strings.
 
+from memory import alloc
 from napi.types import NapiEnv, NapiValue
 from napi.raw import raw_create_string_utf8, raw_get_value_string_utf8
 from napi.error import check_status
@@ -65,12 +66,12 @@ struct JsString:
     ## from_napi_value — read a NapiValue as a Mojo String
     ##
     ## Calls napi_get_value_string_utf8 (two-call pattern: size query first,
-    ## then actual read into a fixed 4096-byte stack buffer). Constructs the
-    ## result using String(from_utf8=Span[Byte]), which validates UTF-8 and
-    ## correctly handles all Unicode characters including multi-byte sequences.
+    ## then read). Uses a fast 4096-byte stack buffer for short strings and
+    ## falls back to heap allocation for strings >= 4096 bytes. Constructs
+    ## the result using String(from_utf8=Span[Byte]), which validates UTF-8
+    ## and correctly handles all Unicode characters including multi-byte sequences.
     ##
     ## The NapiValue must hold a JS string; raises otherwise.
-    ## Raises if the string exceeds 4095 UTF-8 bytes.
     @staticmethod
     fn from_napi_value(env: NapiEnv, val: NapiValue) raises -> String:
         # Size query — call with NULL buf to get the byte length needed.
@@ -79,23 +80,26 @@ struct JsString:
         var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=needed).bitcast[NoneType]()
         check_status(raw_get_value_string_utf8(env, val, null, 0, needed_ptr))
 
-        # Guard: reject strings that exceed the fixed stack buffer.
-        if needed >= 4096:
-            raise Error("string argument too long (max 4095 bytes)")
-
-        # Read into a fixed 4096-byte stack buffer.
-        # needed+1 to include space for the null terminator.
-        var buf = InlineArray[UInt8, 4096](fill=0)
-        var actual: UInt = 0
-        var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf[0]).bitcast[NoneType]()
-        var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
-        check_status(raw_get_value_string_utf8(env, val, buf_ptr, needed + 1, actual_ptr))
-
-        # Construct a UTF-8 String directly from the byte span.
-        # String(from_utf8=...) validates the encoding and handles all Unicode
-        # characters correctly. N-API guarantees UTF-8 output.
-        var span = Span[Byte](ptr=UnsafePointer(to=buf[0]), length=Int(actual))
-        return String(from_utf8=span)
+        if needed < 4096:
+            # Fast path: stack-allocated buffer for common short strings.
+            var buf = InlineArray[UInt8, 4096](fill=0)
+            var actual: UInt = 0
+            var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf[0]).bitcast[NoneType]()
+            var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
+            check_status(raw_get_value_string_utf8(env, val, buf_ptr, needed + 1, actual_ptr))
+            var span = Span[Byte](ptr=UnsafePointer(to=buf[0]), length=Int(actual))
+            return String(from_utf8=span)
+        else:
+            # Slow path: heap-allocated buffer for large strings.
+            var heap_buf = alloc[UInt8](Int(needed + 1))
+            var actual: UInt = 0
+            var heap_ptr: OpaquePointer[MutAnyOrigin] = heap_buf.bitcast[NoneType]()
+            var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
+            check_status(raw_get_value_string_utf8(env, val, heap_ptr, needed + 1, actual_ptr))
+            var span = Span[Byte](ptr=heap_buf, length=Int(actual))
+            var result = String(from_utf8=span)
+            heap_buf.free()
+            return result
 
     ## read_arg_0 — read the first callback argument as a Mojo String
     ##
