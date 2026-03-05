@@ -133,9 +133,9 @@ struct JsObject:
     fn keys(self, env: NapiEnv) raises -> NapiValue:
         var result: NapiValue = NapiValue()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        # key_mode=1 (napi_key_own_only), key_filter=2 (napi_key_enumerable),
+        # key_mode=1 (napi_key_own_only), key_filter=18 (napi_key_enumerable | napi_key_skip_symbols),
         # key_conversion=1 (napi_key_numbers_to_strings)
-        var status = raw_get_all_property_names(env, self.value, 1, 2, 1, result_ptr)
+        var status = raw_get_all_property_names(env, self.value, 1, 18, 1, result_ptr)
         check_status(status)
         return result
 

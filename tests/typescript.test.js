@@ -36,13 +36,30 @@ test('.d.ts contains Counter class declaration', () => {
   expect(dts).toContain('static fromValue(');
 });
 
-test('.d.ts contains Animal and Dog class declarations', () => {
+test('.d.ts contains Animal and Dog class declarations with inheritance', () => {
   const dts = fs.readFileSync(DTS_PATH, 'utf8');
   expect(dts).toContain('export class Animal');
-  expect(dts).toContain('export class Dog');
+  expect(dts).toContain('export class Dog extends Animal');
   expect(dts).toContain('static isAnimal(');
   expect(dts).toMatch(/readonly name: string/);
   expect(dts).toMatch(/readonly breed: string/);
+});
+
+test('.d.ts has correct Animal constructor params', () => {
+  const dts = fs.readFileSync(DTS_PATH, 'utf8');
+  expect(dts).toMatch(/class Animal[\s\S]*?constructor\(name: string\)/);
+});
+
+test('.d.ts has correct Dog constructor params', () => {
+  const dts = fs.readFileSync(DTS_PATH, 'utf8');
+  expect(dts).toMatch(/class Dog[\s\S]*?constructor\(name: string, breed: string\)/);
+});
+
+test('.d.ts has correct return types for Phase 20 functions', () => {
+  const dts = fs.readFileSync(DTS_PATH, 'utf8');
+  expect(dts).toMatch(/createExternalArrayBuffer\(size: number\): ArrayBuffer/);
+  expect(dts).toMatch(/bigIntFromWords\(sign: number, words: bigint\[\]\): bigint/);
+  expect(dts).toMatch(/createDataView\(ab: ArrayBuffer, offset: number, length: number\): DataView/);
 });
 
 test('.d.ts has correct return type for hello()', () => {

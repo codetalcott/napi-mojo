@@ -11,3 +11,15 @@ test('greet("日本語") returns "Hello, 日本語!" (3-byte UTF-8 chars)', () =
 test('greet("café") returns "Hello, café!" (accented char)', () => {
   expect(addon.greet("café")).toBe("Hello, café!");
 });
+
+test('greet with emoji (4-byte UTF-8)', () => {
+  expect(addon.greet("🌍")).toBe("Hello, 🌍!");
+});
+
+test('greet with multiple emoji', () => {
+  expect(addon.greet("🎉🎊")).toBe("Hello, 🎉🎊!");
+});
+
+test('greet with CJK characters', () => {
+  expect(addon.greet("こんにちは")).toBe("Hello, こんにちは!");
+});

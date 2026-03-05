@@ -63,6 +63,15 @@ const OVERRIDES = {
   catchAndReturn: '(value: any): any',
   getNapiVersion: '(): number',
   getNodeVersion: '(): { major: number; minor: number; patch: number }',
+  createExternalArrayBuffer: '(size: number): ArrayBuffer',
+  attachFinalizer: '(obj: object): boolean',
+  bigIntFromWords: '(sign: number, words: bigint[]): bigint',
+  bigIntToWords: '(bi: bigint): { sign: number; words: bigint[] }',
+  createDataView: '(ab: ArrayBuffer, offset: number, length: number): DataView',
+  getDataViewInfo: '(dv: DataView): { byteLength: number; byteOffset: number }',
+  isDataView: '(val: any): boolean',
+  createExternal: '(x: number, y: number): unknown',
+  cancelAsyncWork: '(): Promise<never>',
 };
 
 const source = fs.readFileSync(SRC, 'utf8');
@@ -293,12 +302,25 @@ for (let i = 0; i < lines.length; i++) {
   }
 }
 
+// Manual overrides for class constructor params
+const CONSTRUCTOR_OVERRIDES = {
+  Animal: 'name: string',
+  Dog: 'name: string, breed: string',
+};
+
+// Class inheritance: child -> parent
+const CLASS_EXTENDS = {
+  Dog: 'Animal',
+};
+
 // Manual overrides for class methods: { "ClassName.methodName": "paramStr: returnType" }
 const METHOD_OVERRIDES = {
   'Counter.isCounter': { paramStr: 'val: any', returnType: 'boolean' },
   'Counter.fromValue': { paramStr: 'n: number', returnType: 'Counter' },
   'Counter.increment': { paramStr: '', returnType: 'void' },
   'Counter.reset': { paramStr: '', returnType: 'void' },
+  'Animal.speak': { paramStr: '', returnType: 'string' },
+  'Animal.isAnimal': { paramStr: 'val: any', returnType: 'boolean' },
 };
 
 // --- Pass 6: Infer class method signatures ---
@@ -326,6 +348,8 @@ function inferMethodSignature(callbackName, className, methodName) {
 
 // --- Pass 7: Infer constructor signature ---
 function inferConstructorParams(className) {
+  if (CONSTRUCTOR_OVERRIDES[className]) return CONSTRUCTOR_OVERRIDES[className];
+
   const ctorName = `${className.toLowerCase()}_constructor_fn`;
   const body = fnBodies[ctorName] || '';
 
@@ -370,7 +394,8 @@ output.push('');
 
 // Generate class declarations
 for (const [className, info] of Object.entries(classes)) {
-  output.push(`export class ${className} {`);
+  const extendsClause = CLASS_EXTENDS[className] ? ` extends ${CLASS_EXTENDS[className]}` : '';
+  output.push(`export class ${className}${extendsClause} {`);
 
   // Constructor
   const ctorParams = inferConstructorParams(className);

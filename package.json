@@ -11,7 +11,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "bash build.sh",
+    "build": "bash build.sh && npm run generate:dts",
     "generate:dts": "node scripts/generate-dts.js",
     "test": "jest"
   },
