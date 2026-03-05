@@ -43,8 +43,10 @@ git clone https://github.com/codetalcott/mojo-node-api.git
 cd mojo-node-api
 npm install
 npm run build    # compiles Mojo → build/index.node + generates TypeScript defs
-npm test         # 348 tests
+npm test         # 349 tests
 ```
+
+See [`examples/`](examples/) for runnable scripts.
 
 ## Usage Examples
 

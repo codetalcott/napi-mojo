@@ -7,9 +7,18 @@
   "files": [
     "build/index.node",
     "build/index.d.ts",
+    "examples/",
     "README.md",
     "LICENSE"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codetalcott/mojo-node-api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/codetalcott/mojo-node-api/issues"
+  },
+  "homepage": "https://github.com/codetalcott/mojo-node-api#readme",
   "scripts": {
     "build": "bash build.sh && npm run generate:dts",
     "generate:dts": "node scripts/generate-dts.js",
