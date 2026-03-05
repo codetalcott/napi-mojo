@@ -14,7 +14,13 @@ esac
 
 # Compile Mojo source to a shared library
 # --emit shared-lib produces a .dylib (macOS) or .so (Linux)
-mojo build --emit shared-lib src/lib.mojo -o "build/libnapi_mojo.${LIB_EXT}"
+# On Linux x86_64, target Haswell (2013) to avoid AVX-512 instructions
+# that aren't available on GitHub Actions runners
+MCPU_FLAG=""
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+    MCPU_FLAG="--mcpu haswell"
+fi
+mojo build --emit shared-lib ${MCPU_FLAG} src/lib.mojo -o "build/libnapi_mojo.${LIB_EXT}"
 
 # Node.js requires native addons to have the .node extension
 mv "build/libnapi_mojo.${LIB_EXT}" build/index.node
