@@ -71,8 +71,13 @@ src/napi/framework/js_version.mojo       # get_napi_version(), get_node_version_
 src/napi/framework/js_dataview.mojo      # JsDataView.create(), byte_length(), byte_offset(), data_ptr(), arraybuffer(), is_dataview()
 src/napi/framework/threadsafe_function.mojo # ThreadsafeFunction.create(), call_blocking(), call_nonblocking(), acquire(), release(), abort()
 src/napi/framework/args.mojo             # CbArgs.get_one(), get_two(), get_this(), get_this_and_one(), argc(), get_argv(), get_data()
+src/napi/framework/register.mojo         # fn_ptr(), ModuleBuilder, ClassBuilder — ergonomic registration helpers
+src/napi/framework/convert.mojo          # ToJsValue/FromJsValue traits, JsF64/JsI32/JsBool/JsStr/JsRaw wrappers
+src/exports.toml                         # Function declarations for code generator
+src/generated/callbacks.mojo             # AUTO-GENERATED callbacks from exports.toml
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
 scripts/generate-dts.js                  # auto-generate build/index.d.ts from lib.mojo
+scripts/generate-addon.mjs              # auto-generate callback trampolines from src/exports.toml
 tests/                                   # Jest tests — TDD outside-in
 ```
 

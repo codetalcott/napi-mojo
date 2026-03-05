@@ -67,7 +67,6 @@ from memory import alloc
 from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiThreadsafeFunction, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_BIGINT, NAPI_TYPE_EXTERNAL, NAPI_OK, NAPI_TSFN_BLOCKING, NAPI_TSFN_RELEASE
 from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work, raw_call_threadsafe_function, raw_release_threadsafe_function, raw_new_instance, raw_get_value_bigint_words, raw_add_finalizer, raw_create_external_arraybuffer, raw_set_instance_data, raw_get_instance_data, raw_add_env_cleanup_hook, raw_remove_env_cleanup_hook, raw_cancel_async_work
 from napi.framework.threadsafe_function import ThreadsafeFunction
-from napi.module import register_method
 from napi.framework.js_string import JsString
 from napi.framework.js_object import JsObject
 from napi.framework.js_number import JsNumber
@@ -85,7 +84,9 @@ from napi.framework.js_uint32 import JsUInt32
 from napi.framework.js_arraybuffer import JsArrayBuffer
 from napi.framework.js_buffer import JsBuffer
 from napi.framework.js_typedarray import JsTypedArray
-from napi.framework.js_class import define_class, register_instance_method, register_getter, register_getter_setter, register_static_method, set_class_prototype
+from napi.framework.js_class import unwrap_native
+from napi.framework.register import fn_ptr, ModuleBuilder
+from generated.callbacks import register_generated
 from napi.framework.js_ref import JsRef
 from napi.framework.escapable_handle_scope import EscapableHandleScope
 from napi.framework.js_bigint import JsBigInt
@@ -96,7 +97,7 @@ from napi.framework.js_coerce import js_coerce_to_bool, js_coerce_to_number, js_
 from napi.framework.js_exception import js_throw, js_is_exception_pending, js_get_and_clear_last_exception
 from napi.framework.js_dataview import JsDataView
 from napi.framework.js_version import get_napi_version, get_node_version_ptr
-from napi.raw import raw_wrap, raw_unwrap
+from napi.raw import raw_wrap
 from napi.error import throw_js_error, throw_js_error_dynamic, throw_js_type_error, throw_js_type_error_dynamic, throw_js_range_error, check_status
 
 # ---------------------------------------------------------------------------
@@ -719,11 +720,7 @@ fn counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var this_val = CbArgs.get_this(env, info)
-        var data = OpaquePointer[MutAnyOrigin]()
-        check_status(raw_unwrap(env, this_val,
-            UnsafePointer(to=data).bitcast[NoneType]()))
-        var ptr = data.bitcast[CounterData]()
+        var ptr = unwrap_native[CounterData](env, info)
         return JsNumber.create(env, ptr[].count).value
     except:
         throw_js_error(env, "Counter.value getter failed")
@@ -734,18 +731,13 @@ fn counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var result = CbArgs.get_this_and_one(env, info)
-        var this_val = result[0]
-        var arg0 = result[1]
+        var arg0 = CbArgs.get_one(env, info)
         var t = js_typeof(env, arg0)
         if t != NAPI_TYPE_NUMBER:
             throw_js_type_error(env, "Counter.value setter requires a number")
             return NapiValue()
         var new_val = JsNumber.from_napi_value(env, arg0)
-        var data = OpaquePointer[MutAnyOrigin]()
-        check_status(raw_unwrap(env, this_val,
-            UnsafePointer(to=data).bitcast[NoneType]()))
-        var ptr = data.bitcast[CounterData]()
+        var ptr = unwrap_native[CounterData](env, info)
         ptr[].count = new_val
         return JsUndefined.create(env).value
     except:
@@ -757,11 +749,7 @@ fn counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var this_val = CbArgs.get_this(env, info)
-        var data = OpaquePointer[MutAnyOrigin]()
-        check_status(raw_unwrap(env, this_val,
-            UnsafePointer(to=data).bitcast[NoneType]()))
-        var ptr = data.bitcast[CounterData]()
+        var ptr = unwrap_native[CounterData](env, info)
         ptr[].count += 1.0
         return JsUndefined.create(env).value
     except:
@@ -773,11 +761,7 @@ fn counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var this_val = CbArgs.get_this(env, info)
-        var data = OpaquePointer[MutAnyOrigin]()
-        check_status(raw_unwrap(env, this_val,
-            UnsafePointer(to=data).bitcast[NoneType]()))
-        var ptr = data.bitcast[CounterData]()
+        var ptr = unwrap_native[CounterData](env, info)
         ptr[].count = ptr[].initial
         return JsUndefined.create(env).value
     except:
@@ -926,11 +910,7 @@ fn animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn animal_get_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var this_val = CbArgs.get_this(env, info)
-        var data = OpaquePointer[MutAnyOrigin]()
-        check_status(raw_unwrap(env, this_val,
-            UnsafePointer(to=data).bitcast[NoneType]()))
-        var ptr = data.bitcast[AnimalData]()
+        var ptr = unwrap_native[AnimalData](env, info)
         var name_bytes = ptr[].name_ptr.bitcast[Byte]()
         var span = Span[Byte](ptr=name_bytes, length=Int(ptr[].name_len))
         var name = String(from_utf8=span)
@@ -944,11 +924,7 @@ fn animal_get_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn animal_speak_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var this_val = CbArgs.get_this(env, info)
-        var data = OpaquePointer[MutAnyOrigin]()
-        check_status(raw_unwrap(env, this_val,
-            UnsafePointer(to=data).bitcast[NoneType]()))
-        var ptr = data.bitcast[AnimalData]()
+        var ptr = unwrap_native[AnimalData](env, info)
         var name_bytes = ptr[].name_ptr.bitcast[Byte]()
         var span = Span[Byte](ptr=name_bytes, length=Int(ptr[].name_len))
         var name = String(from_utf8=span)
@@ -1025,11 +1001,7 @@ fn dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn dog_get_breed_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var this_val = CbArgs.get_this(env, info)
-        var data = OpaquePointer[MutAnyOrigin]()
-        check_status(raw_unwrap(env, this_val,
-            UnsafePointer(to=data).bitcast[NoneType]()))
-        var ptr = data.bitcast[DogData]()
+        var ptr = unwrap_native[DogData](env, info)
         var breed_bytes = ptr[].breed_ptr.bitcast[Byte]()
         var span = Span[Byte](ptr=breed_bytes, length=Int(ptr[].breed_len))
         var breed = String(from_utf8=span)
@@ -2262,6 +2234,8 @@ fn is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 @export("napi_register_module_v1", ABI="C")
 fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
+    # All fn_ref vars are declared before the try block so they remain alive
+    # through all registration calls (ASAP destruction safety).
     var hello_ref = hello_fn
     var create_object_ref = create_object_fn
     var make_greeting_ref = make_greeting_fn
@@ -2351,193 +2325,105 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var dog_get_breed_ref = dog_get_breed_fn
 
     try:
-        register_method(env, exports, "hello",
-            UnsafePointer(to=hello_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "createObject",
-            UnsafePointer(to=create_object_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "makeGreeting",
-            UnsafePointer(to=make_greeting_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "greet",
-            UnsafePointer(to=greet_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "add",
-            UnsafePointer(to=add_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "isPositive",
-            UnsafePointer(to=is_positive_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "getNull",
-            UnsafePointer(to=get_null_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "getUndefined",
-            UnsafePointer(to=get_undefined_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "sumArray",
-            UnsafePointer(to=sum_array_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "getProperty",
-            UnsafePointer(to=get_property_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "callFunction",
-            UnsafePointer(to=call_function_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "mapArray",
-            UnsafePointer(to=map_array_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "resolveWith",
-            UnsafePointer(to=resolve_with_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "rejectWith",
-            UnsafePointer(to=reject_with_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "asyncDouble",
-            UnsafePointer(to=async_double_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "addInts",
-            UnsafePointer(to=add_ints_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "bitwiseOr",
-            UnsafePointer(to=bitwise_or_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "throwTypeError",
-            UnsafePointer(to=throw_type_error_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "throwRangeError",
-            UnsafePointer(to=throw_range_error_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "addIntsStrict",
-            UnsafePointer(to=add_ints_strict_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "createArrayBuffer",
-            UnsafePointer(to=create_arraybuffer_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "arrayBufferLength",
-            UnsafePointer(to=arraybuffer_length_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "sumBuffer",
-            UnsafePointer(to=sum_buffer_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "createBuffer",
-            UnsafePointer(to=create_buffer_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "doubleFloat64Array",
-            UnsafePointer(to=double_float64_array_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        var m = ModuleBuilder(env, exports)
 
-        register_method(env, exports, "sumArgs",
-            UnsafePointer(to=sum_args_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "createCallback",
-            UnsafePointer(to=create_callback_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "createAdder",
-            UnsafePointer(to=create_adder_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "getGlobal",
-            UnsafePointer(to=get_global_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "testRef",
-            UnsafePointer(to=test_ref_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "testRefObject",
-            UnsafePointer(to=test_ref_object_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "testRefString",
-            UnsafePointer(to=test_ref_string_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "buildInScope",
-            UnsafePointer(to=build_in_scope_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "addBigInts",
-            UnsafePointer(to=add_bigints_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "createDate",
-            UnsafePointer(to=create_date_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "getDateValue",
-            UnsafePointer(to=get_date_value_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "createSymbol",
-            UnsafePointer(to=create_symbol_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "symbolFor",
-            UnsafePointer(to=symbol_for_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "getKeys",
-            UnsafePointer(to=get_keys_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "hasOwn",
-            UnsafePointer(to=has_own_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "deleteProperty",
-            UnsafePointer(to=delete_property_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "strictEquals",
-            UnsafePointer(to=strict_equals_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "isInstanceOf",
-            UnsafePointer(to=is_instance_of_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "freezeObject",
-            UnsafePointer(to=freeze_object_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "sealObject",
-            UnsafePointer(to=seal_object_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "arrayHasElement",
-            UnsafePointer(to=array_has_element_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "arrayDeleteElement",
-            UnsafePointer(to=array_delete_element_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "getPrototype",
-            UnsafePointer(to=get_prototype_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "asyncProgress",
-            UnsafePointer(to=async_progress_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "createExternal",
-            UnsafePointer(to=create_external_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "getExternalData",
-            UnsafePointer(to=get_external_data_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "isExternal",
-            UnsafePointer(to=is_external_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "coerceToBool",
-            UnsafePointer(to=coerce_to_bool_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "coerceToNumber",
-            UnsafePointer(to=coerce_to_number_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "coerceToString",
-            UnsafePointer(to=coerce_to_string_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "coerceToObject",
-            UnsafePointer(to=coerce_to_object_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "setPropertyByKey",
-            UnsafePointer(to=set_property_by_key_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "hasPropertyByKey",
-            UnsafePointer(to=has_property_by_key_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "throwValue",
-            UnsafePointer(to=throw_value_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "catchAndReturn",
-            UnsafePointer(to=catch_and_return_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "getNapiVersion",
-            UnsafePointer(to=get_napi_version_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "getNodeVersion",
-            UnsafePointer(to=get_node_version_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "createExternalArrayBuffer",
-            UnsafePointer(to=create_external_arraybuffer_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "attachFinalizer",
-            UnsafePointer(to=attach_finalizer_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "setInstanceData",
-            UnsafePointer(to=set_instance_data_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "getInstanceData",
-            UnsafePointer(to=get_instance_data_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "addCleanupHook",
-            UnsafePointer(to=add_cleanup_hook_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "removeCleanupHook",
-            UnsafePointer(to=remove_cleanup_hook_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "cancelAsyncWork",
-            UnsafePointer(to=cancel_async_work_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "bigIntFromWords",
-            UnsafePointer(to=bigint_from_words_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "bigIntToWords",
-            UnsafePointer(to=bigint_to_words_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "createDataView",
-            UnsafePointer(to=create_dataview_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "getDataViewInfo",
-            UnsafePointer(to=get_dataview_info_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_method(env, exports, "isDataView",
-            UnsafePointer(to=is_dataview_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        # Generated functions (from src/exports.toml)
+        register_generated(m)
 
-        # Counter class registration
-        var ctor_ptr = UnsafePointer(to=counter_constructor_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-        var ctor_val = define_class(env, "Counter", ctor_ptr)
-        register_instance_method(env, ctor_val, "increment",
-            UnsafePointer(to=counter_increment_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_instance_method(env, ctor_val, "reset",
-            UnsafePointer(to=counter_reset_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_getter_setter(env, ctor_val, "value",
-            UnsafePointer(to=counter_get_value_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[],
-            UnsafePointer(to=counter_set_value_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_static_method(env, ctor_val, "isCounter",
-            UnsafePointer(to=counter_is_counter_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_static_method(env, ctor_val, "fromValue",
-            UnsafePointer(to=counter_from_value_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        JsObject(exports).set_property(env, "Counter", ctor_val)
+        # Simple methods
+        m.method("hello", fn_ptr(hello_ref))
+        m.method("createObject", fn_ptr(create_object_ref))
+        m.method("makeGreeting", fn_ptr(make_greeting_ref))
+        m.method("greet", fn_ptr(greet_ref))
+        m.method("add", fn_ptr(add_ref))
+        m.method("isPositive", fn_ptr(is_positive_ref))
+        m.method("getNull", fn_ptr(get_null_ref))
+        m.method("getUndefined", fn_ptr(get_undefined_ref))
+        m.method("sumArray", fn_ptr(sum_array_ref))
+        m.method("getProperty", fn_ptr(get_property_ref))
+        m.method("callFunction", fn_ptr(call_function_ref))
+        m.method("mapArray", fn_ptr(map_array_ref))
+        m.method("resolveWith", fn_ptr(resolve_with_ref))
+        m.method("rejectWith", fn_ptr(reject_with_ref))
+        m.method("asyncDouble", fn_ptr(async_double_ref))
+        m.method("addInts", fn_ptr(add_ints_ref))
+        m.method("bitwiseOr", fn_ptr(bitwise_or_ref))
+        m.method("throwTypeError", fn_ptr(throw_type_error_ref))
+        m.method("throwRangeError", fn_ptr(throw_range_error_ref))
+        m.method("addIntsStrict", fn_ptr(add_ints_strict_ref))
+        m.method("createArrayBuffer", fn_ptr(create_arraybuffer_ref))
+        m.method("arrayBufferLength", fn_ptr(arraybuffer_length_ref))
+        m.method("sumBuffer", fn_ptr(sum_buffer_ref))
+        m.method("createBuffer", fn_ptr(create_buffer_ref))
+        m.method("doubleFloat64Array", fn_ptr(double_float64_array_ref))
+        m.method("sumArgs", fn_ptr(sum_args_ref))
+        m.method("createCallback", fn_ptr(create_callback_ref))
+        m.method("createAdder", fn_ptr(create_adder_ref))
+        m.method("getGlobal", fn_ptr(get_global_ref))
+        m.method("testRef", fn_ptr(test_ref_ref))
+        m.method("testRefObject", fn_ptr(test_ref_object_ref))
+        m.method("testRefString", fn_ptr(test_ref_string_ref))
+        m.method("buildInScope", fn_ptr(build_in_scope_ref))
+        m.method("addBigInts", fn_ptr(add_bigints_ref))
+        m.method("createDate", fn_ptr(create_date_ref))
+        m.method("getDateValue", fn_ptr(get_date_value_ref))
+        m.method("createSymbol", fn_ptr(create_symbol_ref))
+        m.method("symbolFor", fn_ptr(symbol_for_ref))
+        m.method("getKeys", fn_ptr(get_keys_ref))
+        m.method("hasOwn", fn_ptr(has_own_ref))
+        m.method("deleteProperty", fn_ptr(delete_property_ref))
+        m.method("strictEquals", fn_ptr(strict_equals_ref))
+        m.method("isInstanceOf", fn_ptr(is_instance_of_ref))
+        m.method("freezeObject", fn_ptr(freeze_object_ref))
+        m.method("sealObject", fn_ptr(seal_object_ref))
+        m.method("arrayHasElement", fn_ptr(array_has_element_ref))
+        m.method("arrayDeleteElement", fn_ptr(array_delete_element_ref))
+        m.method("getPrototype", fn_ptr(get_prototype_ref))
+        m.method("asyncProgress", fn_ptr(async_progress_ref))
+        m.method("createExternal", fn_ptr(create_external_ref))
+        m.method("getExternalData", fn_ptr(get_external_data_ref))
+        m.method("isExternal", fn_ptr(is_external_ref))
+        m.method("coerceToBool", fn_ptr(coerce_to_bool_ref))
+        m.method("coerceToNumber", fn_ptr(coerce_to_number_ref))
+        m.method("coerceToString", fn_ptr(coerce_to_string_ref))
+        m.method("coerceToObject", fn_ptr(coerce_to_object_ref))
+        m.method("setPropertyByKey", fn_ptr(set_property_by_key_ref))
+        m.method("hasPropertyByKey", fn_ptr(has_property_by_key_ref))
+        m.method("throwValue", fn_ptr(throw_value_ref))
+        m.method("catchAndReturn", fn_ptr(catch_and_return_ref))
+        m.method("getNapiVersion", fn_ptr(get_napi_version_ref))
+        m.method("getNodeVersion", fn_ptr(get_node_version_ref))
+        m.method("createExternalArrayBuffer", fn_ptr(create_external_arraybuffer_ref))
+        m.method("attachFinalizer", fn_ptr(attach_finalizer_ref))
+        m.method("setInstanceData", fn_ptr(set_instance_data_ref))
+        m.method("getInstanceData", fn_ptr(get_instance_data_ref))
+        m.method("addCleanupHook", fn_ptr(add_cleanup_hook_ref))
+        m.method("removeCleanupHook", fn_ptr(remove_cleanup_hook_ref))
+        m.method("cancelAsyncWork", fn_ptr(cancel_async_work_ref))
+        m.method("bigIntFromWords", fn_ptr(bigint_from_words_ref))
+        m.method("bigIntToWords", fn_ptr(bigint_to_words_ref))
+        m.method("createDataView", fn_ptr(create_dataview_ref))
+        m.method("getDataViewInfo", fn_ptr(get_dataview_info_ref))
+        m.method("isDataView", fn_ptr(is_dataview_ref))
 
-        # Animal class registration
-        var animal_ctor_ptr = UnsafePointer(to=animal_constructor_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-        var animal_ctor = define_class(env, "Animal", animal_ctor_ptr)
-        register_getter(env, animal_ctor, "name",
-            UnsafePointer(to=animal_get_name_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_instance_method(env, animal_ctor, "speak",
-            UnsafePointer(to=animal_speak_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-        register_static_method(env, animal_ctor, "isAnimal",
-            UnsafePointer(to=animal_is_animal_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        # Counter class
+        var counter = m.class_def("Counter", fn_ptr(counter_constructor_ref))
+        counter.instance_method("increment", fn_ptr(counter_increment_ref))
+        counter.instance_method("reset", fn_ptr(counter_reset_ref))
+        counter.getter_setter("value", fn_ptr(counter_get_value_ref), fn_ptr(counter_set_value_ref))
+        counter.static_method("isCounter", fn_ptr(counter_is_counter_ref))
+        counter.static_method("fromValue", fn_ptr(counter_from_value_ref))
 
-        # Dog class registration with inheritance
-        var dog_ctor_ptr = UnsafePointer(to=dog_constructor_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-        var dog_ctor = define_class(env, "Dog", dog_ctor_ptr)
-        register_getter(env, dog_ctor, "breed",
-            UnsafePointer(to=dog_get_breed_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+        # Animal class
+        var animal = m.class_def("Animal", fn_ptr(animal_constructor_ref))
+        animal.getter("name", fn_ptr(animal_get_name_ref))
+        animal.instance_method("speak", fn_ptr(animal_speak_ref))
+        animal.static_method("isAnimal", fn_ptr(animal_is_animal_ref))
 
-        # Link Dog.prototype.__proto__ = Animal.prototype
-        set_class_prototype(env, dog_ctor, animal_ctor)
-
-        JsObject(exports).set_property(env, "Animal", animal_ctor)
-        JsObject(exports).set_property(env, "Dog", dog_ctor)
+        # Dog class (inherits from Animal)
+        var dog = m.class_def("Dog", fn_ptr(dog_constructor_ref))
+        dog.getter("breed", fn_ptr(dog_get_breed_ref))
+        dog.inherits(animal)
     except:
         pass
 

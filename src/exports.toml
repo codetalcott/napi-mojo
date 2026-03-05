@@ -1,0 +1,43 @@
+# src/exports.toml — Function declarations for code generation
+#
+# Simple, typed functions go here. The code generator produces
+# the callback trampolines and registration code.
+#
+# Complex functions (async, promises, classes, handle scopes)
+# should remain hand-written in src/lib.mojo.
+#
+# Usage: node scripts/generate-addon.mjs
+# Output: src/generated/callbacks.mojo
+
+# --- Example declarations ---
+# These mirror existing hand-written functions for demonstration.
+# In practice, you'd declare NEW functions here and keep existing
+# ones in lib.mojo until you're ready to migrate.
+
+[functions.example_add]
+js_name = "exampleAdd"
+args = ["number", "number"]
+returns = "number"
+body = """
+var a = JsNumber.from_napi_value(env, args[0])
+var b = JsNumber.from_napi_value(env, args[1])
+return JsNumber.create(env, a + b).value
+"""
+
+[functions.example_greet]
+js_name = "exampleGreet"
+args = ["string"]
+returns = "string"
+body = """
+var name = JsString.from_napi_value(env, arg0)
+return JsString.create(env, "Hello, " + name + "!").value
+"""
+
+[functions.example_is_positive]
+js_name = "exampleIsPositive"
+args = ["number"]
+returns = "boolean"
+body = """
+var n = JsNumber.from_napi_value(env, arg0)
+return JsBoolean.create(env, n > 0.0).value
+"""

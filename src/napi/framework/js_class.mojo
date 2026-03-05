@@ -6,8 +6,9 @@
 ## via constructor.prototype).
 
 from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor
-from napi.raw import raw_define_class, raw_define_properties, raw_get_named_property
+from napi.raw import raw_define_class, raw_define_properties, raw_get_named_property, raw_unwrap
 from napi.error import check_status
+from napi.framework.args import CbArgs
 from napi.module import define_property
 from napi.framework.js_value import js_get_global
 from napi.framework.js_function import JsFunction
@@ -164,3 +165,21 @@ fn register_static_getter_setter(
     desc.setter = setter_ptr
     desc.attributes = 0
     define_property(env, constructor, desc)
+
+## unwrap_native — extract the wrapped native pointer from `this` and cast it
+##
+## Replaces the 4-line unwrap dance in every class method callback:
+##   var this_val = CbArgs.get_this(env, info)
+##   var data = OpaquePointer[MutAnyOrigin]()
+##   check_status(raw_unwrap(env, this_val, ...))
+##   var ptr = data.bitcast[T]()
+##
+## Usage:
+##   var ptr = unwrap_native[CounterData](env, info)
+##   return JsNumber.create(env, ptr[].count).value
+fn unwrap_native[T: AnyType](env: NapiEnv, info: NapiValue) raises -> UnsafePointer[T, MutAnyOrigin]:
+    var this_val = CbArgs.get_this(env, info)
+    var data = OpaquePointer[MutAnyOrigin]()
+    check_status(raw_unwrap(env, this_val,
+        UnsafePointer(to=data).bitcast[NoneType]()))
+    return data.bitcast[T]()

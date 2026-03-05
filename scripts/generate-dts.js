@@ -79,7 +79,7 @@ const lines = source.split('\n');
 
 // --- Pass 1: Extract registered JS function names ---
 const registeredFunctions = [];
-const registerMethodRe = /register_method\(env, exports, "(\w+)"/;
+const registerMethodRe = /(?:register_method\(env, exports, |m\.method\()\"(\w+)\"/;
 for (const line of lines) {
   const m = line.match(registerMethodRe);
   if (m) registeredFunctions.push(m[1]);
@@ -100,7 +100,13 @@ for (let i = 0; i < lines.length; i++) {
   const m = lines[i].match(registerMethodRe);
   if (m) {
     const jsName = m[1];
-    // Next line has the ref variable
+    // Check current line for fn_ptr(xxx_ref) pattern (new style)
+    const fnPtrMatch = lines[i].match(/fn_ptr\((\w+_ref)\)/);
+    if (fnPtrMatch && refToFn[fnPtrMatch[1]]) {
+      jsFnToCallback[jsName] = refToFn[fnPtrMatch[1]];
+      continue;
+    }
+    // Fallback: check next line for UnsafePointer(to=xxx_ref) pattern (old style)
     const nextLine = lines[i + 1] || '';
     const refMatch = nextLine.match(/UnsafePointer\(to=(\w+_ref)\)/);
     if (refMatch && refToFn[refMatch[1]]) {
@@ -231,11 +237,12 @@ function buildSignature(jsName) {
 
 // --- Pass 5: Extract class info ---
 const classes = {};
-const defineClassRe = /define_class\(env, "(\w+)"/;
-const instanceMethodRe = /register_instance_method\(env, \w+, "(\w+)"/;
-const staticMethodRe = /register_static_method\(env, \w+, "(\w+)"/;
-const getterSetterRe = /register_getter_setter\(env, \w+, "(\w+)"/;
-const getterRe = /register_getter\(env, \w+, "(\w+)"/;
+// Support both old and new patterns
+const defineClassRe = /(?:define_class\(env, |m\.class_def\()"(\w+)"/;
+const instanceMethodRe = /(?:register_instance_method\(env, \w+, |\w+\.instance_method\()"(\w+)"/;
+const staticMethodRe = /(?:register_static_method\(env, \w+, |\w+\.static_method\()"(\w+)"/;
+const getterSetterRe = /(?:register_getter_setter\(env, \w+, |\w+\.getter_setter\()"(\w+)"/;
+const getterRe = /(?:register_getter\(env, \w+, |\w+\.getter\()"(\w+)"/;
 
 let currentClass = null;
 let inClassBlock = false;
@@ -259,10 +266,15 @@ for (let i = 0; i < lines.length; i++) {
   if (inClassBlock && currentClass) {
     const im = line.match(instanceMethodRe);
     if (im) {
-      // Find callback ref on next line
-      const nextLine = lines[i + 1] || '';
-      const refMatch = nextLine.match(/UnsafePointer\(to=(\w+_ref)\)/);
-      const callbackName = refMatch ? refToFn[refMatch[1]] : null;
+      // Check current line for fn_ptr(xxx_ref) (new style)
+      const fnPtrMatch = line.match(/fn_ptr\((\w+_ref)\)/);
+      let callbackName = fnPtrMatch ? refToFn[fnPtrMatch[1]] : null;
+      if (!callbackName) {
+        // Fallback: check next line for UnsafePointer(to=xxx_ref) (old style)
+        const nextLine = lines[i + 1] || '';
+        const refMatch = nextLine.match(/UnsafePointer\(to=(\w+_ref)\)/);
+        callbackName = refMatch ? refToFn[refMatch[1]] : null;
+      }
       classes[currentClass].instanceMethods.push({
         name: im[1],
         callback: callbackName,
@@ -272,9 +284,13 @@ for (let i = 0; i < lines.length; i++) {
 
     const sm = line.match(staticMethodRe);
     if (sm) {
-      const nextLine = lines[i + 1] || '';
-      const refMatch = nextLine.match(/UnsafePointer\(to=(\w+_ref)\)/);
-      const callbackName = refMatch ? refToFn[refMatch[1]] : null;
+      const fnPtrMatch = line.match(/fn_ptr\((\w+_ref)\)/);
+      let callbackName = fnPtrMatch ? refToFn[fnPtrMatch[1]] : null;
+      if (!callbackName) {
+        const nextLine = lines[i + 1] || '';
+        const refMatch = nextLine.match(/UnsafePointer\(to=(\w+_ref)\)/);
+        callbackName = refMatch ? refToFn[refMatch[1]] : null;
+      }
       classes[currentClass].staticMethods.push({
         name: sm[1],
         callback: callbackName,
@@ -294,8 +310,10 @@ for (let i = 0; i < lines.length; i++) {
       continue;
     }
 
-    // End of class block: set_property line exports it
-    if (line.includes('set_property') && line.includes(currentClass)) {
+    // End of class block: blank line, comment line, or non-class-member code
+    // (next class_def is caught at the top of the loop)
+    if (line.match(/^\s*$/) || line.match(/^\s*#/) ||
+        line.includes('set_property') && line.includes(currentClass)) {
       inClassBlock = false;
       currentClass = null;
     }
