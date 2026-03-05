@@ -26,6 +26,7 @@ addon.greet('world');     // "Hello, world!"
 - References, handle scopes, escapable handle scopes, GC finalizers
 - Type coercion, strict equality, instanceof, external data with GC cleanup
 - Auto-generated TypeScript definitions
+- **Ergonomic API**: `ModuleBuilder`/`ClassBuilder` for registration, `fn_ptr()` helper, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, and a code generator (`npm run generate:addon` + `src/exports.toml`) for auto-generating callback trampolines
 
 ## Installation
 
@@ -116,7 +117,7 @@ m.getDataViewInfo(dv);                    // { byteLength: 8, byteOffset: 0 }
 
 ## API Reference
 
-See [CLAUDE.md](CLAUDE.md) for the complete function table (81 exports + 3 classes) and architecture documentation.
+See [CLAUDE.md](CLAUDE.md) for the complete function table (74 exports + 3 classes) and architecture documentation.
 
 TypeScript definitions are auto-generated at `build/index.d.ts`.
 
@@ -132,7 +133,7 @@ TypeScript definitions are auto-generated at `build/index.d.ts`.
 
 ```bash
 npm run build        # compile + generate TypeScript defs
-npm test             # run Jest test suite (348 tests)
+npm test             # run Jest test suite (349 tests)
 npx jest tests/basic.test.js   # run a single test file
 ```
 

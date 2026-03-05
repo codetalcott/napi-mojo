@@ -22,6 +22,7 @@
   "scripts": {
     "build": "bash build.sh && npm run generate:dts",
     "generate:dts": "node scripts/generate-dts.js",
+    "generate:addon": "node scripts/generate-addon.mjs",
     "test": "jest"
   },
   "engines": {
