@@ -1,0 +1,57 @@
+name: Nightly Canary
+
+on:
+  schedule:
+    - cron: '0 8 * * 1,4'  # Monday and Thursday 8am UTC
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  canary:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: prefix-dev/setup-pixi@v0.8.8
+        with:
+          pixi-version: latest
+
+      - name: Unpin Mojo version (use latest nightly)
+        run: sed -i.bak 's/mojo = "==.*/mojo = ">=0.26"/' pixi.toml
+
+      - name: Install dependencies
+        run: |
+          pixi install
+          npm ci
+
+      - name: Build Mojo addon
+        run: pixi run bash build.sh
+
+      - name: Run tests
+        run: npm test
+
+      - name: Get Mojo version on failure
+        if: failure()
+        id: mojo-version
+        run: echo "version=$(pixi run mojo --version 2>/dev/null || echo 'unknown')" >> "$GITHUB_OUTPUT"
+
+      - name: Create issue on failure
+        if: failure() && matrix.os == 'macos-latest'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "Nightly canary failed — Mojo ${{ steps.mojo-version.outputs.version }}" \
+            --label "canary-failure" \
+            --body "The nightly canary build failed with Mojo **${{ steps.mojo-version.outputs.version }}**.
+
+          [View failed run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+          This likely means a Mojo nightly introduced a breaking change. Check the build/test logs and update the framework accordingly."
