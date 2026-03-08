@@ -982,13 +982,19 @@ fn animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var fin_ref = animal_finalize
         var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
-        check_status(raw_wrap(
-            env, this_val,
-            data_ptr.bitcast[NoneType](),
-            fin_ptr,
-            OpaquePointer[MutAnyOrigin](),
-            OpaquePointer[MutAnyOrigin](),
-        ))
+        try:
+            check_status(raw_wrap(
+                env, this_val,
+                data_ptr.bitcast[NoneType](),
+                fin_ptr,
+                OpaquePointer[MutAnyOrigin](),
+                OpaquePointer[MutAnyOrigin](),
+            ))
+        except e:
+            name_buf.free()
+            data_ptr.destroy_pointee()
+            data_ptr.free()
+            raise e^
         return this_val
     except:
         throw_js_error(env, "Animal constructor failed")
@@ -1058,28 +1064,39 @@ fn dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         for i in range(Int(name_len)):
             name_buf[i] = name_str.as_bytes()[i]
 
-        var breed_str = JsString.from_napi_value(env, args[1])
-        var breed_len = UInt(len(breed_str))
-        var breed_buf = alloc[Byte](Int(breed_len))
-        for i in range(Int(breed_len)):
-            breed_buf[i] = breed_str.as_bytes()[i]
+        try:
+            var breed_str = JsString.from_napi_value(env, args[1])
+            var breed_len = UInt(len(breed_str))
+            var breed_buf = alloc[Byte](Int(breed_len))
+            for i in range(Int(breed_len)):
+                breed_buf[i] = breed_str.as_bytes()[i]
 
-        var data_ptr = alloc[DogData](1)
-        data_ptr.init_pointee_move(DogData(
-            name_buf.bitcast[NoneType](), name_len,
-            breed_buf.bitcast[NoneType](), breed_len,
-        ))
+            var data_ptr = alloc[DogData](1)
+            data_ptr.init_pointee_move(DogData(
+                name_buf.bitcast[NoneType](), name_len,
+                breed_buf.bitcast[NoneType](), breed_len,
+            ))
 
-        var fin_ref = dog_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+            var fin_ref = dog_finalize
+            var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
-        check_status(raw_wrap(
-            env, this_val,
-            data_ptr.bitcast[NoneType](),
-            fin_ptr,
-            OpaquePointer[MutAnyOrigin](),
-            OpaquePointer[MutAnyOrigin](),
-        ))
+            try:
+                check_status(raw_wrap(
+                    env, this_val,
+                    data_ptr.bitcast[NoneType](),
+                    fin_ptr,
+                    OpaquePointer[MutAnyOrigin](),
+                    OpaquePointer[MutAnyOrigin](),
+                ))
+            except e:
+                name_buf.free()
+                breed_buf.free()
+                data_ptr.destroy_pointee()
+                data_ptr.free()
+                raise e^
+        except e:
+            name_buf.free()
+            raise e^
         return this_val
     except:
         throw_js_error(env, "Dog constructor failed")
@@ -2016,14 +2033,18 @@ fn create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         # Get finalizer function pointer
         var fin_ref = external_ab_finalize
         var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-        # Create external arraybuffer
+        # Create external arraybuffer — if this fails, free the Mojo-owned buffer
         var result = NapiValue()
-        check_status(raw_create_external_arraybuffer(env,
-            data_ptr.bitcast[NoneType](),
-            byte_len,
-            fin_ptr,
-            OpaquePointer[MutAnyOrigin](),
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        try:
+            check_status(raw_create_external_arraybuffer(env,
+                data_ptr.bitcast[NoneType](),
+                byte_len,
+                fin_ptr,
+                OpaquePointer[MutAnyOrigin](),
+                UnsafePointer(to=result).bitcast[NoneType]()))
+        except e:
+            data_ptr.free()
+            raise e^
         return result
     except:
         throw_js_error(env, "createExternalArrayBuffer failed")

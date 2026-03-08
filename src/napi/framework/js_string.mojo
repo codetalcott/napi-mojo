@@ -92,14 +92,18 @@ struct JsString:
         else:
             # Slow path: heap-allocated buffer for large strings.
             var heap_buf = alloc[UInt8](Int(needed + 1))
-            var actual: UInt = 0
-            var heap_ptr: OpaquePointer[MutAnyOrigin] = heap_buf.bitcast[NoneType]()
-            var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
-            check_status(raw_get_value_string_utf8(env, val, heap_ptr, needed + 1, actual_ptr))
-            var span = Span[Byte](ptr=heap_buf, length=Int(actual))
-            var result = String(from_utf8=span)
-            heap_buf.free()
-            return result
+            try:
+                var actual: UInt = 0
+                var heap_ptr: OpaquePointer[MutAnyOrigin] = heap_buf.bitcast[NoneType]()
+                var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
+                check_status(raw_get_value_string_utf8(env, val, heap_ptr, needed + 1, actual_ptr))
+                var span = Span[Byte](ptr=heap_buf, length=Int(actual))
+                var result = String(from_utf8=span)
+                heap_buf.free()
+                return result
+            except e:
+                heap_buf.free()
+                raise e^
 
     ## read_arg_0 — read the first callback argument as a Mojo String
     ##
