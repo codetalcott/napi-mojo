@@ -64,7 +64,7 @@
 ##   3. The @export entry point (register_module)
 
 from memory import alloc
-from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiThreadsafeFunction, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_BIGINT, NAPI_TYPE_EXTERNAL, NAPI_OK, NAPI_TSFN_BLOCKING, NAPI_TSFN_RELEASE
+from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiThreadsafeFunction, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_BIGINT, NAPI_TYPE_EXTERNAL, NAPI_OK, NAPI_TSFN_BLOCKING, NAPI_TSFN_RELEASE, NAPI_INT8_ARRAY, NAPI_UINT8_ARRAY, NAPI_UINT8_CLAMPED_ARRAY, NAPI_INT16_ARRAY, NAPI_UINT16_ARRAY, NAPI_INT32_ARRAY, NAPI_UINT32_ARRAY, NAPI_FLOAT32_ARRAY, NAPI_FLOAT64_ARRAY
 from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work, raw_call_threadsafe_function, raw_release_threadsafe_function, raw_new_instance, raw_get_value_bigint_words, raw_add_finalizer, raw_create_external_arraybuffer, raw_set_instance_data, raw_get_instance_data, raw_add_env_cleanup_hook, raw_remove_env_cleanup_hook, raw_cancel_async_work
 from napi.framework.threadsafe_function import ThreadsafeFunction
 from napi.framework.js_string import JsString
@@ -648,6 +648,89 @@ fn double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return arg0
     except:
         throw_js_error(env, "doubleFloat64Array requires a TypedArray argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# createTypedArrayView(typeStr, ab, offset, length) — exposed as addon.createTypedArrayView
+#
+# Creates a TypedArray view of the given type over an ArrayBuffer.
+# typeStr: "int8"|"uint8"|"uint8clamped"|"int16"|"uint16"|"int32"|"uint32"|"float32"|"float64"
+# ---------------------------------------------------------------------------
+fn create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var argc = CbArgs.argc(env, info)
+        var argv = alloc[NapiValue](Int(argc))
+        CbArgs.get_argv(env, info, argc, argv)
+        if argc < 4:
+            throw_js_error(env, "createTypedArrayView requires 4 arguments")
+            argv.free()
+            return NapiValue()
+        var type_str = JsString.from_napi_value(env, argv[0])
+        var ab = argv[1]
+        var offset = Int(JsNumber.from_napi_value(env, argv[2]))
+        var length = Int(JsNumber.from_napi_value(env, argv[3]))
+        argv.free()
+        var ta: JsTypedArray
+        if type_str == "int8":
+            ta = JsTypedArray.create_int8(env, ab, UInt(offset), UInt(length))
+        elif type_str == "uint8":
+            ta = JsTypedArray.create_uint8(env, ab, UInt(offset), UInt(length))
+        elif type_str == "uint8clamped":
+            ta = JsTypedArray.create_uint8_clamped(env, ab, UInt(offset), UInt(length))
+        elif type_str == "int16":
+            ta = JsTypedArray.create_int16(env, ab, UInt(offset), UInt(length))
+        elif type_str == "uint16":
+            ta = JsTypedArray.create_uint16(env, ab, UInt(offset), UInt(length))
+        elif type_str == "int32":
+            ta = JsTypedArray.create_int32(env, ab, UInt(offset), UInt(length))
+        elif type_str == "uint32":
+            ta = JsTypedArray.create_uint32(env, ab, UInt(offset), UInt(length))
+        elif type_str == "float32":
+            ta = JsTypedArray.create_float32(env, ab, UInt(offset), UInt(length))
+        elif type_str == "float64":
+            ta = JsTypedArray.create_float64(env, ab, UInt(offset), UInt(length))
+        else:
+            throw_js_error_dynamic(env, "createTypedArrayView: unknown type '" + type_str + "'")
+            return NapiValue()
+        return ta.value
+    except:
+        throw_js_error(env, "createTypedArrayView failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# getTypedArrayType(ta) — exposed as addon.getTypedArrayType
+#
+# Returns the integer type constant (NAPI_*_ARRAY) for a TypedArray.
+# ---------------------------------------------------------------------------
+fn get_typed_array_type_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        if not JsTypedArray.is_typedarray(env, arg0):
+            throw_js_type_error(env, "getTypedArrayType: expected TypedArray")
+            return NapiValue()
+        var ta = JsTypedArray(arg0)
+        var t = ta.array_type(env)
+        return JsNumber.create_int(env, Int(t)).value
+    except:
+        throw_js_error(env, "getTypedArrayType failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# getTypedArrayLength(ta) — exposed as addon.getTypedArrayLength
+#
+# Returns the element count (not byte length) of a TypedArray.
+# ---------------------------------------------------------------------------
+fn get_typed_array_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        if not JsTypedArray.is_typedarray(env, arg0):
+            throw_js_type_error(env, "getTypedArrayLength: expected TypedArray")
+            return NapiValue()
+        var ta = JsTypedArray(arg0)
+        var len = ta.length(env)
+        return JsNumber.create_int(env, Int(len)).value
+    except:
+        throw_js_error(env, "getTypedArrayLength failed")
         return NapiValue()
 
 # ---------------------------------------------------------------------------
@@ -2261,6 +2344,9 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var sum_buffer_ref = sum_buffer_fn
     var create_buffer_ref = create_buffer_fn
     var double_float64_array_ref = double_float64_array_fn
+    var create_typed_array_view_ref = create_typed_array_view_fn
+    var get_typed_array_type_ref = get_typed_array_type_fn
+    var get_typed_array_length_ref = get_typed_array_length_fn
     var counter_constructor_ref = counter_constructor_fn
     var counter_get_value_ref = counter_get_value_fn
     var counter_set_value_ref = counter_set_value_fn
@@ -2356,6 +2442,9 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         m.method("sumBuffer", fn_ptr(sum_buffer_ref))
         m.method("createBuffer", fn_ptr(create_buffer_ref))
         m.method("doubleFloat64Array", fn_ptr(double_float64_array_ref))
+        m.method("createTypedArrayView", fn_ptr(create_typed_array_view_ref))
+        m.method("getTypedArrayType", fn_ptr(get_typed_array_type_ref))
+        m.method("getTypedArrayLength", fn_ptr(get_typed_array_length_ref))
         m.method("sumArgs", fn_ptr(sum_args_ref))
         m.method("createCallback", fn_ptr(create_callback_ref))
         m.method("createAdder", fn_ptr(create_adder_ref))

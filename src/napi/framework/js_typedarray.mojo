@@ -4,7 +4,7 @@
 ##   var ptr = ta.data_ptr(env)  # raw byte pointer to data
 ##   var len = ta.length(env)    # element count (not bytes)
 
-from napi.types import NapiEnv, NapiValue, NAPI_FLOAT64_ARRAY, NAPI_UINT8_ARRAY, NAPI_INT32_ARRAY
+from napi.types import NapiEnv, NapiValue, NAPI_INT8_ARRAY, NAPI_UINT8_ARRAY, NAPI_UINT8_CLAMPED_ARRAY, NAPI_INT16_ARRAY, NAPI_UINT16_ARRAY, NAPI_INT32_ARRAY, NAPI_UINT32_ARRAY, NAPI_FLOAT32_ARRAY, NAPI_FLOAT64_ARRAY, NAPI_BIGINT64_ARRAY, NAPI_BIGUINT64_ARRAY
 from napi.raw import raw_create_typedarray, raw_get_typedarray_info, raw_is_typedarray
 from napi.error import check_status
 
@@ -32,6 +32,62 @@ struct JsTypedArray:
     fn create_int32(env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt) raises -> JsTypedArray:
         var result = NapiValue()
         check_status(raw_create_typedarray(env, NAPI_INT32_ARRAY, length, arraybuffer, offset,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsTypedArray(result)
+
+    @staticmethod
+    fn create_int8(env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt) raises -> JsTypedArray:
+        var result = NapiValue()
+        check_status(raw_create_typedarray(env, NAPI_INT8_ARRAY, length, arraybuffer, offset,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsTypedArray(result)
+
+    @staticmethod
+    fn create_uint8_clamped(env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt) raises -> JsTypedArray:
+        var result = NapiValue()
+        check_status(raw_create_typedarray(env, NAPI_UINT8_CLAMPED_ARRAY, length, arraybuffer, offset,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsTypedArray(result)
+
+    @staticmethod
+    fn create_int16(env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt) raises -> JsTypedArray:
+        var result = NapiValue()
+        check_status(raw_create_typedarray(env, NAPI_INT16_ARRAY, length, arraybuffer, offset,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsTypedArray(result)
+
+    @staticmethod
+    fn create_uint16(env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt) raises -> JsTypedArray:
+        var result = NapiValue()
+        check_status(raw_create_typedarray(env, NAPI_UINT16_ARRAY, length, arraybuffer, offset,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsTypedArray(result)
+
+    @staticmethod
+    fn create_uint32(env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt) raises -> JsTypedArray:
+        var result = NapiValue()
+        check_status(raw_create_typedarray(env, NAPI_UINT32_ARRAY, length, arraybuffer, offset,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsTypedArray(result)
+
+    @staticmethod
+    fn create_float32(env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt) raises -> JsTypedArray:
+        var result = NapiValue()
+        check_status(raw_create_typedarray(env, NAPI_FLOAT32_ARRAY, length, arraybuffer, offset,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsTypedArray(result)
+
+    @staticmethod
+    fn create_bigint64(env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt) raises -> JsTypedArray:
+        var result = NapiValue()
+        check_status(raw_create_typedarray(env, NAPI_BIGINT64_ARRAY, length, arraybuffer, offset,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsTypedArray(result)
+
+    @staticmethod
+    fn create_biguint64(env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt) raises -> JsTypedArray:
+        var result = NapiValue()
+        check_status(raw_create_typedarray(env, NAPI_BIGUINT64_ARRAY, length, arraybuffer, offset,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return JsTypedArray(result)
 
