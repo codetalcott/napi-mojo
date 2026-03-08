@@ -97,6 +97,7 @@ from napi.framework.js_coerce import js_coerce_to_bool, js_coerce_to_number, js_
 from napi.framework.js_exception import js_throw, js_is_exception_pending, js_get_and_clear_last_exception
 from napi.framework.js_dataview import JsDataView
 from napi.framework.js_version import get_napi_version, get_node_version_ptr
+from napi.framework.async_work import AsyncWork
 from napi.raw import raw_wrap
 from napi.error import throw_js_error, throw_js_error_dynamic, throw_js_type_error, throw_js_type_error_dynamic, throw_js_range_error, check_status
 
@@ -370,9 +371,9 @@ struct AsyncDoubleData(Movable):
     var input: Float64
     var result: Float64
 
-    fn __init__(out self, deferred: NapiDeferred, work: NapiAsyncWork, input: Float64):
-        self.deferred = deferred
-        self.work = work
+    fn __init__(out self, input: Float64):
+        self.deferred = NapiDeferred()
+        self.work = NapiAsyncWork()
         self.input = input
         self.result = 0.0
 
@@ -382,95 +383,100 @@ struct AsyncDoubleData(Movable):
         self.input = take.input
         self.result = take.result
 
-# ---------------------------------------------------------------------------
-# async_double_execute — worker thread callback
-#
-# Runs on a worker thread. MUST NOT call any N-API functions.
-# Performs pure computation: result = input * 2.
-# ---------------------------------------------------------------------------
 fn async_double_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[AsyncDoubleData]()
     ptr[].result = ptr[].input * 2.0
 
-# ---------------------------------------------------------------------------
-# async_double_complete — main thread callback
-#
-# Runs on the main thread after execute finishes. Resolves the promise
-# with the computed result, then cleans up the async work handle and
-# heap-allocated data.
-# ---------------------------------------------------------------------------
 fn async_double_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[AsyncDoubleData]()
     try:
         if status == NAPI_OK:
             var result_val = JsNumber.create(env, ptr[].result)
-            _ = raw_resolve_deferred(env, ptr[].deferred, result_val.value)
+            AsyncWork.resolve(env, ptr[].deferred, ptr[].work, result_val.value)
         else:
-            var msg = JsString.create_literal(env, "async work failed")
-            var null_code = NapiValue()
-            var error_val = NapiValue()
-            var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()
-            _ = raw_create_error(env, null_code, msg.value, error_ptr)
-            _ = raw_reject_deferred(env, ptr[].deferred, error_val)
-        _ = raw_delete_async_work(env, ptr[].work)
+            AsyncWork.reject_with_error(env, ptr[].deferred, ptr[].work, "async work failed")
     except:
         pass
     ptr.destroy_pointee()
     ptr.free()
 
-# ---------------------------------------------------------------------------
-# asyncDouble(n) — exposed as addon.asyncDouble(n)
-#
-# Creates a promise, queues async work that computes n * 2 on a worker
-# thread, and returns the promise. When the work completes, the promise
-# is resolved with the result.
-# ---------------------------------------------------------------------------
 fn async_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var arg0 = CbArgs.get_one(env, info)
         var n = JsNumber.from_napi_value(env, arg0)
-
-        # Create promise
-        var p = JsPromise.create(env)
-
-        # Create resource name for diagnostics
-        var resource_name = JsString.create_literal(env, "asyncDouble")
-
-        # Heap-allocate shared data (NapiAsyncWork() is placeholder — set after creation)
         var data_ptr = alloc[AsyncDoubleData](1)
-        data_ptr.init_pointee_move(AsyncDoubleData(p.deferred, NapiAsyncWork(), n))
-
-        # Get function pointers for execute and complete callbacks
+        data_ptr.init_pointee_move(AsyncDoubleData(n))
         var exec_ref = async_double_execute
         var comp_ref = async_double_complete
-        var exec_ptr = UnsafePointer(to=exec_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-        var comp_ptr = UnsafePointer(to=comp_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-
-        # Create async work
-        var work = NapiAsyncWork()
-        var work_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=work).bitcast[NoneType]()
-        var null_resource = NapiValue()
-        var data_opaque: OpaquePointer[MutAnyOrigin] = data_ptr.bitcast[NoneType]()
-
-        check_status(raw_create_async_work(
-            env,
-            null_resource,
-            resource_name.value,
-            exec_ptr,
-            comp_ptr,
-            data_opaque,
-            work_out,
-        ))
-
-        # Store the work handle in the data struct so complete can delete it
-        data_ptr[].work = work
-
-        # Queue the work
-        check_status(raw_queue_async_work(env, work))
-
-        return p.value
+        var aw = AsyncWork.queue(
+            env, "asyncDouble", data_ptr.bitcast[NoneType](),
+            fn_ptr(exec_ref), fn_ptr(comp_ref),
+        )
+        data_ptr[].deferred = aw.deferred
+        data_ptr[].work = aw.work
+        return aw.value
     except:
         throw_js_error(env, "asyncDouble requires one number argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# asyncTriple(n) — exposed as addon.asyncTriple(n)
+#
+# Demonstrates the AsyncWork framework helper. Same pattern as asyncDouble
+# but uses AsyncWork.queue/resolve/cleanup to eliminate boilerplate.
+# ---------------------------------------------------------------------------
+struct AsyncTripleData(Movable):
+    var deferred: NapiDeferred
+    var work: NapiAsyncWork
+    var input: Float64
+    var result: Float64
+
+    fn __init__(out self, input: Float64):
+        self.deferred = NapiDeferred()
+        self.work = NapiAsyncWork()
+        self.input = input
+        self.result = 0.0
+
+    fn __moveinit__(out self, deinit take: Self):
+        self.deferred = take.deferred
+        self.work = take.work
+        self.input = take.input
+        self.result = take.result
+
+fn async_triple_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.bitcast[AsyncTripleData]()
+    ptr[].result = ptr[].input * 3.0
+
+fn async_triple_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.bitcast[AsyncTripleData]()
+    try:
+        if status == NAPI_OK:
+            var result_val = JsNumber.create(env, ptr[].result)
+            AsyncWork.resolve(env, ptr[].deferred, ptr[].work, result_val.value)
+        else:
+            AsyncWork.reject_with_error(env, ptr[].deferred, ptr[].work, "asyncTriple failed")
+    except:
+        pass
+    ptr.destroy_pointee()
+    ptr.free()
+
+fn async_triple_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        var n = JsNumber.from_napi_value(env, arg0)
+        var data_ptr = alloc[AsyncTripleData](1)
+        data_ptr.init_pointee_move(AsyncTripleData(n))
+        var exec_ref = async_triple_execute
+        var comp_ref = async_triple_complete
+        var aw = AsyncWork.queue(
+            env, "asyncTriple", data_ptr.bitcast[NoneType](),
+            fn_ptr(exec_ref), fn_ptr(comp_ref),
+        )
+        data_ptr[].deferred = aw.deferred
+        data_ptr[].work = aw.work
+        return aw.value
+    except:
+        throw_js_error(env, "asyncTriple requires one number argument")
         return NapiValue()
 
 # ---------------------------------------------------------------------------
@@ -2334,6 +2340,7 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var resolve_with_ref = resolve_with_fn
     var reject_with_ref = reject_with_fn
     var async_double_ref = async_double_fn
+    var async_triple_ref = async_triple_fn
     var add_ints_ref = add_ints_fn
     var bitwise_or_ref = bitwise_or_fn
     var throw_type_error_ref = throw_type_error_fn
@@ -2432,6 +2439,7 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         m.method("resolveWith", fn_ptr(resolve_with_ref))
         m.method("rejectWith", fn_ptr(reject_with_ref))
         m.method("asyncDouble", fn_ptr(async_double_ref))
+        m.method("asyncTriple", fn_ptr(async_triple_ref))
         m.method("addInts", fn_ptr(add_ints_ref))
         m.method("bitwiseOr", fn_ptr(bitwise_or_ref))
         m.method("throwTypeError", fn_ptr(throw_type_error_ref))

@@ -4,13 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 20 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks, type coercion (Boolean/Number/String/Object), TypeScript definition generation, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), and version info (N-API + Node.js) are all working. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, and an external code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) for auto-generating callback trampolines.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 20 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks, type coercion (Boolean/Number/String/Object), TypeScript definition generation, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), and version info (N-API + Node.js) are all working. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, an `AsyncWork` helper for ergonomic async work (promise + queue + resolve/reject), and an external code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) for auto-generating callback trampolines.
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (349 tests)
+npm test                              # run all Jest tests (394 tests)
+npm run test:gc                       # run GC finalizer tests (requires --expose-gc)
 npx jest tests/basic.test.js          # run a single test file
 
 # Spike (run before anything else if starting fresh):
@@ -57,7 +58,7 @@ src/napi/framework/handle_scope.mojo     # HandleScope.open(), close()
 src/napi/framework/js_promise.mojo       # JsPromise.create(), resolve(), reject()
 src/napi/framework/js_arraybuffer.mojo   # JsArrayBuffer.create(), byte_length(), data_ptr(), is_arraybuffer()
 src/napi/framework/js_buffer.mojo        # JsBuffer.create(), data_ptr(), length(), is_buffer()
-src/napi/framework/js_typedarray.mojo    # JsTypedArray.create_float64(), length(), data_ptr(), is_typedarray()
+src/napi/framework/js_typedarray.mojo    # JsTypedArray.create_float64/uint8/int32/int8/uint8_clamped/int16/uint16/uint32/float32/bigint64/biguint64(), array_type(), length(), data_ptr(), arraybuffer(), is_typedarray()
 src/napi/framework/js_class.mojo         # define_class(), register_instance_method(), register_getter(), register_getter_setter(), register_static_method(), register_static_getter(), register_static_getter_setter(), set_class_prototype()
 src/napi/framework/js_ref.mojo           # JsRef.create(), get(), delete(), inc(), dec()
 src/napi/framework/escapable_handle_scope.mojo # EscapableHandleScope.open(), escape(), close()
@@ -73,6 +74,7 @@ src/napi/framework/threadsafe_function.mojo # ThreadsafeFunction.create(), call_
 src/napi/framework/args.mojo             # CbArgs.get_one(), get_two(), get_this(), get_this_and_one(), argc(), get_argv(), get_data()
 src/napi/framework/register.mojo         # fn_ptr(), ModuleBuilder, ClassBuilder — ergonomic registration helpers
 src/napi/framework/convert.mojo          # ToJsValue/FromJsValue traits, JsF64/JsI32/JsBool/JsStr/JsRaw wrappers
+src/napi/framework/async_work.mojo       # AsyncWork.queue/resolve/reject_with_error — async work ergonomics
 src/exports.toml                         # Function declarations for code generator
 src/generated/callbacks.mojo             # AUTO-GENERATED callbacks from exports.toml
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
@@ -99,7 +101,8 @@ tests/                                   # Jest tests — TDD outside-in
 | `mapArray(arr, fn)` | `map_array_fn` | Returns `arr.map(fn)` (handle-scoped loop) |
 | `resolveWith(value)` | `resolve_with_fn` | Returns a promise that immediately resolves with `value` |
 | `rejectWith(msg)` | `reject_with_fn` | Returns a promise that immediately rejects with Error(`msg`) |
-| `asyncDouble(n)` | `async_double_fn` | Returns a promise; computes `n * 2` on worker thread |
+| `asyncDouble(n)` | `async_double_fn` | Returns a promise; computes `n * 2` on worker thread (uses AsyncWork helpers) |
+| `asyncTriple(n)` | `async_triple_fn` | Returns a promise; computes `n * 3` on worker thread (uses AsyncWork helpers) |
 | `addInts(a, b)` | `add_ints_fn` | Returns `a + b` (Int32 addition) |
 | `bitwiseOr(a, b)` | `bitwise_or_fn` | Returns `a \| b` (UInt32 bitwise OR) |
 | `throwTypeError()` | `throw_type_error_fn` | Throws a JavaScript `TypeError` |
@@ -110,6 +113,9 @@ tests/                                   # Jest tests — TDD outside-in
 | `sumBuffer(buf)` | `sum_buffer_fn` | Sums the bytes of a Node.js Buffer |
 | `createBuffer(size)` | `create_buffer_fn` | Creates a Buffer filled with incrementing bytes |
 | `doubleFloat64Array(arr)` | `double_float64_array_fn` | Doubles each element of a Float64Array in-place |
+| `createTypedArrayView(type, ab, off, len)` | `create_typed_array_view_fn` | Creates a TypedArray view (int8/uint8/int16/int32/float32/float64/etc.) |
+| `getTypedArrayType(ta)` | `get_typed_array_type_fn` | Returns the NAPI_*_ARRAY type constant |
+| `getTypedArrayLength(ta)` | `get_typed_array_length_fn` | Returns element count of a TypedArray |
 | `new Counter(n)` | `counter_constructor_fn` | Class: constructor, `.increment()`, `.reset()`, `.value` getter/setter |
 | `Counter.isCounter(val)` | `counter_is_counter_fn` | Returns `true` if `val instanceof Counter` |
 | `Counter.fromValue(n)` | `counter_from_value_fn` | Factory: creates `new Counter(n)` via `napi_new_instance` |

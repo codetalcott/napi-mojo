@@ -71,7 +71,12 @@ const OVERRIDES = {
   getDataViewInfo: '(dv: DataView): { byteLength: number; byteOffset: number }',
   isDataView: '(val: any): boolean',
   createExternal: '(x: number, y: number): unknown',
+  asyncDouble: '(arg: number): Promise<number>',
+  asyncTriple: '(arg: number): Promise<number>',
   cancelAsyncWork: '(): Promise<never>',
+  createTypedArrayView: '(type: string, ab: ArrayBuffer, offset: number, length: number): ArrayBufferView',
+  getTypedArrayType: '(ta: ArrayBufferView): number',
+  getTypedArrayLength: '(ta: ArrayBufferView): number',
 };
 
 const source = fs.readFileSync(SRC, 'utf8');
