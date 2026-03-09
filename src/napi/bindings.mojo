@@ -132,6 +132,16 @@ struct NapiBindings(Movable):
     var add_env_cleanup_hook: OpaquePointer[MutAnyOrigin]
     var remove_env_cleanup_hook: OpaquePointer[MutAnyOrigin]
     var cancel_async_work: OpaquePointer[MutAnyOrigin]
+    # Phase 21-22 additions (119-127)
+    var is_error: OpaquePointer[MutAnyOrigin]
+    var adjust_external_memory: OpaquePointer[MutAnyOrigin]
+    var run_script: OpaquePointer[MutAnyOrigin]
+    var throw_syntax_error: OpaquePointer[MutAnyOrigin]
+    var create_syntax_error: OpaquePointer[MutAnyOrigin]
+    var is_detached_arraybuffer: OpaquePointer[MutAnyOrigin]
+    var fatal_exception: OpaquePointer[MutAnyOrigin]
+    var type_tag_object: OpaquePointer[MutAnyOrigin]
+    var check_object_type_tag: OpaquePointer[MutAnyOrigin]
 
     fn __init__(out self):
         self.create_string_utf8 = OpaquePointer[MutAnyOrigin]()
@@ -252,6 +262,15 @@ struct NapiBindings(Movable):
         self.add_env_cleanup_hook = OpaquePointer[MutAnyOrigin]()
         self.remove_env_cleanup_hook = OpaquePointer[MutAnyOrigin]()
         self.cancel_async_work = OpaquePointer[MutAnyOrigin]()
+        self.is_error = OpaquePointer[MutAnyOrigin]()
+        self.adjust_external_memory = OpaquePointer[MutAnyOrigin]()
+        self.run_script = OpaquePointer[MutAnyOrigin]()
+        self.throw_syntax_error = OpaquePointer[MutAnyOrigin]()
+        self.create_syntax_error = OpaquePointer[MutAnyOrigin]()
+        self.is_detached_arraybuffer = OpaquePointer[MutAnyOrigin]()
+        self.fatal_exception = OpaquePointer[MutAnyOrigin]()
+        self.type_tag_object = OpaquePointer[MutAnyOrigin]()
+        self.check_object_type_tag = OpaquePointer[MutAnyOrigin]()
 
     fn __moveinit__(out self, deinit take: Self):
         self.create_string_utf8 = take.create_string_utf8
@@ -372,6 +391,15 @@ struct NapiBindings(Movable):
         self.add_env_cleanup_hook = take.add_env_cleanup_hook
         self.remove_env_cleanup_hook = take.remove_env_cleanup_hook
         self.cancel_async_work = take.cancel_async_work
+        self.is_error = take.is_error
+        self.adjust_external_memory = take.adjust_external_memory
+        self.run_script = take.run_script
+        self.throw_syntax_error = take.throw_syntax_error
+        self.create_syntax_error = take.create_syntax_error
+        self.is_detached_arraybuffer = take.is_detached_arraybuffer
+        self.fatal_exception = take.fatal_exception
+        self.type_tag_object = take.type_tag_object
+        self.check_object_type_tag = take.check_object_type_tag
 
 
 comptime Bindings = UnsafePointer[NapiBindings, MutAnyOrigin]
@@ -1087,6 +1115,60 @@ fn init_bindings(mut bindings: NapiBindings) raises:
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_cancel_async_work")
     bindings.cancel_async_work = UnsafePointer(to=_cancel_async_work).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 119. napi_is_error
+    var _is_error = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_is_error")
+    bindings.is_error = UnsafePointer(to=_is_error).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 120. napi_adjust_external_memory
+    var _adjust_external_memory = h.get_function[
+        fn (NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_adjust_external_memory")
+    bindings.adjust_external_memory = UnsafePointer(to=_adjust_external_memory).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 121. napi_run_script
+    var _run_script = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_run_script")
+    bindings.run_script = UnsafePointer(to=_run_script).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 122. node_api_throw_syntax_error (N-API v9)
+    var _throw_syntax_error = h.get_function[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
+    ]("node_api_throw_syntax_error")
+    bindings.throw_syntax_error = UnsafePointer(to=_throw_syntax_error).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 123. node_api_create_syntax_error (N-API v9)
+    var _create_syntax_error = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("node_api_create_syntax_error")
+    bindings.create_syntax_error = UnsafePointer(to=_create_syntax_error).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 124. napi_is_detached_arraybuffer (N-API v7)
+    var _is_detached_arraybuffer = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_is_detached_arraybuffer")
+    bindings.is_detached_arraybuffer = UnsafePointer(to=_is_detached_arraybuffer).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 125. napi_fatal_exception
+    var _fatal_exception = h.get_function[
+        fn (NapiEnv, NapiValue) -> NapiStatus
+    ]("napi_fatal_exception")
+    bindings.fatal_exception = UnsafePointer(to=_fatal_exception).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 126. napi_type_tag_object (N-API v8)
+    var _type_tag_object = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
+    ]("napi_type_tag_object")
+    bindings.type_tag_object = UnsafePointer(to=_type_tag_object).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 127. napi_check_object_type_tag (N-API v8)
+    var _check_object_type_tag = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_check_object_type_tag")
+    bindings.check_object_type_tag = UnsafePointer(to=_check_object_type_tag).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 
 fn get_bindings(env: NapiEnv) raises -> Bindings:

@@ -77,6 +77,15 @@ const OVERRIDES = {
   createTypedArrayView: '(type: string, ab: ArrayBuffer, offset: number, length: number): ArrayBufferView',
   getTypedArrayType: '(ta: ArrayBufferView): number',
   getTypedArrayLength: '(ta: ArrayBufferView): number',
+  // Phase 21-22
+  isError: '(val: any): boolean',
+  adjustExternalMemory: '(changeInBytes: number): number',
+  runScript: '(code: string): any',
+  throwSyntaxError: '(): never',
+  isDetachedArrayBuffer: '(val: ArrayBuffer): boolean',
+  detachArrayBuffer: '(ab: ArrayBuffer): boolean',
+  typeTagObject: '(obj: object, lower: number, upper: number): boolean',
+  checkObjectTypeTag: '(obj: object, lower: number, upper: number): boolean',
 };
 
 const source = fs.readFileSync(SRC, 'utf8');

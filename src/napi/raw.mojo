@@ -3309,3 +3309,238 @@ fn raw_cancel_async_work(
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]()[]
     return f(env, work)
+
+## raw_is_error — wraps napi_is_error
+##
+## Checks whether a JavaScript value is an Error object.
+## `value`:  the napi_value to check
+## `result`: out-pointer; receives a Bool (true if value is an Error)
+fn raw_is_error(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_is_error")
+    return f(env, value, result)
+
+fn raw_is_error(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].is_error).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result)
+
+## raw_adjust_external_memory — wraps napi_adjust_external_memory
+##
+## Tells V8 about native memory allocations so the GC can schedule appropriately.
+## `change_in_bytes`: amount of memory allocated (positive) or freed (negative)
+## `result`:          out-pointer; receives the adjusted value (Int64)
+fn raw_adjust_external_memory(
+    env: NapiEnv,
+    change_in_bytes: Int64,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_adjust_external_memory")
+    return f(env, change_in_bytes, result)
+
+fn raw_adjust_external_memory(
+    b: Bindings,
+    env: NapiEnv,
+    change_in_bytes: Int64,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].adjust_external_memory).bitcast[
+        fn (NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, change_in_bytes, result)
+
+## raw_run_script — wraps napi_run_script
+##
+## Evaluates a JavaScript string (equivalent to eval()).
+## `script`: a napi_value containing the JS source string
+## `result`: out-pointer; receives the evaluation result napi_value
+fn raw_run_script(
+    env: NapiEnv,
+    script: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_run_script")
+    return f(env, script, result)
+
+fn raw_run_script(
+    b: Bindings,
+    env: NapiEnv,
+    script: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].run_script).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, script, result)
+
+## raw_throw_syntax_error — wraps node_api_throw_syntax_error (N-API v9)
+##
+## Sets a pending JavaScript SyntaxError exception.
+## Note: uses node_api_ prefix (not napi_).
+fn raw_throw_syntax_error(
+    env: NapiEnv,
+    code: OpaquePointer[ImmutAnyOrigin],
+    msg: OpaquePointer[ImmutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
+    ]("node_api_throw_syntax_error")
+    return f(env, code, msg)
+
+fn raw_throw_syntax_error(
+    b: Bindings,
+    env: NapiEnv,
+    code: OpaquePointer[ImmutAnyOrigin],
+    msg: OpaquePointer[ImmutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].throw_syntax_error).bitcast[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, code, msg)
+
+## raw_create_syntax_error — wraps node_api_create_syntax_error (N-API v9)
+##
+## Creates a SyntaxError object without throwing it.
+fn raw_create_syntax_error(
+    env: NapiEnv,
+    code: NapiValue,
+    msg: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("node_api_create_syntax_error")
+    return f(env, code, msg, result)
+
+fn raw_create_syntax_error(
+    b: Bindings,
+    env: NapiEnv,
+    code: NapiValue,
+    msg: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_syntax_error).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, code, msg, result)
+
+## raw_is_detached_arraybuffer — wraps napi_is_detached_arraybuffer (N-API v7)
+##
+## Checks whether an ArrayBuffer has been detached.
+fn raw_is_detached_arraybuffer(
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_is_detached_arraybuffer")
+    return f(env, value, result)
+
+fn raw_is_detached_arraybuffer(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].is_detached_arraybuffer).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result)
+
+## raw_fatal_exception — wraps napi_fatal_exception
+##
+## Triggers an uncaughtException in Node.js. The error must be an Error object.
+fn raw_fatal_exception(
+    env: NapiEnv,
+    err: NapiValue,
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue) -> NapiStatus
+    ]("napi_fatal_exception")
+    return f(env, err)
+
+fn raw_fatal_exception(
+    b: Bindings,
+    env: NapiEnv,
+    err: NapiValue,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].fatal_exception).bitcast[
+        fn (NapiEnv, NapiValue) -> NapiStatus
+    ]()[]
+    return f(env, err)
+
+## raw_type_tag_object — wraps napi_type_tag_object (N-API v8)
+##
+## Associates a UUID-like type tag with a JS object for later checking.
+## `type_tag`: pointer to a struct { lower: UInt64, upper: UInt64 }
+fn raw_type_tag_object(
+    env: NapiEnv,
+    value: NapiValue,
+    type_tag: OpaquePointer[ImmutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
+    ]("napi_type_tag_object")
+    return f(env, value, type_tag)
+
+fn raw_type_tag_object(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    type_tag: OpaquePointer[ImmutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].type_tag_object).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, type_tag)
+
+## raw_check_object_type_tag — wraps napi_check_object_type_tag (N-API v8)
+##
+## Checks whether an object has the given type tag.
+fn raw_check_object_type_tag(
+    env: NapiEnv,
+    value: NapiValue,
+    type_tag: OpaquePointer[ImmutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_check_object_type_tag")
+    return f(env, value, type_tag, result)
+
+fn raw_check_object_type_tag(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    type_tag: OpaquePointer[ImmutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].check_object_type_tag).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, type_tag, result)

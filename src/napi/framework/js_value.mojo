@@ -21,7 +21,10 @@ from napi.types import (
     NAPI_TYPE_BIGINT,
 )
 from napi.bindings import Bindings
-from napi.raw import raw_typeof, raw_is_array, raw_get_global, raw_strict_equals
+from napi.raw import (
+    raw_typeof, raw_is_array, raw_get_global, raw_strict_equals,
+    raw_is_error, raw_adjust_external_memory, raw_run_script,
+)
 from napi.error import check_status
 from napi.framework.js_object import JsObject
 
@@ -106,3 +109,46 @@ fn js_get_global(b: Bindings, env: NapiEnv) raises -> JsObject:
     check_status(raw_get_global(b, env,
         UnsafePointer(to=result).bitcast[NoneType]()))
     return JsObject(result)
+
+## js_is_error — check whether a JavaScript value is an Error object
+fn js_is_error(env: NapiEnv, val: NapiValue) raises -> Bool:
+    var result: Bool = False
+    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+    check_status(raw_is_error(env, val, result_ptr))
+    return result
+
+fn js_is_error(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
+    var result: Bool = False
+    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+    check_status(raw_is_error(b, env, val, result_ptr))
+    return result
+
+## js_adjust_external_memory — inform V8 about native memory allocations
+##
+## Returns the adjusted external memory value.
+fn js_adjust_external_memory(env: NapiEnv, change_in_bytes: Int64) raises -> Int64:
+    var result: Int64 = 0
+    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+    check_status(raw_adjust_external_memory(env, change_in_bytes, result_ptr))
+    return result
+
+fn js_adjust_external_memory(b: Bindings, env: NapiEnv, change_in_bytes: Int64) raises -> Int64:
+    var result: Int64 = 0
+    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+    check_status(raw_adjust_external_memory(b, env, change_in_bytes, result_ptr))
+    return result
+
+## js_run_script — evaluate a JavaScript string (like eval())
+##
+## Takes a napi_value containing the script string, returns the result.
+fn js_run_script(env: NapiEnv, script: NapiValue) raises -> NapiValue:
+    var result = NapiValue()
+    check_status(raw_run_script(env, script,
+        UnsafePointer(to=result).bitcast[NoneType]()))
+    return result
+
+fn js_run_script(b: Bindings, env: NapiEnv, script: NapiValue) raises -> NapiValue:
+    var result = NapiValue()
+    check_status(raw_run_script(b, env, script,
+        UnsafePointer(to=result).bitcast[NoneType]()))
+    return result

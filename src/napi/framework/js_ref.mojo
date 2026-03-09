@@ -54,6 +54,12 @@ struct JsRef:
     # --- Bindings-aware overloads ---
 
     @staticmethod
+    fn create_weak(env: NapiEnv, value: NapiValue) raises -> JsRef:
+        return JsRef.create(env, value, 0)
+
+    # --- Bindings-aware overloads ---
+
+    @staticmethod
     fn create(b: Bindings, env: NapiEnv, value: NapiValue, initial_refcount: UInt32) raises -> JsRef:
         var result = NapiRef()
         check_status(raw_create_reference(b, env, value, initial_refcount,
@@ -80,3 +86,7 @@ struct JsRef:
         check_status(raw_get_reference_value(b, env, self.handle,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return result
+
+    @staticmethod
+    fn create_weak(b: Bindings, env: NapiEnv, value: NapiValue) raises -> JsRef:
+        return JsRef.create(b, env, value, 0)

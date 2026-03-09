@@ -273,6 +273,13 @@ struct JsObject:
         check_status(status)
         return result
 
+    ## keys_filtered — full-parameter napi_get_all_property_names exposure
+    fn keys_filtered(self, b: Bindings, env: NapiEnv, mode: Int32, filter: Int32, conversion: Int32) raises -> NapiValue:
+        var result: NapiValue = NapiValue()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        check_status(raw_get_all_property_names(b, env, self.value, mode, filter, conversion, result_ptr))
+        return result
+
     fn has_own(self, b: Bindings, env: NapiEnv, key: NapiValue) raises -> Bool:
         var exists: Bool = False
         var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=exists).bitcast[NoneType]()

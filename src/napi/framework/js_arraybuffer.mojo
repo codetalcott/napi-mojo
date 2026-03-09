@@ -7,7 +7,10 @@
 
 from napi.types import NapiEnv, NapiValue
 from napi.bindings import Bindings
-from napi.raw import raw_create_arraybuffer, raw_get_arraybuffer_info, raw_is_arraybuffer
+from napi.raw import (
+    raw_create_arraybuffer, raw_get_arraybuffer_info, raw_is_arraybuffer,
+    raw_detach_arraybuffer, raw_is_detached_arraybuffer,
+)
 from napi.error import check_status
 
 struct JsArrayBuffer:
@@ -102,5 +105,27 @@ struct JsArrayBuffer:
     fn is_arraybuffer(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
         var result: Bool = False
         check_status(raw_is_arraybuffer(b, env, val,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return result
+
+    ## detach — detach the ArrayBuffer (its data becomes inaccessible from JS)
+    fn detach(self, env: NapiEnv) raises:
+        check_status(raw_detach_arraybuffer(env, self.value))
+
+    fn detach(self, b: Bindings, env: NapiEnv) raises:
+        check_status(raw_detach_arraybuffer(b, env, self.value))
+
+    ## is_detached — check if an ArrayBuffer has been detached (N-API v7)
+    @staticmethod
+    fn is_detached(env: NapiEnv, val: NapiValue) raises -> Bool:
+        var result: Bool = False
+        check_status(raw_is_detached_arraybuffer(env, val,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return result
+
+    @staticmethod
+    fn is_detached(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
+        var result: Bool = False
+        check_status(raw_is_detached_arraybuffer(b, env, val,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return result

@@ -64,8 +64,8 @@
 ##   3. The @export entry point (register_module)
 
 from memory import alloc
-from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiThreadsafeFunction, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_BIGINT, NAPI_TYPE_EXTERNAL, NAPI_OK, NAPI_TSFN_BLOCKING, NAPI_TSFN_RELEASE, NAPI_INT8_ARRAY, NAPI_UINT8_ARRAY, NAPI_UINT8_CLAMPED_ARRAY, NAPI_INT16_ARRAY, NAPI_UINT16_ARRAY, NAPI_INT32_ARRAY, NAPI_UINT32_ARRAY, NAPI_FLOAT32_ARRAY, NAPI_FLOAT64_ARRAY
-from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work, raw_call_threadsafe_function, raw_release_threadsafe_function, raw_new_instance, raw_get_value_bigint_words, raw_add_finalizer, raw_create_external_arraybuffer, raw_set_instance_data, raw_get_instance_data, raw_add_env_cleanup_hook, raw_remove_env_cleanup_hook, raw_cancel_async_work
+from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiThreadsafeFunction, NapiTypeTag, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_BIGINT, NAPI_TYPE_EXTERNAL, NAPI_OK, NAPI_TSFN_BLOCKING, NAPI_TSFN_RELEASE, NAPI_INT8_ARRAY, NAPI_UINT8_ARRAY, NAPI_UINT8_CLAMPED_ARRAY, NAPI_INT16_ARRAY, NAPI_UINT16_ARRAY, NAPI_INT32_ARRAY, NAPI_UINT32_ARRAY, NAPI_FLOAT32_ARRAY, NAPI_FLOAT64_ARRAY, NAPI_KEY_OWN_ONLY, NAPI_KEY_INCLUDE_PROTOTYPES, NAPI_KEY_ALL_PROPERTIES, NAPI_KEY_ENUMERABLE, NAPI_KEY_CONFIGURABLE, NAPI_KEY_WRITABLE, NAPI_KEY_SKIP_STRINGS, NAPI_KEY_SKIP_SYMBOLS, NAPI_KEY_KEEP_NUMBERS, NAPI_KEY_NUMBERS_TO_STRINGS
+from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work, raw_call_threadsafe_function, raw_release_threadsafe_function, raw_new_instance, raw_get_value_bigint_words, raw_add_finalizer, raw_create_external_arraybuffer, raw_set_instance_data, raw_get_instance_data, raw_add_env_cleanup_hook, raw_remove_env_cleanup_hook, raw_cancel_async_work, raw_fatal_exception, raw_type_tag_object, raw_check_object_type_tag
 from napi.framework.threadsafe_function import ThreadsafeFunction
 from napi.framework.js_string import JsString
 from napi.framework.js_object import JsObject
@@ -77,7 +77,7 @@ from napi.framework.js_array import JsArray
 from napi.framework.js_function import JsFunction
 from napi.framework.js_promise import JsPromise
 from napi.framework.args import CbArgs
-from napi.framework.js_value import js_typeof, js_type_name, js_is_array, js_get_global, js_strict_equals
+from napi.framework.js_value import js_typeof, js_type_name, js_is_array, js_get_global, js_strict_equals, js_is_error, js_adjust_external_memory, js_run_script
 from napi.framework.handle_scope import HandleScope
 from napi.framework.js_int32 import JsInt32
 from napi.framework.js_uint32 import JsUInt32
@@ -100,7 +100,7 @@ from napi.framework.js_version import get_napi_version, get_node_version_ptr
 from napi.framework.async_work import AsyncWork
 from napi.bindings import NapiBindings, Bindings, init_bindings, get_bindings
 from napi.raw import raw_wrap
-from napi.error import throw_js_error, throw_js_error_dynamic, throw_js_type_error, throw_js_type_error_dynamic, throw_js_range_error, check_status
+from napi.error import throw_js_error, throw_js_error_dynamic, throw_js_type_error, throw_js_type_error_dynamic, throw_js_range_error, throw_js_syntax_error, check_status
 
 # ---------------------------------------------------------------------------
 # hello() — exposed as addon.hello()
@@ -2428,6 +2428,166 @@ fn is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ---------------------------------------------------------------------------
+# Phase 21: isError(val) — checks if a value is an Error object
+# ---------------------------------------------------------------------------
+fn is_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        return JsBoolean.create(b, env, js_is_error(b, env, arg0)).value
+    except:
+        throw_js_error(env, "isError requires one argument")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 21: adjustExternalMemory(changeInBytes) — inform V8 GC about native memory
+# ---------------------------------------------------------------------------
+fn adjust_external_memory_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var change = JsNumber.from_napi_value(b, env, arg0)
+        var result = js_adjust_external_memory(b, env, Int64(Int(change)))
+        return JsNumber.create(b, env, Float64(Int(result))).value
+    except:
+        throw_js_error(env, "adjustExternalMemory failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 21: runScript(code) — evaluate a JavaScript string (like eval())
+# ---------------------------------------------------------------------------
+fn run_script_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        return js_run_script(b, env, arg0)
+    except:
+        throw_js_error(env, "runScript failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 21: throwSyntaxError() — throws a SyntaxError
+# ---------------------------------------------------------------------------
+fn throw_syntax_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        throw_js_syntax_error(b, env, "test syntax error")
+    except:
+        throw_js_error(env, "throwSyntaxError failed")
+    return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 22: isDetachedArrayBuffer(val) — check if an ArrayBuffer is detached
+# ---------------------------------------------------------------------------
+fn is_detached_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        return JsBoolean.create(b, env, JsArrayBuffer.is_detached(b, env, arg0)).value
+    except:
+        throw_js_error(env, "isDetachedArrayBuffer failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 22: detachArrayBuffer(ab) — detach an ArrayBuffer
+# ---------------------------------------------------------------------------
+fn detach_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var ab = JsArrayBuffer(arg0)
+        ab.detach(b, env)
+        return JsBoolean.create(b, env, True).value
+    except:
+        throw_js_error(env, "detachArrayBuffer failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 22: typeTagObject(obj, lower, upper) — tag an object with a UUID
+# ---------------------------------------------------------------------------
+fn type_tag_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var argc = CbArgs.argc(b, env, info)
+        var argv = alloc[NapiValue](Int(argc))
+        CbArgs.get_argv(b, env, info, argc, argv)
+        var obj = argv[0]
+        var lower = UInt64(Int(JsNumber.from_napi_value(b, env, argv[1])))
+        var upper = UInt64(Int(JsNumber.from_napi_value(b, env, argv[2])))
+        argv.free()
+        var tag = NapiTypeTag(lower, upper)
+        var tag_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=tag).bitcast[NoneType]()
+        check_status(raw_type_tag_object(b, env, obj, tag_ptr))
+        return JsBoolean.create(b, env, True).value
+    except:
+        throw_js_error(env, "typeTagObject failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 22: checkObjectTypeTag(obj, lower, upper) — check type tag
+# ---------------------------------------------------------------------------
+fn check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var argc = CbArgs.argc(b, env, info)
+        var argv = alloc[NapiValue](Int(argc))
+        CbArgs.get_argv(b, env, info, argc, argv)
+        var obj = argv[0]
+        var lower = UInt64(Int(JsNumber.from_napi_value(b, env, argv[1])))
+        var upper = UInt64(Int(JsNumber.from_napi_value(b, env, argv[2])))
+        argv.free()
+        var tag = NapiTypeTag(lower, upper)
+        var tag_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=tag).bitcast[NoneType]()
+        var result: Bool = False
+        check_status(raw_check_object_type_tag(b, env, obj, tag_ptr,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsBoolean.create(b, env, result).value
+    except:
+        throw_js_error(env, "checkObjectTypeTag failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 23: testWeakRef(obj) — create weak ref (refcount=0) and retrieve value
+# ---------------------------------------------------------------------------
+fn test_weak_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var weak = JsRef.create_weak(b, env, arg0)
+        var retrieved = weak.get(b, env)
+        weak.delete(b, env)
+        return retrieved
+    except:
+        throw_js_error(env, "testWeakRef failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 23: getAllPropertyNames(obj, mode, filter, conversion)
+#
+# Exposes the full napi_get_all_property_names API.
+# mode: 0=INCLUDE_PROTOTYPES, 1=OWN_ONLY
+# filter: bitmask of NAPI_KEY_* (e.g. ENUMERABLE=2, SKIP_SYMBOLS=16)
+# conversion: 0=KEEP_NUMBERS, 1=NUMBERS_TO_STRINGS
+# Returns an array of property keys.
+# ---------------------------------------------------------------------------
+fn get_all_property_names_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var argc: UInt = 4
+        var argv = alloc[NapiValue](4)
+        CbArgs.get_argv(b, env, info, argc, argv)
+        var obj = argv[0]
+        var mode = Int32(Int(JsNumber.from_napi_value(b, env, argv[1])))
+        var filter = Int32(Int(JsNumber.from_napi_value(b, env, argv[2])))
+        var conversion = Int32(Int(JsNumber.from_napi_value(b, env, argv[3])))
+        argv.free()
+        var result = JsObject(obj).keys_filtered(b, env, mode, filter, conversion)
+        return result
+    except:
+        throw_js_error(env, "getAllPropertyNames failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
 # Module entry point
 #
 # Node.js finds "napi_register_module_v1" via dlsym after dlopen-ing our
@@ -2548,6 +2708,17 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var animal_is_animal_ref = animal_is_animal_fn
     var dog_constructor_ref = dog_constructor_fn
     var dog_get_breed_ref = dog_get_breed_fn
+    # Phase 21-22
+    var is_error_ref = is_error_fn
+    var adjust_external_memory_ref = adjust_external_memory_fn
+    var run_script_ref = run_script_fn
+    var throw_syntax_error_ref = throw_syntax_error_fn
+    var is_detached_arraybuffer_ref = is_detached_arraybuffer_fn
+    var detach_arraybuffer_ref = detach_arraybuffer_fn
+    var type_tag_object_ref = type_tag_object_fn
+    var check_object_type_tag_ref = check_object_type_tag_fn
+    var test_weak_ref_ref = test_weak_ref_fn
+    var get_all_property_names_ref = get_all_property_names_fn
 
     try:
         var m = ModuleBuilder(env, exports, cb_data)
@@ -2634,6 +2805,17 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         m.method("createDataView", fn_ptr(create_dataview_ref))
         m.method("getDataViewInfo", fn_ptr(get_dataview_info_ref))
         m.method("isDataView", fn_ptr(is_dataview_ref))
+        # Phase 21-22
+        m.method("isError", fn_ptr(is_error_ref))
+        m.method("adjustExternalMemory", fn_ptr(adjust_external_memory_ref))
+        m.method("runScript", fn_ptr(run_script_ref))
+        m.method("throwSyntaxError", fn_ptr(throw_syntax_error_ref))
+        m.method("isDetachedArrayBuffer", fn_ptr(is_detached_arraybuffer_ref))
+        m.method("detachArrayBuffer", fn_ptr(detach_arraybuffer_ref))
+        m.method("typeTagObject", fn_ptr(type_tag_object_ref))
+        m.method("checkObjectTypeTag", fn_ptr(check_object_type_tag_ref))
+        m.method("testWeakRef", fn_ptr(test_weak_ref_ref))
+        m.method("getAllPropertyNames", fn_ptr(get_all_property_names_ref))
 
         # Counter class
         var counter = m.class_def("Counter", fn_ptr(counter_constructor_ref))

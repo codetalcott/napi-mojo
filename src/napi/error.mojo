@@ -11,7 +11,7 @@
 
 from napi.types import NapiEnv, NapiStatus, NAPI_OK
 from napi.bindings import Bindings
-from napi.raw import raw_throw_error, raw_throw_type_error, raw_throw_range_error
+from napi.raw import raw_throw_error, raw_throw_type_error, raw_throw_range_error, raw_throw_syntax_error
 
 # ---------------------------------------------------------------------------
 # napi_status_name — human-readable name for a NapiStatus code
@@ -204,4 +204,39 @@ fn throw_js_range_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     var null_code = OpaquePointer[ImmutAnyOrigin]()
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
     _ = raw_throw_range_error(b, env, null_code, msg_ptr)
+    _ = msg_copy^
+
+# ---------------------------------------------------------------------------
+# throw_js_syntax_error — set a pending JavaScript SyntaxError exception
+#
+# Uses node_api_throw_syntax_error (node_api_ prefix, N-API v9).
+# ---------------------------------------------------------------------------
+fn throw_js_syntax_error(env: NapiEnv, msg: StringLiteral):
+    try:
+        var null_code = OpaquePointer[ImmutAnyOrigin]()
+        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+        _ = raw_throw_syntax_error(env, null_code, msg_ptr)
+    except:
+        pass
+
+fn throw_js_syntax_error_dynamic(env: NapiEnv, msg: String):
+    try:
+        var msg_copy = msg
+        var null_code = OpaquePointer[ImmutAnyOrigin]()
+        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
+        _ = raw_throw_syntax_error(env, null_code, msg_ptr)
+        _ = msg_copy^
+    except:
+        pass
+
+fn throw_js_syntax_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
+    var null_code = OpaquePointer[ImmutAnyOrigin]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+    _ = raw_throw_syntax_error(b, env, null_code, msg_ptr)
+
+fn throw_js_syntax_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
+    var msg_copy = msg
+    var null_code = OpaquePointer[ImmutAnyOrigin]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
+    _ = raw_throw_syntax_error(b, env, null_code, msg_ptr)
     _ = msg_copy^

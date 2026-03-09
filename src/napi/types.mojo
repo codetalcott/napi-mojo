@@ -156,6 +156,35 @@ comptime NAPI_KEY_KEEP_NUMBERS: Int32 = 0
 comptime NAPI_KEY_NUMBERS_TO_STRINGS: Int32 = 1
 
 # ---------------------------------------------------------------------------
+# napi_type_tag struct (N-API v8)
+#
+# Matches the C definition:
+#   typedef struct { uint64_t lower; uint64_t upper; } napi_type_tag;
+#
+# Used with napi_type_tag_object / napi_check_object_type_tag for
+# tamper-proof type identification of wrapped objects.
+# ---------------------------------------------------------------------------
+struct NapiTypeTag(Movable):
+    var lower: UInt64
+    var upper: UInt64
+
+    fn __init__(out self):
+        self.lower = 0
+        self.upper = 0
+
+    fn __init__(out self, lower: UInt64, upper: UInt64):
+        self.lower = lower
+        self.upper = upper
+
+    fn __copyinit__(out self, copy: Self):
+        self.lower = copy.lower
+        self.upper = copy.upper
+
+    fn __moveinit__(out self, deinit take: Self):
+        self.lower = take.lower
+        self.upper = take.upper
+
+# ---------------------------------------------------------------------------
 # napi_node_version struct
 #
 # Matches the C struct returned by napi_get_node_version:
