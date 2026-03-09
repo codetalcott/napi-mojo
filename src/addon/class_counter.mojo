@@ -9,7 +9,7 @@ from napi.framework.js_number import JsNumber
 from napi.framework.js_boolean import JsBoolean
 from napi.framework.js_undefined import JsUndefined
 from napi.framework.js_object import JsObject
-from napi.framework.js_class import unwrap_native
+from napi.framework.js_class import unwrap_native, unwrap_native_from_this
 from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof
 from napi.framework.register import fn_ptr, ModuleBuilder, ClassRegistry
@@ -60,45 +60,44 @@ fn counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 fn counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var b = CbArgs.get_bindings(env, info)
-        var ptr = unwrap_native[CounterData](b, env, info)
-        return JsNumber.create(b, env, ptr[].count).value
+        var a = CbArgs.get_bindings_and_this(env, info)
+        var ptr = unwrap_native_from_this[CounterData](a.b, env, a.this_val)
+        return JsNumber.create(a.b, env, ptr[].count).value
     except:
         throw_js_error(env, "Counter.value getter failed")
         return NapiValue()
 
 fn counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var b = CbArgs.get_bindings(env, info)
-        var arg0 = CbArgs.get_one(b, env, info)
-        var t = js_typeof(b, env, arg0)
+        var a = CbArgs.get_bindings_this_and_one(env, info)
+        var t = js_typeof(a.b, env, a.arg0)
         if t != NAPI_TYPE_NUMBER:
-            throw_js_type_error(b, env, "Counter.value setter requires a number")
+            throw_js_type_error(a.b, env, "Counter.value setter requires a number")
             return NapiValue()
-        var new_val = JsNumber.from_napi_value(b, env, arg0)
-        var ptr = unwrap_native[CounterData](b, env, info)
+        var new_val = JsNumber.from_napi_value(a.b, env, a.arg0)
+        var ptr = unwrap_native_from_this[CounterData](a.b, env, a.this_val)
         ptr[].count = new_val
-        return JsUndefined.create(b, env).value
+        return JsUndefined.create(a.b, env).value
     except:
         throw_js_error(env, "Counter.value setter failed")
         return NapiValue()
 
 fn counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var b = CbArgs.get_bindings(env, info)
-        var ptr = unwrap_native[CounterData](b, env, info)
+        var a = CbArgs.get_bindings_and_this(env, info)
+        var ptr = unwrap_native_from_this[CounterData](a.b, env, a.this_val)
         ptr[].count += 1.0
-        return JsUndefined.create(b, env).value
+        return JsUndefined.create(a.b, env).value
     except:
         throw_js_error(env, "Counter.increment failed")
         return NapiValue()
 
 fn counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var b = CbArgs.get_bindings(env, info)
-        var ptr = unwrap_native[CounterData](b, env, info)
+        var a = CbArgs.get_bindings_and_this(env, info)
+        var ptr = unwrap_native_from_this[CounterData](a.b, env, a.this_val)
         ptr[].count = ptr[].initial
-        return JsUndefined.create(b, env).value
+        return JsUndefined.create(a.b, env).value
     except:
         throw_js_error(env, "Counter.reset failed")
         return NapiValue()

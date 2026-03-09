@@ -374,3 +374,14 @@ fn unwrap_native[T: AnyType](b: Bindings, env: NapiEnv, info: NapiValue) raises 
     check_status(raw_unwrap(b, env, this_val,
         UnsafePointer(to=data).bitcast[NoneType]()))
     return data.bitcast[T]()
+
+## unwrap_native_from_this — unwrap using a pre-extracted this_val
+##
+## Use when this_val was already retrieved via get_bindings_and_this or
+## get_bindings_this_and_one, avoiding a second napi_get_cb_info call.
+## Distinct name required: same type signature as unwrap_native[T](b, env, info).
+fn unwrap_native_from_this[T: AnyType](b: Bindings, env: NapiEnv, this_val: NapiValue) raises -> UnsafePointer[T, MutAnyOrigin]:
+    var data = OpaquePointer[MutAnyOrigin]()
+    check_status(raw_unwrap(b, env, this_val,
+        UnsafePointer(to=data).bitcast[NoneType]()))
+    return data.bitcast[T]()

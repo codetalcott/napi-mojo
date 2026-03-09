@@ -54,6 +54,32 @@ struct BindingsAndThree:
         self.arg1 = arg1
         self.arg2 = arg2
 
+## BindingsAndThis — bindings pointer + this value (single napi_get_cb_info call)
+##
+## Used by zero-argument class method/getter callbacks. Pass this_val directly
+## to unwrap_native_from_this[T](b, env, this_val) to skip a second get_cb_info.
+struct BindingsAndThis:
+    var b: Bindings
+    var this_val: NapiValue
+
+    fn __init__(out self, b: Bindings, this_val: NapiValue):
+        self.b = b
+        self.this_val = this_val
+
+## BindingsThisAndOne — bindings pointer + this value + one argument (single napi_get_cb_info call)
+##
+## Used by one-argument class method/setter callbacks. Replaces the triple call:
+##   get_bindings + get_one(b,...) + get_this inside unwrap_native.
+struct BindingsThisAndOne:
+    var b: Bindings
+    var this_val: NapiValue
+    var arg0: NapiValue
+
+    fn __init__(out self, b: Bindings, this_val: NapiValue, arg0: NapiValue):
+        self.b = b
+        self.this_val = this_val
+        self.arg0 = arg0
+
 
 ## CbArgs — typed helpers for extracting napi_callback arguments
 struct CbArgs:
@@ -389,4 +415,46 @@ struct CbArgs:
         if argc < 3:
             raise Error("expected at least 3 arguments")
         return BindingsAndThree(data.bitcast[NapiBindings](), args[0], args[1], args[2])
+
+    ## get_bindings_and_this — extract bindings + this value in a single napi_get_cb_info call
+    ##
+    ## Saves one N-API round-trip vs. separate get_bindings + unwrap_native[T](b, env, info)
+    ## (the latter calls get_this internally). Use for zero-argument class method/getter
+    ## callbacks. Pass the returned this_val to unwrap_native_from_this[T](b, env, this_val).
+    @staticmethod
+    fn get_bindings_and_this(env: NapiEnv, info: NapiValue) raises -> BindingsAndThis:
+        var argc: UInt = 0
+        var this_val: NapiValue = NapiValue()
+        var data = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            env, info,
+            UnsafePointer(to=argc).bitcast[NoneType](),
+            null,
+            UnsafePointer(to=this_val).bitcast[NoneType](),
+            UnsafePointer(to=data).bitcast[NoneType](),
+        ))
+        return BindingsAndThis(data.bitcast[NapiBindings](), this_val)
+
+    ## get_bindings_this_and_one — extract bindings + this + 1 arg in a single napi_get_cb_info call
+    ##
+    ## For one-argument class method/setter callbacks. Replaces the triple call:
+    ##   get_bindings + get_one(b,...) + get_this inside unwrap_native.
+    ## Pass this_val to unwrap_native_from_this[T](b, env, this_val).
+    @staticmethod
+    fn get_bindings_this_and_one(env: NapiEnv, info: NapiValue) raises -> BindingsThisAndOne:
+        var argc: UInt = 1
+        var arg0: NapiValue = NapiValue()
+        var this_val: NapiValue = NapiValue()
+        var data = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            env, info,
+            UnsafePointer(to=argc).bitcast[NoneType](),
+            UnsafePointer(to=arg0).bitcast[NoneType](),
+            UnsafePointer(to=this_val).bitcast[NoneType](),
+            UnsafePointer(to=data).bitcast[NoneType](),
+        ))
+        if argc < 1:
+            raise Error("expected at least 1 argument")
+        return BindingsThisAndOne(data.bitcast[NapiBindings](), this_val, arg0)
 

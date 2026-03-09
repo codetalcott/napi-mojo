@@ -8,7 +8,7 @@ from napi.raw import raw_wrap
 from napi.framework.js_string import JsString
 from napi.framework.js_boolean import JsBoolean
 from napi.framework.js_object import JsObject
-from napi.framework.js_class import unwrap_native
+from napi.framework.js_class import unwrap_native, unwrap_native_from_this
 from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof
 from napi.framework.register import fn_ptr, ModuleBuilder
@@ -95,25 +95,25 @@ fn animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 fn animal_get_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var b = CbArgs.get_bindings(env, info)
-        var ptr = unwrap_native[AnimalData](b, env, info)
+        var a = CbArgs.get_bindings_and_this(env, info)
+        var ptr = unwrap_native_from_this[AnimalData](a.b, env, a.this_val)
         var name_bytes = ptr[].name_ptr.bitcast[Byte]()
         var span = Span[Byte](ptr=name_bytes, length=Int(ptr[].name_len))
         var name = String(from_utf8=span)
-        return JsString.create(b, env, name).value
+        return JsString.create(a.b, env, name).value
     except:
         throw_js_error(env, "Animal.name getter failed")
         return NapiValue()
 
 fn animal_speak_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var b = CbArgs.get_bindings(env, info)
-        var ptr = unwrap_native[AnimalData](b, env, info)
+        var a = CbArgs.get_bindings_and_this(env, info)
+        var ptr = unwrap_native_from_this[AnimalData](a.b, env, a.this_val)
         var name_bytes = ptr[].name_ptr.bitcast[Byte]()
         var span = Span[Byte](ptr=name_bytes, length=Int(ptr[].name_len))
         var name = String(from_utf8=span)
         var msg = name + " says hello"
-        return JsString.create(b, env, msg).value
+        return JsString.create(a.b, env, msg).value
     except:
         throw_js_error(env, "Animal.speak failed")
         return NapiValue()
@@ -184,12 +184,12 @@ fn dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 fn dog_get_breed_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var b = CbArgs.get_bindings(env, info)
-        var ptr = unwrap_native[DogData](b, env, info)
+        var a = CbArgs.get_bindings_and_this(env, info)
+        var ptr = unwrap_native_from_this[DogData](a.b, env, a.this_val)
         var breed_bytes = ptr[].breed_ptr.bitcast[Byte]()
         var span = Span[Byte](ptr=breed_bytes, length=Int(ptr[].breed_len))
         var breed = String(from_utf8=span)
-        return JsString.create(b, env, breed).value
+        return JsString.create(a.b, env, breed).value
     except:
         throw_js_error(env, "Dog.breed getter failed")
         return NapiValue()
