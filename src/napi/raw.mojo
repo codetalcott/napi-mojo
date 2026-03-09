@@ -3544,3 +3544,77 @@ fn raw_check_object_type_tag(
         fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]()[]
     return f(env, value, type_tag, result)
+
+## raw_add_async_cleanup_hook — wraps napi_add_async_cleanup_hook (N-API v8)
+##
+## Registers an async cleanup hook that fires after the event loop drains.
+## hook_cb: fn(handle, arg) callback. remove_handle: out handle for removal.
+fn raw_add_async_cleanup_hook(
+    env: NapiEnv,
+    hook_cb: OpaquePointer[MutAnyOrigin],
+    arg: OpaquePointer[MutAnyOrigin],
+    remove_handle: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_add_async_cleanup_hook")
+    return f(env, hook_cb, arg, remove_handle)
+
+fn raw_add_async_cleanup_hook(
+    b: Bindings,
+    env: NapiEnv,
+    hook_cb: OpaquePointer[MutAnyOrigin],
+    arg: OpaquePointer[MutAnyOrigin],
+    remove_handle: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].add_async_cleanup_hook).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, hook_cb, arg, remove_handle)
+
+## raw_remove_async_cleanup_hook — wraps napi_remove_async_cleanup_hook (N-API v8)
+##
+## Removes an async cleanup hook using the handle returned by add.
+## Note: no env parameter — can be called from any thread.
+fn raw_remove_async_cleanup_hook(
+    handle: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_remove_async_cleanup_hook")
+    return f(handle)
+
+fn raw_remove_async_cleanup_hook(
+    b: Bindings,
+    handle: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].remove_async_cleanup_hook).bitcast[
+        fn (OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(handle)
+
+## raw_get_uv_event_loop — wraps napi_get_uv_event_loop (N-API v2)
+##
+## Returns the uv_loop_t* for the current environment via the out pointer.
+## The loop pointer is valid for the lifetime of the env.
+fn raw_get_uv_event_loop(
+    env: NapiEnv,
+    loop_out: OpaquePointer[MutAnyOrigin],
+) raises -> NapiStatus:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_uv_event_loop")
+    return f(env, loop_out)
+
+fn raw_get_uv_event_loop(
+    b: Bindings,
+    env: NapiEnv,
+    loop_out: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_uv_event_loop).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, loop_out)

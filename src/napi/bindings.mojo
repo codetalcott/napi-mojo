@@ -142,6 +142,9 @@ struct NapiBindings(Movable):
     var fatal_exception: OpaquePointer[MutAnyOrigin]
     var type_tag_object: OpaquePointer[MutAnyOrigin]
     var check_object_type_tag: OpaquePointer[MutAnyOrigin]
+    var add_async_cleanup_hook: OpaquePointer[MutAnyOrigin]
+    var remove_async_cleanup_hook: OpaquePointer[MutAnyOrigin]
+    var get_uv_event_loop: OpaquePointer[MutAnyOrigin]
     # Non-function-pointer slot: ClassRegistry pointer (set after module init)
     var registry: OpaquePointer[MutAnyOrigin]
 
@@ -273,6 +276,9 @@ struct NapiBindings(Movable):
         self.fatal_exception = OpaquePointer[MutAnyOrigin]()
         self.type_tag_object = OpaquePointer[MutAnyOrigin]()
         self.check_object_type_tag = OpaquePointer[MutAnyOrigin]()
+        self.add_async_cleanup_hook = OpaquePointer[MutAnyOrigin]()
+        self.remove_async_cleanup_hook = OpaquePointer[MutAnyOrigin]()
+        self.get_uv_event_loop = OpaquePointer[MutAnyOrigin]()
         self.registry = OpaquePointer[MutAnyOrigin]()
 
     fn __moveinit__(out self, deinit take: Self):
@@ -403,6 +409,9 @@ struct NapiBindings(Movable):
         self.fatal_exception = take.fatal_exception
         self.type_tag_object = take.type_tag_object
         self.check_object_type_tag = take.check_object_type_tag
+        self.add_async_cleanup_hook = take.add_async_cleanup_hook
+        self.remove_async_cleanup_hook = take.remove_async_cleanup_hook
+        self.get_uv_event_loop = take.get_uv_event_loop
         self.registry = take.registry
 
 
@@ -1173,6 +1182,27 @@ fn init_bindings(mut bindings: NapiBindings) raises:
         fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_check_object_type_tag")
     bindings.check_object_type_tag = UnsafePointer(to=_check_object_type_tag).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 128. napi_add_async_cleanup_hook (N-API v8)
+    # hook: fn(handle, arg), arg: void*, remove_handle: out *
+    var _add_async_cleanup_hook = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_add_async_cleanup_hook")
+    bindings.add_async_cleanup_hook = UnsafePointer(to=_add_async_cleanup_hook).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 129. napi_remove_async_cleanup_hook (N-API v8)
+    # Takes only the handle (no env) — can be called from any thread
+    var _remove_async_cleanup_hook = h.get_function[
+        fn (OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_remove_async_cleanup_hook")
+    bindings.remove_async_cleanup_hook = UnsafePointer(to=_remove_async_cleanup_hook).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 130. napi_get_uv_event_loop (N-API v2)
+    # Returns the uv_loop_t* for the current environment
+    var _get_uv_event_loop = h.get_function[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_uv_event_loop")
+    bindings.get_uv_event_loop = UnsafePointer(to=_get_uv_event_loop).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 
 fn get_bindings(env: NapiEnv) raises -> Bindings:

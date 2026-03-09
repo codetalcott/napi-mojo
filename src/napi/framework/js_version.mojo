@@ -9,7 +9,7 @@
 
 from napi.types import NapiEnv, NapiNodeVersion
 from napi.bindings import Bindings
-from napi.raw import raw_get_version, raw_get_node_version
+from napi.raw import raw_get_version, raw_get_node_version, raw_add_async_cleanup_hook, raw_remove_async_cleanup_hook, raw_get_uv_event_loop
 from napi.error import check_status
 
 ## get_napi_version — return the highest N-API version supported by this runtime
@@ -45,3 +45,41 @@ fn get_node_version_ptr(b: Bindings, env: NapiEnv) raises -> UnsafePointer[UInt3
     var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=ptr_val).bitcast[NoneType]()
     check_status(raw_get_node_version(b, env, out_ptr))
     return ptr_val.bitcast[UInt32]()
+
+## add_async_cleanup_hook — register an async cleanup hook (N-API v8)
+##
+## The hook fires after the event loop drains on environment teardown.
+## Returns an opaque handle that can be passed to remove_async_cleanup_hook.
+## hook_cb: fn(handle, arg) — called with the handle and the arg pointer.
+fn add_async_cleanup_hook(
+    b: Bindings,
+    env: NapiEnv,
+    hook_cb: OpaquePointer[MutAnyOrigin],
+    arg: OpaquePointer[MutAnyOrigin],
+) raises -> OpaquePointer[MutAnyOrigin]:
+    var handle = OpaquePointer[MutAnyOrigin]()
+    var handle_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=handle).bitcast[NoneType]()
+    check_status(raw_add_async_cleanup_hook(b, env, hook_cb, arg, handle_out))
+    return handle
+
+## remove_async_cleanup_hook — unregister an async cleanup hook (N-API v8)
+##
+## Uses the handle returned by add_async_cleanup_hook. No env needed.
+fn remove_async_cleanup_hook(
+    b: Bindings,
+    handle: OpaquePointer[MutAnyOrigin],
+) raises:
+    check_status(raw_remove_async_cleanup_hook(b, handle))
+
+## get_uv_event_loop — return the libuv event loop for the environment (N-API v2)
+##
+## Returns the uv_loop_t* as an opaque pointer. Useful for addons that
+## integrate directly with libuv timers or I/O. Valid for env lifetime.
+fn get_uv_event_loop(
+    b: Bindings,
+    env: NapiEnv,
+) raises -> OpaquePointer[MutAnyOrigin]:
+    var loop_ptr = OpaquePointer[MutAnyOrigin]()
+    var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=loop_ptr).bitcast[NoneType]()
+    check_status(raw_get_uv_event_loop(b, env, out_ptr))
+    return loop_ptr

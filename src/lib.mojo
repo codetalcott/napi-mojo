@@ -96,7 +96,7 @@ from napi.framework.js_external import JsExternal
 from napi.framework.js_coerce import js_coerce_to_bool, js_coerce_to_number, js_coerce_to_string, js_coerce_to_object
 from napi.framework.js_exception import js_throw, js_is_exception_pending, js_get_and_clear_last_exception, js_get_error_message, js_get_error_stack
 from napi.framework.js_dataview import JsDataView
-from napi.framework.js_version import get_napi_version, get_node_version_ptr
+from napi.framework.js_version import get_napi_version, get_node_version_ptr, add_async_cleanup_hook, remove_async_cleanup_hook, get_uv_event_loop
 from napi.framework.async_work import AsyncWork
 from napi.bindings import NapiBindings, Bindings, init_bindings, get_bindings
 from napi.raw import raw_wrap
@@ -2254,6 +2254,54 @@ fn remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "removeCleanupHook failed")
         return NapiValue()
 
+## async_cleanup_hook_noop — no-op callback for async cleanup hook testing
+##
+## Signature: fn(napi_async_cleanup_hook_handle handle, void* arg)
+fn async_cleanup_hook_noop(handle: OpaquePointer[MutAnyOrigin], arg: OpaquePointer[MutAnyOrigin]):
+    pass
+
+# ---------------------------------------------------------------------------
+# Phase 26a: addAsyncCleanupHook() — registers an async cleanup hook
+# ---------------------------------------------------------------------------
+fn add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var hook_ref = async_cleanup_hook_noop
+        var hook_ptr = UnsafePointer(to=hook_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        _ = add_async_cleanup_hook(b, env, hook_ptr, OpaquePointer[MutAnyOrigin]())
+        return JsBoolean.create(b, env, True).value
+    except:
+        throw_js_error(env, "addAsyncCleanupHook failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 26a: removeAsyncCleanupHook() — registers then removes an async hook
+# ---------------------------------------------------------------------------
+fn remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var hook_ref = async_cleanup_hook_noop
+        var hook_ptr = UnsafePointer(to=hook_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        var handle = add_async_cleanup_hook(b, env, hook_ptr, OpaquePointer[MutAnyOrigin]())
+        remove_async_cleanup_hook(b, handle)
+        return JsBoolean.create(b, env, True).value
+    except:
+        throw_js_error(env, "removeAsyncCleanupHook failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 26b: getUvEventLoop() — returns the libuv loop pointer as BigInt
+# ---------------------------------------------------------------------------
+fn get_uv_event_loop_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var loop_ptr = get_uv_event_loop(b, env)
+        # Return as BigInt so JS can compare equality (pointer values > 2^53)
+        return JsBigInt.from_uint64(b, env, UInt64(Int(loop_ptr.bitcast[UInt8]()))).value
+    except:
+        throw_js_error(env, "getUvEventLoop failed")
+        return NapiValue()
+
 ## Cancel async work data struct
 struct CancelAsyncData(Movable):
     var deferred: NapiDeferred
@@ -2816,6 +2864,10 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     # Phase 25
     var create_named_fn_ref = create_named_fn
     var new_counter_from_registry_ref = new_counter_from_registry_fn
+    # Phase 26
+    var add_async_cleanup_hook_fn_ref = add_async_cleanup_hook_fn
+    var remove_async_cleanup_hook_fn_ref = remove_async_cleanup_hook_fn
+    var get_uv_event_loop_fn_ref = get_uv_event_loop_fn
 
     try:
         var m = ModuleBuilder(env, exports, cb_data)
@@ -2921,6 +2973,10 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         # Phase 25
         m.method("createNamedFn", fn_ptr(create_named_fn_ref))
         m.method("newCounterFromRegistry", fn_ptr(new_counter_from_registry_ref))
+        # Phase 26
+        m.method("addAsyncCleanupHook", fn_ptr(add_async_cleanup_hook_fn_ref))
+        m.method("removeAsyncCleanupHook", fn_ptr(remove_async_cleanup_hook_fn_ref))
+        m.method("getUvEventLoop", fn_ptr(get_uv_event_loop_fn_ref))
 
         # Counter class
         var counter = m.class_def("Counter", fn_ptr(counter_constructor_ref))
