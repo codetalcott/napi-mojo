@@ -14,6 +14,41 @@ from napi.raw import raw_get_cb_info
 from napi.error import check_status
 from napi.bindings import NapiBindings, Bindings
 
+
+## BindingsAndOne — bindings pointer + one argument (single napi_get_cb_info call)
+struct BindingsAndOne:
+    var b: Bindings
+    var arg0: NapiValue
+
+    fn __init__(out self, b: Bindings, arg0: NapiValue):
+        self.b = b
+        self.arg0 = arg0
+
+## BindingsAndTwo — bindings pointer + two arguments (single napi_get_cb_info call)
+struct BindingsAndTwo:
+    var b: Bindings
+    var arg0: NapiValue
+    var arg1: NapiValue
+
+    fn __init__(out self, b: Bindings, arg0: NapiValue, arg1: NapiValue):
+        self.b = b
+        self.arg0 = arg0
+        self.arg1 = arg1
+
+## BindingsAndThree — bindings pointer + three arguments (single napi_get_cb_info call)
+struct BindingsAndThree:
+    var b: Bindings
+    var arg0: NapiValue
+    var arg1: NapiValue
+    var arg2: NapiValue
+
+    fn __init__(out self, b: Bindings, arg0: NapiValue, arg1: NapiValue, arg2: NapiValue):
+        self.b = b
+        self.arg0 = arg0
+        self.arg1 = arg1
+        self.arg2 = arg2
+
+
 ## CbArgs — typed helpers for extracting napi_callback arguments
 struct CbArgs:
 
@@ -290,4 +325,62 @@ struct CbArgs:
     fn get_bindings(env: NapiEnv, info: NapiValue) raises -> Bindings:
         var data = CbArgs.get_data(env, info)
         return data.bitcast[NapiBindings]()
+
+    ## get_bindings_and_one — extract bindings + 1 arg in a single napi_get_cb_info call
+    ##
+    ## Saves one N-API round-trip vs. separate get_bindings + get_one.
+    ## Uses the bootstrap (env-only) path — the data ptr retrieval must
+    ## always use this path since cached bindings aren't available yet.
+    @staticmethod
+    fn get_bindings_and_one(env: NapiEnv, info: NapiValue) raises -> BindingsAndOne:
+        var argc: UInt = 1
+        var arg0: NapiValue = NapiValue()
+        var data = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            env, info,
+            UnsafePointer(to=argc).bitcast[NoneType](),
+            UnsafePointer(to=arg0).bitcast[NoneType](),
+            null,
+            UnsafePointer(to=data).bitcast[NoneType](),
+        ))
+        if argc < 1:
+            raise Error("expected at least 1 argument")
+        return BindingsAndOne(data.bitcast[NapiBindings](), arg0)
+
+    ## get_bindings_and_two — extract bindings + 2 args in a single napi_get_cb_info call
+    @staticmethod
+    fn get_bindings_and_two(env: NapiEnv, info: NapiValue) raises -> BindingsAndTwo:
+        var argc: UInt = 2
+        var args = InlineArray[NapiValue, 2](fill=NapiValue())
+        var data = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            env, info,
+            UnsafePointer(to=argc).bitcast[NoneType](),
+            UnsafePointer(to=args[0]).bitcast[NoneType](),
+            null,
+            UnsafePointer(to=data).bitcast[NoneType](),
+        ))
+        if argc < 2:
+            raise Error("expected at least 2 arguments")
+        return BindingsAndTwo(data.bitcast[NapiBindings](), args[0], args[1])
+
+    ## get_bindings_and_three — extract bindings + 3 args in a single napi_get_cb_info call
+    @staticmethod
+    fn get_bindings_and_three(env: NapiEnv, info: NapiValue) raises -> BindingsAndThree:
+        var argc: UInt = 3
+        var args = InlineArray[NapiValue, 3](fill=NapiValue())
+        var data = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            env, info,
+            UnsafePointer(to=argc).bitcast[NoneType](),
+            UnsafePointer(to=args[0]).bitcast[NoneType](),
+            null,
+            UnsafePointer(to=data).bitcast[NoneType](),
+        ))
+        if argc < 3:
+            raise Error("expected at least 3 arguments")
+        return BindingsAndThree(data.bitcast[NapiBindings](), args[0], args[1], args[2])
 

@@ -14,7 +14,7 @@
 # Output: src/generated/callbacks.mojo
 
 # --- Extra imports added verbatim to callbacks.mojo when mojo_fn is used ---
-extra_imports = ["from addon.user_fns import square_pure", "from addon.user_fns import clamp_pure"]
+extra_imports = ["from addon.user_fns import square_pure", "from addon.user_fns import clamp_pure", "from addon.user_fns import uppercase_pure", "from addon.user_fns import sum_array_pure"]
 
 # --- Example declarations ---
 # These mirror existing hand-written functions for demonstration.
@@ -117,6 +117,22 @@ js_name = "clamp"
 args = ["number", "number", "number"]
 returns = "number"
 mojo_fn = "clamp_pure"
+
+# --- Step 3: mojo_fn with string type ---
+# uppercase(s): calls pure Mojo fn uppercase_pure(s: String) -> String
+[functions.uppercase]
+js_name = "uppercase"
+args = ["string"]
+returns = "string"
+mojo_fn = "uppercase_pure"
+
+# --- Step 3: mojo_fn with number[] type ---
+# sumArrayPure(items): calls pure Mojo fn sum_array_pure(items: List[Float64]) -> Float64
+[functions.sum_array]
+js_name = "sumArrayPure"
+args = ["number[]"]
+returns = "number"
+mojo_fn = "sum_array_pure"
 
 # --- C4: 3-arg function example (tests N>=3 generator path) ---
 [functions.example_clamp]

@@ -87,6 +87,16 @@ const OVERRIDES = {
   detachArrayBuffer: '(ab: ArrayBuffer): boolean',
   typeTagObject: '(obj: object, lower: number, upper: number): boolean',
   checkObjectTypeTag: '(obj: object, lower: number, upper: number): boolean',
+  // Async context (C2/C3)
+  makeCallback: '(fn: Function, arg: any): any',
+  makeCallback0: '(fn: Function): any',
+  makeCallback2: '(fn: Function, a: any, b: any): any',
+  makeCallbackScope: '(fn: Function): any',
+  // Collection helpers (Steps 1+2)
+  genericDoubleArray: '(arr: number[]): number[]',
+  genericReverseStrings: '(arr: string[]): string[]',
+  objectFromArrays: '(keys: string[], values: number[]): Record<string, number>',
+  objectToArrays: '(obj: Record<string, number>): { keys: string[]; values: number[] }',
 };
 
 // Collect source from all addon files + lib.mojo
@@ -201,9 +211,10 @@ function inferReturnType(body) {
 function inferParamCount(body) {
   if (!body) return 0;
   if (body.includes('CbArgs.argc(')) return -1; // variadic
-  if (body.includes('CbArgs.get_two(')) return 2;
+  if (body.includes('CbArgs.get_three(') || body.includes('CbArgs.get_bindings_and_three(')) return 3;
+  if (body.includes('CbArgs.get_two(') || body.includes('CbArgs.get_bindings_and_two(')) return 2;
   if (body.includes('CbArgs.get_this_and_one(')) return 1;
-  if (body.includes('CbArgs.get_one(')) return 1;
+  if (body.includes('CbArgs.get_one(') || body.includes('CbArgs.get_bindings_and_one(')) return 1;
   return 0;
 }
 
@@ -522,10 +533,13 @@ const TOML_TYPE_TO_TS = {
   number: 'number', string: 'string', boolean: 'boolean', bool: 'boolean',
   int32: 'number', uint32: 'number', int64: 'number',
   object: 'object', array: 'any[]', any: 'any',
+  'number[]': 'number[]', 'string[]': 'string[]',
 };
 function tomlTokenToTs(token) {
-  const base = (token || 'any').replace(/\?$/, '');
-  return TOML_TYPE_TO_TS[base] || 'any';
+  const noQ = (token || 'any').replace(/\?$/, '');
+  // Handle typed array tokens (number[], string[]) before looking up
+  if (noQ.endsWith('[]')) return TOML_TYPE_TO_TS[noQ] || 'any[]';
+  return TOML_TYPE_TO_TS[noQ] || 'any';
 }
 
 const TOML_PATH = path.join(__dirname, '..', 'src', 'exports.toml');

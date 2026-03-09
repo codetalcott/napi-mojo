@@ -34,3 +34,47 @@ test('square throws TypeError on non-number', () => {
     expect(e.name).toBe('TypeError');
   }
 });
+
+// uppercase — mojo_fn with string type (Step 3)
+test('uppercase("hello") returns "HELLO"', () => {
+  expect(addon.uppercase('hello')).toBe('HELLO');
+});
+
+test('uppercase("Hello World") returns "HELLO WORLD"', () => {
+  expect(addon.uppercase('Hello World')).toBe('HELLO WORLD');
+});
+
+test('uppercase("") returns ""', () => {
+  expect(addon.uppercase('')).toBe('');
+});
+
+test('uppercase throws TypeError on non-string', () => {
+  try {
+    addon.uppercase(42);
+    fail('should have thrown');
+  } catch (e) {
+    expect(e.name).toBe('TypeError');
+  }
+});
+
+// sumArray — mojo_fn with number[] type (Step 3)
+test('sumArray([1,2,3]) returns 6', () => {
+  expect(addon.sumArrayPure([1, 2, 3])).toBe(6);
+});
+
+test('sumArray([]) returns 0', () => {
+  expect(addon.sumArrayPure([])).toBe(0);
+});
+
+test('sumArray([1.5, 2.5]) returns 4', () => {
+  expect(addon.sumArrayPure([1.5, 2.5])).toBe(4);
+});
+
+test('sumArray throws TypeError on non-array', () => {
+  try {
+    addon.sumArrayPure(42);
+    fail('should have thrown');
+  } catch (e) {
+    expect(e.name).toBe('TypeError');
+  }
+});

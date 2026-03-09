@@ -88,4 +88,69 @@ describe('collection helpers', () => {
       }
     });
   });
+
+  describe('genericDoubleArray (parametric to_js_array[JsF64])', () => {
+    test('doubles each element', () => {
+      expect(addon.genericDoubleArray([1, 2, 3])).toEqual([2, 4, 6]);
+    });
+
+    test('empty array', () => {
+      expect(addon.genericDoubleArray([])).toEqual([]);
+    });
+
+    test('matches concrete doubleArray', () => {
+      const input = [1.5, -2, 0, 100];
+      expect(addon.genericDoubleArray(input)).toEqual(addon.doubleArray(input));
+    });
+  });
+
+  describe('genericReverseStrings (parametric to_js_array[JsStr])', () => {
+    test('reverses array', () => {
+      expect(addon.genericReverseStrings(['x', 'y', 'z'])).toEqual(['z', 'y', 'x']);
+    });
+
+    test('matches concrete reverseStrings', () => {
+      const input = ['hello', 'world', 'foo'];
+      expect(addon.genericReverseStrings(input)).toEqual(addon.reverseStrings(input));
+    });
+  });
+
+  describe('objectFromArrays', () => {
+    test('builds object from parallel arrays', () => {
+      expect(addon.objectFromArrays(['a', 'b'], [1, 2])).toEqual({ a: 1, b: 2 });
+    });
+
+    test('empty arrays produce empty object', () => {
+      expect(addon.objectFromArrays([], [])).toEqual({});
+    });
+
+    test('throws on mismatched lengths', () => {
+      try {
+        addon.objectFromArrays(['a', 'b'], [1]);
+        fail('should have thrown');
+      } catch (e) {
+        expect(e.name).toBe('TypeError');
+      }
+    });
+  });
+
+  describe('objectToArrays', () => {
+    test('extracts keys and values from object', () => {
+      const result = addon.objectToArrays({ x: 10, y: 20 });
+      expect(result.keys).toEqual(['x', 'y']);
+      expect(result.values).toEqual([10, 20]);
+    });
+
+    test('empty object', () => {
+      const result = addon.objectToArrays({});
+      expect(result.keys).toEqual([]);
+      expect(result.values).toEqual([]);
+    });
+
+    test('round-trips through objectFromArrays', () => {
+      const obj = { foo: 1.5, bar: 2.5 };
+      const { keys, values } = addon.objectToArrays(obj);
+      expect(addon.objectFromArrays(keys, values)).toEqual(obj);
+    });
+  });
 });

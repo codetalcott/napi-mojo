@@ -19,8 +19,11 @@ from napi.framework.js_object import JsObject
 from napi.framework.js_array import JsArray
 from memory import alloc
 from napi.framework.async_work import AsyncWork, AsyncWorkResult
+from napi.framework.convert import from_js_array_f64, to_js_array_f64
 from addon.user_fns import square_pure
 from addon.user_fns import clamp_pure
+from addon.user_fns import uppercase_pure
+from addon.user_fns import sum_array_pure
 
 # exampleAdd
 fn example_add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -203,6 +206,37 @@ fn clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(_b, env, mojo_result).value
     except:
         throw_js_error(env, "clamp failed")
+        return NapiValue()
+
+# uppercase
+fn uppercase_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(_b, env, info)
+        var _t_arg0 = js_typeof(_b, env, arg0)
+        if _t_arg0 != NAPI_TYPE_STRING:
+            throw_js_type_error_dynamic(_b, env, "uppercase: expected string, got " + js_type_name(_t_arg0))
+            return NapiValue()
+        var mojo_arg0 = JsString.from_napi_value(_b, env, arg0)
+        var mojo_result = uppercase_pure(mojo_arg0)
+        return JsString.create(_b, env, mojo_result).value
+    except:
+        throw_js_error(env, "uppercase failed")
+        return NapiValue()
+
+# sumArrayPure
+fn sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(_b, env, info)
+        if not js_is_array(_b, env, arg0):
+            throw_js_type_error_dynamic(_b, env, "sumArrayPure: expected array")
+            return NapiValue()
+        var mojo_arg0 = from_js_array_f64(_b, env, arg0)
+        var mojo_result = sum_array_pure(mojo_arg0)
+        return JsNumber.create(_b, env, mojo_result).value
+    except:
+        throw_js_error(env, "sumArrayPure failed")
         return NapiValue()
 
 # exampleClamp
@@ -406,6 +440,8 @@ fn register_generated(mut m: ModuleBuilder) raises:
     var example_nullable_echo_gen_ref = example_nullable_echo_fn
     var square_gen_ref = square_fn
     var clamp_gen_ref = clamp_fn
+    var uppercase_gen_ref = uppercase_fn
+    var sum_array_gen_ref = sum_array_fn
     var example_clamp_gen_ref = example_clamp_fn
     var async_sum_gen_ref = async_sum_fn
 
@@ -420,6 +456,8 @@ fn register_generated(mut m: ModuleBuilder) raises:
     m.method("exampleNullableEcho", fn_ptr(example_nullable_echo_gen_ref))
     m.method("square", fn_ptr(square_gen_ref))
     m.method("clamp", fn_ptr(clamp_gen_ref))
+    m.method("uppercase", fn_ptr(uppercase_gen_ref))
+    m.method("sumArrayPure", fn_ptr(sum_array_gen_ref))
     m.method("exampleClamp", fn_ptr(example_clamp_gen_ref))
     m.method("asyncSum", fn_ptr(async_sum_gen_ref))
     var example_point_ctor_gen_ref = example_point_ctor_fn
