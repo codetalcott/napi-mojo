@@ -17,8 +17,10 @@ test('generate-dts.js produces build/index.d.ts', () => {
 
 test('.d.ts contains export for every addon function', () => {
   const dts = fs.readFileSync(DTS_PATH, 'utf8');
+  // Exclude known class constructors (they appear as functions in addon object)
+  const knownClasses = ['Counter', 'Animal', 'Dog', 'ExamplePoint'];
   const keys = Object.keys(addon).filter(
-    k => typeof addon[k] === 'function' && !['Counter', 'Animal', 'Dog'].includes(k)
+    k => typeof addon[k] === 'function' && !knownClasses.includes(k)
   );
   for (const key of keys) {
     expect(dts).toMatch(new RegExp(`export function ${key}\\b`));

@@ -9,10 +9,11 @@ from napi.framework.js_boolean import JsBoolean
 from napi.framework.js_int32 import JsInt32
 from napi.framework.js_uint32 import JsUInt32
 from napi.framework.js_int64 import JsInt64
+from napi.framework.js_undefined import JsUndefined
 from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof, js_type_name, js_is_array
 from napi.error import throw_js_error, throw_js_type_error_dynamic
-from napi.framework.register import fn_ptr, ModuleBuilder
+from napi.framework.register import fn_ptr, ModuleBuilder, ClassBuilder
 from napi.framework.js_object import JsObject
 from napi.framework.js_array import JsArray
 
@@ -157,8 +158,61 @@ fn example_nullable_echo_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "exampleNullableEcho failed")
         return NapiValue()
 
+# ExamplePoint class — constructor
+fn example_point_ctor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(_b, env, info)
+        var args = CbArgs.get_two(_b, env, info)
+        var _t_args_0_ = js_typeof(_b, env, args[0])
+        if _t_args_0_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "ExamplePoint: expected number for arg 1, got " + js_type_name(_t_args_0_))
+            return NapiValue()
+        var _t_args_1_ = js_typeof(_b, env, args[1])
+        if _t_args_1_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "ExamplePoint: expected number for arg 2, got " + js_type_name(_t_args_1_))
+            return NapiValue()
+        JsObject(this_val).set_named_property(_b, env, "_x", args[0])
+        JsObject(this_val).set_named_property(_b, env, "_y", args[1])
+        return this_val
+    except:
+        throw_js_error(env, "ExamplePoint constructor failed")
+        return NapiValue()
 
-## register_generated — register all generated functions on the module builder
+# ExamplePoint.sum (instance method)
+fn example_point_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(_b, env, info)
+        var xv = JsNumber.from_napi_value(_b, env, JsObject(this_val).get_named_property(_b, env, "_x"))
+        var yv = JsNumber.from_napi_value(_b, env, JsObject(this_val).get_named_property(_b, env, "_y"))
+        return JsNumber.create(_b, env, xv + yv).value
+    except:
+        throw_js_error(env, "sum failed")
+        return NapiValue()
+
+# ExamplePoint.x (getter)
+fn example_point_get_x_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(_b, env, info)
+        return JsObject(this_val).get_named_property(_b, env, "_x")
+    except:
+        throw_js_error(env, "x getter failed")
+        return NapiValue()
+
+# ExamplePoint.y (getter)
+fn example_point_get_y_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(_b, env, info)
+        return JsObject(this_val).get_named_property(_b, env, "_y")
+    except:
+        throw_js_error(env, "y getter failed")
+        return NapiValue()
+
+
+## register_generated — register all generated functions and classes
 ##
 ## Call from register_module after creating the ModuleBuilder:
 ##   register_generated(m)
@@ -182,3 +236,12 @@ fn register_generated(m: ModuleBuilder) raises:
     m.method("exampleHasKey", fn_ptr(example_has_key_gen_ref))
     m.method("exampleArrayLen", fn_ptr(example_array_len_gen_ref))
     m.method("exampleNullableEcho", fn_ptr(example_nullable_echo_gen_ref))
+    var example_point_ctor_gen_ref = example_point_ctor_fn
+    var example_point_sum_gen_ref = example_point_sum_fn
+    var example_point_get_x_gen_ref = example_point_get_x_fn
+    var example_point_get_y_gen_ref = example_point_get_y_fn
+
+    var example_point_builder = m.class_def("ExamplePoint", fn_ptr(example_point_ctor_gen_ref))
+    example_point_builder.instance_method("sum", fn_ptr(example_point_sum_gen_ref))
+    example_point_builder.getter("x", fn_ptr(example_point_get_x_gen_ref))
+    example_point_builder.getter("y", fn_ptr(example_point_get_y_gen_ref))
