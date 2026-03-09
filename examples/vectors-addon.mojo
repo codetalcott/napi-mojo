@@ -24,6 +24,13 @@ from napi.framework.register import fn_ptr, ModuleBuilder
 from napi.framework.runtime import init_async_runtime
 
 
+# Note on API style: this example uses ModuleBuilder(env, exports) without a
+# NapiBindings pointer, so callbacks use the no-bindings CbArgs overloads
+# (get_one(env, info), get_two(env, info), etc.). This is intentional for a
+# minimal example. Production addons should pass NapiBindings through
+# ModuleBuilder to enable cached function pointers (zero per-call dlsym).
+# See src/lib.mojo and the "Cached NapiBindings" section of CLAUDE.md.
+
 # --- SIMD + parallel core ----------------------------------------------------
 # Operates directly on raw Float64 pointers from TypedArray memory.
 # No copies — reads the JS engine's buffer in place.

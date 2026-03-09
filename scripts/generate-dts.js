@@ -543,7 +543,12 @@ function tomlTokenToTs(token) {
 }
 
 const TOML_PATH = path.join(__dirname, '..', 'src', 'exports.toml');
-const toml = parseTOML(fs.readFileSync(TOML_PATH, 'utf8'));
+let toml = {};
+try {
+  toml = parseTOML(fs.readFileSync(TOML_PATH, 'utf8'));
+} catch {
+  console.log(`Note: ${TOML_PATH} not found or unreadable — skipping TOML-declared exports.`);
+}
 
 // Emit DTS for TOML-declared functions (sync + async)
 for (const [, fn] of Object.entries(toml.functions || {})) {

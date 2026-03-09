@@ -24,6 +24,13 @@ from napi.framework.js_class import unwrap_native
 from napi.framework.register import fn_ptr, ModuleBuilder
 
 
+# Note on API style: this example uses ModuleBuilder(env, exports) without a
+# NapiBindings pointer, so callbacks use the no-bindings CbArgs overloads
+# (get_one(env, info), get_two(env, info), etc.). This is intentional for a
+# minimal example. Production addons should pass NapiBindings through
+# ModuleBuilder to enable cached function pointers (zero per-call dlsym).
+# See src/lib.mojo and the "Cached NapiBindings" section of CLAUDE.md.
+
 # --- Native data struct ------------------------------------------------------
 # Heap-allocated and wrapped onto the JS object via napi_wrap.
 # Must implement Movable so alloc[T] + init_pointee_move works.

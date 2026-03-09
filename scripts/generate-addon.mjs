@@ -202,6 +202,9 @@ const TYPE_MAP = {
 function resolveType(rawType) {
   const nullable = rawType.endsWith('?');
   const baseType = nullable ? rawType.slice(0, -1) : rawType;
+  if (!TYPE_MAP[baseType]) {
+    console.warn(`[generate-addon] Warning: unknown type "${baseType}" — falling back to "any". Check your exports.toml.`);
+  }
   return { typeInfo: TYPE_MAP[baseType] || TYPE_MAP.any, nullable };
 }
 
@@ -298,7 +301,11 @@ function generateCallback(name, decl) {
 
 // --- Async function generation ---
 
-// Mojo types for async data struct fields (only numeric types allowed — no destructors)
+// Mojo types for async data struct fields.
+// IMPORTANT: only numeric (non-destructor) types are permitted here.
+// Async data structs cross the JS→worker-thread boundary — Mojo types with
+// destructors (String, List, objects) cannot be safely moved across threads.
+// This is an intentional strict subset of TYPE_MAP.
 const ASYNC_TYPE_MAP = {
   number: { mojoType: 'Float64', zeroVal: '0.0', createExpr: (e) => `JsNumber.create(env, ${e})` },
   int32:  { mojoType: 'Int32',   zeroVal: '0',   createExpr: (e) => `JsInt32.create(env, ${e})` },
@@ -318,8 +325,17 @@ function generateAsyncFunction(name, decl) {
   const executeBody = decl.execute_body || '';
   const structName = `${snakeToPascal(name)}Data`;
 
+  if (!ASYNC_TYPE_MAP[returnsToken]) {
+    console.warn(`[generate-addon] Warning: async function "${name}" return type "${returnsToken}" is not supported in async structs (only numeric types) — falling back to "number".`);
+  }
   const retType = ASYNC_TYPE_MAP[returnsToken] || ASYNC_TYPE_MAP.number;
-  const argMojoTypes = args.map(a => ASYNC_TYPE_MAP[a.replace(/\?$/, '')] || ASYNC_TYPE_MAP.number);
+  const argMojoTypes = args.map((a, idx) => {
+    const tok = a.replace(/\?$/, '');
+    if (!ASYNC_TYPE_MAP[tok]) {
+      console.warn(`[generate-addon] Warning: async function "${name}" arg[${idx}] type "${tok}" is not supported in async structs (only numeric types) — falling back to "number".`);
+    }
+    return ASYNC_TYPE_MAP[tok] || ASYNC_TYPE_MAP.number;
+  });
 
   const out = [];
 

@@ -58,6 +58,10 @@ fn fn_ptr[T: AnyType](func: T) -> OpaquePointer[MutAnyOrigin]:
 ## calling napi_define_properties immediately. Call flush() once after all
 ## method() calls to register everything in a single N-API call — reducing
 ## ~90 individual napi_define_properties calls to 1 during module init.
+## Maximum descriptors ModuleBuilder can hold before flush().
+## Increase if a single module registers more than this many exports.
+alias MAX_DESCRIPTORS: Int = 128
+
 struct ModuleBuilder(Movable):
     var env: NapiEnv
     var exports: NapiValue
@@ -70,17 +74,17 @@ struct ModuleBuilder(Movable):
         self.env = env
         self.exports = exports
         self.data = OpaquePointer[MutAnyOrigin]()
-        self._descs = alloc[NapiPropertyDescriptor](128)
+        self._descs = alloc[NapiPropertyDescriptor](MAX_DESCRIPTORS)
         self._count = 0
-        self._capacity = 128
+        self._capacity = MAX_DESCRIPTORS
 
     fn __init__(out self, env: NapiEnv, exports: NapiValue, data: OpaquePointer[MutAnyOrigin]):
         self.env = env
         self.exports = exports
         self.data = data
-        self._descs = alloc[NapiPropertyDescriptor](128)
+        self._descs = alloc[NapiPropertyDescriptor](MAX_DESCRIPTORS)
         self._count = 0
-        self._capacity = 128
+        self._capacity = MAX_DESCRIPTORS
 
     fn __moveinit__(out self, deinit take: Self):
         self.env = take.env
@@ -95,7 +99,7 @@ struct ModuleBuilder(Movable):
     ## Sets desc.data = self.data so the callback can retrieve bindings.
     fn method(mut self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
         if self._count >= self._capacity:
-            raise Error("ModuleBuilder: descriptor capacity exceeded (max 128)")
+            raise Error("ModuleBuilder: descriptor capacity exceeded (max " + String(MAX_DESCRIPTORS) + ")")
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
         desc.method = ptr
@@ -106,7 +110,7 @@ struct ModuleBuilder(Movable):
 
     fn method(mut self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
         if self._count >= self._capacity:
-            raise Error("ModuleBuilder: descriptor capacity exceeded (max 128)")
+            raise Error("ModuleBuilder: descriptor capacity exceeded (max " + String(MAX_DESCRIPTORS) + ")")
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
         desc.method = ptr

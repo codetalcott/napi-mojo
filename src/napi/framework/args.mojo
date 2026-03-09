@@ -4,10 +4,16 @@
 ## validating argc, so that napi_callback implementations don't repeat
 ## the same InlineArray/pointer/check_status dance.
 ##
-## Usage:
-##   var arg = CbArgs.get_one(env, info)        # raises if argc < 1
-##   var args = CbArgs.get_two(env, info)        # raises if argc < 2
-##   var a = JsNumber.from_napi_value(env, args[0])
+## Usage (preferred — bindings-aware, single napi_get_cb_info call):
+##   var a   = CbArgs.get_bindings_and_one(env, info)   # a.b=bindings, a.arg0=value
+##   var ab  = CbArgs.get_bindings_and_two(env, info)   # ab.b, ab.arg0, ab.arg1
+##
+## Or retrieve bindings first, then args:
+##   var _b  = CbArgs.get_bindings(env, info)
+##   var arg = CbArgs.get_one(_b, env, info)             # raises if argc < 1
+##
+## No-bindings overloads — get_one(env, info) etc. — are kept for
+## standalone addons that use ModuleBuilder(env, exports) without NapiBindings.
 
 from napi.types import NapiEnv, NapiValue
 from napi.raw import raw_get_cb_info
