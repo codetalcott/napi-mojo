@@ -10,10 +10,12 @@
 ## All call variants use `undefined` as the `this` value. The function must
 ## already be a valid JS function napi_value (check with js_typeof first).
 
-from napi.types import NapiEnv, NapiValue
+from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor
 from napi.bindings import Bindings
 from napi.raw import raw_call_function, raw_get_undefined, raw_create_function
 from napi.error import check_status
+from napi.module import define_property
+from napi.framework.js_number import JsNumber
 
 ## JsFunction — typed wrapper for a JavaScript function napi_value
 struct JsFunction:
@@ -150,4 +152,63 @@ struct JsFunction:
             cb_ptr,
             data,
             UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsFunction(result)
+
+    ## create_named — create a JS function with an explicit name and arity hint
+    ##
+    ## Matches napi-rs's Function::new_with_length. `name` is a runtime String
+    ## (vs StringLiteral for create/create_with_data) so the name can be
+    ## computed at runtime. `length` sets fn.length (the arity hint) via a
+    ## napi_define_properties call after creation.
+    ##
+    ## Note: pass NAPI_AUTO_LENGTH (~UInt(0)) as the string-length argument to
+    ## raw_create_function so that N-API uses strlen() on the null-terminated
+    ## name. The `length` Int parameter is the JavaScript arity, not the string
+    ## byte-count.
+    @staticmethod
+    fn create_named(env: NapiEnv, name: String, length: Int,
+                    cb_ptr: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
+        var result = NapiValue()
+        var auto_length: UInt = ~UInt(0)
+        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[NoneType]()
+        check_status(raw_create_function(env,
+            name_ptr,
+            auto_length,
+            cb_ptr,
+            OpaquePointer[MutAnyOrigin](),
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        _ = name  # keep name alive past FFI call (ASAP safety)
+        # Set fn.length = length via napi_define_properties
+        var len_val = JsNumber.create_int(env, length).value
+        var desc = NapiPropertyDescriptor()
+        desc.utf8name = "length".unsafe_ptr().bitcast[NoneType]()
+        desc.method = OpaquePointer[MutAnyOrigin]()
+        desc.value = len_val
+        desc.attributes = 4  # napi_configurable
+        desc.data = OpaquePointer[MutAnyOrigin]()
+        define_property(env, result, desc)
+        return JsFunction(result)
+
+    @staticmethod
+    fn create_named(b: Bindings, env: NapiEnv, name: String, length: Int,
+                    cb_ptr: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
+        var result = NapiValue()
+        var auto_length: UInt = ~UInt(0)
+        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[NoneType]()
+        check_status(raw_create_function(b, env,
+            name_ptr,
+            auto_length,
+            cb_ptr,
+            OpaquePointer[MutAnyOrigin](),
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        _ = name  # keep name alive past FFI call (ASAP safety)
+        # Set fn.length = length via napi_define_properties
+        var len_val = JsNumber.create_int(b, env, length).value
+        var desc = NapiPropertyDescriptor()
+        desc.utf8name = "length".unsafe_ptr().bitcast[NoneType]()
+        desc.method = OpaquePointer[MutAnyOrigin]()
+        desc.value = len_val
+        desc.attributes = 4  # napi_configurable
+        desc.data = OpaquePointer[MutAnyOrigin]()
+        define_property(b, env, result, desc)
         return JsFunction(result)

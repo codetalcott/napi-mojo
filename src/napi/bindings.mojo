@@ -142,6 +142,8 @@ struct NapiBindings(Movable):
     var fatal_exception: OpaquePointer[MutAnyOrigin]
     var type_tag_object: OpaquePointer[MutAnyOrigin]
     var check_object_type_tag: OpaquePointer[MutAnyOrigin]
+    # Non-function-pointer slot: ClassRegistry pointer (set after module init)
+    var registry: OpaquePointer[MutAnyOrigin]
 
     fn __init__(out self):
         self.create_string_utf8 = OpaquePointer[MutAnyOrigin]()
@@ -271,6 +273,7 @@ struct NapiBindings(Movable):
         self.fatal_exception = OpaquePointer[MutAnyOrigin]()
         self.type_tag_object = OpaquePointer[MutAnyOrigin]()
         self.check_object_type_tag = OpaquePointer[MutAnyOrigin]()
+        self.registry = OpaquePointer[MutAnyOrigin]()
 
     fn __moveinit__(out self, deinit take: Self):
         self.create_string_utf8 = take.create_string_utf8
@@ -400,6 +403,7 @@ struct NapiBindings(Movable):
         self.fatal_exception = take.fatal_exception
         self.type_tag_object = take.type_tag_object
         self.check_object_type_tag = take.check_object_type_tag
+        self.registry = take.registry
 
 
 comptime Bindings = UnsafePointer[NapiBindings, MutAnyOrigin]

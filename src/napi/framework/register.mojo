@@ -16,7 +16,8 @@
 ##   var inc_ref = counter_increment_fn
 ##   c.instance_method("increment", fn_ptr(inc_ref))
 
-from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor
+from memory import alloc
+from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor, NapiRef
 from napi.bindings import Bindings
 from napi.module import register_method, define_property
 from napi.framework.js_class import (
@@ -31,6 +32,9 @@ from napi.framework.js_class import (
     set_class_prototype,
 )
 from napi.framework.js_object import JsObject
+from napi.framework.js_ref import JsRef
+from napi.raw import raw_new_instance
+from napi.error import check_status
 
 ## fn_ptr — extract a callable function pointer from a function reference
 ##
@@ -255,3 +259,94 @@ struct ClassBuilder:
 
     fn inherits(self, b: Bindings, parent: ClassBuilder) raises:
         set_class_prototype(b, self.env, self.ctor, parent.ctor)
+
+
+## ClassEntry — one slot in a ClassRegistry
+##
+## Stores the .rodata pointer + byte length from a StringLiteral name,
+## plus a NapiRef handle that keeps the constructor alive.
+## Fields are all primitive types (pointers + Int) so no destructor needed.
+struct ClassEntry(Movable):
+    var name_ptr: OpaquePointer[ImmutAnyOrigin]  # StringLiteral .rodata pointer
+    var name_len: Int
+    var ctor_ref: NapiRef
+
+    fn __init__(out self):
+        self.name_ptr = OpaquePointer[ImmutAnyOrigin]()
+        self.name_len = 0
+        self.ctor_ref = NapiRef()
+
+    fn __moveinit__(out self, deinit take: Self):
+        self.name_ptr = take.name_ptr
+        self.name_len = take.name_len
+        self.ctor_ref = take.ctor_ref
+
+
+## ClassRegistry — stores class constructor refs keyed by StringLiteral name
+##
+## Allocates a fixed-capacity heap array (16 slots) at init time.
+## Use register() after each class_def() call, then new_instance() in callbacks.
+##
+## Intended for module-lifetime usage — the backing array and NapiRefs are
+## never freed (process exit handles cleanup).
+##
+## Usage:
+##   var reg = ClassRegistry()
+##   reg.register(b, env, "Counter", counter_builder.ctor)
+##   # ... in a callback:
+##   var inst = reg.new_instance(b, env, "Counter", 1, argv_ptr)
+struct ClassRegistry(Movable):
+    var _entries: UnsafePointer[ClassEntry, MutAnyOrigin]
+    var _count: Int
+
+    fn __init__(out self):
+        self._entries = alloc[ClassEntry](16)
+        self._count = 0
+
+    fn __moveinit__(out self, deinit take: Self):
+        self._entries = take._entries
+        self._count = take._count
+
+    ## register — store a strong NapiRef to a constructor, keyed by name
+    fn register(mut self, b: Bindings, env: NapiEnv, name: StringLiteral, ctor: NapiValue) raises:
+        var entry = ClassEntry()
+        entry.name_ptr = name.unsafe_ptr().bitcast[NoneType]()
+        entry.name_len = name.byte_length()
+        entry.ctor_ref = JsRef.create(b, env, ctor, 1).handle
+        (self._entries + self._count).init_pointee_move(entry^)
+        self._count += 1
+
+    ## new_instance — call `new ClassName(args)` from Mojo code
+    ##
+    ## Looks up the constructor by byte-comparing the StringLiteral name,
+    ## then calls napi_new_instance. Raises if the class is not registered.
+    fn new_instance(
+        self,
+        b: Bindings,
+        env: NapiEnv,
+        name: StringLiteral,
+        argc: UInt,
+        argv: OpaquePointer[ImmutAnyOrigin],
+    ) raises -> NapiValue:
+        var target_len = name.byte_length()
+        var target_ptr = name.unsafe_ptr()
+        for i in range(self._count):
+            var stored_len = (self._entries + i)[].name_len
+            var stored_ptr = (self._entries + i)[].name_ptr
+            if stored_len == target_len:
+                var name_match = True
+                var s_bytes = stored_ptr.bitcast[UInt8]()
+                for j in range(stored_len):
+                    if s_bytes[j] != target_ptr[j]:
+                        name_match = False
+                        break
+                if name_match:
+                    var stored_ref = (self._entries + i)[].ctor_ref
+                    var ctor_val = JsRef(stored_ref).get(b, env)
+                    var result = NapiValue()
+                    check_status(raw_new_instance(
+                        b, env, ctor_val, argc, argv,
+                        UnsafePointer(to=result).bitcast[NoneType](),
+                    ))
+                    return result
+        raise Error("ClassRegistry: class not found")

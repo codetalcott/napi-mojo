@@ -85,7 +85,7 @@ from napi.framework.js_arraybuffer import JsArrayBuffer
 from napi.framework.js_buffer import JsBuffer
 from napi.framework.js_typedarray import JsTypedArray
 from napi.framework.js_class import unwrap_native
-from napi.framework.register import fn_ptr, ModuleBuilder
+from napi.framework.register import fn_ptr, ModuleBuilder, ClassRegistry
 from generated.callbacks import register_generated
 from napi.framework.js_ref import JsRef
 from napi.framework.escapable_handle_scope import EscapableHandleScope
@@ -2588,6 +2588,41 @@ fn get_all_property_names_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ---------------------------------------------------------------------------
+# Phase 25a: createNamedFn() — creates a JS function with explicit name+length
+#
+# Returns a function named "myFn" with length=2. Demonstrates
+# JsFunction.create_named(b, env, name, length, cb_ptr).
+# ---------------------------------------------------------------------------
+fn create_named_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var cb_ref = inner_callback_fn
+        var name = String("myFn")
+        var func = JsFunction.create_named(b, env, name, 2, fn_ptr(cb_ref))
+        return func.value
+    except:
+        throw_js_error(env, "createNamedFn failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 25b: newCounterFromRegistry(n) — creates Counter(n) via ClassRegistry
+#
+# Retrieves the ClassRegistry from NapiBindings.registry and calls
+# registry.new_instance("Counter", n). Demonstrates creating a class
+# instance from arbitrary Mojo code (not just static methods).
+# ---------------------------------------------------------------------------
+fn new_counter_from_registry_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var registry = b[].registry.bitcast[ClassRegistry]()
+        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=arg0).bitcast[NoneType]()
+        return registry[].new_instance(b, env, "Counter", 1, argv_ptr)
+    except:
+        throw_js_error(env, "newCounterFromRegistry failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
 # Phase 24a: getErrorMessage(err) — reads .message from a JS Error object
 # ---------------------------------------------------------------------------
 fn get_error_message_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -2778,6 +2813,9 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var get_error_stack_ref = get_error_stack_fn
     var get_opt_value_ref = get_opt_value_fn
     var to_js_string_ref = to_js_string_fn
+    # Phase 25
+    var create_named_fn_ref = create_named_fn
+    var new_counter_from_registry_ref = new_counter_from_registry_fn
 
     try:
         var m = ModuleBuilder(env, exports, cb_data)
@@ -2880,6 +2918,9 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         m.method("getErrorStack", fn_ptr(get_error_stack_ref))
         m.method("getOptValue", fn_ptr(get_opt_value_ref))
         m.method("toJsString", fn_ptr(to_js_string_ref))
+        # Phase 25
+        m.method("createNamedFn", fn_ptr(create_named_fn_ref))
+        m.method("newCounterFromRegistry", fn_ptr(new_counter_from_registry_ref))
 
         # Counter class
         var counter = m.class_def("Counter", fn_ptr(counter_constructor_ref))
@@ -2888,6 +2929,12 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         counter.getter_setter("value", fn_ptr(counter_get_value_ref), fn_ptr(counter_set_value_ref))
         counter.static_method("isCounter", fn_ptr(counter_is_counter_ref))
         counter.static_method("fromValue", fn_ptr(counter_from_value_ref))
+        # Phase 25b: ClassRegistry — store Counter constructor for new_instance
+        var registry = ClassRegistry()
+        registry.register(bindings_ptr, env, "Counter", counter.ctor)
+        var registry_ptr = alloc[ClassRegistry](1)
+        registry_ptr.init_pointee_move(registry^)
+        bindings_ptr[].registry = registry_ptr.bitcast[NoneType]()
 
         # Animal class
         var animal = m.class_def("Animal", fn_ptr(animal_constructor_ref))
