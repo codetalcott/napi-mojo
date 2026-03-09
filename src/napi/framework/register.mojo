@@ -309,6 +309,8 @@ struct ClassRegistry(Movable):
 
     ## register — store a strong NapiRef to a constructor, keyed by name
     fn register(mut self, b: Bindings, env: NapiEnv, name: StringLiteral, ctor: NapiValue) raises:
+        if self._count >= 16:
+            raise Error("ClassRegistry: capacity exceeded (max 16 classes)")
         var entry = ClassEntry()
         entry.name_ptr = name.unsafe_ptr().bitcast[NoneType]()
         entry.name_len = name.byte_length()

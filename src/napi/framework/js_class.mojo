@@ -304,7 +304,7 @@ fn set_class_prototype(
     var child_proto = _get_prototype(b, env, child_ctor)
     var parent_proto = _get_prototype(b, env, parent_ctor)
 
-    var global_obj = js_get_global(env)
+    var global_obj = js_get_global(b, env)
     var object_key = NapiValue()
     check_status(raw_get_named_property(
         b, env, global_obj.value,

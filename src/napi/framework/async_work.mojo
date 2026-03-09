@@ -100,14 +100,14 @@ struct AsyncWork:
     @staticmethod
     fn resolve(env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
                result: NapiValue) raises:
-        _ = raw_resolve_deferred(env, deferred, result)
-        _ = raw_delete_async_work(env, work)
+        check_status(raw_resolve_deferred(env, deferred, result))
+        check_status(raw_delete_async_work(env, work))
 
     @staticmethod
     fn resolve(b: Bindings, env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
                result: NapiValue) raises:
-        _ = raw_resolve_deferred(b, env, deferred, result)
-        _ = raw_delete_async_work(b, env, work)
+        check_status(raw_resolve_deferred(b, env, deferred, result))
+        check_status(raw_delete_async_work(b, env, work))
 
     ## reject_with_error — create Error, reject deferred, delete async work
     @staticmethod
@@ -117,9 +117,9 @@ struct AsyncWork:
         var null_code = NapiValue()
         var error_val = NapiValue()
         var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()
-        _ = raw_create_error(env, null_code, msg_val.value, error_ptr)
-        _ = raw_reject_deferred(env, deferred, error_val)
-        _ = raw_delete_async_work(env, work)
+        check_status(raw_create_error(env, null_code, msg_val.value, error_ptr))
+        check_status(raw_reject_deferred(env, deferred, error_val))
+        check_status(raw_delete_async_work(env, work))
 
     @staticmethod
     fn reject_with_error(b: Bindings, env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
@@ -128,6 +128,6 @@ struct AsyncWork:
         var null_code = NapiValue()
         var error_val = NapiValue()
         var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()
-        _ = raw_create_error(b, env, null_code, msg_val.value, error_ptr)
-        _ = raw_reject_deferred(b, env, deferred, error_val)
-        _ = raw_delete_async_work(b, env, work)
+        check_status(raw_create_error(b, env, null_code, msg_val.value, error_ptr))
+        check_status(raw_reject_deferred(b, env, deferred, error_val))
+        check_status(raw_delete_async_work(b, env, work))

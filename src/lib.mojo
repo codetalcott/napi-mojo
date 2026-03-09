@@ -1685,8 +1685,10 @@ fn progress_call_js_cb(
     var value = val_ptr[]
     val_ptr.destroy_pointee()
     val_ptr.free()
-    # If env is NULL (teardown), skip the JS call
+    # If env or js_callback is NULL (teardown), skip the JS call
     if not env:
+        return
+    if not js_callback:
         return
     try:
         var js_val = JsNumber.create(env, value)
@@ -3003,6 +3005,18 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         dog.getter("breed", fn_ptr(dog_get_breed_ref))
         dog.inherits(animal)
     except:
-        pass
+        # Registration failure is unrecoverable — the addon is in a broken
+        # partial state. Construct a JS Error value and call napi_fatal_exception
+        # so Node.js terminates with a visible error rather than silently loading
+        # a broken module.
+        try:
+            var null_code = NapiValue()
+            var err_msg = JsString.create_literal(env, "napi-mojo: register_module failed")
+            var err_val = NapiValue()
+            var err_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=err_val).bitcast[NoneType]()
+            _ = raw_create_error(env, null_code, err_msg.value, err_ptr)
+            _ = raw_fatal_exception(env, err_val)
+        except:
+            pass
 
     return exports
