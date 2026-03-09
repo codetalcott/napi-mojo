@@ -14,7 +14,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const SRC = path.join(__dirname, '..', 'src', 'lib.mojo');
+const SRC_DIR = path.join(__dirname, '..', 'src');
+const ADDON_DIR = path.join(SRC_DIR, 'addon');
 const OUT = path.join(__dirname, '..', 'build', 'index.d.ts');
 
 // Manual overrides for complex signatures that regex inference can't handle.
@@ -88,7 +89,17 @@ const OVERRIDES = {
   checkObjectTypeTag: '(obj: object, lower: number, upper: number): boolean',
 };
 
-const source = fs.readFileSync(SRC, 'utf8');
+// Collect source from all addon files + lib.mojo
+const sourceParts = [];
+if (fs.existsSync(ADDON_DIR)) {
+  for (const f of fs.readdirSync(ADDON_DIR).sort()) {
+    if (f.endsWith('.mojo') && f !== '__init__.mojo') {
+      sourceParts.push(fs.readFileSync(path.join(ADDON_DIR, f), 'utf8'));
+    }
+  }
+}
+sourceParts.push(fs.readFileSync(path.join(SRC_DIR, 'lib.mojo'), 'utf8'));
+const source = sourceParts.join('\n');
 const lines = source.split('\n');
 
 // --- Pass 1: Extract registered JS function names ---

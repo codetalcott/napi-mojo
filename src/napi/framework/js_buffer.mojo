@@ -60,7 +60,11 @@ struct JsBuffer:
         return JsBuffer(result)
 
     ## data_ptr — get a raw pointer to the backing store
+    ##
+    ## Raises with a descriptive error if self.value is not a Buffer.
     fn data_ptr(self, env: NapiEnv) raises -> UnsafePointer[Byte, MutAnyOrigin]:
+        if not JsBuffer.is_buffer(env, self.value):
+            raise Error("expected a Buffer")
         var data = OpaquePointer[MutAnyOrigin]()
         check_status(raw_get_buffer_info(env, self.value,
             UnsafePointer(to=data).bitcast[NoneType](),
@@ -68,6 +72,8 @@ struct JsBuffer:
         return data.bitcast[Byte]()
 
     fn data_ptr(self, b: Bindings, env: NapiEnv) raises -> UnsafePointer[Byte, MutAnyOrigin]:
+        if not JsBuffer.is_buffer(b, env, self.value):
+            raise Error("expected a Buffer")
         var data = OpaquePointer[MutAnyOrigin]()
         check_status(raw_get_buffer_info(b, env, self.value,
             UnsafePointer(to=data).bitcast[NoneType](),
@@ -75,7 +81,11 @@ struct JsBuffer:
         return data.bitcast[Byte]()
 
     ## length — get the Buffer's byte length
+    ##
+    ## Raises with a descriptive error if self.value is not a Buffer.
     fn length(self, env: NapiEnv) raises -> UInt:
+        if not JsBuffer.is_buffer(env, self.value):
+            raise Error("expected a Buffer")
         var len: UInt = 0
         check_status(raw_get_buffer_info(env, self.value,
             OpaquePointer[MutAnyOrigin](),
@@ -83,6 +93,8 @@ struct JsBuffer:
         return len
 
     fn length(self, b: Bindings, env: NapiEnv) raises -> UInt:
+        if not JsBuffer.is_buffer(b, env, self.value):
+            raise Error("expected a Buffer")
         var len: UInt = 0
         check_status(raw_get_buffer_info(b, env, self.value,
             OpaquePointer[MutAnyOrigin](),

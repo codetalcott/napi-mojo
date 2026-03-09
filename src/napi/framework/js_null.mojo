@@ -24,13 +24,6 @@ struct JsNull:
     ## create — return the JavaScript null singleton
     ##
     ## Calls napi_get_null and checks the status.
-    @staticmethod
-    fn create(env: NapiEnv) raises -> JsNull:
-        var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        var status = raw_get_null(env, result_ptr)
-        check_status(status)
-        return JsNull(result)
 
     @staticmethod
     fn create(b: Bindings, env: NapiEnv) raises -> JsNull:

@@ -18,11 +18,6 @@ struct JsUInt32:
     fn __init__(out self, value: NapiValue):
         self.value = value
 
-    @staticmethod
-    fn create(env: NapiEnv, n: UInt32) raises -> JsUInt32:
-        var result = NapiValue()
-        check_status(raw_create_uint32(env, n, UnsafePointer(to=result).bitcast[NoneType]()))
-        return JsUInt32(result)
 
     @staticmethod
     fn create(b: Bindings, env: NapiEnv, n: UInt32) raises -> JsUInt32:
@@ -30,11 +25,6 @@ struct JsUInt32:
         check_status(raw_create_uint32(b, env, n, UnsafePointer(to=result).bitcast[NoneType]()))
         return JsUInt32(result)
 
-    @staticmethod
-    fn from_napi_value(env: NapiEnv, val: NapiValue) raises -> UInt32:
-        var n: UInt32 = 0
-        check_status(raw_get_value_uint32(env, val, UnsafePointer(to=n).bitcast[NoneType]()))
-        return n
 
     @staticmethod
     fn from_napi_value(b: Bindings, env: NapiEnv, val: NapiValue) raises -> UInt32:

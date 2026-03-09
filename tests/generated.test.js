@@ -82,4 +82,28 @@ describe('Generated functions (code generator pipeline)', () => {
       expect(e.message).toContain('expected number');
     }
   });
+
+  // --- exampleClamp (3-arg generated function) ---
+
+  test('exampleClamp(5, 1, 10) returns 5 (in range)', () => {
+    expect(addon.exampleClamp(5, 1, 10)).toBe(5);
+  });
+
+  test('exampleClamp(0, 1, 10) returns 1 (below lo)', () => {
+    expect(addon.exampleClamp(0, 1, 10)).toBe(1);
+  });
+
+  test('exampleClamp(15, 1, 10) returns 10 (above hi)', () => {
+    expect(addon.exampleClamp(15, 1, 10)).toBe(10);
+  });
+
+  test('exampleClamp with string arg throws TypeError', () => {
+    try {
+      addon.exampleClamp('x', 1, 10);
+      expect(true).toBe(false);
+    } catch (e) {
+      expect(e.name).toBe('TypeError');
+      expect(e.message).toContain('expected number');
+    }
+  });
 });

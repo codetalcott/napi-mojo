@@ -230,6 +230,20 @@ function generateCallback(name, decl) {
     lines.push(`        var args = CbArgs.get_two(_b, env, info)`);
     emitTypeCheck(lines, jsName, args[0], 'args[0]', 'arg 1');
     emitTypeCheck(lines, jsName, args[1], 'args[1]', 'arg 2');
+  } else if (args.length === 3) {
+    lines.push(`        var args = CbArgs.get_three(_b, env, info)`);
+    for (let i = 0; i < 3; i++) emitTypeCheck(lines, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
+  } else if (args.length === 4) {
+    lines.push(`        var args = CbArgs.get_four(_b, env, info)`);
+    for (let i = 0; i < 4; i++) emitTypeCheck(lines, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
+  } else {
+    // N >= 5: heap-allocate argv, copy to locals, free immediately before body
+    const n = args.length;
+    lines.push(`        var _argv = alloc[NapiValue](${n})`);
+    lines.push(`        CbArgs.get_argv(_b, env, info, ${n}, _argv)`);
+    for (let i = 0; i < n; i++) lines.push(`        var _a${i} = _argv[${i}]`);
+    lines.push(`        _argv.free()`);
+    for (let i = 0; i < n; i++) emitTypeCheck(lines, jsName, args[i], `_a${i}`, `arg ${i+1}`);
   }
 
   // Insert body (indented to 8 spaces)
@@ -338,6 +352,14 @@ function generateAsyncFunction(name, decl) {
     emitTypeCheck(out, jsName, args[1], 'args[1]', 'arg 2');
     out.push((TYPE_MAP[args[0].replace(/\?$/, '')] || TYPE_MAP.number).extract('input0', 'args[0]'));
     out.push((TYPE_MAP[args[1].replace(/\?$/, '')] || TYPE_MAP.number).extract('input1', 'args[1]'));
+  } else if (args.length === 3) {
+    out.push(`        var args = CbArgs.get_three(_b, env, info)`);
+    for (let i = 0; i < 3; i++) emitTypeCheck(out, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
+    for (let i = 0; i < 3; i++) out.push((TYPE_MAP[args[i].replace(/\?$/, '')] || TYPE_MAP.number).extract(`input${i}`, `args[${i}]`));
+  } else if (args.length === 4) {
+    out.push(`        var args = CbArgs.get_four(_b, env, info)`);
+    for (let i = 0; i < 4; i++) emitTypeCheck(out, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
+    for (let i = 0; i < 4; i++) out.push((TYPE_MAP[args[i].replace(/\?$/, '')] || TYPE_MAP.number).extract(`input${i}`, `args[${i}]`));
   }
   const inputArgs = argMojoTypes.map((_, i) => `input${i}`).join(', ');
   out.push(`        var data_ptr = alloc[${structName}](1)`);
@@ -397,6 +419,12 @@ function generateClassConstructor(className, decl) {
     lines.push(`        var args = CbArgs.get_two(_b, env, info)`);
     emitTypeCheck(lines, jsName, ctorArgs[0], 'args[0]', 'arg 1');
     emitTypeCheck(lines, jsName, ctorArgs[1], 'args[1]', 'arg 2');
+  } else if (ctorArgs.length === 3) {
+    lines.push(`        var args = CbArgs.get_three(_b, env, info)`);
+    for (let i = 0; i < 3; i++) emitTypeCheck(lines, jsName, ctorArgs[i], `args[${i}]`, `arg ${i+1}`);
+  } else if (ctorArgs.length === 4) {
+    lines.push(`        var args = CbArgs.get_four(_b, env, info)`);
+    for (let i = 0; i < 4; i++) emitTypeCheck(lines, jsName, ctorArgs[i], `args[${i}]`, `arg ${i+1}`);
   }
 
   const bodyLines = ctorBody.split('\n');
@@ -432,6 +460,12 @@ function generateClassMethod(className, methodName, decl) {
     lines.push(`        var args = CbArgs.get_two(_b, env, info)`);
     emitTypeCheck(lines, jsName, args[0], 'args[0]', 'arg 1');
     emitTypeCheck(lines, jsName, args[1], 'args[1]', 'arg 2');
+  } else if (args.length === 3) {
+    lines.push(`        var args = CbArgs.get_three(_b, env, info)`);
+    for (let i = 0; i < 3; i++) emitTypeCheck(lines, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
+  } else if (args.length === 4) {
+    lines.push(`        var args = CbArgs.get_four(_b, env, info)`);
+    for (let i = 0; i < 4; i++) emitTypeCheck(lines, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
   }
 
   const bodyLines = body.split('\n');
@@ -470,6 +504,12 @@ function generateClassStaticMethod(className, methodName, decl) {
     lines.push(`        var args = CbArgs.get_two(_b, env, info)`);
     emitTypeCheck(lines, jsName, args[0], 'args[0]', 'arg 1');
     emitTypeCheck(lines, jsName, args[1], 'args[1]', 'arg 2');
+  } else if (args.length === 3) {
+    lines.push(`        var args = CbArgs.get_three(_b, env, info)`);
+    for (let i = 0; i < 3; i++) emitTypeCheck(lines, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
+  } else if (args.length === 4) {
+    lines.push(`        var args = CbArgs.get_four(_b, env, info)`);
+    for (let i = 0; i < 4; i++) emitTypeCheck(lines, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
   }
 
   const bodyLines = body.split('\n');
@@ -618,6 +658,10 @@ function main() {
   const asyncEntries = funcEntries.filter(([, d]) => d.async === 'true' || d.async === true);
   const syncEntries = funcEntries.filter(([, d]) => !(d.async === 'true' || d.async === true));
   const hasAsync = asyncEntries.length > 0;
+  const hasNPlusArgs = funcEntries.some(([, d]) => (d.args || []).length >= 5) ||
+    classEntries.some(([, d]) => (d.constructor_args || []).length >= 5 ||
+      Object.values(d.instance_methods || {}).some(m => (m.args || []).length >= 5) ||
+      Object.values(d.static_methods || {}).some(m => (m.args || []).length >= 5));
 
   // Generate output
   const output = [];
@@ -646,9 +690,11 @@ function main() {
   }
   output.push('from napi.framework.js_object import JsObject');
   output.push('from napi.framework.js_array import JsArray');
+  if (hasAsync || hasNPlusArgs) {
+    output.push('from memory import alloc');
+  }
   if (hasAsync) {
     output.push('from napi.framework.async_work import AsyncWork, AsyncWorkResult');
-    output.push('from memory import alloc');
   }
   output.push('');
 
@@ -700,7 +746,7 @@ function main() {
   output.push('##');
   output.push('## Call from register_module after creating the ModuleBuilder:');
   output.push('##   register_generated(m)');
-  output.push('fn register_generated(m: ModuleBuilder) raises:');
+  output.push('fn register_generated(mut m: ModuleBuilder) raises:');
   // All functions (sync + async) register via m.method
   output.push(generateRegistration(functions));
   if (hasClasses) {

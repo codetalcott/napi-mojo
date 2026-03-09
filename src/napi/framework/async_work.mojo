@@ -81,8 +81,8 @@ struct AsyncWork:
         execute_ptr: OpaquePointer[MutAnyOrigin],
         complete_ptr: OpaquePointer[MutAnyOrigin],
     ) raises -> AsyncWorkResult:
-        var p = JsPromise.create(env)
-        var resource_name = JsString.create_literal(env, name)
+        var p = JsPromise.create(b, env)
+        var resource_name = JsString.create_literal(b, env, name)
 
         var work = NapiAsyncWork()
         var work_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=work).bitcast[NoneType]()
@@ -124,7 +124,39 @@ struct AsyncWork:
     @staticmethod
     fn reject_with_error(b: Bindings, env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
                          msg: StringLiteral) raises:
-        var msg_val = JsString.create_literal(env, msg)
+        var msg_val = JsString.create_literal(b, env, msg)
+        var null_code = NapiValue()
+        var error_val = NapiValue()
+        var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()
+        check_status(raw_create_error(b, env, null_code, msg_val.value, error_ptr))
+        check_status(raw_reject_deferred(b, env, deferred, error_val))
+        check_status(raw_delete_async_work(b, env, work))
+
+    ## reject_with_error_dynamic — reject with a computed String message
+    ##
+    ## Use when the error message is known only at runtime (e.g., includes
+    ## a file path or status code). Mirrors throw_js_error_dynamic pattern:
+    ## msg_copy owns the bytes; explicit transfer keeps them alive past the
+    ## napi_create_string_utf8 call inside JsString.create.
+    @staticmethod
+    fn reject_with_error_dynamic(env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
+                                 msg: String) raises:
+        var msg_copy = msg
+        var msg_val = JsString.create(env, msg_copy)
+        _ = msg_copy^
+        var null_code = NapiValue()
+        var error_val = NapiValue()
+        var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()
+        check_status(raw_create_error(env, null_code, msg_val.value, error_ptr))
+        check_status(raw_reject_deferred(env, deferred, error_val))
+        check_status(raw_delete_async_work(env, work))
+
+    @staticmethod
+    fn reject_with_error_dynamic(b: Bindings, env: NapiEnv, deferred: NapiDeferred,
+                                 work: NapiAsyncWork, msg: String) raises:
+        var msg_copy = msg
+        var msg_val = JsString.create(b, env, msg_copy)
+        _ = msg_copy^
         var null_code = NapiValue()
         var error_val = NapiValue()
         var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()

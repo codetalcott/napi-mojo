@@ -18,11 +18,6 @@ struct JsInt64:
     fn __init__(out self, value: NapiValue):
         self.value = value
 
-    @staticmethod
-    fn create(env: NapiEnv, n: Int64) raises -> JsInt64:
-        var result = NapiValue()
-        check_status(raw_create_int64(env, n, UnsafePointer(to=result).bitcast[NoneType]()))
-        return JsInt64(result)
 
     @staticmethod
     fn create(b: Bindings, env: NapiEnv, n: Int64) raises -> JsInt64:
@@ -30,11 +25,6 @@ struct JsInt64:
         check_status(raw_create_int64(b, env, n, UnsafePointer(to=result).bitcast[NoneType]()))
         return JsInt64(result)
 
-    @staticmethod
-    fn from_napi_value(env: NapiEnv, val: NapiValue) raises -> Int64:
-        var n: Int64 = 0
-        check_status(raw_get_value_int64(env, val, UnsafePointer(to=n).bitcast[NoneType]()))
-        return n
 
     @staticmethod
     fn from_napi_value(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Int64:

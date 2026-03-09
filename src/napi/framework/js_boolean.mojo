@@ -29,13 +29,6 @@ struct JsBoolean:
     ##
     ## Calls napi_get_boolean (returns the JS true/false singleton) and checks
     ## the status.
-    @staticmethod
-    fn create(env: NapiEnv, b: Bool) raises -> JsBoolean:
-        var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        var status = raw_get_boolean(env, b, result_ptr)
-        check_status(status)
-        return JsBoolean(result)
 
     @staticmethod
     fn create(b: Bindings, env: NapiEnv, bval: Bool) raises -> JsBoolean:
@@ -49,13 +42,6 @@ struct JsBoolean:
     ##
     ## Calls napi_get_value_bool and checks the status.
     ## The NapiValue must hold a JS boolean; returns a NapiError otherwise.
-    @staticmethod
-    fn from_napi_value(env: NapiEnv, val: NapiValue) raises -> Bool:
-        var b: Bool = False
-        var b_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=b).bitcast[NoneType]()
-        var status = raw_get_value_bool(env, val, b_ptr)
-        check_status(status)
-        return b
 
     @staticmethod
     fn from_napi_value(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:

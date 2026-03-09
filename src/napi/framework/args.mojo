@@ -86,6 +86,38 @@ struct CbArgs:
             raise Error("expected at least 2 arguments")
         return args^
 
+    ## get_three — extract exactly three callback arguments
+    @staticmethod
+    fn get_three(b: Bindings, env: NapiEnv, info: NapiValue) raises -> InlineArray[NapiValue, 3]:
+        var argc: UInt = 3
+        var args = InlineArray[NapiValue, 3](fill=NapiValue())
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            b, env, info,
+            UnsafePointer(to=argc).bitcast[NoneType](),
+            UnsafePointer(to=args[0]).bitcast[NoneType](),
+            null, null,
+        ))
+        if argc < 3:
+            raise Error("expected at least 3 arguments")
+        return args^
+
+    ## get_four — extract exactly four callback arguments
+    @staticmethod
+    fn get_four(b: Bindings, env: NapiEnv, info: NapiValue) raises -> InlineArray[NapiValue, 4]:
+        var argc: UInt = 4
+        var args = InlineArray[NapiValue, 4](fill=NapiValue())
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_cb_info(
+            b, env, info,
+            UnsafePointer(to=argc).bitcast[NoneType](),
+            UnsafePointer(to=args[0]).bitcast[NoneType](),
+            null, null,
+        ))
+        if argc < 4:
+            raise Error("expected at least 4 arguments")
+        return args^
+
     ## get_this — extract the `this` value from a callback
     ##
     ## Used by class method/getter/setter callbacks to get the JS instance.

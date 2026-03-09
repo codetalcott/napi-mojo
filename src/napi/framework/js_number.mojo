@@ -28,6 +28,10 @@ struct JsNumber:
     ## create — construct a JsNumber from a Mojo Float64
     ##
     ## Calls napi_create_double and checks the status.
+    ##
+    ## bootstrap-safe: the no-bindings overload is retained for async complete
+    ## and TSFN callbacks that lack an `info` parameter and cannot retrieve
+    ## cached bindings. Use create(b, env, n) in all hot-path callbacks.
     @staticmethod
     fn create(env: NapiEnv, n: Float64) raises -> JsNumber:
         var result: NapiValue = NapiValue()
@@ -48,6 +52,8 @@ struct JsNumber:
     ##
     ## Calls napi_get_value_double and checks the status.
     ## The NapiValue must hold a JS number; returns a NapiError otherwise.
+    ##
+    ## deprecated: prefer from_napi_value(b, env, val) in all callbacks.
     @staticmethod
     fn from_napi_value(env: NapiEnv, val: NapiValue) raises -> Float64:
         var n: Float64 = 0.0

@@ -26,6 +26,7 @@ struct JsFunction:
         self.value = value
 
     ## call0 — call with no arguments, undefined as `this`
+    ## deprecated: prefer call0(b, env) in all callbacks.
     fn call0(self, env: NapiEnv) raises -> NapiValue:
         var recv: NapiValue = NapiValue()
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()
@@ -37,6 +38,8 @@ struct JsFunction:
         return result
 
     ## call1 — call with one argument, undefined as `this`
+    ## bootstrap-safe: retained for TSFN call_js_cb which lacks an `info`
+    ## parameter. Use call1(b, env, arg0) in all hot-path callbacks.
     fn call1(self, env: NapiEnv, arg0: NapiValue) raises -> NapiValue:
         var recv: NapiValue = NapiValue()
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()
@@ -48,6 +51,7 @@ struct JsFunction:
         return result
 
     ## call2 — call with two arguments, undefined as `this`
+    ## deprecated: prefer call2(b, env, arg0, arg1) in all callbacks.
     fn call2(self, env: NapiEnv, arg0: NapiValue, arg1: NapiValue) raises -> NapiValue:
         var recv: NapiValue = NapiValue()
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()
@@ -192,6 +196,12 @@ struct JsFunction:
     @staticmethod
     fn create_named(b: Bindings, env: NapiEnv, name: String, length: Int,
                     cb_ptr: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
+        return JsFunction.create_named(b, env, name, length, cb_ptr, OpaquePointer[MutAnyOrigin]())
+
+    @staticmethod
+    fn create_named(b: Bindings, env: NapiEnv, name: String, length: Int,
+                    cb_ptr: OpaquePointer[MutAnyOrigin],
+                    data_ptr: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
         var result = NapiValue()
         var auto_length: UInt = ~UInt(0)
         var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[NoneType]()
@@ -199,7 +209,7 @@ struct JsFunction:
             name_ptr,
             auto_length,
             cb_ptr,
-            OpaquePointer[MutAnyOrigin](),
+            data_ptr,
             UnsafePointer(to=result).bitcast[NoneType]()))
         _ = name  # keep name alive past FFI call (ASAP safety)
         # Set fn.length = length via napi_define_properties

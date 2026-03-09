@@ -318,7 +318,7 @@ fn set_class_prototype(
         UnsafePointer(to=set_proto_of).bitcast[NoneType](),
     ))
 
-    _ = JsFunction(set_proto_of).call2(env, child_proto, parent_proto)
+    _ = JsFunction(set_proto_of).call2(b, env, child_proto, parent_proto)
 
 ## register_static_getter_setter — add a static getter+setter pair to a class
 fn register_static_getter_setter(

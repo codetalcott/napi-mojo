@@ -24,13 +24,6 @@ struct JsUndefined:
     ## create — return the JavaScript undefined singleton
     ##
     ## Calls napi_get_undefined and checks the status.
-    @staticmethod
-    fn create(env: NapiEnv) raises -> JsUndefined:
-        var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        var status = raw_get_undefined(env, result_ptr)
-        check_status(status)
-        return JsUndefined(result)
 
     @staticmethod
     fn create(b: Bindings, env: NapiEnv) raises -> JsUndefined:
