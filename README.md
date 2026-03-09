@@ -14,7 +14,7 @@ addon.greet('world');     // "Hello, world!"
 
 ## Features
 
-- **80 exported functions** and **3 classes** covering the full N-API surface
+- **110 exported functions** and **3 classes** covering the full N-API surface
 - Primitives: strings, numbers (Float64/Int32/UInt32/Int64), booleans, null, undefined, BigInt, Symbol, Date
 - Objects: create, read/write properties, enumerate keys, freeze/seal, prototype access
 - Arrays: create, map, element access, has/delete
@@ -26,7 +26,7 @@ addon.greet('world');     // "Hello, world!"
 - References, handle scopes, escapable handle scopes, GC finalizers
 - Type coercion, strict equality, instanceof, external data with GC cleanup
 - Auto-generated TypeScript definitions
-- **Ergonomic API**: `ModuleBuilder`/`ClassBuilder` for registration, `fn_ptr()` helper, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, `AsyncWork` helpers for async work boilerplate, and a code generator (`npm run generate:addon` + `src/exports.toml`) for auto-generating callback trampolines
+- **Ergonomic API**: `ModuleBuilder`/`ClassBuilder` for registration, `fn_ptr()` helper, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, `AsyncWork` helpers for async work boilerplate, a code generator (`npm run generate:addon` + `src/exports.toml`) for auto-generating callback trampolines, `MojoFloat64Array` for zero-copy TypedArray output, and `parallelize_safe()` for SIMD parallel computation with automatic runtime init
 
 ## Installation
 
@@ -120,7 +120,7 @@ m.getDataViewInfo(dv);                    // { byteLength: 8, byteOffset: 0 }
 
 ## API Reference
 
-See [CLAUDE.md](CLAUDE.md) for the complete function table (81 exports + 3 classes) and architecture documentation.
+See [CLAUDE.md](CLAUDE.md) for the complete function table (110 exports + 3 classes) and architecture documentation.
 
 TypeScript definitions are auto-generated at `build/index.d.ts`.
 
