@@ -88,8 +88,6 @@ struct CbArgs:
     ##
     ## Calls napi_get_cb_info requesting 1 argument. Raises if the caller
     ## provided fewer than 1 argument.
-    ##
-    ## deprecated: prefer get_one(b, env, info) in all registered callbacks
     @staticmethod
     fn get_one(env: NapiEnv, info: NapiValue) raises -> NapiValue:
         var argc: UInt = 1
@@ -125,8 +123,6 @@ struct CbArgs:
     ## Calls napi_get_cb_info requesting 2 arguments via an
     ## InlineArray[NapiValue, 2] argv buffer. Raises if the caller
     ## provided fewer than 2 arguments.
-    ##
-    ## deprecated: prefer get_two(b, env, info) in all registered callbacks
     @staticmethod
     fn get_two(env: NapiEnv, info: NapiValue) raises -> InlineArray[NapiValue, 2]:
         var argc: UInt = 2
@@ -192,8 +188,6 @@ struct CbArgs:
     ## get_this — extract the `this` value from a callback
     ##
     ## Used by class method/getter/setter callbacks to get the JS instance.
-    ##
-    ## deprecated: prefer get_this(b, env, info) in all registered callbacks
     @staticmethod
     fn get_this(env: NapiEnv, info: NapiValue) raises -> NapiValue:
         var argc: UInt = 0
@@ -225,8 +219,6 @@ struct CbArgs:
     ## get_this_and_one — extract `this` plus one argument
     ##
     ## Returns [this, arg0] in an InlineArray[NapiValue, 2].
-    ##
-    ## deprecated: prefer get_this_and_one(b, env, info) in all registered callbacks
     @staticmethod
     fn get_this_and_one(env: NapiEnv, info: NapiValue) raises -> InlineArray[NapiValue, 2]:
         var argc: UInt = 1
@@ -268,7 +260,6 @@ struct CbArgs:
         return result^
 
     ## argc — query the number of arguments without reading any
-    ## deprecated: prefer argc(b, env, info) in all registered callbacks
     @staticmethod
     fn argc(env: NapiEnv, info: NapiValue) raises -> UInt:
         var count: UInt = 0
@@ -292,7 +283,6 @@ struct CbArgs:
         return count
 
     ## get_argv — read `count` arguments into a caller-provided buffer
-    ## deprecated: prefer get_argv(b, env, info, count, ptr) in all registered callbacks
     @staticmethod
     fn get_argv(env: NapiEnv, info: NapiValue, count: UInt,
                 argv_ptr: UnsafePointer[NapiValue, MutAnyOrigin]) raises:
@@ -320,7 +310,6 @@ struct CbArgs:
     ## get_data — extract the data pointer from a callback
     ##
     ## Used by dynamically-created functions (napi_create_function with data).
-    ## deprecated: prefer get_data(b, env, info) in all registered callbacks
     @staticmethod
     fn get_data(env: NapiEnv, info: NapiValue) raises -> OpaquePointer[MutAnyOrigin]:
         var argc: UInt = 0

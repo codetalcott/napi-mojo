@@ -52,8 +52,6 @@ struct JsNumber:
     ##
     ## Calls napi_get_value_double and checks the status.
     ## The NapiValue must hold a JS number; returns a NapiError otherwise.
-    ##
-    ## deprecated: prefer from_napi_value(b, env, val) in all callbacks.
     @staticmethod
     fn from_napi_value(env: NapiEnv, val: NapiValue) raises -> Float64:
         var n: Float64 = 0.0

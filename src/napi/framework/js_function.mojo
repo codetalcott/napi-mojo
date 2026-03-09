@@ -26,7 +26,6 @@ struct JsFunction:
         self.value = value
 
     ## call0 — call with no arguments, undefined as `this`
-    ## deprecated: prefer call0(b, env) in all callbacks.
     fn call0(self, env: NapiEnv) raises -> NapiValue:
         var recv: NapiValue = NapiValue()
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()
@@ -51,7 +50,6 @@ struct JsFunction:
         return result
 
     ## call2 — call with two arguments, undefined as `this`
-    ## deprecated: prefer call2(b, env, arg0, arg1) in all callbacks.
     fn call2(self, env: NapiEnv, arg0: NapiValue, arg1: NapiValue) raises -> NapiValue:
         var recv: NapiValue = NapiValue()
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()

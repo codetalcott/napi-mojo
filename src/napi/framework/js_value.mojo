@@ -33,7 +33,6 @@ from napi.framework.js_object import JsObject
 ## Calls napi_typeof and returns the result as a NapiValueType (Int32).
 ## Compare the result against the NAPI_TYPE_* constants from napi.types.
 ## Raises on N-API failure.
-## deprecated: prefer js_typeof(b, env, val) in all registered callbacks
 fn js_typeof(env: NapiEnv, val: NapiValue) raises -> NapiValueType:
     var t: NapiValueType = 0
     var t_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=t).bitcast[NoneType]()
@@ -63,7 +62,6 @@ fn js_type_name(t: NapiValueType) -> String:
 ##
 ## napi_typeof returns NAPI_TYPE_OBJECT for arrays, so this function uses
 ## napi_is_array to distinguish arrays from plain objects.
-## deprecated: prefer js_is_array(b, env, val) in all registered callbacks
 fn js_is_array(env: NapiEnv, val: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
@@ -73,7 +71,6 @@ fn js_is_array(env: NapiEnv, val: NapiValue) raises -> Bool:
 ## js_strict_equals — check strict equality (===) between any two JS values
 ##
 ## Works on all value types (primitives, objects, etc.).
-## deprecated: prefer js_strict_equals(b, env, lhs, rhs) in all registered callbacks
 fn js_strict_equals(env: NapiEnv, lhs: NapiValue, rhs: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
@@ -81,7 +78,6 @@ fn js_strict_equals(env: NapiEnv, lhs: NapiValue, rhs: NapiValue) raises -> Bool
     return result
 
 ## js_get_global — return the global object (globalThis)
-## deprecated: prefer js_get_global(b, env) in all registered callbacks
 fn js_get_global(env: NapiEnv) raises -> JsObject:
     var result = NapiValue()
     check_status(raw_get_global(env,

@@ -243,12 +243,8 @@ struct JsTypedArray:
             null))
         return ab
 
-    ## data_ptr_float64 — raw Float64 pointer, raises if not a Float64Array
-    ##
-    ## Validates the element type in the same napi_get_typedarray_info call
-    ## that retrieves the data pointer — one N-API call, not two.
-    ## Raises if the caller passed a different TypedArray (Int32Array, etc.),
-    ## preventing silent data corruption from an unchecked bitcast.
+    ## data_ptr_float64 — raw Float64 pointer; validates type in the same
+    ## napi_get_typedarray_info call — one N-API round-trip, not two.
     fn data_ptr_float64(self, env: NapiEnv) raises -> UnsafePointer[Float64, MutAnyOrigin]:
         var t: Int32 = 0
         var data = OpaquePointer[MutAnyOrigin]()

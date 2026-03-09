@@ -179,7 +179,6 @@ struct JsString:
     ##
     ## Extracts the first argument via CbArgs.get_one, then delegates to
     ## from_napi_value to read it. Raises on any N-API failure.
-    ## deprecated: prefer read_arg_0(b, env, info) in all registered callbacks
     @staticmethod
     fn read_arg_0(env: NapiEnv, info: NapiValue) raises -> String:
         var arg0 = CbArgs.get_one(env, info)
