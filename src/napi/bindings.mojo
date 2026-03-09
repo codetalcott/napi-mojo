@@ -13,7 +13,7 @@ from ffi import OwnedDLHandle
 from napi.types import NapiEnv, NapiValue, NapiStatus, NapiAsyncContext, NapiCallbackScope
 
 struct NapiBindings(Movable):
-    # --- 118 fields, one per raw_* function ---
+    # --- 135 fields, one per raw_* function ---
     var create_string_utf8: OpaquePointer[MutAnyOrigin]
     var create_object: OpaquePointer[MutAnyOrigin]
     var set_named_property: OpaquePointer[MutAnyOrigin]

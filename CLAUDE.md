@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 20 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks, type coercion (Boolean/Number/String/Object), TypeScript definition generation, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), and version info (N-API + Node.js) are all working. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, an `AsyncWork` helper for ergonomic async work (promise + queue + resolve/reject), an external code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) for auto-generating callback trampolines, and **cached NapiBindings** — all 118 N-API function pointers resolved once at module init, passed through callback data to every entry-point callback (173-389 ns/call, zero per-call dlsym).
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. All planned phases complete — 110 exported functions + 3 classes covering the full N-API surface: primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError/SyntaxError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal/detach, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks (sync + async), type coercion (Boolean/Number/String/Object), TypeScript definition generation with JSDoc, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), version info (N-API + Node.js), script execution, async context + callback scope, type tagging, and external memory tracking. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, parametric array helpers (`to/from_js_array_f64/str`), an `AsyncWork` helper for ergonomic async work (promise + queue + resolve/reject), an external code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) for auto-generating callback trampolines, `MojoFloat64Array` for zero-copy TypedArray output, `parallelize_safe()` for SIMD parallel computation with automatic runtime init, and **cached NapiBindings** — all 135 N-API function pointers resolved once at module init, passed through callback data to every entry-point callback (173-389 ns/call, zero per-call dlsym).
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (394 tests)
+npm test                              # run all Jest tests (555 tests)
 npm run test:gc                       # run GC finalizer tests (requires --expose-gc)
 npx jest tests/basic.test.js          # run a single test file
 node scripts/benchmark.mjs            # per-call overhead benchmark
@@ -85,8 +85,12 @@ src/napi/framework/js_dataview.mojo      # JsDataView.create(), byte_length(), b
 src/napi/framework/threadsafe_function.mojo # ThreadsafeFunction.create(), call_blocking(), call_nonblocking(), acquire(), release(), abort()
 src/napi/framework/args.mojo             # CbArgs.get_one(), get_two(), get_this(), get_this_and_one(), argc(), get_argv(), get_data()
 src/napi/framework/register.mojo         # fn_ptr(), ModuleBuilder, ClassBuilder — ergonomic registration helpers
-src/napi/framework/convert.mojo          # ToJsValue/FromJsValue traits, JsF64/JsI32/JsBool/JsStr/JsRaw wrappers
+src/napi/framework/convert.mojo          # ToJsValue/FromJsValue traits, JsF64/JsI32/JsBool/JsStr/JsRaw wrappers; to/from_js_array_f64/str parametric helpers
 src/napi/framework/async_work.mojo       # AsyncWork.queue/resolve/reject_with_error — async work ergonomics
+src/napi/framework/runtime.mojo          # init_async_runtime(), parallelize_safe() — async runtime init + safe parallel dispatch
+src/napi/framework/js_mojo_array.mojo    # MojoFloat64Array — Mojo-owned Float64 buffer with zero-copy to_js() output
+src/napi/framework/js_async_context.mojo # JsAsyncContext — napi_async_init/destroy wrappers
+src/napi/framework/callback_scope.mojo   # CallbackScope — napi_open/close_callback_scope wrappers
 src/exports.toml                         # Function declarations for code generator
 src/generated/callbacks.mojo             # AUTO-GENERATED callbacks from exports.toml
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
@@ -183,6 +187,38 @@ tests/                                   # Jest tests — TDD outside-in
 | `cancelAsyncWork()` | `cancel_async_work_fn` | Queues then cancels async work, returns rejected promise |
 | `new Animal(name)` | `animal_constructor_fn` | Class: constructor, `.name` getter, `.speak()`, `Animal.isAnimal()` |
 | `new Dog(name, breed)` | `dog_constructor_fn` | Class: inherits from Animal, `.breed` getter |
+| `runScript(code)` | `run_script_fn` | Evaluates a JS string, returns result |
+| `isError(val)` | `is_error_fn` | Returns `true` if val is a JavaScript Error |
+| `adjustExternalMemory(n)` | `adjust_external_memory_fn` | Adjusts reported external memory (GC hint), returns new total |
+| `detachArrayBuffer(ab)` | `detach_arraybuffer_fn` | Detaches an ArrayBuffer (makes it unusable) |
+| `isDetachedArrayBuffer(ab)` | `is_detached_arraybuffer_fn` | Returns `true` if ArrayBuffer is detached |
+| `typeTagObject(obj)` | `type_tag_object_fn` | Tags an object with a type tag for later verification |
+| `checkObjectTypeTag(obj, tag)` | `check_object_type_tag_fn` | Verifies object's type tag matches expected tag |
+| `throwSyntaxError(msg)` | `throw_syntax_error_fn` | Throws a JavaScript `SyntaxError` |
+| `getAllPropertyNames(obj)` | `get_all_property_names_fn` | Returns all property names including inherited (`napi_get_all_property_names`) |
+| `testWeakRef(val)` | `test_weak_ref_fn` | Tests napi_ref with refcount=0 (weak reference round-trip) |
+| `createBufferCopy(data)` | `create_buffer_copy_fn` | Creates a Buffer copy from input bytes |
+| `makeCallback(fn, arg)` | `make_callback_fn` | Calls `fn(arg)` via `napi_make_callback` (async context propagation) |
+| `makeCallback0(fn)` | `make_callback0_fn` | Calls `fn()` via `napi_make_callback` |
+| `makeCallback2(fn, a, b)` | `make_callback2_fn` | Calls `fn(a, b)` via `napi_make_callback` |
+| `makeCallbackScope(fn, arg)` | `make_callback_scope_fn` | Calls `fn(arg)` within an explicit callback scope |
+| `createNamedFn(name, arity)` | `create_named_fn_fn` | Creates a function with specified name and `.length` arity |
+| `newCounterFromRegistry(n)` | `new_counter_from_registry_fn` | Creates a Counter via ClassRegistry (`napi_new_instance`) |
+| `getUvEventLoop()` | `get_uv_event_loop_fn` | Returns the libuv event loop pointer (external value) |
+| `addAsyncCleanupHook()` | `add_async_cleanup_hook_fn` | Registers an async env cleanup hook, returns true |
+| `removeAsyncCleanupHook()` | `remove_async_cleanup_hook_fn` | Registers then removes an async cleanup hook, returns true |
+| `getErrorMessage(err)` | `get_error_message_fn` | Returns `.message` string from any Error-like object |
+| `getErrorStack(err)` | `get_error_stack_fn` | Returns `.stack` string from any Error-like object |
+| `getOptValue(obj)` | `get_opt_value_fn` | Returns `obj.x` if present, else `null` (tests `JsObject.get_opt`) |
+| `toJsString(val)` | `to_js_string_fn` | Converts any value to string (passes JS strings through, coerces others) |
+| `sumJsArray(arr)` | `sum_js_array_fn` | Sums a Float64Array using `from_js_array_f64` convert helper |
+| `doubleArray(arr)` | `double_array_fn` | Returns new array with each element doubled (convert helper round-trip) |
+| `reverseStrings(arr)` | `reverse_strings_fn` | Reverses a string array using `from/to_js_array_str` |
+| `joinStrings(arr, sep)` | `join_strings_fn` | Joins a string array with separator |
+| `objectFromArrays(keys, vals)` | `object_from_arrays_fn` | Creates object from parallel key/value arrays |
+| `objectToArrays(obj)` | `object_to_arrays_fn` | Returns `{keys, values}` arrays from an object |
+| `genericDoubleArray(arr)` | `generic_double_array_fn` | Generic parametric version of `doubleArray` (demonstrates `ToJsValue`/`FromJsValue`) |
+| `genericReverseStrings(arr)` | `generic_reverse_strings_ref` | Generic parametric version of `reverseStrings` |
 
 ## Critical Mojo FFI rules
 
