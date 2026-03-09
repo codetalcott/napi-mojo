@@ -65,6 +65,23 @@ comptime NapiDeferred = OpaquePointer[MutAnyOrigin]
 comptime NapiAsyncWork = OpaquePointer[MutAnyOrigin]
 
 # ---------------------------------------------------------------------------
+# Async context type (C2)
+#
+# napi_async_context tracks an async operation for async_hooks integration.
+# Created by napi_async_init, destroyed by napi_async_destroy.
+# Used with napi_make_callback to call JS in the correct async context.
+# ---------------------------------------------------------------------------
+comptime NapiAsyncContext = OpaquePointer[MutAnyOrigin]
+
+# ---------------------------------------------------------------------------
+# Callback scope type (C3)
+#
+# napi_callback_scope wraps the async context for a synchronous JS call.
+# Created by napi_open_callback_scope, closed by napi_close_callback_scope.
+# ---------------------------------------------------------------------------
+comptime NapiCallbackScope = OpaquePointer[MutAnyOrigin]
+
+# ---------------------------------------------------------------------------
 # Reference type
 #
 # napi_ref is an opaque handle to a persistent reference to a napi_value.

@@ -10,7 +10,7 @@
 ##   # Store via napi_set_instance_data, retrieve via get_bindings()
 
 from ffi import OwnedDLHandle
-from napi.types import NapiEnv, NapiValue, NapiStatus
+from napi.types import NapiEnv, NapiValue, NapiStatus, NapiAsyncContext, NapiCallbackScope
 
 struct NapiBindings(Movable):
     # --- 118 fields, one per raw_* function ---
@@ -145,6 +145,13 @@ struct NapiBindings(Movable):
     var add_async_cleanup_hook: OpaquePointer[MutAnyOrigin]
     var remove_async_cleanup_hook: OpaquePointer[MutAnyOrigin]
     var get_uv_event_loop: OpaquePointer[MutAnyOrigin]
+    # Phase C2 additions (131-133): async context + make_callback
+    var async_init: OpaquePointer[MutAnyOrigin]
+    var async_destroy: OpaquePointer[MutAnyOrigin]
+    var make_callback: OpaquePointer[MutAnyOrigin]
+    # Phase C3 additions (134-135): callback scope
+    var open_callback_scope: OpaquePointer[MutAnyOrigin]
+    var close_callback_scope: OpaquePointer[MutAnyOrigin]
     # Non-function-pointer slot: ClassRegistry pointer (set after module init)
     var registry: OpaquePointer[MutAnyOrigin]
 
@@ -279,6 +286,11 @@ struct NapiBindings(Movable):
         self.add_async_cleanup_hook = OpaquePointer[MutAnyOrigin]()
         self.remove_async_cleanup_hook = OpaquePointer[MutAnyOrigin]()
         self.get_uv_event_loop = OpaquePointer[MutAnyOrigin]()
+        self.async_init = OpaquePointer[MutAnyOrigin]()
+        self.async_destroy = OpaquePointer[MutAnyOrigin]()
+        self.make_callback = OpaquePointer[MutAnyOrigin]()
+        self.open_callback_scope = OpaquePointer[MutAnyOrigin]()
+        self.close_callback_scope = OpaquePointer[MutAnyOrigin]()
         self.registry = OpaquePointer[MutAnyOrigin]()
 
     fn __moveinit__(out self, deinit take: Self):
@@ -412,6 +424,11 @@ struct NapiBindings(Movable):
         self.add_async_cleanup_hook = take.add_async_cleanup_hook
         self.remove_async_cleanup_hook = take.remove_async_cleanup_hook
         self.get_uv_event_loop = take.get_uv_event_loop
+        self.async_init = take.async_init
+        self.async_destroy = take.async_destroy
+        self.make_callback = take.make_callback
+        self.open_callback_scope = take.open_callback_scope
+        self.close_callback_scope = take.close_callback_scope
         self.registry = take.registry
 
 
@@ -1203,6 +1220,45 @@ fn init_bindings(mut bindings: NapiBindings) raises:
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_uv_event_loop")
     bindings.get_uv_event_loop = UnsafePointer(to=_get_uv_event_loop).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 131. napi_async_init (N-API v1)
+    # Creates an async context for async_hooks tracking.
+    # async_resource: JS object representing the resource (or undefined)
+    # async_resource_name: string identifying the resource type
+    var _async_init = h.get_function[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_async_init")
+    bindings.async_init = UnsafePointer(to=_async_init).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 132. napi_async_destroy (N-API v1)
+    # Destroys an async context previously created with napi_async_init.
+    var _async_destroy = h.get_function[
+        fn (NapiEnv, NapiAsyncContext) -> NapiStatus
+    ]("napi_async_destroy")
+    bindings.async_destroy = UnsafePointer(to=_async_destroy).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 133. napi_make_callback (N-API v1)
+    # Calls a JS function in the given async context, correctly propagating
+    # AsyncLocalStorage and async_hooks tracking.
+    var _make_callback = h.get_function[
+        fn (NapiEnv, NapiAsyncContext, NapiValue, NapiValue, UInt, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_make_callback")
+    bindings.make_callback = UnsafePointer(to=_make_callback).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 134. napi_open_callback_scope (N-API v3)
+    # Opens a callback scope, setting up the async context for synchronous
+    # N-API calls (needed for correct async_hooks integration).
+    var _open_callback_scope = h.get_function[
+        fn (NapiEnv, NapiValue, NapiAsyncContext, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_open_callback_scope")
+    bindings.open_callback_scope = UnsafePointer(to=_open_callback_scope).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 135. napi_close_callback_scope (N-API v3)
+    # Closes a callback scope previously opened with napi_open_callback_scope.
+    var _close_callback_scope = h.get_function[
+        fn (NapiEnv, NapiCallbackScope) -> NapiStatus
+    ]("napi_close_callback_scope")
+    bindings.close_callback_scope = UnsafePointer(to=_close_callback_scope).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 
 fn get_bindings(env: NapiEnv) raises -> Bindings:

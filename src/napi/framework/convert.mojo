@@ -13,11 +13,13 @@
 ##   print(n.val)  # 42.0
 
 from napi.types import NapiEnv, NapiValue, NapiValueType, NAPI_TYPE_NUMBER, NAPI_TYPE_STRING, NAPI_TYPE_BOOLEAN
+from napi.bindings import Bindings
 from napi.framework.js_number import JsNumber
 from napi.framework.js_string import JsString
 from napi.framework.js_boolean import JsBoolean
 from napi.framework.js_int32 import JsInt32
-from napi.framework.js_value import js_typeof, js_type_name
+from napi.framework.js_array import JsArray
+from napi.framework.js_value import js_typeof, js_type_name, js_is_array
 from napi.error import throw_js_type_error_dynamic
 
 
@@ -110,3 +112,55 @@ struct JsRaw(ToJsValue, FromJsValue):
     @staticmethod
     fn from_js(env: NapiEnv, val: NapiValue) raises -> Self:
         return Self(val)
+
+
+# ---------------------------------------------------------------------------
+# Collection helpers (E6): JS Array ↔ Mojo List conversions
+#
+# Concrete typed free functions for the most common element types.
+# Uses cached Bindings for all N-API calls (array create/get/set).
+# ---------------------------------------------------------------------------
+
+## to_js_array_f64 — convert List[Float64] to a JavaScript Array<number>
+fn to_js_array_f64(b: Bindings, env: NapiEnv, items: List[Float64]) raises -> NapiValue:
+    var arr = JsArray.create_with_length(b, env, UInt(len(items)))
+    for i in range(len(items)):
+        arr.set(b, env, UInt32(i), JsNumber.create(b, env, items[i]).value)
+    return arr.value
+
+## from_js_array_f64 — convert a JavaScript Array<number> to List[Float64]
+##
+## Raises TypeError if val is not an array. Each element is read as Float64
+## via napi_get_value_double. Non-number elements produce 0 (N-API behavior).
+fn from_js_array_f64(b: Bindings, env: NapiEnv, val: NapiValue) raises -> List[Float64]:
+    if not js_is_array(b, env, val):
+        throw_js_type_error_dynamic(env, "from_js_array_f64: expected array")
+        raise Error("type mismatch")
+    var arr = JsArray(val)
+    var n = Int(arr.length(b, env))
+    var result = List[Float64]()
+    for i in range(n):
+        result.append(JsNumber.from_napi_value(b, env, arr.get(b, env, UInt32(i))))
+    return result^
+
+## to_js_array_str — convert List[String] to a JavaScript Array<string>
+fn to_js_array_str(b: Bindings, env: NapiEnv, items: List[String]) raises -> NapiValue:
+    var arr = JsArray.create_with_length(b, env, UInt(len(items)))
+    for i in range(len(items)):
+        arr.set(b, env, UInt32(i), JsString.create(b, env, items[i]).value)
+    return arr.value
+
+## from_js_array_str — convert a JavaScript Array<string> to List[String]
+##
+## Raises TypeError if val is not an array. Non-string elements become
+## empty strings (N-API behavior when napi_get_value_string_utf8 fails).
+fn from_js_array_str(b: Bindings, env: NapiEnv, val: NapiValue) raises -> List[String]:
+    if not js_is_array(b, env, val):
+        throw_js_type_error_dynamic(env, "from_js_array_str: expected array")
+        raise Error("type mismatch")
+    var arr = JsArray(val)
+    var n = Int(arr.length(b, env))
+    var result = List[String]()
+    for i in range(n):
+        result.append(JsString.from_napi_value(b, env, arr.get(b, env, UInt32(i))))
+    return result^

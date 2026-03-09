@@ -29,3 +29,27 @@ test('createBuffer returns a Buffer instance', () => {
   const buf = addon.createBuffer(3);
   expect(Buffer.isBuffer(buf)).toBe(true);
 });
+
+test('createBufferCopy returns a Buffer equal to source', () => {
+  const src = Buffer.from([10, 20, 30, 40]);
+  const copy = addon.createBufferCopy(src);
+  expect(Buffer.isBuffer(copy)).toBe(true);
+  expect([...copy]).toEqual([10, 20, 30, 40]);
+});
+
+test('createBufferCopy produces an independent copy', () => {
+  const src = Buffer.from([1, 2, 3]);
+  const copy = addon.createBufferCopy(src);
+  src[0] = 99;
+  expect(copy[0]).toBe(1);
+});
+
+test('createBufferCopy works with empty Buffer', () => {
+  const copy = addon.createBufferCopy(Buffer.alloc(0));
+  expect(Buffer.isBuffer(copy)).toBe(true);
+  expect(copy.length).toBe(0);
+});
+
+test('createBufferCopy throws on non-Buffer', () => {
+  expect(() => addon.createBufferCopy('not a buffer')).toThrow();
+});

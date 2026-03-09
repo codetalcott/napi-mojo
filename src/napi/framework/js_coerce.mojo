@@ -15,6 +15,7 @@ from napi.raw import (
 )
 from napi.error import check_status
 
+## deprecated: prefer js_coerce_to_bool(b, env, val) in all registered callbacks
 fn js_coerce_to_bool(env: NapiEnv, val: NapiValue) raises -> NapiValue:
     """Equivalent to Boolean(value) in JavaScript."""
     var result = NapiValue()
@@ -22,6 +23,7 @@ fn js_coerce_to_bool(env: NapiEnv, val: NapiValue) raises -> NapiValue:
         UnsafePointer(to=result).bitcast[NoneType]()))
     return result
 
+## deprecated: prefer js_coerce_to_number(b, env, val) in all registered callbacks
 fn js_coerce_to_number(env: NapiEnv, val: NapiValue) raises -> NapiValue:
     """Equivalent to Number(value) in JavaScript.
     Throws TypeError on Symbol values."""
@@ -30,6 +32,7 @@ fn js_coerce_to_number(env: NapiEnv, val: NapiValue) raises -> NapiValue:
         UnsafePointer(to=result).bitcast[NoneType]()))
     return result
 
+## deprecated: prefer js_coerce_to_string(b, env, val) in all registered callbacks
 fn js_coerce_to_string(env: NapiEnv, val: NapiValue) raises -> NapiValue:
     """Equivalent to String(value) in JavaScript.
     Throws TypeError on Symbol values."""
@@ -38,6 +41,7 @@ fn js_coerce_to_string(env: NapiEnv, val: NapiValue) raises -> NapiValue:
         UnsafePointer(to=result).bitcast[NoneType]()))
     return result
 
+## deprecated: prefer js_coerce_to_object(b, env, val) in all registered callbacks
 fn js_coerce_to_object(env: NapiEnv, val: NapiValue) raises -> NapiValue:
     """Equivalent to Object(value) in JavaScript.
     Wraps primitives in their object wrappers."""

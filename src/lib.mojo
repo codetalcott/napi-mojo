@@ -22,6 +22,8 @@ from addon.value_types import register_value_types
 from addon.externals import register_externals
 from addon.env_ops import register_env
 from addon.misc_ops import register_misc
+from addon.async_context_ops import register_async_context
+from addon.convert_ops import register_convert
 
 @export("napi_register_module_v1", ABI="C")
 fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
@@ -53,6 +55,8 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         register_externals(m)
         register_env(m)
         register_misc(m)
+        register_async_context(m)
+        register_convert(m)
         m.flush()
     except:
         try:

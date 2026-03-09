@@ -6,11 +6,15 @@
 # Async functions: add async = true and execute_body (pure computation, no N-API).
 # Allowed types for async args/returns: number, int32, uint32, int64.
 #
-# Usage: node scripts/generate-addon.mjs
-# Output: src/generated/callbacks.mojo
+# mojo_fn: instead of body, name a pure Mojo function to call. The generator
+# wraps it with type-checked arg extraction and return-value wrapping.
+# The Mojo function must be importable via extra_imports below.
 #
 # Usage: node scripts/generate-addon.mjs
 # Output: src/generated/callbacks.mojo
+
+# --- Extra imports added verbatim to callbacks.mojo when mojo_fn is used ---
+extra_imports = ["from addon.user_fns import square_pure", "from addon.user_fns import clamp_pure"]
 
 # --- Example declarations ---
 # These mirror existing hand-written functions for demonstration.
@@ -98,6 +102,21 @@ returns = "any"
 body = """
 return arg0
 """
+
+# --- C1: mojo_fn auto-trampoline examples ---
+# square(x): calls pure Mojo fn square_pure(x: Float64) -> Float64
+[functions.square]
+js_name = "square"
+args = ["number"]
+returns = "number"
+mojo_fn = "square_pure"
+
+# clamp(val, lo, hi): calls pure Mojo fn clamp_pure(Float64, Float64, Float64) -> Float64
+[functions.clamp]
+js_name = "clamp"
+args = ["number", "number", "number"]
+returns = "number"
+mojo_fn = "clamp_pure"
 
 # --- C4: 3-arg function example (tests N>=3 generator path) ---
 [functions.example_clamp]

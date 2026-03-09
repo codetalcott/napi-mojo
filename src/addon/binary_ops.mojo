@@ -76,6 +76,19 @@ fn create_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createBuffer requires a number argument")
         return NapiValue()
 
+fn create_buffer_copy_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        if not JsBuffer.is_buffer(b, env, arg0):
+            throw_js_type_error(b, env, "createBufferCopy requires a Buffer argument")
+            return NapiValue()
+        var src = JsBuffer(arg0)
+        return JsBuffer.create_copy(b, env, src).value
+    except:
+        throw_js_error(env, "createBufferCopy failed")
+        return NapiValue()
+
 fn double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -213,6 +226,7 @@ fn register_binary(mut m: ModuleBuilder) raises:
     var arraybuffer_length_ref = arraybuffer_length_fn
     var sum_buffer_ref = sum_buffer_fn
     var create_buffer_ref = create_buffer_fn
+    var create_buffer_copy_ref = create_buffer_copy_fn
     var double_float64_array_ref = double_float64_array_fn
     var create_typed_array_view_ref = create_typed_array_view_fn
     var get_typed_array_type_ref = get_typed_array_type_fn
@@ -224,6 +238,7 @@ fn register_binary(mut m: ModuleBuilder) raises:
     m.method("arrayBufferLength", fn_ptr(arraybuffer_length_ref))
     m.method("sumBuffer", fn_ptr(sum_buffer_ref))
     m.method("createBuffer", fn_ptr(create_buffer_ref))
+    m.method("createBufferCopy", fn_ptr(create_buffer_copy_ref))
     m.method("doubleFloat64Array", fn_ptr(double_float64_array_ref))
     m.method("createTypedArrayView", fn_ptr(create_typed_array_view_ref))
     m.method("getTypedArrayType", fn_ptr(get_typed_array_type_ref))

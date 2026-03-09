@@ -189,6 +189,13 @@ function resolveType(rawType) {
   return { typeInfo: TYPE_MAP[baseType] || TYPE_MAP.any, nullable };
 }
 
+// --- Get the arg expression variable for position i in a totalArgs-arg function ---
+function getArgExpr(i, totalArgs) {
+  if (totalArgs === 1) return 'arg0';
+  if (totalArgs <= 4) return `args[${i}]`;
+  return `_a${i}`;
+}
+
 // --- Emit type check lines for a single argument ---
 // Returns an array of lines. For 'array' type uses js_is_array; for others
 // uses js_typeof. Skips all checks when nullable=true.
@@ -214,6 +221,7 @@ function generateCallback(name, decl) {
   const args = decl.args || [];
   const returns = decl.returns || 'any';
   const body = decl.body;
+  const mojoFn = decl.mojo_fn;  // optional: call a named pure Mojo function
   const fnName = `${name}_fn`;
 
   const lines = [];
@@ -246,8 +254,19 @@ function generateCallback(name, decl) {
     for (let i = 0; i < n; i++) emitTypeCheck(lines, jsName, args[i], `_a${i}`, `arg ${i+1}`);
   }
 
-  // Insert body (indented to 8 spaces)
-  if (body) {
+  if (mojoFn) {
+    // Auto-trampoline: extract Mojo-typed args, call mojoFn, wrap result.
+    // mojo_fn takes precedence over body if both are present.
+    for (let i = 0; i < args.length; i++) {
+      const { typeInfo } = resolveType(args[i]);
+      lines.push(typeInfo.extract(`mojo_arg${i}`, getArgExpr(i, args.length)));
+    }
+    const callArgs = args.map((_, i) => `mojo_arg${i}`).join(', ');
+    lines.push(`        var mojo_result = ${mojoFn}(${callArgs})`);
+    const { typeInfo: retTypeInfo } = resolveType(returns);
+    lines.push(`        return ${retTypeInfo.create('mojo_result')}`);
+  } else if (body) {
+    // Insert body (indented to 8 spaces)
     const bodyLines = body.split('\n');
     for (const bl of bodyLines) {
       lines.push(`        ${bl}`);
@@ -695,6 +714,11 @@ function main() {
   }
   if (hasAsync) {
     output.push('from napi.framework.async_work import AsyncWork, AsyncWorkResult');
+  }
+  // Extra imports for mojo_fn declarations (user-defined pure Mojo functions)
+  const extraImports = decl.extra_imports || [];
+  for (const imp of (Array.isArray(extraImports) ? extraImports : [extraImports])) {
+    output.push(imp);
   }
   output.push('');
 

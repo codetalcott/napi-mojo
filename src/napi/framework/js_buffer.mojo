@@ -6,7 +6,7 @@
 
 from napi.types import NapiEnv, NapiValue
 from napi.bindings import Bindings
-from napi.raw import raw_create_buffer, raw_get_buffer_info, raw_is_buffer
+from napi.raw import raw_create_buffer, raw_create_buffer_copy, raw_get_buffer_info, raw_is_buffer
 from napi.error import check_status
 
 struct JsBuffer:
@@ -16,6 +16,7 @@ struct JsBuffer:
         self.value = value
 
     ## create — allocate a new Buffer with `length` bytes (uninitialized)
+    ## deprecated: prefer create(b, env, length) in all registered callbacks
     @staticmethod
     fn create(env: NapiEnv, length: UInt) raises -> JsBuffer:
         var data = OpaquePointer[MutAnyOrigin]()
@@ -35,6 +36,7 @@ struct JsBuffer:
         return JsBuffer(result)
 
     ## create_and_fill — allocate and fill with incrementing byte values
+    ## deprecated: prefer create_and_fill(b, env, length) in all registered callbacks
     @staticmethod
     fn create_and_fill(env: NapiEnv, length: UInt) raises -> JsBuffer:
         var data = OpaquePointer[MutAnyOrigin]()
@@ -62,6 +64,7 @@ struct JsBuffer:
     ## data_ptr — get a raw pointer to the backing store
     ##
     ## Raises with a descriptive error if self.value is not a Buffer.
+    ## deprecated: prefer data_ptr(b, env) in all registered callbacks
     fn data_ptr(self, env: NapiEnv) raises -> UnsafePointer[Byte, MutAnyOrigin]:
         if not JsBuffer.is_buffer(env, self.value):
             raise Error("expected a Buffer")
@@ -83,6 +86,7 @@ struct JsBuffer:
     ## length — get the Buffer's byte length
     ##
     ## Raises with a descriptive error if self.value is not a Buffer.
+    ## deprecated: prefer length(b, env) in all registered callbacks
     fn length(self, env: NapiEnv) raises -> UInt:
         if not JsBuffer.is_buffer(env, self.value):
             raise Error("expected a Buffer")
@@ -101,7 +105,21 @@ struct JsBuffer:
             UnsafePointer(to=len).bitcast[NoneType]()))
         return len
 
+    ## create_copy — create a new Buffer with a copy of the bytes from source
+    @staticmethod
+    fn create_copy(b: Bindings, env: NapiEnv, source: JsBuffer) raises -> JsBuffer:
+        var src_ptr = source.data_ptr(b, env)
+        var src_len = source.length(b, env)
+        var src_data: OpaquePointer[ImmutAnyOrigin] = src_ptr.bitcast[NoneType]()
+        var copy_data = OpaquePointer[MutAnyOrigin]()
+        var result = NapiValue()
+        check_status(raw_create_buffer_copy(b, env, src_len, src_data,
+            UnsafePointer(to=copy_data).bitcast[NoneType](),
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsBuffer(result)
+
     ## is_buffer — check if a napi_value is a Buffer
+    ## deprecated: prefer is_buffer(b, env, val) in all registered callbacks
     @staticmethod
     fn is_buffer(env: NapiEnv, val: NapiValue) raises -> Bool:
         var result: Bool = False

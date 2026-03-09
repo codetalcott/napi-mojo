@@ -19,6 +19,8 @@ from napi.framework.js_object import JsObject
 from napi.framework.js_array import JsArray
 from memory import alloc
 from napi.framework.async_work import AsyncWork, AsyncWorkResult
+from addon.user_fns import square_pure
+from addon.user_fns import clamp_pure
 
 # exampleAdd
 fn example_add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -159,6 +161,48 @@ fn example_nullable_echo_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return arg0
     except:
         throw_js_error(env, "exampleNullableEcho failed")
+        return NapiValue()
+
+# square
+fn square_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(_b, env, info)
+        var _t_arg0 = js_typeof(_b, env, arg0)
+        if _t_arg0 != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "square: expected number, got " + js_type_name(_t_arg0))
+            return NapiValue()
+        var mojo_arg0 = JsNumber.from_napi_value(_b, env, arg0)
+        var mojo_result = square_pure(mojo_arg0)
+        return JsNumber.create(_b, env, mojo_result).value
+    except:
+        throw_js_error(env, "square failed")
+        return NapiValue()
+
+# clamp
+fn clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_three(_b, env, info)
+        var _t_args_0_ = js_typeof(_b, env, args[0])
+        if _t_args_0_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "clamp: expected number for arg 1, got " + js_type_name(_t_args_0_))
+            return NapiValue()
+        var _t_args_1_ = js_typeof(_b, env, args[1])
+        if _t_args_1_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "clamp: expected number for arg 2, got " + js_type_name(_t_args_1_))
+            return NapiValue()
+        var _t_args_2_ = js_typeof(_b, env, args[2])
+        if _t_args_2_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "clamp: expected number for arg 3, got " + js_type_name(_t_args_2_))
+            return NapiValue()
+        var mojo_arg0 = JsNumber.from_napi_value(_b, env, args[0])
+        var mojo_arg1 = JsNumber.from_napi_value(_b, env, args[1])
+        var mojo_arg2 = JsNumber.from_napi_value(_b, env, args[2])
+        var mojo_result = clamp_pure(mojo_arg0, mojo_arg1, mojo_arg2)
+        return JsNumber.create(_b, env, mojo_result).value
+    except:
+        throw_js_error(env, "clamp failed")
         return NapiValue()
 
 # exampleClamp
@@ -360,6 +404,8 @@ fn register_generated(mut m: ModuleBuilder) raises:
     var example_has_key_gen_ref = example_has_key_fn
     var example_array_len_gen_ref = example_array_len_fn
     var example_nullable_echo_gen_ref = example_nullable_echo_fn
+    var square_gen_ref = square_fn
+    var clamp_gen_ref = clamp_fn
     var example_clamp_gen_ref = example_clamp_fn
     var async_sum_gen_ref = async_sum_fn
 
@@ -372,6 +418,8 @@ fn register_generated(mut m: ModuleBuilder) raises:
     m.method("exampleHasKey", fn_ptr(example_has_key_gen_ref))
     m.method("exampleArrayLen", fn_ptr(example_array_len_gen_ref))
     m.method("exampleNullableEcho", fn_ptr(example_nullable_echo_gen_ref))
+    m.method("square", fn_ptr(square_gen_ref))
+    m.method("clamp", fn_ptr(clamp_gen_ref))
     m.method("exampleClamp", fn_ptr(example_clamp_gen_ref))
     m.method("asyncSum", fn_ptr(async_sum_gen_ref))
     var example_point_ctor_gen_ref = example_point_ctor_fn

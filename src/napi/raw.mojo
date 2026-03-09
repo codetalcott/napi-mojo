@@ -13,7 +13,7 @@
 ## (e.g., symbol not found). Callers must handle or propagate the error.
 
 from ffi import OwnedDLHandle
-from napi.types import NapiEnv, NapiValue, NapiStatus
+from napi.types import NapiEnv, NapiValue, NapiStatus, NapiAsyncContext, NapiCallbackScope
 from napi.bindings import NapiBindings, Bindings
 
 ## raw_create_string_utf8 — wraps napi_create_string_utf8
@@ -3618,3 +3618,92 @@ fn raw_get_uv_event_loop(
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]()[]
     return f(env, loop_out)
+
+## raw_async_init — wraps napi_async_init (N-API v1)
+##
+## Creates an async context for async_hooks tracking.
+## async_resource: JS object representing the resource (pass undefined for none)
+## async_resource_name: string napi_value naming the resource type
+## result: out-pointer; receives the napi_async_context handle
+fn raw_async_init(
+    b: Bindings,
+    env: NapiEnv,
+    async_resource: NapiValue,
+    async_resource_name: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].async_init).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, async_resource, async_resource_name, result)
+
+## raw_async_destroy — wraps napi_async_destroy (N-API v1)
+##
+## Destroys an async context previously created with napi_async_init.
+fn raw_async_destroy(
+    b: Bindings,
+    env: NapiEnv,
+    async_context: NapiAsyncContext,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].async_destroy).bitcast[
+        fn (NapiEnv, NapiAsyncContext) -> NapiStatus
+    ]()[]
+    return f(env, async_context)
+
+## raw_make_callback — wraps napi_make_callback (N-API v1)
+##
+## Calls a JS function in the given async context. Unlike napi_call_function,
+## this correctly triggers async_hooks before/after callbacks and propagates
+## AsyncLocalStorage context established by the given async_context.
+## recv:   the `this` value for the call
+## func:   the JS function napi_value to invoke
+## argc:   number of arguments
+## argv:   pointer to argc consecutive napi_value arguments (immutable)
+## result: out-pointer; receives the return value
+fn raw_make_callback(
+    b: Bindings,
+    env: NapiEnv,
+    async_context: NapiAsyncContext,
+    recv: NapiValue,
+    func: NapiValue,
+    argc: UInt,
+    argv: OpaquePointer[ImmutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].make_callback).bitcast[
+        fn (NapiEnv, NapiAsyncContext, NapiValue, NapiValue, UInt, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, async_context, recv, func, argc, argv, result)
+
+## raw_open_callback_scope — wraps napi_open_callback_scope (N-API v3)
+##
+## Opens a callback scope that sets up the async context for subsequent
+## N-API calls. Required for correct async_hooks integration when making
+## synchronous calls from within an async operation.
+## resource_object: JS object for async tracking (or undefined)
+## context:         async context from napi_async_init
+## result:          out-pointer; receives the napi_callback_scope handle
+fn raw_open_callback_scope(
+    b: Bindings,
+    env: NapiEnv,
+    resource_object: NapiValue,
+    context: NapiAsyncContext,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].open_callback_scope).bitcast[
+        fn (NapiEnv, NapiValue, NapiAsyncContext, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, resource_object, context, result)
+
+## raw_close_callback_scope — wraps napi_close_callback_scope (N-API v3)
+##
+## Closes a callback scope previously opened with napi_open_callback_scope.
+fn raw_close_callback_scope(
+    b: Bindings,
+    env: NapiEnv,
+    scope: NapiCallbackScope,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].close_callback_scope).bitcast[
+        fn (NapiEnv, NapiCallbackScope) -> NapiStatus
+    ]()[]
+    return f(env, scope)
