@@ -84,6 +84,16 @@ test('.d.ts has correct return type for addBigInts()', () => {
   expect(dts).toMatch(/export function addBigInts\(.*\): bigint/);
 });
 
+test('.d.ts has correct ExamplePoint class declaration', () => {
+  const dts = fs.readFileSync(DTS_PATH, 'utf8');
+  expect(dts).toContain('export class ExamplePoint');
+  expect(dts).toMatch(/constructor\(arg0: number, arg1: number\)/);
+  expect(dts).toMatch(/sum\(\): number/);
+  expect(dts).toMatch(/x: number/);
+  expect(dts).toMatch(/y: number/);
+  expect(dts).toMatch(/static isPoint\(arg0: any\): boolean/);
+});
+
 test('.d.ts file has balanced braces', () => {
   const dts = fs.readFileSync(DTS_PATH, 'utf8');
   const opens = (dts.match(/\{/g) || []).length;

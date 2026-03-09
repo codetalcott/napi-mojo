@@ -2,6 +2,7 @@
 ## Do not edit manually. Regenerate with: node scripts/generate-addon.mjs
 
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_BOOLEAN, NAPI_TYPE_OBJECT
+from napi.types import NapiDeferred, NapiAsyncWork, NapiStatus, NAPI_OK
 from napi.bindings import Bindings
 from napi.framework.js_string import JsString
 from napi.framework.js_number import JsNumber
@@ -16,6 +17,8 @@ from napi.error import throw_js_error, throw_js_type_error_dynamic
 from napi.framework.register import fn_ptr, ModuleBuilder, ClassBuilder
 from napi.framework.js_object import JsObject
 from napi.framework.js_array import JsArray
+from napi.framework.async_work import AsyncWork, AsyncWorkResult
+from memory import alloc
 
 # exampleAdd
 fn example_add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -158,6 +161,71 @@ fn example_nullable_echo_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "exampleNullableEcho failed")
         return NapiValue()
 
+# asyncSum (async)
+struct AsyncSumData(Movable):
+    var deferred: NapiDeferred
+    var work: NapiAsyncWork
+    var input0: Float64
+    var input1: Float64
+    var result: Float64
+
+    fn __init__(out self, input0: Float64, input1: Float64):
+        self.deferred = NapiDeferred()
+        self.work = NapiAsyncWork()
+        self.input0 = input0
+        self.input1 = input1
+        self.result = 0.0
+
+    fn __moveinit__(out self, deinit take: Self):
+        self.deferred = take.deferred
+        self.work = take.work
+        self.input0 = take.input0
+        self.input1 = take.input1
+        self.result = take.result
+
+fn async_sum_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.bitcast[AsyncSumData]()
+    ptr[].result = ptr[].input0 + ptr[].input1
+
+fn async_sum_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.bitcast[AsyncSumData]()
+    try:
+        if status == NAPI_OK:
+            var rv = JsNumber.create(env, ptr[].result)
+            AsyncWork.resolve(env, ptr[].deferred, ptr[].work, rv.value)
+        else:
+            AsyncWork.reject_with_error(env, ptr[].deferred, ptr[].work, "asyncSum failed")
+    except:
+        pass
+    ptr.destroy_pointee()
+    ptr.free()
+
+fn async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(_b, env, info)
+        var _t_args_0_ = js_typeof(_b, env, args[0])
+        if _t_args_0_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "asyncSum: expected number for arg 1, got " + js_type_name(_t_args_0_))
+            return NapiValue()
+        var _t_args_1_ = js_typeof(_b, env, args[1])
+        if _t_args_1_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "asyncSum: expected number for arg 2, got " + js_type_name(_t_args_1_))
+            return NapiValue()
+        var input0 = JsNumber.from_napi_value(_b, env, args[0])
+        var input1 = JsNumber.from_napi_value(_b, env, args[1])
+        var data_ptr = alloc[AsyncSumData](1)
+        data_ptr.init_pointee_move(AsyncSumData(input0, input1))
+        var exec_ref = async_sum_execute
+        var comp_ref = async_sum_complete
+        var aw = AsyncWork.queue(_b, env, "asyncSum", data_ptr.bitcast[NoneType](), fn_ptr(exec_ref), fn_ptr(comp_ref))
+        data_ptr[].deferred = aw.deferred
+        data_ptr[].work = aw.work
+        return aw.value
+    except:
+        throw_js_error(env, "asyncSum failed")
+        return NapiValue()
+
 # ExamplePoint class — constructor
 fn example_point_ctor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -211,6 +279,42 @@ fn example_point_get_y_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "y getter failed")
         return NapiValue()
 
+# ExamplePoint.x (setter)
+fn example_point_set_x_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(_b, env, info)
+        var val = CbArgs.get_one(_b, env, info)
+        JsObject(this_val).set_named_property(_b, env, "_x", val)
+        return val
+    except:
+        throw_js_error(env, "x setter failed")
+        return NapiValue()
+
+# ExamplePoint.y (setter)
+fn example_point_set_y_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(_b, env, info)
+        var val = CbArgs.get_one(_b, env, info)
+        JsObject(this_val).set_named_property(_b, env, "_y", val)
+        return val
+    except:
+        throw_js_error(env, "y setter failed")
+        return NapiValue()
+
+# ExamplePoint.isPoint (static method)
+fn example_point_static_is_point_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(_b, env, info)
+        if js_typeof(_b, env, arg0) != NAPI_TYPE_OBJECT:
+            return JsBoolean.create(_b, env, False).value
+        return JsBoolean.create(_b, env, JsObject(arg0).has_property(_b, env, "_x")).value
+    except:
+        throw_js_error(env, "isPoint failed")
+        return NapiValue()
+
 
 ## register_generated — register all generated functions and classes
 ##
@@ -226,6 +330,7 @@ fn register_generated(m: ModuleBuilder) raises:
     var example_has_key_gen_ref = example_has_key_fn
     var example_array_len_gen_ref = example_array_len_fn
     var example_nullable_echo_gen_ref = example_nullable_echo_fn
+    var async_sum_gen_ref = async_sum_fn
 
     m.method("exampleAdd", fn_ptr(example_add_gen_ref))
     m.method("exampleGreet", fn_ptr(example_greet_gen_ref))
@@ -236,12 +341,17 @@ fn register_generated(m: ModuleBuilder) raises:
     m.method("exampleHasKey", fn_ptr(example_has_key_gen_ref))
     m.method("exampleArrayLen", fn_ptr(example_array_len_gen_ref))
     m.method("exampleNullableEcho", fn_ptr(example_nullable_echo_gen_ref))
+    m.method("asyncSum", fn_ptr(async_sum_gen_ref))
     var example_point_ctor_gen_ref = example_point_ctor_fn
     var example_point_sum_gen_ref = example_point_sum_fn
     var example_point_get_x_gen_ref = example_point_get_x_fn
     var example_point_get_y_gen_ref = example_point_get_y_fn
+    var example_point_set_x_gen_ref = example_point_set_x_fn
+    var example_point_set_y_gen_ref = example_point_set_y_fn
+    var example_point_static_is_point_gen_ref = example_point_static_is_point_fn
 
     var example_point_builder = m.class_def("ExamplePoint", fn_ptr(example_point_ctor_gen_ref))
     example_point_builder.instance_method("sum", fn_ptr(example_point_sum_gen_ref))
-    example_point_builder.getter("x", fn_ptr(example_point_get_x_gen_ref))
-    example_point_builder.getter("y", fn_ptr(example_point_get_y_gen_ref))
+    example_point_builder.getter_setter("x", fn_ptr(example_point_get_x_gen_ref), fn_ptr(example_point_set_x_gen_ref))
+    example_point_builder.getter_setter("y", fn_ptr(example_point_get_y_gen_ref), fn_ptr(example_point_set_y_gen_ref))
+    example_point_builder.static_method("isPoint", fn_ptr(example_point_static_is_point_gen_ref))

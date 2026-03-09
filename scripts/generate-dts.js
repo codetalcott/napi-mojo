@@ -461,7 +461,128 @@ for (const [className, info] of Object.entries(classes)) {
   output.push('');
 }
 
+// --- TOML-defined classes (from src/exports.toml) ---
+function parseTOML(text) {
+  const result = {};
+  let current = result;
+  const lines2 = text.split('\n');
+  let i = 0;
+  while (i < lines2.length) {
+    const line = lines2[i].trim();
+    i++;
+    if (!line || line.startsWith('#')) continue;
+    const sectionMatch = line.match(/^\[([^\]]+)\]$/);
+    if (sectionMatch) {
+      const parts = sectionMatch[1].split('.');
+      current = result;
+      for (const part of parts) {
+        if (!current[part]) current[part] = {};
+        current = current[part];
+      }
+      continue;
+    }
+    const kvMatch = line.match(/^(\w+)\s*=\s*(.*)$/);
+    if (kvMatch) {
+      const key = kvMatch[1];
+      let value = kvMatch[2].trim();
+      if (value.startsWith('"""')) {
+        value = value.slice(3);
+        const bodyLines = [value];
+        while (i < lines2.length) {
+          const nextLine = lines2[i]; i++;
+          if (nextLine.trim().endsWith('"""')) { bodyLines.push(nextLine.trim().slice(0, -3)); break; }
+          bodyLines.push(nextLine);
+        }
+        current[key] = bodyLines.join('\n').trim();
+        continue;
+      }
+      if (value.startsWith('"') && value.endsWith('"')) { current[key] = value.slice(1, -1); continue; }
+      if (value.startsWith('[')) {
+        current[key] = value.slice(1, -1).split(',').map(s => s.trim().replace(/"/g, '')).filter(Boolean);
+        continue;
+      }
+      current[key] = value;
+    }
+  }
+  return result;
+}
+
+const TOML_TYPE_TO_TS = {
+  number: 'number', string: 'string', boolean: 'boolean', bool: 'boolean',
+  int32: 'number', uint32: 'number', int64: 'number',
+  object: 'object', array: 'any[]', any: 'any',
+};
+function tomlTokenToTs(token) {
+  const base = (token || 'any').replace(/\?$/, '');
+  return TOML_TYPE_TO_TS[base] || 'any';
+}
+
+const TOML_PATH = path.join(__dirname, '..', 'src', 'exports.toml');
+const toml = parseTOML(fs.readFileSync(TOML_PATH, 'utf8'));
+
+// Emit DTS for TOML-declared functions (sync + async)
+for (const [, fn] of Object.entries(toml.functions || {})) {
+  const jsName = fn.js_name;
+  if (!jsName) continue;
+  const fnArgs = (fn.args || []).map((t, i) => `arg${i}: ${tomlTokenToTs(t)}`).join(', ');
+  const retToken = (fn.returns || 'any').replace(/\?$/, '');
+  const isAsync = fn.async === 'true' || fn.async === true;
+  const retTs = isAsync ? `Promise<${tomlTokenToTs(retToken)}>` : tomlTokenToTs(retToken);
+  output.push(`export function ${jsName}(${fnArgs}): ${retTs};`);
+}
+
+output.push('');
+
+for (const [, cls] of Object.entries(toml.classes || {})) {
+  const jsName = cls.js_name;
+  if (!jsName) continue;
+  output.push(`export class ${jsName} {`);
+
+  // Constructor
+  const ctorArgs = cls.constructor_args || [];
+  const ctorParams = ctorArgs.map((t, i) => `arg${i}: ${tomlTokenToTs(t)}`).join(', ');
+  output.push(`  constructor(${ctorParams});`);
+
+  // Instance methods
+  for (const [mName, mDecl] of Object.entries(cls.instance_methods || {})) {
+    const ret = tomlTokenToTs(mDecl.returns);
+    const mArgs = (mDecl.args || []).map((t, i) => `arg${i}: ${tomlTokenToTs(t)}`).join(', ');
+    output.push(`  ${mName}(${mArgs}): ${ret};`);
+  }
+
+  // Setters paired with getters (Phase 30: tracked via setters map)
+  const setterNames = new Set(Object.keys(cls.setters || {}));
+
+  // Getters
+  for (const [gName, gDecl] of Object.entries(cls.getters || {})) {
+    const ret = tomlTokenToTs(gDecl.returns);
+    if (setterNames.has(gName)) {
+      output.push(`  ${gName}: ${ret};`);
+    } else {
+      output.push(`  readonly ${gName}: ${ret};`);
+    }
+  }
+
+  // Setter-only (no paired getter — unusual but possible)
+  for (const sName of setterNames) {
+    if (!(cls.getters || {})[sName]) {
+      output.push(`  ${sName}: any;`);
+    }
+  }
+
+  // Static methods
+  for (const [smName, smDecl] of Object.entries(cls.static_methods || {})) {
+    const ret = tomlTokenToTs(smDecl.returns);
+    const smArgs = (smDecl.args || []).map((t, i) => `arg${i}: ${tomlTokenToTs(t)}`).join(', ');
+    output.push(`  static ${smName}(${smArgs}): ${ret};`);
+  }
+
+  output.push('}');
+  output.push('');
+}
+
 // Write output
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, output.join('\n'));
-console.log(`Generated ${OUT} (${registeredFunctions.length} functions, ${Object.keys(classes).length} class(es))`);
+const tomlClassCount = Object.keys(toml.classes || {}).length;
+console.log(`Generated ${OUT} (${registeredFunctions.length} functions, ${Object.keys(classes).length + tomlClassCount} class(es))`);
