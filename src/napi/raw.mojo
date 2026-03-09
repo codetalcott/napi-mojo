@@ -14,6 +14,7 @@
 
 from ffi import OwnedDLHandle
 from napi.types import NapiEnv, NapiValue, NapiStatus
+from napi.bindings import NapiBindings, Bindings
 
 ## raw_create_string_utf8 — wraps napi_create_string_utf8
 ##
@@ -38,6 +39,18 @@ fn raw_create_string_utf8(
     ]("napi_create_string_utf8")
     return f(env, str_ptr, length, result)
 
+fn raw_create_string_utf8(
+    b: Bindings,
+    env: NapiEnv,
+    str_ptr: OpaquePointer[ImmutAnyOrigin],
+    length: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_string_utf8).bitcast[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, str_ptr, length, result)
+
 ## raw_create_object — wraps napi_create_object
 ##
 ## Creates a new empty JavaScript object {}.
@@ -50,6 +63,16 @@ fn raw_create_object(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_object")
+    return f(env, result)
+
+fn raw_create_object(
+    b: Bindings,
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_object).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, result)
 
 ## raw_set_named_property — wraps napi_set_named_property
@@ -67,6 +90,18 @@ fn raw_set_named_property(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], NapiValue) -> NapiStatus
     ]("napi_set_named_property")
+    return f(env, object, utf8name, value)
+
+fn raw_set_named_property(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    utf8name: OpaquePointer[ImmutAnyOrigin],
+    value: NapiValue,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].set_named_property).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], NapiValue) -> NapiStatus
+    ]()[]
     return f(env, object, utf8name, value)
 
 ## raw_get_cb_info — wraps napi_get_cb_info
@@ -97,6 +132,27 @@ fn raw_get_cb_info(
     ]("napi_get_cb_info")
     return f(env, info, argc, argv, this_arg, data)
 
+fn raw_get_cb_info(
+    b: Bindings,
+    env: NapiEnv,
+    info: NapiValue,
+    argc: OpaquePointer[MutAnyOrigin],
+    argv: OpaquePointer[MutAnyOrigin],
+    this_arg: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_cb_info).bitcast[
+        fn (
+            NapiEnv,
+            NapiValue,
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+        ) -> NapiStatus
+    ]()[]
+    return f(env, info, argc, argv, this_arg, data)
+
 ## raw_get_value_string_utf8 — wraps napi_get_value_string_utf8
 ##
 ## Reads a JavaScript string value into a UTF-8 byte buffer.
@@ -116,6 +172,19 @@ fn raw_get_value_string_utf8(
     ]("napi_get_value_string_utf8")
     return f(env, value, buf, bufsize, result)
 
+fn raw_get_value_string_utf8(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    buf: OpaquePointer[MutAnyOrigin],
+    bufsize: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_value_string_utf8).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, buf, bufsize, result)
+
 ## raw_define_properties — wraps napi_define_properties
 ##
 ## Registers `property_count` properties on `object` using an array of
@@ -131,6 +200,18 @@ fn raw_define_properties(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, UInt, OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
     ]("napi_define_properties")
+    return f(env, object, property_count, properties)
+
+fn raw_define_properties(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    property_count: UInt,
+    properties: OpaquePointer[ImmutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].define_properties).bitcast[
+        fn (NapiEnv, NapiValue, UInt, OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, object, property_count, properties)
 
 ## raw_get_value_double — wraps napi_get_value_double
@@ -149,6 +230,17 @@ fn raw_get_value_double(
     ]("napi_get_value_double")
     return f(env, value, result)
 
+fn raw_get_value_double(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_value_double).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result)
+
 ## raw_create_double — wraps napi_create_double
 ##
 ## Creates a JavaScript number value from a C double (Float64).
@@ -163,6 +255,17 @@ fn raw_create_double(
     var f = h.get_function[
         fn (NapiEnv, Float64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_double")
+    return f(env, value, result)
+
+fn raw_create_double(
+    b: Bindings,
+    env: NapiEnv,
+    value: Float64,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_double).bitcast[
+        fn (NapiEnv, Float64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 ## raw_throw_error — wraps napi_throw_error
@@ -184,6 +287,17 @@ fn raw_throw_error(
     ]("napi_throw_error")
     return f(env, code, msg)
 
+fn raw_throw_error(
+    b: Bindings,
+    env: NapiEnv,
+    code: OpaquePointer[ImmutAnyOrigin],
+    msg: OpaquePointer[ImmutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].throw_error).bitcast[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, code, msg)
+
 ## raw_get_boolean — wraps napi_get_boolean
 ##
 ## Returns the napi_value for the JavaScript true or false singleton.
@@ -198,6 +312,17 @@ fn raw_get_boolean(
     var f = h.get_function[
         fn (NapiEnv, Bool, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_boolean")
+    return f(env, value, result)
+
+fn raw_get_boolean(
+    b: Bindings,
+    env: NapiEnv,
+    value: Bool,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_boolean).bitcast[
+        fn (NapiEnv, Bool, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 ## raw_get_value_bool — wraps napi_get_value_bool
@@ -216,6 +341,17 @@ fn raw_get_value_bool(
     ]("napi_get_value_bool")
     return f(env, value, result)
 
+fn raw_get_value_bool(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_value_bool).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result)
+
 ## raw_typeof — wraps napi_typeof
 ##
 ## Returns the napi_valuetype of a JavaScript value as an Int32.
@@ -232,6 +368,17 @@ fn raw_typeof(
     ]("napi_typeof")
     return f(env, value, result)
 
+fn raw_typeof(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].typeof_).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result)
+
 ## raw_get_null — wraps napi_get_null
 ##
 ## Returns the napi_value for the JavaScript null singleton.
@@ -244,6 +391,16 @@ fn raw_get_null(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_null")
+    return f(env, result)
+
+fn raw_get_null(
+    b: Bindings,
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_null).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, result)
 
 ## raw_get_undefined — wraps napi_get_undefined
@@ -260,6 +417,16 @@ fn raw_get_undefined(
     ]("napi_get_undefined")
     return f(env, result)
 
+fn raw_get_undefined(
+    b: Bindings,
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_undefined).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, result)
+
 ## raw_create_array_with_length — wraps napi_create_array_with_length
 ##
 ## Creates a new JavaScript array with the given initial length.
@@ -274,6 +441,17 @@ fn raw_create_array_with_length(
     var f = h.get_function[
         fn (NapiEnv, UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_array_with_length")
+    return f(env, length, result)
+
+fn raw_create_array_with_length(
+    b: Bindings,
+    env: NapiEnv,
+    length: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_array_with_length).bitcast[
+        fn (NapiEnv, UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, length, result)
 
 ## raw_set_element — wraps napi_set_element
@@ -294,6 +472,18 @@ fn raw_set_element(
     ]("napi_set_element")
     return f(env, object, index, value)
 
+fn raw_set_element(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    index: UInt32,
+    value: NapiValue,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].set_element).bitcast[
+        fn (NapiEnv, NapiValue, UInt32, NapiValue) -> NapiStatus
+    ]()[]
+    return f(env, object, index, value)
+
 ## raw_get_element — wraps napi_get_element
 ##
 ## Gets the value at a specific integer index in a JavaScript array.
@@ -312,6 +502,18 @@ fn raw_get_element(
     ]("napi_get_element")
     return f(env, object, index, result)
 
+fn raw_get_element(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    index: UInt32,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_element).bitcast[
+        fn (NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, object, index, result)
+
 ## raw_get_array_length — wraps napi_get_array_length
 ##
 ## Returns the length of a JavaScript array as a UInt32.
@@ -326,6 +528,17 @@ fn raw_get_array_length(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_array_length")
+    return f(env, object, result)
+
+fn raw_get_array_length(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_array_length).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, object, result)
 
 ## raw_get_property — wraps napi_get_property
@@ -346,6 +559,18 @@ fn raw_get_property(
     ]("napi_get_property")
     return f(env, object, key, result)
 
+fn raw_get_property(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    key: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_property).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, object, key, result)
+
 ## raw_is_array — wraps napi_is_array
 ##
 ## Checks whether a JavaScript value is an Array.
@@ -360,6 +585,17 @@ fn raw_is_array(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_is_array")
+    return f(env, value, result)
+
+fn raw_is_array(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].is_array).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 ## raw_get_named_property — wraps napi_get_named_property
@@ -380,6 +616,18 @@ fn raw_get_named_property(
     ]("napi_get_named_property")
     return f(env, object, utf8name, result)
 
+fn raw_get_named_property(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    utf8name: OpaquePointer[ImmutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_named_property).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, object, utf8name, result)
+
 ## raw_has_named_property — wraps napi_has_named_property
 ##
 ## Checks whether a named property exists on a JavaScript object.
@@ -396,6 +644,18 @@ fn raw_has_named_property(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_has_named_property")
+    return f(env, object, utf8name, result)
+
+fn raw_has_named_property(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    utf8name: OpaquePointer[ImmutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].has_named_property).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, object, utf8name, result)
 
 ## raw_call_function — wraps napi_call_function
@@ -420,6 +680,20 @@ fn raw_call_function(
     ]("napi_call_function")
     return f(env, recv, func, argc, argv, result)
 
+fn raw_call_function(
+    b: Bindings,
+    env: NapiEnv,
+    recv: NapiValue,
+    func: NapiValue,
+    argc: UInt,
+    argv: OpaquePointer[ImmutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].call_function).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, UInt, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, recv, func, argc, argv, result)
+
 ## raw_open_handle_scope — wraps napi_open_handle_scope
 ##
 ## Creates a new handle scope. All napi_values created within this scope
@@ -434,6 +708,16 @@ fn raw_open_handle_scope(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_open_handle_scope")
+    return f(env, result)
+
+fn raw_open_handle_scope(
+    b: Bindings,
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].open_handle_scope).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, result)
 
 ## raw_close_handle_scope — wraps napi_close_handle_scope
@@ -452,6 +736,16 @@ fn raw_close_handle_scope(
     ]("napi_close_handle_scope")
     return f(env, scope)
 
+fn raw_close_handle_scope(
+    b: Bindings,
+    env: NapiEnv,
+    scope: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].close_handle_scope).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, scope)
+
 ## raw_create_promise — wraps napi_create_promise
 ##
 ## Creates a new JavaScript Promise and its associated deferred handle.
@@ -466,6 +760,17 @@ fn raw_create_promise(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_promise")
+    return f(env, deferred, promise)
+
+fn raw_create_promise(
+    b: Bindings,
+    env: NapiEnv,
+    deferred: OpaquePointer[MutAnyOrigin],
+    promise: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_promise).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, deferred, promise)
 
 ## raw_resolve_deferred — wraps napi_resolve_deferred
@@ -485,6 +790,17 @@ fn raw_resolve_deferred(
     ]("napi_resolve_deferred")
     return f(env, deferred, resolution)
 
+fn raw_resolve_deferred(
+    b: Bindings,
+    env: NapiEnv,
+    deferred: OpaquePointer[MutAnyOrigin],
+    resolution: NapiValue,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].resolve_deferred).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], NapiValue) -> NapiStatus
+    ]()[]
+    return f(env, deferred, resolution)
+
 ## raw_reject_deferred — wraps napi_reject_deferred
 ##
 ## Rejects the promise associated with a deferred handle. The deferred is
@@ -500,6 +816,17 @@ fn raw_reject_deferred(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin], NapiValue) -> NapiStatus
     ]("napi_reject_deferred")
+    return f(env, deferred, rejection)
+
+fn raw_reject_deferred(
+    b: Bindings,
+    env: NapiEnv,
+    deferred: OpaquePointer[MutAnyOrigin],
+    rejection: NapiValue,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].reject_deferred).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], NapiValue) -> NapiStatus
+    ]()[]
     return f(env, deferred, rejection)
 
 ## raw_create_error — wraps napi_create_error
@@ -520,6 +847,18 @@ fn raw_create_error(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_error")
+    return f(env, code, msg, result)
+
+fn raw_create_error(
+    b: Bindings,
+    env: NapiEnv,
+    code: NapiValue,
+    msg: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_error).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, code, msg, result)
 
 ## raw_create_async_work — wraps napi_create_async_work
@@ -557,6 +896,29 @@ fn raw_create_async_work(
     ]("napi_create_async_work")
     return f(env, async_resource, async_resource_name, execute, complete, data, result)
 
+fn raw_create_async_work(
+    b: Bindings,
+    env: NapiEnv,
+    async_resource: NapiValue,
+    async_resource_name: NapiValue,
+    execute: OpaquePointer[MutAnyOrigin],
+    complete: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_async_work).bitcast[
+        fn (
+            NapiEnv,
+            NapiValue,
+            NapiValue,
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+        ) -> NapiStatus
+    ]()[]
+    return f(env, async_resource, async_resource_name, execute, complete, data, result)
+
 ## raw_queue_async_work — wraps napi_queue_async_work
 ##
 ## Queues the async work for execution on the Node.js thread pool.
@@ -569,6 +931,16 @@ fn raw_queue_async_work(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_queue_async_work")
+    return f(env, work)
+
+fn raw_queue_async_work(
+    b: Bindings,
+    env: NapiEnv,
+    work: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].queue_async_work).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, work)
 
 ## raw_delete_async_work — wraps napi_delete_async_work
@@ -587,6 +959,16 @@ fn raw_delete_async_work(
     ]("napi_delete_async_work")
     return f(env, work)
 
+fn raw_delete_async_work(
+    b: Bindings,
+    env: NapiEnv,
+    work: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].delete_async_work).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, work)
+
 ## raw_create_int32 — wraps napi_create_int32
 ##
 ## Creates a JavaScript number from a signed 32-bit integer.
@@ -599,6 +981,17 @@ fn raw_create_int32(
     var f = h.get_function[
         fn (NapiEnv, Int32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_int32")
+    return f(env, value, result)
+
+fn raw_create_int32(
+    b: Bindings,
+    env: NapiEnv,
+    value: Int32,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_int32).bitcast[
+        fn (NapiEnv, Int32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 ## raw_get_value_int32 — wraps napi_get_value_int32
@@ -615,6 +1008,17 @@ fn raw_get_value_int32(
     ]("napi_get_value_int32")
     return f(env, value, result)
 
+fn raw_get_value_int32(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_value_int32).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result)
+
 ## raw_create_uint32 — wraps napi_create_uint32
 ##
 ## Creates a JavaScript number from an unsigned 32-bit integer.
@@ -627,6 +1031,17 @@ fn raw_create_uint32(
     var f = h.get_function[
         fn (NapiEnv, UInt32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_uint32")
+    return f(env, value, result)
+
+fn raw_create_uint32(
+    b: Bindings,
+    env: NapiEnv,
+    value: UInt32,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_uint32).bitcast[
+        fn (NapiEnv, UInt32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 ## raw_get_value_uint32 — wraps napi_get_value_uint32
@@ -643,6 +1058,17 @@ fn raw_get_value_uint32(
     ]("napi_get_value_uint32")
     return f(env, value, result)
 
+fn raw_get_value_uint32(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_value_uint32).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result)
+
 ## raw_create_int64 — wraps napi_create_int64
 ##
 ## Creates a JavaScript number from a signed 64-bit integer.
@@ -655,6 +1081,17 @@ fn raw_create_int64(
     var f = h.get_function[
         fn (NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_int64")
+    return f(env, value, result)
+
+fn raw_create_int64(
+    b: Bindings,
+    env: NapiEnv,
+    value: Int64,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_int64).bitcast[
+        fn (NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 ## raw_get_value_int64 — wraps napi_get_value_int64
@@ -671,6 +1108,17 @@ fn raw_get_value_int64(
     ]("napi_get_value_int64")
     return f(env, value, result)
 
+fn raw_get_value_int64(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_value_int64).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result)
+
 ## raw_throw_type_error — wraps napi_throw_type_error
 ##
 ## Sets a pending JavaScript TypeError exception.
@@ -685,6 +1133,17 @@ fn raw_throw_type_error(
     ]("napi_throw_type_error")
     return f(env, code, msg)
 
+fn raw_throw_type_error(
+    b: Bindings,
+    env: NapiEnv,
+    code: OpaquePointer[ImmutAnyOrigin],
+    msg: OpaquePointer[ImmutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].throw_type_error).bitcast[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, code, msg)
+
 ## raw_throw_range_error — wraps napi_throw_range_error
 ##
 ## Sets a pending JavaScript RangeError exception.
@@ -697,6 +1156,17 @@ fn raw_throw_range_error(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
     ]("napi_throw_range_error")
+    return f(env, code, msg)
+
+fn raw_throw_range_error(
+    b: Bindings,
+    env: NapiEnv,
+    code: OpaquePointer[ImmutAnyOrigin],
+    msg: OpaquePointer[ImmutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].throw_range_error).bitcast[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], OpaquePointer[ImmutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, code, msg)
 
 ## raw_create_type_error — wraps napi_create_type_error
@@ -714,6 +1184,18 @@ fn raw_create_type_error(
     ]("napi_create_type_error")
     return f(env, code, msg, result)
 
+fn raw_create_type_error(
+    b: Bindings,
+    env: NapiEnv,
+    code: NapiValue,
+    msg: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_type_error).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, code, msg, result)
+
 ## raw_create_range_error — wraps napi_create_range_error
 ##
 ## Creates a RangeError object (without throwing). For promise rejection.
@@ -727,6 +1209,18 @@ fn raw_create_range_error(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_range_error")
+    return f(env, code, msg, result)
+
+fn raw_create_range_error(
+    b: Bindings,
+    env: NapiEnv,
+    code: NapiValue,
+    msg: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_range_error).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, code, msg, result)
 
 ## raw_create_arraybuffer — wraps napi_create_arraybuffer
@@ -746,6 +1240,18 @@ fn raw_create_arraybuffer(
     ]("napi_create_arraybuffer")
     return f(env, byte_length, data_ptr, result)
 
+fn raw_create_arraybuffer(
+    b: Bindings,
+    env: NapiEnv,
+    byte_length: UInt,
+    data_ptr: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_arraybuffer).bitcast[
+        fn (NapiEnv, UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, byte_length, data_ptr, result)
+
 ## raw_get_arraybuffer_info — wraps napi_get_arraybuffer_info
 ##
 ## Retrieves backing store pointer and byte length of an ArrayBuffer.
@@ -759,6 +1265,18 @@ fn raw_get_arraybuffer_info(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_arraybuffer_info")
+    return f(env, arraybuffer, data_ptr, byte_length)
+
+fn raw_get_arraybuffer_info(
+    b: Bindings,
+    env: NapiEnv,
+    arraybuffer: NapiValue,
+    data_ptr: OpaquePointer[MutAnyOrigin],
+    byte_length: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_arraybuffer_info).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, arraybuffer, data_ptr, byte_length)
 
 ## raw_is_arraybuffer — wraps napi_is_arraybuffer
@@ -775,6 +1293,17 @@ fn raw_is_arraybuffer(
     ]("napi_is_arraybuffer")
     return f(env, value, result)
 
+fn raw_is_arraybuffer(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].is_arraybuffer).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result)
+
 ## raw_detach_arraybuffer — wraps napi_detach_arraybuffer
 fn raw_detach_arraybuffer(
     env: NapiEnv,
@@ -784,6 +1313,16 @@ fn raw_detach_arraybuffer(
     var f = h.get_function[
         fn (NapiEnv, NapiValue) -> NapiStatus
     ]("napi_detach_arraybuffer")
+    return f(env, arraybuffer)
+
+fn raw_detach_arraybuffer(
+    b: Bindings,
+    env: NapiEnv,
+    arraybuffer: NapiValue,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].detach_arraybuffer).bitcast[
+        fn (NapiEnv, NapiValue) -> NapiStatus
+    ]()[]
     return f(env, arraybuffer)
 
 ## raw_create_buffer — wraps napi_create_buffer
@@ -802,6 +1341,18 @@ fn raw_create_buffer(
     ]("napi_create_buffer")
     return f(env, length, data_ptr, result)
 
+fn raw_create_buffer(
+    b: Bindings,
+    env: NapiEnv,
+    length: UInt,
+    data_ptr: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_buffer).bitcast[
+        fn (NapiEnv, UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, length, data_ptr, result)
+
 ## raw_create_buffer_copy — wraps napi_create_buffer_copy
 ##
 ## Creates a new Buffer whose content is a copy of the supplied bytes.
@@ -816,6 +1367,19 @@ fn raw_create_buffer_copy(
     var f = h.get_function[
         fn (NapiEnv, UInt, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_buffer_copy")
+    return f(env, length, data, data_ptr, result)
+
+fn raw_create_buffer_copy(
+    b: Bindings,
+    env: NapiEnv,
+    length: UInt,
+    data: OpaquePointer[ImmutAnyOrigin],
+    data_ptr: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_buffer_copy).bitcast[
+        fn (NapiEnv, UInt, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, length, data, data_ptr, result)
 
 ## raw_get_buffer_info — wraps napi_get_buffer_info
@@ -833,6 +1397,18 @@ fn raw_get_buffer_info(
     ]("napi_get_buffer_info")
     return f(env, value, data_ptr, length)
 
+fn raw_get_buffer_info(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    data_ptr: OpaquePointer[MutAnyOrigin],
+    length: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_buffer_info).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, data_ptr, length)
+
 ## raw_is_buffer — wraps napi_is_buffer
 ##
 ## Checks whether a value is a Node.js Buffer.
@@ -845,6 +1421,17 @@ fn raw_is_buffer(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_is_buffer")
+    return f(env, value, result)
+
+fn raw_is_buffer(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].is_buffer).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 ## raw_create_typedarray — wraps napi_create_typedarray
@@ -868,6 +1455,20 @@ fn raw_create_typedarray(
     ]("napi_create_typedarray")
     return f(env, array_type, length, arraybuffer, byte_offset, result)
 
+fn raw_create_typedarray(
+    b: Bindings,
+    env: NapiEnv,
+    array_type: Int32,
+    length: UInt,
+    arraybuffer: NapiValue,
+    byte_offset: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_typedarray).bitcast[
+        fn (NapiEnv, Int32, UInt, NapiValue, UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, array_type, length, arraybuffer, byte_offset, result)
+
 ## raw_get_typedarray_info — wraps napi_get_typedarray_info
 ##
 ## Retrieves all metadata from a TypedArray. Pass NULL for unused out-params.
@@ -886,6 +1487,21 @@ fn raw_get_typedarray_info(
     ]("napi_get_typedarray_info")
     return f(env, typedarray, array_type, length, data, arraybuffer, byte_offset)
 
+fn raw_get_typedarray_info(
+    b: Bindings,
+    env: NapiEnv,
+    typedarray: NapiValue,
+    array_type: OpaquePointer[MutAnyOrigin],
+    length: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+    arraybuffer: OpaquePointer[MutAnyOrigin],
+    byte_offset: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_typedarray_info).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, typedarray, array_type, length, data, arraybuffer, byte_offset)
+
 ## raw_is_typedarray — wraps napi_is_typedarray
 ##
 ## Checks whether a value is a TypedArray (any type).
@@ -898,6 +1514,17 @@ fn raw_is_typedarray(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_is_typedarray")
+    return f(env, value, result)
+
+fn raw_is_typedarray(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].is_typedarray).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 ## raw_define_class — wraps napi_define_class
@@ -926,6 +1553,22 @@ fn raw_define_class(
     ]("napi_define_class")
     return f(env, utf8name, length, constructor, data, property_count, properties, result)
 
+fn raw_define_class(
+    b: Bindings,
+    env: NapiEnv,
+    utf8name: OpaquePointer[ImmutAnyOrigin],
+    length: UInt,
+    constructor: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+    property_count: UInt,
+    properties: OpaquePointer[ImmutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].define_class).bitcast[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], UInt, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, utf8name, length, constructor, data, property_count, properties, result)
+
 ## raw_wrap — wraps napi_wrap
 ##
 ## Associates a heap-allocated native object with a JavaScript object.
@@ -946,6 +1589,20 @@ fn raw_wrap(
     ]("napi_wrap")
     return f(env, js_object, native_object, finalize_cb, finalize_hint, result)
 
+fn raw_wrap(
+    b: Bindings,
+    env: NapiEnv,
+    js_object: NapiValue,
+    native_object: OpaquePointer[MutAnyOrigin],
+    finalize_cb: OpaquePointer[MutAnyOrigin],
+    finalize_hint: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].wrap).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, js_object, native_object, finalize_cb, finalize_hint, result)
+
 ## raw_unwrap — wraps napi_unwrap
 ##
 ## Retrieves the native pointer previously set via raw_wrap.
@@ -958,6 +1615,17 @@ fn raw_unwrap(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_unwrap")
+    return f(env, js_object, result)
+
+fn raw_unwrap(
+    b: Bindings,
+    env: NapiEnv,
+    js_object: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].unwrap).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, js_object, result)
 
 ## raw_remove_wrap — wraps napi_remove_wrap
@@ -974,6 +1642,17 @@ fn raw_remove_wrap(
     ]("napi_remove_wrap")
     return f(env, js_object, result)
 
+fn raw_remove_wrap(
+    b: Bindings,
+    env: NapiEnv,
+    js_object: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].remove_wrap).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, js_object, result)
+
 ## raw_new_instance — wraps napi_new_instance
 ##
 ## Calls a constructor function with `new`, returning the new instance.
@@ -988,6 +1667,19 @@ fn raw_new_instance(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, UInt, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_new_instance")
+    return f(env, constructor, argc, argv, result)
+
+fn raw_new_instance(
+    b: Bindings,
+    env: NapiEnv,
+    constructor: NapiValue,
+    argc: UInt,
+    argv: OpaquePointer[ImmutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].new_instance).bitcast[
+        fn (NapiEnv, NapiValue, UInt, OpaquePointer[ImmutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, constructor, argc, argv, result)
 
 ## raw_create_function — wraps napi_create_function
@@ -1011,6 +1703,20 @@ fn raw_create_function(
     ]("napi_create_function")
     return f(env, utf8name, length, cb, data, result)
 
+fn raw_create_function(
+    b: Bindings,
+    env: NapiEnv,
+    utf8name: OpaquePointer[ImmutAnyOrigin],
+    length: UInt,
+    cb: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_function).bitcast[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, utf8name, length, cb, data, result)
+
 ## raw_get_new_target — wraps napi_get_new_target
 ##
 ## Returns the new.target value of the current callback.
@@ -1026,6 +1732,17 @@ fn raw_get_new_target(
     ]("napi_get_new_target")
     return f(env, info, result)
 
+fn raw_get_new_target(
+    b: Bindings,
+    env: NapiEnv,
+    info: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_new_target).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, info, result)
+
 ## raw_get_global — wraps napi_get_global
 ##
 ## Returns the global object (globalThis).
@@ -1037,6 +1754,16 @@ fn raw_get_global(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_global")
+    return f(env, result)
+
+fn raw_get_global(
+    b: Bindings,
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_global).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, result)
 
 ## raw_create_reference — wraps napi_create_reference
@@ -1054,6 +1781,18 @@ fn raw_create_reference(
     ]("napi_create_reference")
     return f(env, value, initial_refcount, result)
 
+fn raw_create_reference(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    initial_refcount: UInt32,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_reference).bitcast[
+        fn (NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, initial_refcount, result)
+
 ## raw_delete_reference — wraps napi_delete_reference
 ##
 ## Deletes a reference. The ref must not be used after this call.
@@ -1065,6 +1804,16 @@ fn raw_delete_reference(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_delete_reference")
+    return f(env, napi_ref)
+
+fn raw_delete_reference(
+    b: Bindings,
+    env: NapiEnv,
+    napi_ref: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].delete_reference).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, napi_ref)
 
 ## raw_reference_ref — wraps napi_reference_ref
@@ -1081,6 +1830,17 @@ fn raw_reference_ref(
     ]("napi_reference_ref")
     return f(env, napi_ref, result)
 
+fn raw_reference_ref(
+    b: Bindings,
+    env: NapiEnv,
+    napi_ref: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].reference_ref).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, napi_ref, result)
+
 ## raw_reference_unref — wraps napi_reference_unref
 ##
 ## Decrements the reference count; returns the new count.
@@ -1093,6 +1853,17 @@ fn raw_reference_unref(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_reference_unref")
+    return f(env, napi_ref, result)
+
+fn raw_reference_unref(
+    b: Bindings,
+    env: NapiEnv,
+    napi_ref: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].reference_unref).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, napi_ref, result)
 
 ## raw_get_reference_value — wraps napi_get_reference_value
@@ -1109,6 +1880,17 @@ fn raw_get_reference_value(
     ]("napi_get_reference_value")
     return f(env, napi_ref, result)
 
+fn raw_get_reference_value(
+    b: Bindings,
+    env: NapiEnv,
+    napi_ref: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_reference_value).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, napi_ref, result)
+
 ## raw_open_escapable_handle_scope — wraps napi_open_escapable_handle_scope
 fn raw_open_escapable_handle_scope(
     env: NapiEnv,
@@ -1120,6 +1902,16 @@ fn raw_open_escapable_handle_scope(
     ]("napi_open_escapable_handle_scope")
     return f(env, result)
 
+fn raw_open_escapable_handle_scope(
+    b: Bindings,
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].open_escapable_handle_scope).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, result)
+
 ## raw_close_escapable_handle_scope — wraps napi_close_escapable_handle_scope
 fn raw_close_escapable_handle_scope(
     env: NapiEnv,
@@ -1129,6 +1921,16 @@ fn raw_close_escapable_handle_scope(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_close_escapable_handle_scope")
+    return f(env, scope)
+
+fn raw_close_escapable_handle_scope(
+    b: Bindings,
+    env: NapiEnv,
+    scope: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].close_escapable_handle_scope).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, scope)
 
 ## raw_escape_handle — wraps napi_escape_handle
@@ -1147,6 +1949,18 @@ fn raw_escape_handle(
     ]("napi_escape_handle")
     return f(env, scope, escapee, result)
 
+fn raw_escape_handle(
+    b: Bindings,
+    env: NapiEnv,
+    scope: OpaquePointer[MutAnyOrigin],
+    escapee: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].escape_handle).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, scope, escapee, result)
+
 ## raw_create_bigint_int64 — wraps napi_create_bigint_int64
 fn raw_create_bigint_int64(
     env: NapiEnv,
@@ -1159,6 +1973,17 @@ fn raw_create_bigint_int64(
     ]("napi_create_bigint_int64")
     return f(env, value, result)
 
+fn raw_create_bigint_int64(
+    b: Bindings,
+    env: NapiEnv,
+    value: Int64,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_bigint_int64).bitcast[
+        fn (NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result)
+
 ## raw_create_bigint_uint64 — wraps napi_create_bigint_uint64
 fn raw_create_bigint_uint64(
     env: NapiEnv,
@@ -1169,6 +1994,17 @@ fn raw_create_bigint_uint64(
     var f = h.get_function[
         fn (NapiEnv, UInt64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_bigint_uint64")
+    return f(env, value, result)
+
+fn raw_create_bigint_uint64(
+    b: Bindings,
+    env: NapiEnv,
+    value: UInt64,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_bigint_uint64).bitcast[
+        fn (NapiEnv, UInt64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 ## raw_get_value_bigint_int64 — wraps napi_get_value_bigint_int64
@@ -1186,6 +2022,18 @@ fn raw_get_value_bigint_int64(
     ]("napi_get_value_bigint_int64")
     return f(env, value, result, lossless)
 
+fn raw_get_value_bigint_int64(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+    lossless: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_value_bigint_int64).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result, lossless)
+
 ## raw_get_value_bigint_uint64 — wraps napi_get_value_bigint_uint64
 fn raw_get_value_bigint_uint64(
     env: NapiEnv,
@@ -1197,6 +2045,18 @@ fn raw_get_value_bigint_uint64(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_value_bigint_uint64")
+    return f(env, value, result, lossless)
+
+fn raw_get_value_bigint_uint64(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+    lossless: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_value_bigint_uint64).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result, lossless)
 
 ## raw_create_date — wraps napi_create_date
@@ -1211,6 +2071,17 @@ fn raw_create_date(
     ]("napi_create_date")
     return f(env, time, result)
 
+fn raw_create_date(
+    b: Bindings,
+    env: NapiEnv,
+    time: Float64,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_date).bitcast[
+        fn (NapiEnv, Float64, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, time, result)
+
 ## raw_get_date_value — wraps napi_get_date_value
 fn raw_get_date_value(
     env: NapiEnv,
@@ -1221,6 +2092,17 @@ fn raw_get_date_value(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_date_value")
+    return f(env, value, result)
+
+fn raw_get_date_value(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_date_value).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 ## raw_is_date — wraps napi_is_date
@@ -1235,6 +2117,17 @@ fn raw_is_date(
     ]("napi_is_date")
     return f(env, value, result)
 
+fn raw_is_date(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].is_date).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result)
+
 ## raw_create_symbol — wraps napi_create_symbol (node_api.h — napi_ prefix)
 fn raw_create_symbol(
     env: NapiEnv,
@@ -1245,6 +2138,17 @@ fn raw_create_symbol(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_symbol")
+    return f(env, description, result)
+
+fn raw_create_symbol(
+    b: Bindings,
+    env: NapiEnv,
+    description: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_symbol).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, description, result)
 
 ## raw_symbol_for — wraps node_api_symbol_for (note: node_api_ prefix)
@@ -1262,6 +2166,18 @@ fn raw_symbol_for(
     ]("node_api_symbol_for")
     return f(env, description, length, result)
 
+fn raw_symbol_for(
+    b: Bindings,
+    env: NapiEnv,
+    description: OpaquePointer[ImmutAnyOrigin],
+    length: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].symbol_for).bitcast[
+        fn (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, description, length, result)
+
 ## raw_get_property_names — wraps napi_get_property_names
 ##
 ## Returns an array of the object's enumerable property names (including
@@ -1276,6 +2192,17 @@ fn raw_get_property_names(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_property_names")
+    return f(env, object, result)
+
+fn raw_get_property_names(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_property_names).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, object, result)
 
 ## raw_get_all_property_names — wraps napi_get_all_property_names
@@ -1298,6 +2225,20 @@ fn raw_get_all_property_names(
     ]("napi_get_all_property_names")
     return f(env, object, key_mode, key_filter, key_conversion, result)
 
+fn raw_get_all_property_names(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    key_mode: Int32,
+    key_filter: Int32,
+    key_conversion: Int32,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_all_property_names).bitcast[
+        fn (NapiEnv, NapiValue, Int32, Int32, Int32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, object, key_mode, key_filter, key_conversion, result)
+
 ## raw_has_own_property — wraps napi_has_own_property
 ##
 ## Checks whether the object has the specified key as an own (non-inherited)
@@ -1312,6 +2253,18 @@ fn raw_has_own_property(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_has_own_property")
+    return f(env, object, key, result)
+
+fn raw_has_own_property(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    key: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].has_own_property).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, object, key, result)
 
 ## raw_delete_property — wraps napi_delete_property
@@ -1330,6 +2283,18 @@ fn raw_delete_property(
     ]("napi_delete_property")
     return f(env, object, key, result)
 
+fn raw_delete_property(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    key: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].delete_property).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, object, key, result)
+
 ## raw_strict_equals — wraps napi_strict_equals
 ##
 ## Checks strict equality (===) between two values.
@@ -1343,6 +2308,18 @@ fn raw_strict_equals(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_strict_equals")
+    return f(env, lhs, rhs, result)
+
+fn raw_strict_equals(
+    b: Bindings,
+    env: NapiEnv,
+    lhs: NapiValue,
+    rhs: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].strict_equals).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, lhs, rhs, result)
 
 ## raw_instanceof — wraps napi_instanceof
@@ -1360,6 +2337,18 @@ fn raw_instanceof(
     ]("napi_instanceof")
     return f(env, object, constructor, result)
 
+fn raw_instanceof(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    constructor: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].instanceof_).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, object, constructor, result)
+
 ## raw_object_freeze — wraps napi_object_freeze (N-API v8+)
 ##
 ## Freezes the object, preventing modifications to its properties.
@@ -1373,6 +2362,16 @@ fn raw_object_freeze(
     ]("napi_object_freeze")
     return f(env, object)
 
+fn raw_object_freeze(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].object_freeze).bitcast[
+        fn (NapiEnv, NapiValue) -> NapiStatus
+    ]()[]
+    return f(env, object)
+
 ## raw_object_seal — wraps napi_object_seal (N-API v8+)
 ##
 ## Seals the object, preventing addition/deletion of properties.
@@ -1384,6 +2383,16 @@ fn raw_object_seal(
     var f = h.get_function[
         fn (NapiEnv, NapiValue) -> NapiStatus
     ]("napi_object_seal")
+    return f(env, object)
+
+fn raw_object_seal(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].object_seal).bitcast[
+        fn (NapiEnv, NapiValue) -> NapiStatus
+    ]()[]
     return f(env, object)
 
 ## raw_has_element — wraps napi_has_element
@@ -1401,6 +2410,18 @@ fn raw_has_element(
     ]("napi_has_element")
     return f(env, object, index, result)
 
+fn raw_has_element(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    index: UInt32,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].has_element).bitcast[
+        fn (NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, object, index, result)
+
 ## raw_delete_element — wraps napi_delete_element
 ##
 ## Deletes the element at the given index (makes the array sparse).
@@ -1416,6 +2437,18 @@ fn raw_delete_element(
     ]("napi_delete_element")
     return f(env, object, index, result)
 
+fn raw_delete_element(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    index: UInt32,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].delete_element).bitcast[
+        fn (NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, object, index, result)
+
 ## raw_get_prototype — wraps napi_get_prototype
 ##
 ## Returns the prototype of the given object.
@@ -1428,6 +2461,17 @@ fn raw_get_prototype(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_prototype")
+    return f(env, object, result)
+
+fn raw_get_prototype(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_prototype).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, object, result)
 
 ## raw_create_threadsafe_function — wraps napi_create_threadsafe_function
@@ -1465,6 +2509,28 @@ fn raw_create_threadsafe_function(
              thread_finalize_data, thread_finalize_cb,
              context, call_js_cb, result)
 
+fn raw_create_threadsafe_function(
+    b: Bindings,
+    env: NapiEnv,
+    func: NapiValue,
+    async_resource: NapiValue,
+    async_resource_name: NapiValue,
+    max_queue_size: UInt,
+    initial_thread_count: UInt,
+    thread_finalize_data: OpaquePointer[MutAnyOrigin],
+    thread_finalize_cb: OpaquePointer[MutAnyOrigin],
+    context: OpaquePointer[MutAnyOrigin],
+    call_js_cb: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_threadsafe_function).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, NapiValue, UInt, UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, func, async_resource, async_resource_name,
+             max_queue_size, initial_thread_count,
+             thread_finalize_data, thread_finalize_cb,
+             context, call_js_cb, result)
+
 ## raw_call_threadsafe_function — wraps napi_call_threadsafe_function
 ##
 ## Queues a call to the JS function from ANY thread.
@@ -1484,6 +2550,17 @@ fn raw_call_threadsafe_function(
     ]("napi_call_threadsafe_function")
     return f(func, data, is_blocking)
 
+fn raw_call_threadsafe_function(
+    b: Bindings,
+    func: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+    is_blocking: Int32,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].call_threadsafe_function).bitcast[
+        fn (OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], Int32) -> NapiStatus
+    ]()[]
+    return f(func, data, is_blocking)
+
 ## raw_acquire_threadsafe_function — wraps napi_acquire_threadsafe_function
 ##
 ## Increments the thread reference count. Must be called from a new thread
@@ -1495,6 +2572,15 @@ fn raw_acquire_threadsafe_function(
     var f = h.get_function[
         fn (OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_acquire_threadsafe_function")
+    return f(func)
+
+fn raw_acquire_threadsafe_function(
+    b: Bindings,
+    func: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].acquire_threadsafe_function).bitcast[
+        fn (OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(func)
 
 ## raw_release_threadsafe_function — wraps napi_release_threadsafe_function
@@ -1510,6 +2596,16 @@ fn raw_release_threadsafe_function(
     var f = h.get_function[
         fn (OpaquePointer[MutAnyOrigin], Int32) -> NapiStatus
     ]("napi_release_threadsafe_function")
+    return f(func, mode)
+
+fn raw_release_threadsafe_function(
+    b: Bindings,
+    func: OpaquePointer[MutAnyOrigin],
+    mode: Int32,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].release_threadsafe_function).bitcast[
+        fn (OpaquePointer[MutAnyOrigin], Int32) -> NapiStatus
+    ]()[]
     return f(func, mode)
 
 # ---------------------------------------------------------------------------
@@ -1534,6 +2630,19 @@ fn raw_create_external(
     ]("napi_create_external")
     return f(env, data, finalize_cb, finalize_hint, result)
 
+fn raw_create_external(
+    b: Bindings,
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    finalize_cb: OpaquePointer[MutAnyOrigin],
+    finalize_hint: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_external).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, data, finalize_cb, finalize_hint, result)
+
 ## raw_get_value_external — wraps napi_get_value_external
 ##
 ## Retrieves the opaque native pointer from an external value.
@@ -1546,6 +2655,17 @@ fn raw_get_value_external(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_value_external")
+    return f(env, value, result)
+
+fn raw_get_value_external(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_value_external).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 # ---------------------------------------------------------------------------
@@ -1565,6 +2685,16 @@ fn raw_get_version(
     ]("napi_get_version")
     return f(env, result)
 
+fn raw_get_version(
+    b: Bindings,
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_version).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, result)
+
 ## raw_get_node_version — wraps napi_get_node_version
 ##
 ## Writes a pointer to a statically-allocated napi_node_version struct.
@@ -1577,6 +2707,16 @@ fn raw_get_node_version(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_node_version")
+    return f(env, result)
+
+fn raw_get_node_version(
+    b: Bindings,
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_node_version).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, result)
 
 ## raw_set_property — wraps napi_set_property
@@ -1595,6 +2735,18 @@ fn raw_set_property(
     ]("napi_set_property")
     return f(env, object, key, value)
 
+fn raw_set_property(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    key: NapiValue,
+    value: NapiValue,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].set_property).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, NapiValue) -> NapiStatus
+    ]()[]
+    return f(env, object, key, value)
+
 ## raw_has_property — wraps napi_has_property
 ##
 ## Checks whether a property exists on an object using a napi_value key.
@@ -1609,6 +2761,18 @@ fn raw_has_property(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_has_property")
+    return f(env, object, key, result)
+
+fn raw_has_property(
+    b: Bindings,
+    env: NapiEnv,
+    object: NapiValue,
+    key: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].has_property).bitcast[
+        fn (NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, object, key, result)
 
 ## raw_throw — wraps napi_throw
@@ -1626,6 +2790,16 @@ fn raw_throw(
     ]("napi_throw")
     return f(env, error)
 
+fn raw_throw(
+    b: Bindings,
+    env: NapiEnv,
+    error: NapiValue,
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].throw_).bitcast[
+        fn (NapiEnv, NapiValue) -> NapiStatus
+    ]()[]
+    return f(env, error)
+
 ## raw_is_exception_pending — wraps napi_is_exception_pending
 ##
 ## Returns whether a JavaScript exception is currently pending.
@@ -1637,6 +2811,16 @@ fn raw_is_exception_pending(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_is_exception_pending")
+    return f(env, result)
+
+fn raw_is_exception_pending(
+    b: Bindings,
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].is_exception_pending).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, result)
 
 ## raw_get_and_clear_last_exception — wraps napi_get_and_clear_last_exception
@@ -1653,6 +2837,16 @@ fn raw_get_and_clear_last_exception(
     ]("napi_get_and_clear_last_exception")
     return f(env, result)
 
+fn raw_get_and_clear_last_exception(
+    b: Bindings,
+    env: NapiEnv,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_and_clear_last_exception).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, result)
+
 ## raw_coerce_to_bool — wraps napi_coerce_to_bool
 ##
 ## Equivalent to Boolean(value) in JavaScript.
@@ -1665,6 +2859,17 @@ fn raw_coerce_to_bool(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_coerce_to_bool")
+    return f(env, value, result)
+
+fn raw_coerce_to_bool(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].coerce_to_bool).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 ## raw_coerce_to_number — wraps napi_coerce_to_number
@@ -1682,6 +2887,17 @@ fn raw_coerce_to_number(
     ]("napi_coerce_to_number")
     return f(env, value, result)
 
+fn raw_coerce_to_number(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].coerce_to_number).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result)
+
 ## raw_coerce_to_string — wraps napi_coerce_to_string
 ##
 ## Equivalent to String(value) in JavaScript.
@@ -1695,6 +2911,17 @@ fn raw_coerce_to_string(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_coerce_to_string")
+    return f(env, value, result)
+
+fn raw_coerce_to_string(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].coerce_to_string).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 ## raw_coerce_to_object — wraps napi_coerce_to_object
@@ -1712,6 +2939,17 @@ fn raw_coerce_to_object(
     ]("napi_coerce_to_object")
     return f(env, value, result)
 
+fn raw_coerce_to_object(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].coerce_to_object).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, result)
+
 ## raw_create_dataview — wraps napi_create_dataview
 ##
 ## Creates a DataView over an existing ArrayBuffer.
@@ -1727,6 +2965,19 @@ fn raw_create_dataview(
     var f = h.get_function[
         fn (NapiEnv, UInt, NapiValue, UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_create_dataview")
+    return f(env, byte_length, arraybuffer, byte_offset, result)
+
+fn raw_create_dataview(
+    b: Bindings,
+    env: NapiEnv,
+    byte_length: UInt,
+    arraybuffer: NapiValue,
+    byte_offset: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_dataview).bitcast[
+        fn (NapiEnv, UInt, NapiValue, UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, byte_length, arraybuffer, byte_offset, result)
 
 ## raw_get_dataview_info — wraps napi_get_dataview_info
@@ -1749,6 +3000,22 @@ fn raw_get_dataview_info(
     ]("napi_get_dataview_info")
     return f(env, dataview, byte_length, data, arraybuffer, byte_offset)
 
+fn raw_get_dataview_info(
+    b: Bindings,
+    env: NapiEnv,
+    dataview: NapiValue,
+    byte_length: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+    arraybuffer: OpaquePointer[MutAnyOrigin],
+    byte_offset: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_dataview_info).bitcast[
+        fn (NapiEnv, NapiValue,
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, dataview, byte_length, data, arraybuffer, byte_offset)
+
 ## raw_is_dataview — wraps napi_is_dataview
 ##
 ## Checks whether a value is a DataView.
@@ -1761,6 +3028,17 @@ fn raw_is_dataview(
     var f = h.get_function[
         fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_is_dataview")
+    return f(env, value, result)
+
+fn raw_is_dataview(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].is_dataview).bitcast[
+        fn (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, result)
 
 ## raw_create_bigint_words — wraps napi_create_bigint_words
@@ -1782,6 +3060,20 @@ fn raw_create_bigint_words(
     ]("napi_create_bigint_words")
     return f(env, sign_bit, word_count, words, result)
 
+fn raw_create_bigint_words(
+    b: Bindings,
+    env: NapiEnv,
+    sign_bit: Int32,
+    word_count: UInt,
+    words: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_bigint_words).bitcast[
+        fn (NapiEnv, Int32, UInt, OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, sign_bit, word_count, words, result)
+
 ## raw_get_value_bigint_words — wraps napi_get_value_bigint_words
 ##
 ## Extracts sign and 64-bit words from a BigInt.
@@ -1799,6 +3091,21 @@ fn raw_get_value_bigint_words(
             OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin],
             OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_value_bigint_words")
+    return f(env, value, sign_bit, word_count, words)
+
+fn raw_get_value_bigint_words(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    sign_bit: OpaquePointer[MutAnyOrigin],
+    word_count: OpaquePointer[MutAnyOrigin],
+    words: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_value_bigint_words).bitcast[
+        fn (NapiEnv, NapiValue,
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, value, sign_bit, word_count, words)
 
 ## raw_add_finalizer — wraps napi_add_finalizer
@@ -1822,6 +3129,22 @@ fn raw_add_finalizer(
     ]("napi_add_finalizer")
     return f(env, js_object, native_object, finalize_cb, finalize_hint, result)
 
+fn raw_add_finalizer(
+    b: Bindings,
+    env: NapiEnv,
+    js_object: NapiValue,
+    native_object: OpaquePointer[MutAnyOrigin],
+    finalize_cb: OpaquePointer[MutAnyOrigin],
+    finalize_hint: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].add_finalizer).bitcast[
+        fn (NapiEnv, NapiValue,
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, js_object, native_object, finalize_cb, finalize_hint, result)
+
 ## raw_create_external_arraybuffer — wraps napi_create_external_arraybuffer
 ##
 ## Creates an ArrayBuffer backed by existing native memory (zero-copy).
@@ -1843,6 +3166,23 @@ fn raw_create_external_arraybuffer(
     ]("napi_create_external_arraybuffer")
     return f(env, external_data, byte_length, finalize_cb, finalize_hint, result)
 
+fn raw_create_external_arraybuffer(
+    b: Bindings,
+    env: NapiEnv,
+    external_data: OpaquePointer[MutAnyOrigin],
+    byte_length: UInt,
+    finalize_cb: OpaquePointer[MutAnyOrigin],
+    finalize_hint: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_external_arraybuffer).bitcast[
+        fn (NapiEnv,
+            OpaquePointer[MutAnyOrigin], UInt,
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, external_data, byte_length, finalize_cb, finalize_hint, result)
+
 ## raw_set_instance_data — wraps napi_set_instance_data
 ##
 ## Sets per-environment singleton data with an optional finalizer.
@@ -1859,6 +3199,19 @@ fn raw_set_instance_data(
     ]("napi_set_instance_data")
     return f(env, data, finalize_cb, finalize_hint)
 
+fn raw_set_instance_data(
+    b: Bindings,
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    finalize_cb: OpaquePointer[MutAnyOrigin],
+    finalize_hint: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].set_instance_data).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, data, finalize_cb, finalize_hint)
+
 ## raw_get_instance_data — wraps napi_get_instance_data
 ##
 ## Retrieves per-environment singleton data. Returns NULL if not set.
@@ -1870,6 +3223,16 @@ fn raw_get_instance_data(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_get_instance_data")
+    return f(env, data)
+
+fn raw_get_instance_data(
+    b: Bindings,
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_instance_data).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, data)
 
 ## raw_add_env_cleanup_hook — wraps napi_add_env_cleanup_hook
@@ -1887,6 +3250,17 @@ fn raw_add_env_cleanup_hook(
     ]("napi_add_env_cleanup_hook")
     return f(env, fun, arg)
 
+fn raw_add_env_cleanup_hook(
+    b: Bindings,
+    env: NapiEnv,
+    fun: OpaquePointer[MutAnyOrigin],
+    arg: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].add_env_cleanup_hook).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, fun, arg)
+
 ## raw_remove_env_cleanup_hook — wraps napi_remove_env_cleanup_hook
 ##
 ## Unregisters a previously registered cleanup hook.
@@ -1901,6 +3275,17 @@ fn raw_remove_env_cleanup_hook(
     ]("napi_remove_env_cleanup_hook")
     return f(env, fun, arg)
 
+fn raw_remove_env_cleanup_hook(
+    b: Bindings,
+    env: NapiEnv,
+    fun: OpaquePointer[MutAnyOrigin],
+    arg: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].remove_env_cleanup_hook).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, fun, arg)
+
 ## raw_cancel_async_work — wraps napi_cancel_async_work
 ##
 ## Attempts to cancel a queued async work item.
@@ -1913,4 +3298,14 @@ fn raw_cancel_async_work(
     var f = h.get_function[
         fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
     ]("napi_cancel_async_work")
+    return f(env, work)
+
+fn raw_cancel_async_work(
+    b: Bindings,
+    env: NapiEnv,
+    work: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].cancel_async_work).bitcast[
+        fn (NapiEnv, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
     return f(env, work)

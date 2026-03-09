@@ -98,6 +98,7 @@ from napi.framework.js_exception import js_throw, js_is_exception_pending, js_ge
 from napi.framework.js_dataview import JsDataView
 from napi.framework.js_version import get_napi_version, get_node_version_ptr
 from napi.framework.async_work import AsyncWork
+from napi.bindings import NapiBindings, Bindings, init_bindings, get_bindings
 from napi.raw import raw_wrap
 from napi.error import throw_js_error, throw_js_error_dynamic, throw_js_type_error, throw_js_type_error_dynamic, throw_js_range_error, check_status
 
