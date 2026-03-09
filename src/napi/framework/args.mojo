@@ -247,3 +247,4 @@ struct CbArgs:
     fn get_bindings(env: NapiEnv, info: NapiValue) raises -> Bindings:
         var data = CbArgs.get_data(env, info)
         return data.bitcast[NapiBindings]()
+

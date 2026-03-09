@@ -245,7 +245,7 @@ struct NapiNodeVersion:
 #
 # Wrong field order causes silent memory corruption in napi_define_properties.
 # ---------------------------------------------------------------------------
-struct NapiPropertyDescriptor:
+struct NapiPropertyDescriptor(Movable):
     # utf8name is const char* in C — immutable pointer to a null-terminated UTF-8
     # string. Must remain alive until napi_define_properties returns. Use string
     # literals (static lifetime) rather than Mojo heap Strings (ASAP-freed).
@@ -267,3 +267,13 @@ struct NapiPropertyDescriptor:
         self.value = OpaquePointer[MutAnyOrigin]()
         self.attributes = 0
         self.data = OpaquePointer[MutAnyOrigin]()
+
+    fn __moveinit__(out self, deinit take: Self):
+        self.utf8name = take.utf8name
+        self.name = take.name
+        self.method = take.method
+        self.getter = take.getter
+        self.setter = take.setter
+        self.value = take.value
+        self.attributes = take.attributes
+        self.data = take.data

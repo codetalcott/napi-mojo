@@ -154,6 +154,7 @@ fn make_greeting_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_STRING:
@@ -174,6 +175,7 @@ fn greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var a = JsNumber.from_napi_value(b, env, args[0])
         var b2 = JsNumber.from_napi_value(b, env, args[1])
@@ -191,6 +193,7 @@ fn add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var n = JsNumber.from_napi_value(b, env, arg0)
         return JsBoolean.create(b, env, n > 0).value
@@ -231,6 +234,7 @@ fn get_undefined_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         if not js_is_array(b, env, arg0):
             var t = js_typeof(b, env, arg0)
@@ -256,6 +260,7 @@ fn sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn get_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var t0 = js_typeof(b, env, args[0])
         if t0 != NAPI_TYPE_OBJECT:
@@ -280,6 +285,7 @@ fn get_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn call_function_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var t = js_typeof(b, env, args[0])
         if t != NAPI_TYPE_FUNCTION:
@@ -300,6 +306,7 @@ fn call_function_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         if not js_is_array(b, env, args[0]):
             var t = js_typeof(b, env, args[0])
@@ -339,6 +346,7 @@ fn map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn resolve_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var p = JsPromise.create(b, env)
         p.resolve(b, env, arg0)
@@ -356,6 +364,7 @@ fn resolve_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn reject_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_STRING:
@@ -418,6 +427,7 @@ fn async_double_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[M
 fn async_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[AsyncDoubleData](1)
@@ -479,6 +489,7 @@ fn async_triple_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[M
 fn async_triple_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[AsyncTripleData](1)
@@ -504,6 +515,7 @@ fn async_triple_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn add_ints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var ta = js_typeof(b, env, args[0])
         var tb = js_typeof(b, env, args[1])
@@ -525,6 +537,7 @@ fn add_ints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn bitwise_or_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var ta = js_typeof(b, env, args[0])
         var tb = js_typeof(b, env, args[1])
@@ -572,6 +585,7 @@ fn throw_range_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn add_ints_strict_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var ta = js_typeof(b, env, args[0])
         var tb = js_typeof(b, env, args[1])
@@ -594,6 +608,7 @@ fn add_ints_strict_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn create_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var ta = js_typeof(b, env, arg0)
         if ta != NAPI_TYPE_NUMBER:
@@ -613,6 +628,7 @@ fn create_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn arraybuffer_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         if not JsArrayBuffer.is_arraybuffer(b, env, arg0):
             throw_js_error(b, env, "arrayBufferLength requires an ArrayBuffer argument")
@@ -632,6 +648,7 @@ fn arraybuffer_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         if not JsBuffer.is_buffer(b, env, arg0):
             throw_js_error(b, env, "sumBuffer requires a Buffer argument")
@@ -655,6 +672,7 @@ fn sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn create_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var ta = js_typeof(b, env, arg0)
         if ta != NAPI_TYPE_NUMBER:
@@ -674,6 +692,7 @@ fn create_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         if not JsTypedArray.is_typedarray(b, env, arg0):
             throw_js_error(b, env, "doubleFloat64Array requires a TypedArray argument")
@@ -745,6 +764,7 @@ fn create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn get_typed_array_type_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         if not JsTypedArray.is_typedarray(b, env, arg0):
             throw_js_type_error(b, env, "getTypedArrayType: expected TypedArray")
@@ -764,6 +784,7 @@ fn get_typed_array_type_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn get_typed_array_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         if not JsTypedArray.is_typedarray(b, env, arg0):
             throw_js_type_error(b, env, "getTypedArrayLength: expected TypedArray")
@@ -810,7 +831,9 @@ fn counter_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: Opaqu
 fn counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var this_val = CbArgs.get_this(b, env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_NUMBER:
@@ -859,6 +882,7 @@ fn counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_NUMBER:
@@ -909,7 +933,9 @@ fn counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var this_val = CbArgs.get_this(b, env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         # napi_instanceof requires object LHS — primitives are never instanceof
         var t = js_typeof(b, env, arg0)
@@ -930,7 +956,9 @@ fn counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var this_val = CbArgs.get_this(b, env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_NUMBER:
@@ -1008,7 +1036,9 @@ fn dog_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePoi
 fn animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var this_val = CbArgs.get_this(b, env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_STRING:
@@ -1081,7 +1111,9 @@ fn animal_speak_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn animal_is_animal_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var this_val = CbArgs.get_this(b, env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_OBJECT and t != NAPI_TYPE_FUNCTION:
@@ -1098,7 +1130,9 @@ fn animal_is_animal_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var this_val = CbArgs.get_this(b, env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var t0 = js_typeof(b, env, args[0])
         var t1 = js_typeof(b, env, args[1])
@@ -1245,6 +1279,7 @@ fn inner_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn create_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var n = JsNumber.from_napi_value(b, env, arg0)
         # Heap-allocate the captured value
@@ -1318,6 +1353,7 @@ fn test_ref_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn test_ref_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var obj = JsObject.create(b, env)
         obj.set_property(b, env, "value", arg0)
@@ -1357,6 +1393,7 @@ fn build_in_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn add_bigints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var ta = js_typeof(b, env, args[0])
         var tb = js_typeof(b, env, args[1])
@@ -1379,6 +1416,7 @@ fn add_bigints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn create_date_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var ts = JsNumber.from_napi_value(b, env, arg0)
         return JsDate.create(b, env, ts).value
@@ -1394,6 +1432,7 @@ fn create_date_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn get_date_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var d = JsDate(arg0)
         var ts = d.timestamp_ms(b, env)
@@ -1410,6 +1449,7 @@ fn get_date_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn create_symbol_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         return JsSymbol.create(b, env, arg0).value
     except:
@@ -1426,6 +1466,7 @@ fn create_symbol_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var key = JsString.from_napi_value(b, env, arg0)
         # node_api_symbol_for takes a C string + length, not a napi_value.
@@ -1450,6 +1491,7 @@ fn symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn get_keys_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var t0 = js_typeof(b, env, arg0)
         if t0 != NAPI_TYPE_OBJECT:
@@ -1469,6 +1511,7 @@ fn get_keys_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn has_own_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var t0 = js_typeof(b, env, args[0])
         if t0 != NAPI_TYPE_OBJECT:
@@ -1489,6 +1532,7 @@ fn has_own_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn delete_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var t0 = js_typeof(b, env, args[0])
         if t0 != NAPI_TYPE_OBJECT:
@@ -1509,6 +1553,7 @@ fn delete_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn array_has_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         if not js_is_array(b, env, args[0]):
             throw_js_error(b, env, "arrayHasElement: first argument must be an array")
@@ -1529,6 +1574,7 @@ fn array_has_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn array_delete_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         if not js_is_array(b, env, args[0]):
             throw_js_error(b, env, "arrayDeleteElement: first argument must be an array")
@@ -1549,6 +1595,7 @@ fn array_delete_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn get_prototype_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var t0 = js_typeof(b, env, arg0)
         if t0 != NAPI_TYPE_OBJECT:
@@ -1568,6 +1615,7 @@ fn get_prototype_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn strict_equals_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var eq = js_strict_equals(b, env, args[0], args[1])
         return JsBoolean.create(b, env, eq).value
@@ -1583,6 +1631,7 @@ fn strict_equals_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn is_instance_of_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var t1 = js_typeof(b, env, args[1])
         if t1 != NAPI_TYPE_FUNCTION:
@@ -1603,6 +1652,7 @@ fn is_instance_of_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn freeze_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var t0 = js_typeof(b, env, arg0)
         if t0 != NAPI_TYPE_OBJECT:
@@ -1623,6 +1673,7 @@ fn freeze_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn seal_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var t0 = js_typeof(b, env, arg0)
         if t0 != NAPI_TYPE_OBJECT:
@@ -1779,6 +1830,7 @@ fn async_progress_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer
 fn async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var count_val = args[0]
         var callback_val = args[1]
@@ -1876,6 +1928,7 @@ fn external_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: Opaq
 fn create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var x = JsNumber.from_napi_value(b, env, args[0])
         var y = JsNumber.from_napi_value(b, env, args[1])
@@ -1896,6 +1949,7 @@ fn create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn get_external_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_EXTERNAL:
@@ -1920,6 +1974,7 @@ fn get_external_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn is_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         return JsBoolean.create(b, env, t == NAPI_TYPE_EXTERNAL).value
@@ -1935,6 +1990,7 @@ fn is_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn coerce_to_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         return js_coerce_to_bool(b, env, arg0)
     except:
@@ -1950,6 +2006,7 @@ fn coerce_to_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn coerce_to_number_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         return js_coerce_to_number(b, env, arg0)
     except:
@@ -1966,6 +2023,7 @@ fn coerce_to_number_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn coerce_to_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         return js_coerce_to_string(b, env, arg0)
     except:
@@ -1981,6 +2039,7 @@ fn coerce_to_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn coerce_to_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         return js_coerce_to_object(b, env, arg0)
     except:
@@ -2020,6 +2079,7 @@ fn set_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn has_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var result = JsObject(args[0]).has(b, env, args[1])
         return JsBoolean.create(b, env, result).value
@@ -2038,6 +2098,7 @@ fn has_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn throw_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         js_throw(b, env, arg0)
     except:
@@ -2054,6 +2115,7 @@ fn throw_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn catch_and_return_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         # Throw the value to set a pending exception
         js_throw(b, env, arg0)
@@ -2112,6 +2174,7 @@ fn external_ab_finalize(
 fn create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var size = JsNumber.from_napi_value(b, env, arg0)
         var byte_len = UInt(Int(size))
@@ -2153,6 +2216,7 @@ fn noop_finalize(
 fn attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         # Allocate a dummy 1-byte native object (napi_add_finalizer needs non-NULL data)
         var dummy = alloc[Byte](1)
@@ -2187,6 +2251,7 @@ fn instance_data_finalize(
 fn set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[Float64](1)
@@ -2382,6 +2447,7 @@ fn cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn bigint_from_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var args = CbArgs.get_two(b, env, info)
         var sign_bit = Int32(JsNumber.from_napi_value(b, env, args[0]))
         var arr_val = args[1]
@@ -2403,6 +2469,7 @@ fn bigint_from_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn bigint_to_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         # Allocate an initial buffer (16 words = 128 bytes, handles up to 1024-bit BigInts)
         var sign: Int32 = 0
@@ -2454,6 +2521,7 @@ fn create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn get_dataview_info_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var dv = JsDataView(arg0)
         var bl = dv.byte_length(b, env)
@@ -2470,6 +2538,7 @@ fn get_dataview_info_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var result = JsDataView.is_dataview(b, env, arg0)
         return JsBoolean.create(b, env, result).value
@@ -2483,6 +2552,7 @@ fn is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn is_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         return JsBoolean.create(b, env, js_is_error(b, env, arg0)).value
     except:
@@ -2495,6 +2565,7 @@ fn is_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn adjust_external_memory_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var change = JsNumber.from_napi_value(b, env, arg0)
         var result = js_adjust_external_memory(b, env, Int64(Int(change)))
@@ -2509,6 +2580,7 @@ fn adjust_external_memory_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn run_script_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         return js_run_script(b, env, arg0)
     except:
@@ -2532,6 +2604,7 @@ fn throw_syntax_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn is_detached_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         return JsBoolean.create(b, env, JsArrayBuffer.is_detached(b, env, arg0)).value
     except:
@@ -2544,6 +2617,7 @@ fn is_detached_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn detach_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var ab = JsArrayBuffer(arg0)
         ab.detach(b, env)
@@ -2602,6 +2676,7 @@ fn check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn test_weak_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var weak = JsRef.create_weak(b, env, arg0)
         var retrieved = weak.get(b, env)
@@ -2664,6 +2739,7 @@ fn create_named_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn new_counter_from_registry_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var registry = b[].registry.bitcast[ClassRegistry]()
         var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=arg0).bitcast[NoneType]()
@@ -2678,6 +2754,7 @@ fn new_counter_from_registry_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn get_error_message_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var msg = js_get_error_message(b, env, arg0)
         return JsString.create(b, env, msg).value
@@ -2691,6 +2768,7 @@ fn get_error_message_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn get_error_stack_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var stack = js_get_error_stack(b, env, arg0)
         return JsString.create(b, env, stack).value
@@ -2704,6 +2782,7 @@ fn get_error_stack_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn get_opt_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var maybe = JsObject(arg0).get_opt(b, env, "x")
         if not maybe:
@@ -2719,6 +2798,7 @@ fn get_opt_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 fn to_js_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
+
         var arg0 = CbArgs.get_one(b, env, info)
         var s = js_to_string(b, env, arg0)
         return JsString.create(b, env, s).value
@@ -3004,6 +3084,9 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         var dog = m.class_def("Dog", fn_ptr(dog_constructor_ref))
         dog.getter("breed", fn_ptr(dog_get_breed_ref))
         dog.inherits(animal)
+
+        # Flush all accumulated method descriptors in one napi_define_properties call
+        m.flush()
     except:
         # Registration failure is unrecoverable — the addon is in a broken
         # partial state. Construct a JS Error value and call napi_fatal_exception

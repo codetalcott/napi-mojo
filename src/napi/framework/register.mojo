@@ -33,7 +33,7 @@ from napi.framework.js_class import (
 )
 from napi.framework.js_object import JsObject
 from napi.framework.js_ref import JsRef
-from napi.raw import raw_new_instance
+from napi.raw import raw_new_instance, raw_define_properties
 from napi.error import check_status
 
 ## fn_ptr — extract a callable function pointer from a function reference
@@ -48,44 +48,99 @@ fn fn_ptr[T: AnyType](func: T) -> OpaquePointer[MutAnyOrigin]:
     return UnsafePointer(to=func).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 
-## ModuleBuilder — chainable module registration
+## ModuleBuilder — chainable module registration with batched flush
 ##
 ## Wraps env + exports + optional data pointer. When data is set (e.g., to
 ## a NapiBindings pointer), it is attached to every property descriptor so
 ## callbacks can retrieve it via CbArgs.get_bindings(env, info).
-struct ModuleBuilder:
+##
+## method() accumulates NapiPropertyDescriptors into a heap array instead of
+## calling napi_define_properties immediately. Call flush() once after all
+## method() calls to register everything in a single N-API call — reducing
+## ~90 individual napi_define_properties calls to 1 during module init.
+struct ModuleBuilder(Movable):
     var env: NapiEnv
     var exports: NapiValue
     var data: OpaquePointer[MutAnyOrigin]
+    var _descs: UnsafePointer[NapiPropertyDescriptor, MutAnyOrigin]
+    var _count: Int
+    var _capacity: Int
 
     fn __init__(out self, env: NapiEnv, exports: NapiValue):
         self.env = env
         self.exports = exports
         self.data = OpaquePointer[MutAnyOrigin]()
+        self._descs = alloc[NapiPropertyDescriptor](128)
+        self._count = 0
+        self._capacity = 128
 
     fn __init__(out self, env: NapiEnv, exports: NapiValue, data: OpaquePointer[MutAnyOrigin]):
         self.env = env
         self.exports = exports
         self.data = data
+        self._descs = alloc[NapiPropertyDescriptor](128)
+        self._count = 0
+        self._capacity = 128
 
-    ## method — register a named method on exports
+    fn __moveinit__(out self, deinit take: Self):
+        self.env = take.env
+        self.exports = take.exports
+        self.data = take.data
+        self._descs = take._descs
+        self._count = take._count
+        self._capacity = take._capacity
+
+    ## method — accumulate a named method descriptor (flushed by flush())
     ##
     ## Sets desc.data = self.data so the callback can retrieve bindings.
-    fn method(self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+    fn method(mut self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+        if self._count >= self._capacity:
+            raise Error("ModuleBuilder: descriptor capacity exceeded (max 128)")
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
         desc.method = ptr
         desc.data = self.data
         desc.attributes = 0
-        define_property(self.env, self.exports, desc)
+        (self._descs + self._count).init_pointee_move(desc^)
+        self._count += 1
 
-    fn method(self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+    fn method(mut self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+        if self._count >= self._capacity:
+            raise Error("ModuleBuilder: descriptor capacity exceeded (max 128)")
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
         desc.method = ptr
         desc.data = self.data
         desc.attributes = 0
-        define_property(b, self.env, self.exports, desc)
+        (self._descs + self._count).init_pointee_move(desc^)
+        self._count += 1
+
+    ## flush — register all accumulated method descriptors in one N-API call
+    ##
+    ## Must be called exactly once after all method() calls. Frees the internal
+    ## heap array. The fn_ref vars in the caller must remain alive until after
+    ## flush() returns (ASAP safety — StringLiteral names are static lifetime).
+    fn flush(mut self) raises:
+        if self._count == 0:
+            self._descs.free()
+            return
+        check_status(raw_define_properties(
+            self.env, self.exports, UInt(self._count),
+            UnsafePointer(to=self._descs[0]).bitcast[NoneType](),
+        ))
+        self._descs.free()
+        self._count = 0
+
+    fn flush(mut self, b: Bindings) raises:
+        if self._count == 0:
+            self._descs.free()
+            return
+        check_status(raw_define_properties(
+            b, self.env, self.exports, UInt(self._count),
+            UnsafePointer(to=self._descs[0]).bitcast[NoneType](),
+        ))
+        self._descs.free()
+        self._count = 0
 
     ## class_def — define a class and attach it to exports, returns ClassBuilder
     fn class_def(self, name: StringLiteral, ctor_ptr: OpaquePointer[MutAnyOrigin]) raises -> ClassBuilder:

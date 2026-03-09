@@ -86,39 +86,47 @@ struct JsString:
 
     ## from_napi_value — read a NapiValue as a Mojo String
     ##
-    ## Calls napi_get_value_string_utf8 (two-call pattern: size query first,
-    ## then read). Uses a fast 4096-byte stack buffer for short strings and
-    ## falls back to heap allocation for strings >= 4096 bytes. Constructs
-    ## the result using String(from_utf8=Span[Byte]), which validates UTF-8
-    ## and correctly handles all Unicode characters including multi-byte sequences.
+    ## Optimistic single-pass: tries reading into a 256-byte stack buffer first.
+    ## If the string fits (actual < 255), returns immediately — 1 N-API call.
+    ## If truncated (actual == 255), falls back to the two-pass heap approach.
+    ## Uses String(from_utf8=Span[Byte]) for correct UTF-8 validation.
     ##
     ## The NapiValue must hold a JS string; raises otherwise.
     @staticmethod
     fn from_napi_value(env: NapiEnv, val: NapiValue) raises -> String:
-        # Size query — call with NULL buf to get the byte length needed.
+        # Optimistic single-pass: read into a 256-byte stack buffer.
+        # If actual < 255, the full string fit — return immediately.
+        var buf = InlineArray[UInt8, 256](fill=0)
+        var actual: UInt = 0
+        var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf[0]).bitcast[NoneType]()
+        var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
+        check_status(raw_get_value_string_utf8(env, val, buf_ptr, 256, actual_ptr))
+        if actual < 255:
+            var span = Span[Byte](ptr=UnsafePointer(to=buf[0]), length=Int(actual))
+            return String(from_utf8=span)
+
+        # Fallback: string >= 255 bytes. Two-pass with size query + read.
         var null = OpaquePointer[MutAnyOrigin]()
         var needed: UInt = 0
         var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=needed).bitcast[NoneType]()
         check_status(raw_get_value_string_utf8(env, val, null, 0, needed_ptr))
 
         if needed < 4096:
-            # Fast path: stack-allocated buffer for common short strings.
-            var buf = InlineArray[UInt8, 4096](fill=0)
-            var actual: UInt = 0
-            var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf[0]).bitcast[NoneType]()
-            var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
-            check_status(raw_get_value_string_utf8(env, val, buf_ptr, needed + 1, actual_ptr))
-            var span = Span[Byte](ptr=UnsafePointer(to=buf[0]), length=Int(actual))
+            var buf2 = InlineArray[UInt8, 4096](fill=0)
+            var actual2: UInt = 0
+            var buf2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf2[0]).bitcast[NoneType]()
+            var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual2).bitcast[NoneType]()
+            check_status(raw_get_value_string_utf8(env, val, buf2_ptr, needed + 1, actual2_ptr))
+            var span = Span[Byte](ptr=UnsafePointer(to=buf2[0]), length=Int(actual2))
             return String(from_utf8=span)
         else:
-            # Slow path: heap-allocated buffer for large strings.
             var heap_buf = alloc[UInt8](Int(needed + 1))
             try:
-                var actual: UInt = 0
+                var actual2: UInt = 0
                 var heap_ptr: OpaquePointer[MutAnyOrigin] = heap_buf.bitcast[NoneType]()
-                var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
-                check_status(raw_get_value_string_utf8(env, val, heap_ptr, needed + 1, actual_ptr))
-                var span = Span[Byte](ptr=heap_buf, length=Int(actual))
+                var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual2).bitcast[NoneType]()
+                check_status(raw_get_value_string_utf8(env, val, heap_ptr, needed + 1, actual2_ptr))
+                var span = Span[Byte](ptr=heap_buf, length=Int(actual2))
                 var result = String(from_utf8=span)
                 heap_buf.free()
                 return result
@@ -128,27 +136,38 @@ struct JsString:
 
     @staticmethod
     fn from_napi_value(b: Bindings, env: NapiEnv, val: NapiValue) raises -> String:
+        # Optimistic single-pass: read into a 256-byte stack buffer.
+        var buf = InlineArray[UInt8, 256](fill=0)
+        var actual: UInt = 0
+        var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf[0]).bitcast[NoneType]()
+        var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
+        check_status(raw_get_value_string_utf8(b, env, val, buf_ptr, 256, actual_ptr))
+        if actual < 255:
+            var span = Span[Byte](ptr=UnsafePointer(to=buf[0]), length=Int(actual))
+            return String(from_utf8=span)
+
+        # Fallback: string >= 255 bytes. Two-pass with size query + read.
         var null = OpaquePointer[MutAnyOrigin]()
         var needed: UInt = 0
         var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=needed).bitcast[NoneType]()
         check_status(raw_get_value_string_utf8(b, env, val, null, 0, needed_ptr))
 
         if needed < 4096:
-            var buf = InlineArray[UInt8, 4096](fill=0)
-            var actual: UInt = 0
-            var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf[0]).bitcast[NoneType]()
-            var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
-            check_status(raw_get_value_string_utf8(b, env, val, buf_ptr, needed + 1, actual_ptr))
-            var span = Span[Byte](ptr=UnsafePointer(to=buf[0]), length=Int(actual))
+            var buf2 = InlineArray[UInt8, 4096](fill=0)
+            var actual2: UInt = 0
+            var buf2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf2[0]).bitcast[NoneType]()
+            var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual2).bitcast[NoneType]()
+            check_status(raw_get_value_string_utf8(b, env, val, buf2_ptr, needed + 1, actual2_ptr))
+            var span = Span[Byte](ptr=UnsafePointer(to=buf2[0]), length=Int(actual2))
             return String(from_utf8=span)
         else:
             var heap_buf = alloc[UInt8](Int(needed + 1))
             try:
-                var actual: UInt = 0
+                var actual2: UInt = 0
                 var heap_ptr: OpaquePointer[MutAnyOrigin] = heap_buf.bitcast[NoneType]()
-                var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
-                check_status(raw_get_value_string_utf8(b, env, val, heap_ptr, needed + 1, actual_ptr))
-                var span = Span[Byte](ptr=heap_buf, length=Int(actual))
+                var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual2).bitcast[NoneType]()
+                check_status(raw_get_value_string_utf8(b, env, val, heap_ptr, needed + 1, actual2_ptr))
+                var span = Span[Byte](ptr=heap_buf, length=Int(actual2))
                 var result = String(from_utf8=span)
                 heap_buf.free()
                 return result
