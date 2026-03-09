@@ -102,6 +102,9 @@ function parseTOML(text) {
 
 // --- Type mapping: declaration type -> arg extraction code ---
 // Uses _b (cached NapiBindings pointer) for all N-API calls
+//
+// A trailing '?' on a type name (e.g. "number?") marks it as nullable —
+// the type check is skipped and the raw NapiValue is passed to the body.
 const TYPE_MAP = {
   number: {
     napi_type: 'NAPI_TYPE_NUMBER',
@@ -124,12 +127,50 @@ const TYPE_MAP = {
       `        var ${varName} = JsBoolean.from_napi_value(_b, env, ${argExpr})`,
     create: (expr) => `JsBoolean.create(_b, env, ${expr}).value`,
   },
+  // bool: alias for boolean
+  bool: {
+    napi_type: 'NAPI_TYPE_BOOLEAN',
+    type_name: 'boolean',
+    extract: (varName, argExpr) =>
+      `        var ${varName} = JsBoolean.from_napi_value(_b, env, ${argExpr})`,
+    create: (expr) => `JsBoolean.create(_b, env, ${expr}).value`,
+  },
   int32: {
     napi_type: 'NAPI_TYPE_NUMBER',
     type_name: 'number',
     extract: (varName, argExpr) =>
       `        var ${varName} = JsInt32.from_napi_value(_b, env, ${argExpr})`,
     create: (expr) => `JsInt32.create(_b, env, ${expr}).value`,
+  },
+  uint32: {
+    napi_type: 'NAPI_TYPE_NUMBER',
+    type_name: 'number',
+    extract: (varName, argExpr) =>
+      `        var ${varName} = JsUInt32.from_napi_value(_b, env, ${argExpr})`,
+    create: (expr) => `JsUInt32.create(_b, env, ${expr}).value`,
+  },
+  int64: {
+    napi_type: 'NAPI_TYPE_NUMBER',
+    type_name: 'number',
+    extract: (varName, argExpr) =>
+      `        var ${varName} = JsInt64.from_napi_value(_b, env, ${argExpr})`,
+    create: (expr) => `JsInt64.create(_b, env, ${expr}).value`,
+  },
+  // object: pass raw NapiValue, validate type is object
+  object: {
+    napi_type: 'NAPI_TYPE_OBJECT',
+    type_name: 'object',
+    extract: (varName, argExpr) =>
+      `        var ${varName} = ${argExpr}`,
+    create: (expr) => expr,
+  },
+  // array: validate with js_is_array (typeof returns 'object' for arrays)
+  array: {
+    napi_type: '__IS_ARRAY__', // special sentinel — emits js_is_array check
+    type_name: 'array',
+    extract: (varName, argExpr) =>
+      `        var ${varName} = ${argExpr}`,
+    create: (expr) => expr,
   },
   any: {
     napi_type: null, // no type check
@@ -139,6 +180,33 @@ const TYPE_MAP = {
     create: (expr) => expr,
   },
 };
+
+// --- Resolve type, handling nullable suffix ('?') ---
+// Returns { typeInfo, nullable } where nullable=true skips the type check.
+function resolveType(rawType) {
+  const nullable = rawType.endsWith('?');
+  const baseType = nullable ? rawType.slice(0, -1) : rawType;
+  return { typeInfo: TYPE_MAP[baseType] || TYPE_MAP.any, nullable };
+}
+
+// --- Emit type check lines for a single argument ---
+// Returns an array of lines. For 'array' type uses js_is_array; for others
+// uses js_typeof. Skips all checks when nullable=true.
+function emitTypeCheck(lines, jsName, rawType, argExpr, argDesc) {
+  const { typeInfo, nullable } = resolveType(rawType);
+  if (nullable || !typeInfo.napi_type) return;
+  if (typeInfo.napi_type === '__IS_ARRAY__') {
+    lines.push(`        if not js_is_array(_b, env, ${argExpr}):`);
+    lines.push(`            throw_js_type_error_dynamic(_b, env, "${jsName}: expected array${argDesc ? ' for ' + argDesc : ''}")`);
+    lines.push(`            return NapiValue()`);
+  } else {
+    const tVar = `_t_${argExpr.replace(/[^a-z0-9]/gi, '_')}`;
+    lines.push(`        var ${tVar} = js_typeof(_b, env, ${argExpr})`);
+    lines.push(`        if ${tVar} != ${typeInfo.napi_type}:`);
+    lines.push(`            throw_js_type_error_dynamic(_b, env, "${jsName}: expected ${typeInfo.type_name}${argDesc ? ' for ' + argDesc : ''}, got " + js_type_name(${tVar}))`);
+    lines.push(`            return NapiValue()`);
+  }
+}
 
 // --- Code generation ---
 function generateCallback(name, decl) {
@@ -157,24 +225,11 @@ function generateCallback(name, decl) {
     // No args — just run body
   } else if (args.length === 1) {
     lines.push(`        var arg0 = CbArgs.get_one(_b, env, info)`);
-    const typeInfo = TYPE_MAP[args[0]];
-    if (typeInfo && typeInfo.napi_type) {
-      lines.push(`        var t0 = js_typeof(_b, env, arg0)`);
-      lines.push(`        if t0 != ${typeInfo.napi_type}:`);
-      lines.push(`            throw_js_type_error_dynamic(_b, env, "${jsName}: expected ${typeInfo.type_name}, got " + js_type_name(t0))`);
-      lines.push(`            return NapiValue()`);
-    }
+    emitTypeCheck(lines, jsName, args[0], 'arg0', null);
   } else if (args.length === 2) {
     lines.push(`        var args = CbArgs.get_two(_b, env, info)`);
-    for (let i = 0; i < 2; i++) {
-      const typeInfo = TYPE_MAP[args[i]];
-      if (typeInfo && typeInfo.napi_type) {
-        lines.push(`        var t${i} = js_typeof(_b, env, args[${i}])`);
-        lines.push(`        if t${i} != ${typeInfo.napi_type}:`);
-        lines.push(`            throw_js_type_error_dynamic(_b, env, "${jsName}: expected ${typeInfo.type_name} for arg ${i + 1}, got " + js_type_name(t${i}))`);
-        lines.push(`            return NapiValue()`);
-      }
-    }
+    emitTypeCheck(lines, jsName, args[0], 'args[0]', 'arg 1');
+    emitTypeCheck(lines, jsName, args[1], 'args[1]', 'arg 2');
   }
 
   // Insert body (indented to 8 spaces)
@@ -248,16 +303,20 @@ function main() {
   output.push('## src/generated/callbacks.mojo — AUTO-GENERATED by scripts/generate-addon.mjs');
   output.push('## Do not edit manually. Regenerate with: node scripts/generate-addon.mjs');
   output.push('');
-  output.push('from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_BOOLEAN');
+  output.push('from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_BOOLEAN, NAPI_TYPE_OBJECT');
   output.push('from napi.bindings import Bindings');
   output.push('from napi.framework.js_string import JsString');
   output.push('from napi.framework.js_number import JsNumber');
   output.push('from napi.framework.js_boolean import JsBoolean');
   output.push('from napi.framework.js_int32 import JsInt32');
+  output.push('from napi.framework.js_uint32 import JsUInt32');
+  output.push('from napi.framework.js_int64 import JsInt64');
   output.push('from napi.framework.args import CbArgs');
-  output.push('from napi.framework.js_value import js_typeof, js_type_name');
+  output.push('from napi.framework.js_value import js_typeof, js_type_name, js_is_array');
   output.push('from napi.error import throw_js_error, throw_js_type_error_dynamic');
   output.push('from napi.framework.register import fn_ptr, ModuleBuilder');
+  output.push('from napi.framework.js_object import JsObject');
+  output.push('from napi.framework.js_array import JsArray');
   output.push('');
 
   // Generate callbacks

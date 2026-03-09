@@ -41,3 +41,57 @@ body = """
 var n = JsNumber.from_napi_value(_b, env, arg0)
 return JsBoolean.create(_b, env, n > 0.0).value
 """
+
+# --- Phase 27: new type token examples ---
+
+[functions.example_add_uint32]
+js_name = "exampleAddUInt32"
+args = ["uint32", "uint32"]
+returns = "uint32"
+body = """
+var a = JsUInt32.from_napi_value(_b, env, args[0])
+var b = JsUInt32.from_napi_value(_b, env, args[1])
+return JsUInt32.create(_b, env, a + b).value
+"""
+
+[functions.example_double_int64]
+js_name = "exampleDoubleInt64"
+args = ["int64"]
+returns = "int64"
+body = """
+var n = JsInt64.from_napi_value(_b, env, arg0)
+return JsInt64.create(_b, env, n * 2).value
+"""
+
+[functions.example_negate_bool]
+js_name = "exampleNegateBool"
+args = ["bool"]
+returns = "bool"
+body = """
+var b = JsBoolean.from_napi_value(_b, env, arg0)
+return JsBoolean.create(_b, env, not b).value
+"""
+
+[functions.example_has_key]
+js_name = "exampleHasKey"
+args = ["object", "string"]
+returns = "boolean"
+body = """
+return JsBoolean.create(_b, env, JsObject(args[0]).has(_b, env, args[1])).value
+"""
+
+[functions.example_array_len]
+js_name = "exampleArrayLen"
+args = ["array"]
+returns = "number"
+body = """
+return JsNumber.create_int(_b, env, Int(JsArray(arg0).length(_b, env))).value
+"""
+
+[functions.example_nullable_echo]
+js_name = "exampleNullableEcho"
+args = ["any?"]
+returns = "any"
+body = """
+return arg0
+"""
