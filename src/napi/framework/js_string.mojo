@@ -24,11 +24,13 @@
 ## and falls back to heap allocation for larger strings.
 
 from memory import alloc
-from napi.types import NapiEnv, NapiValue
+from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING
 from napi.raw import raw_create_string_utf8, raw_get_value_string_utf8
 from napi.error import check_status
 from napi.bindings import Bindings
 from napi.framework.args import CbArgs
+from napi.framework.js_value import js_typeof
+from napi.framework.js_coerce import js_coerce_to_string
 
 ## JsString — typed wrapper for a JavaScript string napi_value
 struct JsString:
@@ -167,3 +169,20 @@ struct JsString:
     fn read_arg_0(b: Bindings, env: NapiEnv, info: NapiValue) raises -> String:
         var arg0 = CbArgs.get_one(b, env, info)
         return JsString.from_napi_value(b, env, arg0)
+
+## js_to_string — convert any JavaScript value to a Mojo String
+##
+## If val is already a JS string, reads it directly via from_napi_value.
+## Otherwise coerces via napi_coerce_to_string (equivalent to String(val)
+## in JavaScript) then reads the result. Throws TypeError on Symbol values.
+fn js_to_string(env: NapiEnv, val: NapiValue) raises -> String:
+    if js_typeof(env, val) == NAPI_TYPE_STRING:
+        return JsString.from_napi_value(env, val)
+    var coerced = js_coerce_to_string(env, val)
+    return JsString.from_napi_value(env, coerced)
+
+fn js_to_string(b: Bindings, env: NapiEnv, val: NapiValue) raises -> String:
+    if js_typeof(b, env, val) == NAPI_TYPE_STRING:
+        return JsString.from_napi_value(b, env, val)
+    var coerced = js_coerce_to_string(b, env, val)
+    return JsString.from_napi_value(b, env, coerced)

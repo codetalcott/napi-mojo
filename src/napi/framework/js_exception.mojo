@@ -20,6 +20,8 @@ from napi.types import NapiEnv, NapiValue
 from napi.bindings import Bindings
 from napi.raw import raw_throw, raw_is_exception_pending, raw_get_and_clear_last_exception
 from napi.error import check_status
+from napi.framework.js_object import JsObject
+from napi.framework.js_string import JsString
 
 ## js_throw — throw any JavaScript value as an exception
 ##
@@ -67,3 +69,23 @@ fn js_get_and_clear_last_exception(b: Bindings, env: NapiEnv) raises -> NapiValu
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_get_and_clear_last_exception(b, env, result_ptr))
     return result
+
+## js_get_error_message — read the .message property from a JS Error object
+##
+## Returns the error message as a Mojo String. Works on any JS object
+## with a "message" property. Typically called after
+## js_get_and_clear_last_exception() to inspect a caught exception.
+fn js_get_error_message(env: NapiEnv, err: NapiValue) raises -> String:
+    return JsString.from_napi_value(env, JsObject(err).get_property(env, "message"))
+
+## js_get_error_stack — read the .stack property from a JS Error object
+##
+## Returns the stack trace as a Mojo String.
+fn js_get_error_stack(env: NapiEnv, err: NapiValue) raises -> String:
+    return JsString.from_napi_value(env, JsObject(err).get_property(env, "stack"))
+
+fn js_get_error_message(b: Bindings, env: NapiEnv, err: NapiValue) raises -> String:
+    return JsString.from_napi_value(b, env, JsObject(err).get_property(b, env, "message"))
+
+fn js_get_error_stack(b: Bindings, env: NapiEnv, err: NapiValue) raises -> String:
+    return JsString.from_napi_value(b, env, JsObject(err).get_property(b, env, "stack"))

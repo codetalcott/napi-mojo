@@ -67,7 +67,7 @@ from memory import alloc
 from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiThreadsafeFunction, NapiTypeTag, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_BIGINT, NAPI_TYPE_EXTERNAL, NAPI_OK, NAPI_TSFN_BLOCKING, NAPI_TSFN_RELEASE, NAPI_INT8_ARRAY, NAPI_UINT8_ARRAY, NAPI_UINT8_CLAMPED_ARRAY, NAPI_INT16_ARRAY, NAPI_UINT16_ARRAY, NAPI_INT32_ARRAY, NAPI_UINT32_ARRAY, NAPI_FLOAT32_ARRAY, NAPI_FLOAT64_ARRAY, NAPI_KEY_OWN_ONLY, NAPI_KEY_INCLUDE_PROTOTYPES, NAPI_KEY_ALL_PROPERTIES, NAPI_KEY_ENUMERABLE, NAPI_KEY_CONFIGURABLE, NAPI_KEY_WRITABLE, NAPI_KEY_SKIP_STRINGS, NAPI_KEY_SKIP_SYMBOLS, NAPI_KEY_KEEP_NUMBERS, NAPI_KEY_NUMBERS_TO_STRINGS
 from napi.raw import raw_create_error, raw_resolve_deferred, raw_reject_deferred, raw_create_async_work, raw_queue_async_work, raw_delete_async_work, raw_call_threadsafe_function, raw_release_threadsafe_function, raw_new_instance, raw_get_value_bigint_words, raw_add_finalizer, raw_create_external_arraybuffer, raw_set_instance_data, raw_get_instance_data, raw_add_env_cleanup_hook, raw_remove_env_cleanup_hook, raw_cancel_async_work, raw_fatal_exception, raw_type_tag_object, raw_check_object_type_tag
 from napi.framework.threadsafe_function import ThreadsafeFunction
-from napi.framework.js_string import JsString
+from napi.framework.js_string import JsString, js_to_string
 from napi.framework.js_object import JsObject
 from napi.framework.js_number import JsNumber
 from napi.framework.js_boolean import JsBoolean
@@ -94,7 +94,7 @@ from napi.framework.js_date import JsDate
 from napi.framework.js_symbol import JsSymbol
 from napi.framework.js_external import JsExternal
 from napi.framework.js_coerce import js_coerce_to_bool, js_coerce_to_number, js_coerce_to_string, js_coerce_to_object
-from napi.framework.js_exception import js_throw, js_is_exception_pending, js_get_and_clear_last_exception
+from napi.framework.js_exception import js_throw, js_is_exception_pending, js_get_and_clear_last_exception, js_get_error_message, js_get_error_stack
 from napi.framework.js_dataview import JsDataView
 from napi.framework.js_version import get_napi_version, get_node_version_ptr
 from napi.framework.async_work import AsyncWork
@@ -2588,6 +2588,60 @@ fn get_all_property_names_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ---------------------------------------------------------------------------
+# Phase 24a: getErrorMessage(err) — reads .message from a JS Error object
+# ---------------------------------------------------------------------------
+fn get_error_message_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var msg = js_get_error_message(b, env, arg0)
+        return JsString.create(b, env, msg).value
+    except:
+        throw_js_error(env, "getErrorMessage failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 24a: getErrorStack(err) — reads .stack from a JS Error object
+# ---------------------------------------------------------------------------
+fn get_error_stack_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var stack = js_get_error_stack(b, env, arg0)
+        return JsString.create(b, env, stack).value
+    except:
+        throw_js_error(env, "getErrorStack failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 24b: getOptValue(obj) — reads obj.x via get_opt, null if missing
+# ---------------------------------------------------------------------------
+fn get_opt_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var maybe = JsObject(arg0).get_opt(b, env, "x")
+        if not maybe:
+            return JsNull.create(b, env).value
+        return maybe.value()
+    except:
+        throw_js_error(env, "getOptValue failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
+# Phase 24c: toJsString(val) — converts any JS value to string via js_to_string
+# ---------------------------------------------------------------------------
+fn to_js_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var s = js_to_string(b, env, arg0)
+        return JsString.create(b, env, s).value
+    except:
+        throw_js_error(env, "toJsString failed")
+        return NapiValue()
+
+# ---------------------------------------------------------------------------
 # Module entry point
 #
 # Node.js finds "napi_register_module_v1" via dlsym after dlopen-ing our
@@ -2719,6 +2773,11 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var check_object_type_tag_ref = check_object_type_tag_fn
     var test_weak_ref_ref = test_weak_ref_fn
     var get_all_property_names_ref = get_all_property_names_fn
+    # Phase 24
+    var get_error_message_ref = get_error_message_fn
+    var get_error_stack_ref = get_error_stack_fn
+    var get_opt_value_ref = get_opt_value_fn
+    var to_js_string_ref = to_js_string_fn
 
     try:
         var m = ModuleBuilder(env, exports, cb_data)
@@ -2816,6 +2875,11 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         m.method("checkObjectTypeTag", fn_ptr(check_object_type_tag_ref))
         m.method("testWeakRef", fn_ptr(test_weak_ref_ref))
         m.method("getAllPropertyNames", fn_ptr(get_all_property_names_ref))
+        # Phase 24
+        m.method("getErrorMessage", fn_ptr(get_error_message_ref))
+        m.method("getErrorStack", fn_ptr(get_error_stack_ref))
+        m.method("getOptValue", fn_ptr(get_opt_value_ref))
+        m.method("toJsString", fn_ptr(to_js_string_ref))
 
         # Counter class
         var counter = m.class_def("Counter", fn_ptr(counter_constructor_ref))

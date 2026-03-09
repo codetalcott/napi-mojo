@@ -17,6 +17,7 @@
 ## set_property takes a StringLiteral (static lifetime), so no lifetime
 ## management is needed on the caller side.
 
+from collections import Optional
 from napi.types import NapiEnv, NapiValue, NAPI_KEY_OWN_ONLY, NAPI_KEY_ENUMERABLE, NAPI_KEY_SKIP_SYMBOLS, NAPI_KEY_NUMBERS_TO_STRINGS
 from napi.bindings import Bindings
 from napi.raw import raw_create_object, raw_set_named_property, raw_get_named_property, raw_has_named_property, raw_get_property, raw_set_property, raw_has_property, raw_get_property_names, raw_get_all_property_names, raw_has_own_property, raw_delete_property, raw_instanceof, raw_object_freeze, raw_object_seal, raw_get_prototype
@@ -126,6 +127,16 @@ struct JsObject:
         var status = raw_has_named_property(env, self.value, key_ptr, exists_ptr)
         check_status(status)
         return exists
+
+    ## get_opt — read a property only if the key exists
+    ##
+    ## Checks existence via napi_has_named_property first. Returns
+    ## Optional[NapiValue](value) if present, or None if absent.
+    ## Useful when you must distinguish "key missing" from "key=undefined".
+    fn get_opt(self, env: NapiEnv, key: StringLiteral) raises -> Optional[NapiValue]:
+        if not self.has_property(env, key):
+            return None
+        return self.get_property(env, key)
 
     ## keys — return the object's own enumerable property names as a JS array
     ##
@@ -259,6 +270,11 @@ struct JsObject:
         var status = raw_has_named_property(b, env, self.value, key_ptr, exists_ptr)
         check_status(status)
         return exists
+
+    fn get_opt(self, b: Bindings, env: NapiEnv, key: StringLiteral) raises -> Optional[NapiValue]:
+        if not self.has_property(b, env, key):
+            return None
+        return self.get_property(b, env, key)
 
     fn keys(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         var result: NapiValue = NapiValue()
