@@ -376,9 +376,8 @@ struct NapiBindings(Movable):
 
 comptime Bindings = UnsafePointer[NapiBindings, MutAnyOrigin]
 
-fn init_bindings(out bindings: NapiBindings) raises:
+fn init_bindings(mut bindings: NapiBindings) raises:
     """Resolve all 118 N-API symbols from the host process once."""
-    bindings = NapiBindings()
     var h = OwnedDLHandle()
 
     # 1. napi_create_string_utf8

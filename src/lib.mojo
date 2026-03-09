@@ -111,7 +111,8 @@ from napi.error import throw_js_error, throw_js_error_dynamic, throw_js_type_err
 # ---------------------------------------------------------------------------
 fn hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        return JsString.create_literal(env, "Hello from Mojo!").value
+        var b = CbArgs.get_bindings(env, info)
+        return JsString.create_literal(b, env, "Hello from Mojo!").value
     except:
         return NapiValue()
 
@@ -122,7 +123,8 @@ fn hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn create_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        return JsObject.create(env).value
+        var b = CbArgs.get_bindings(env, info)
+        return JsObject.create(b, env).value
     except:
         return NapiValue()
 
@@ -134,9 +136,10 @@ fn create_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn make_greeting_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var obj = JsObject.create(env)
-        var msg = JsString.create_literal(env, "Hello!")
-        obj.set_property(env, "message", msg.value)
+        var b = CbArgs.get_bindings(env, info)
+        var obj = JsObject.create(b, env)
+        var msg = JsString.create_literal(b, env, "Hello!")
+        obj.set_property(b, env, "message", msg.value)
         return obj.value
     except:
         return NapiValue()
@@ -150,13 +153,14 @@ fn make_greeting_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var t = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_STRING:
-            throw_js_error_dynamic(env, "greet: expected string, got " + js_type_name(t))
+            throw_js_error_dynamic(b, env, "greet: expected string, got " + js_type_name(t))
             return NapiValue()
-        var name = JsString.from_napi_value(env, arg0)
-        return JsString.create(env, "Hello, " + name + "!").value
+        var name = JsString.from_napi_value(b, env, arg0)
+        return JsString.create(b, env, "Hello, " + name + "!").value
     except:
         throw_js_error(env, "greet requires one string argument")
         return NapiValue()
@@ -169,10 +173,11 @@ fn greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var a = JsNumber.from_napi_value(env, args[0])
-        var b = JsNumber.from_napi_value(env, args[1])
-        return JsNumber.create(env, a + b).value
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var a = JsNumber.from_napi_value(b, env, args[0])
+        var b2 = JsNumber.from_napi_value(b, env, args[1])
+        return JsNumber.create(b, env, a + b2).value
     except:
         throw_js_error(env, "add requires two number arguments")
         return NapiValue()
@@ -185,9 +190,10 @@ fn add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var n = JsNumber.from_napi_value(env, arg0)
-        return JsBoolean.create(env, n > 0).value
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var n = JsNumber.from_napi_value(b, env, arg0)
+        return JsBoolean.create(b, env, n > 0).value
     except:
         throw_js_error(env, "isPositive requires one number argument")
         return NapiValue()
@@ -199,7 +205,8 @@ fn is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn get_null_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        return JsNull.create(env).value
+        var b = CbArgs.get_bindings(env, info)
+        return JsNull.create(b, env).value
     except:
         return NapiValue()
 
@@ -210,7 +217,8 @@ fn get_null_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn get_undefined_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        return JsUndefined.create(env).value
+        var b = CbArgs.get_bindings(env, info)
+        return JsUndefined.create(b, env).value
     except:
         return NapiValue()
 
@@ -222,18 +230,19 @@ fn get_undefined_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        if not js_is_array(env, arg0):
-            var t = js_typeof(env, arg0)
-            throw_js_error_dynamic(env, "sumArray: expected array, got " + js_type_name(t))
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        if not js_is_array(b, env, arg0):
+            var t = js_typeof(b, env, arg0)
+            throw_js_error_dynamic(b, env, "sumArray: expected array, got " + js_type_name(t))
             return NapiValue()
         var arr = JsArray(arg0)
-        var len = arr.length(env)
+        var len = arr.length(b, env)
         var total: Float64 = 0.0
         for i in range(Int(len)):
-            var elem = arr.get(env, UInt32(i))
-            total += JsNumber.from_napi_value(env, elem)
-        return JsNumber.create(env, total).value
+            var elem = arr.get(b, env, UInt32(i))
+            total += JsNumber.from_napi_value(b, env, elem)
+        return JsNumber.create(b, env, total).value
     except:
         throw_js_error(env, "sumArray requires one array argument")
         return NapiValue()
@@ -246,17 +255,18 @@ fn sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn get_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var t0 = js_typeof(env, args[0])
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var t0 = js_typeof(b, env, args[0])
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(env, "getProperty: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(b, env, "getProperty: expected object, got " + js_type_name(t0))
             return NapiValue()
-        var t1 = js_typeof(env, args[1])
+        var t1 = js_typeof(b, env, args[1])
         if t1 != NAPI_TYPE_STRING:
-            throw_js_error_dynamic(env, "getProperty: expected string key, got " + js_type_name(t1))
+            throw_js_error_dynamic(b, env, "getProperty: expected string key, got " + js_type_name(t1))
             return NapiValue()
         var obj = JsObject(args[0])
-        return obj.get(env, args[1])
+        return obj.get(b, env, args[1])
     except:
         throw_js_error(env, "getProperty requires (object, string)")
         return NapiValue()
@@ -269,13 +279,14 @@ fn get_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn call_function_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var t = js_typeof(env, args[0])
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var t = js_typeof(b, env, args[0])
         if t != NAPI_TYPE_FUNCTION:
-            throw_js_error_dynamic(env, "callFunction: expected function, got " + js_type_name(t))
+            throw_js_error_dynamic(b, env, "callFunction: expected function, got " + js_type_name(t))
             return NapiValue()
         var func = JsFunction(args[0])
-        return func.call1(env, args[1])
+        return func.call1(b, env, args[1])
     except:
         throw_js_error(env, "callFunction requires (function, arg)")
         return NapiValue()
@@ -288,29 +299,30 @@ fn call_function_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        if not js_is_array(env, args[0]):
-            var t = js_typeof(env, args[0])
-            throw_js_error_dynamic(env, "mapArray: expected array, got " + js_type_name(t))
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        if not js_is_array(b, env, args[0]):
+            var t = js_typeof(b, env, args[0])
+            throw_js_error_dynamic(b, env, "mapArray: expected array, got " + js_type_name(t))
             return NapiValue()
-        var t1 = js_typeof(env, args[1])
+        var t1 = js_typeof(b, env, args[1])
         if t1 != NAPI_TYPE_FUNCTION:
-            throw_js_error_dynamic(env, "mapArray: expected function, got " + js_type_name(t1))
+            throw_js_error_dynamic(b, env, "mapArray: expected function, got " + js_type_name(t1))
             return NapiValue()
         var arr = JsArray(args[0])
         var func = JsFunction(args[1])
-        var len = arr.length(env)
-        var result = JsArray.create_with_length(env, UInt(len))
+        var len = arr.length(b, env)
+        var result = JsArray.create_with_length(b, env, UInt(len))
         for i in range(Int(len)):
-            var hs = HandleScope.open(env)
+            var hs = HandleScope.open(b, env)
             var ok = True
             try:
-                var elem = arr.get(env, UInt32(i))
-                var mapped = func.call1(env, elem)
-                result.set(env, UInt32(i), mapped)
+                var elem = arr.get(b, env, UInt32(i))
+                var mapped = func.call1(b, env, elem)
+                result.set(b, env, UInt32(i), mapped)
             except:
                 ok = False
-            hs.close(env)
+            hs.close(b, env)
             if not ok:
                 raise Error("mapArray: callback failed at index " + String(i))
         return result.value
@@ -326,9 +338,10 @@ fn map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn resolve_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var p = JsPromise.create(env)
-        p.resolve(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var p = JsPromise.create(b, env)
+        p.resolve(b, env, arg0)
         return p.value
     except:
         throw_js_error(env, "resolveWith requires one argument")
@@ -342,18 +355,19 @@ fn resolve_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn reject_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var t = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_STRING:
-            throw_js_error_dynamic(env, "rejectWith: expected string, got " + js_type_name(t))
+            throw_js_error_dynamic(b, env, "rejectWith: expected string, got " + js_type_name(t))
             return NapiValue()
         # Create an Error object from the message string (without throwing)
         var null_code = NapiValue()
         var error_val = NapiValue()
         var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()
         check_status(raw_create_error(env, null_code, arg0, error_ptr))
-        var p = JsPromise.create(env)
-        p.reject(env, error_val)
+        var p = JsPromise.create(b, env)
+        p.reject(b, env, error_val)
         return p.value
     except:
         throw_js_error(env, "rejectWith requires one string argument")
@@ -403,14 +417,15 @@ fn async_double_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[M
 
 fn async_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var n = JsNumber.from_napi_value(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[AsyncDoubleData](1)
         data_ptr.init_pointee_move(AsyncDoubleData(n))
         var exec_ref = async_double_execute
         var comp_ref = async_double_complete
         var aw = AsyncWork.queue(
-            env, "asyncDouble", data_ptr.bitcast[NoneType](),
+            b, env, "asyncDouble", data_ptr.bitcast[NoneType](),
             fn_ptr(exec_ref), fn_ptr(comp_ref),
         )
         data_ptr[].deferred = aw.deferred
@@ -463,14 +478,15 @@ fn async_triple_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[M
 
 fn async_triple_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var n = JsNumber.from_napi_value(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[AsyncTripleData](1)
         data_ptr.init_pointee_move(AsyncTripleData(n))
         var exec_ref = async_triple_execute
         var comp_ref = async_triple_complete
         var aw = AsyncWork.queue(
-            env, "asyncTriple", data_ptr.bitcast[NoneType](),
+            b, env, "asyncTriple", data_ptr.bitcast[NoneType](),
             fn_ptr(exec_ref), fn_ptr(comp_ref),
         )
         data_ptr[].deferred = aw.deferred
@@ -487,15 +503,16 @@ fn async_triple_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn add_ints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var ta = js_typeof(env, args[0])
-        var tb = js_typeof(env, args[1])
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var ta = js_typeof(b, env, args[0])
+        var tb = js_typeof(b, env, args[1])
         if ta != NAPI_TYPE_NUMBER or tb != NAPI_TYPE_NUMBER:
-            throw_js_error(env, "addInts requires two number arguments")
+            throw_js_error(b, env, "addInts requires two number arguments")
             return NapiValue()
-        var a = JsInt32.from_napi_value(env, args[0])
-        var b = JsInt32.from_napi_value(env, args[1])
-        return JsInt32.create(env, a + b).value
+        var a = JsInt32.from_napi_value(b, env, args[0])
+        var b2 = JsInt32.from_napi_value(b, env, args[1])
+        return JsInt32.create(b, env, a + b2).value
     except:
         throw_js_error(env, "addInts requires two number arguments")
         return NapiValue()
@@ -507,15 +524,16 @@ fn add_ints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn bitwise_or_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var ta = js_typeof(env, args[0])
-        var tb = js_typeof(env, args[1])
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var ta = js_typeof(b, env, args[0])
+        var tb = js_typeof(b, env, args[1])
         if ta != NAPI_TYPE_NUMBER or tb != NAPI_TYPE_NUMBER:
-            throw_js_error(env, "bitwiseOr requires two number arguments")
+            throw_js_error(b, env, "bitwiseOr requires two number arguments")
             return NapiValue()
-        var a = JsUInt32.from_napi_value(env, args[0])
-        var b = JsUInt32.from_napi_value(env, args[1])
-        return JsUInt32.create(env, a | b).value
+        var a = JsUInt32.from_napi_value(b, env, args[0])
+        var b2 = JsUInt32.from_napi_value(b, env, args[1])
+        return JsUInt32.create(b, env, a | b2).value
     except:
         throw_js_error(env, "bitwiseOr requires two number arguments")
         return NapiValue()
@@ -526,7 +544,11 @@ fn bitwise_or_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # Throws a JavaScript TypeError with a fixed message.
 # ---------------------------------------------------------------------------
 fn throw_type_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
-    throw_js_type_error(env, "wrong type")
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        throw_js_type_error(b, env, "wrong type")
+    except:
+        throw_js_type_error(env, "wrong type")
     return NapiValue()
 
 # ---------------------------------------------------------------------------
@@ -535,7 +557,11 @@ fn throw_type_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # Throws a JavaScript RangeError with a fixed message.
 # ---------------------------------------------------------------------------
 fn throw_range_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
-    throw_js_range_error(env, "out of range")
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        throw_js_range_error(b, env, "out of range")
+    except:
+        throw_js_range_error(env, "out of range")
     return NapiValue()
 
 # ---------------------------------------------------------------------------
@@ -545,16 +571,17 @@ fn throw_range_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn add_ints_strict_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var ta = js_typeof(env, args[0])
-        var tb = js_typeof(env, args[1])
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var ta = js_typeof(b, env, args[0])
+        var tb = js_typeof(b, env, args[1])
         if ta != NAPI_TYPE_NUMBER or tb != NAPI_TYPE_NUMBER:
-            throw_js_type_error_dynamic(env,
+            throw_js_type_error_dynamic(b, env,
                 "addIntsStrict: expected two numbers, got " + js_type_name(ta) + " and " + js_type_name(tb))
             return NapiValue()
-        var a = JsInt32.from_napi_value(env, args[0])
-        var b = JsInt32.from_napi_value(env, args[1])
-        return JsInt32.create(env, a + b).value
+        var a = JsInt32.from_napi_value(b, env, args[0])
+        var b2 = JsInt32.from_napi_value(b, env, args[1])
+        return JsInt32.create(b, env, a + b2).value
     except:
         throw_js_type_error(env, "addIntsStrict requires two number arguments")
         return NapiValue()
@@ -566,13 +593,14 @@ fn add_ints_strict_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn create_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var ta = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var ta = js_typeof(b, env, arg0)
         if ta != NAPI_TYPE_NUMBER:
-            throw_js_error(env, "createArrayBuffer requires a number argument")
+            throw_js_error(b, env, "createArrayBuffer requires a number argument")
             return NapiValue()
-        var size = JsNumber.from_napi_value(env, arg0)
-        return JsArrayBuffer.create_and_fill(env, UInt(Int(size))).value
+        var size = JsNumber.from_napi_value(b, env, arg0)
+        return JsArrayBuffer.create_and_fill(b, env, UInt(Int(size))).value
     except:
         throw_js_error(env, "createArrayBuffer requires a number argument")
         return NapiValue()
@@ -584,13 +612,14 @@ fn create_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn arraybuffer_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        if not JsArrayBuffer.is_arraybuffer(env, arg0):
-            throw_js_error(env, "arrayBufferLength requires an ArrayBuffer argument")
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        if not JsArrayBuffer.is_arraybuffer(b, env, arg0):
+            throw_js_error(b, env, "arrayBufferLength requires an ArrayBuffer argument")
             return NapiValue()
         var ab = JsArrayBuffer(arg0)
-        var length = ab.byte_length(env)
-        return JsNumber.create(env, Float64(length)).value
+        var length = ab.byte_length(b, env)
+        return JsNumber.create(b, env, Float64(length)).value
     except:
         throw_js_error(env, "arrayBufferLength requires an ArrayBuffer argument")
         return NapiValue()
@@ -602,17 +631,18 @@ fn arraybuffer_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        if not JsBuffer.is_buffer(env, arg0):
-            throw_js_error(env, "sumBuffer requires a Buffer argument")
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        if not JsBuffer.is_buffer(b, env, arg0):
+            throw_js_error(b, env, "sumBuffer requires a Buffer argument")
             return NapiValue()
         var buf = JsBuffer(arg0)
-        var ptr = buf.data_ptr(env)
-        var len = buf.length(env)
+        var ptr = buf.data_ptr(b, env)
+        var len = buf.length(b, env)
         var total: Float64 = 0.0
         for i in range(Int(len)):
             total += Float64(Int(ptr[i]))
-        return JsNumber.create(env, total).value
+        return JsNumber.create(b, env, total).value
     except:
         throw_js_error(env, "sumBuffer requires a Buffer argument")
         return NapiValue()
@@ -624,13 +654,14 @@ fn sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn create_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var ta = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var ta = js_typeof(b, env, arg0)
         if ta != NAPI_TYPE_NUMBER:
-            throw_js_error(env, "createBuffer requires a number argument")
+            throw_js_error(b, env, "createBuffer requires a number argument")
             return NapiValue()
-        var size = JsNumber.from_napi_value(env, arg0)
-        return JsBuffer.create_and_fill(env, UInt(Int(size))).value
+        var size = JsNumber.from_napi_value(b, env, arg0)
+        return JsBuffer.create_and_fill(b, env, UInt(Int(size))).value
     except:
         throw_js_error(env, "createBuffer requires a number argument")
         return NapiValue()
@@ -642,13 +673,14 @@ fn create_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        if not JsTypedArray.is_typedarray(env, arg0):
-            throw_js_error(env, "doubleFloat64Array requires a TypedArray argument")
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        if not JsTypedArray.is_typedarray(b, env, arg0):
+            throw_js_error(b, env, "doubleFloat64Array requires a TypedArray argument")
             return NapiValue()
         var ta = JsTypedArray(arg0)
-        var len = ta.length(env)
-        var byte_ptr = ta.data_ptr(env)
+        var len = ta.length(b, env)
+        var byte_ptr = ta.data_ptr(b, env)
         var float_ptr = byte_ptr.bitcast[Float64]()
         for i in range(Int(len)):
             float_ptr[i] = float_ptr[i] * 2.0
@@ -665,39 +697,40 @@ fn double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var argc = CbArgs.argc(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var argc = CbArgs.argc(b, env, info)
         var argv = alloc[NapiValue](Int(argc))
-        CbArgs.get_argv(env, info, argc, argv)
+        CbArgs.get_argv(b, env, info, argc, argv)
         if argc < 4:
-            throw_js_error(env, "createTypedArrayView requires 4 arguments")
+            throw_js_error(b, env, "createTypedArrayView requires 4 arguments")
             argv.free()
             return NapiValue()
-        var type_str = JsString.from_napi_value(env, argv[0])
+        var type_str = JsString.from_napi_value(b, env, argv[0])
         var ab = argv[1]
-        var offset = Int(JsNumber.from_napi_value(env, argv[2]))
-        var length = Int(JsNumber.from_napi_value(env, argv[3]))
+        var offset = Int(JsNumber.from_napi_value(b, env, argv[2]))
+        var length = Int(JsNumber.from_napi_value(b, env, argv[3]))
         argv.free()
         var ta: JsTypedArray
         if type_str == "int8":
-            ta = JsTypedArray.create_int8(env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_int8(b, env, ab, UInt(offset), UInt(length))
         elif type_str == "uint8":
-            ta = JsTypedArray.create_uint8(env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_uint8(b, env, ab, UInt(offset), UInt(length))
         elif type_str == "uint8clamped":
-            ta = JsTypedArray.create_uint8_clamped(env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_uint8_clamped(b, env, ab, UInt(offset), UInt(length))
         elif type_str == "int16":
-            ta = JsTypedArray.create_int16(env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_int16(b, env, ab, UInt(offset), UInt(length))
         elif type_str == "uint16":
-            ta = JsTypedArray.create_uint16(env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_uint16(b, env, ab, UInt(offset), UInt(length))
         elif type_str == "int32":
-            ta = JsTypedArray.create_int32(env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_int32(b, env, ab, UInt(offset), UInt(length))
         elif type_str == "uint32":
-            ta = JsTypedArray.create_uint32(env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_uint32(b, env, ab, UInt(offset), UInt(length))
         elif type_str == "float32":
-            ta = JsTypedArray.create_float32(env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_float32(b, env, ab, UInt(offset), UInt(length))
         elif type_str == "float64":
-            ta = JsTypedArray.create_float64(env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_float64(b, env, ab, UInt(offset), UInt(length))
         else:
-            throw_js_error_dynamic(env, "createTypedArrayView: unknown type '" + type_str + "'")
+            throw_js_error_dynamic(b, env, "createTypedArrayView: unknown type '" + type_str + "'")
             return NapiValue()
         return ta.value
     except:
@@ -711,13 +744,14 @@ fn create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn get_typed_array_type_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        if not JsTypedArray.is_typedarray(env, arg0):
-            throw_js_type_error(env, "getTypedArrayType: expected TypedArray")
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        if not JsTypedArray.is_typedarray(b, env, arg0):
+            throw_js_type_error(b, env, "getTypedArrayType: expected TypedArray")
             return NapiValue()
         var ta = JsTypedArray(arg0)
-        var t = ta.array_type(env)
-        return JsNumber.create_int(env, Int(t)).value
+        var t = ta.array_type(b, env)
+        return JsNumber.create_int(b, env, Int(t)).value
     except:
         throw_js_error(env, "getTypedArrayType failed")
         return NapiValue()
@@ -729,13 +763,14 @@ fn get_typed_array_type_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn get_typed_array_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        if not JsTypedArray.is_typedarray(env, arg0):
-            throw_js_type_error(env, "getTypedArrayLength: expected TypedArray")
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        if not JsTypedArray.is_typedarray(b, env, arg0):
+            throw_js_type_error(b, env, "getTypedArrayLength: expected TypedArray")
             return NapiValue()
         var ta = JsTypedArray(arg0)
-        var len = ta.length(env)
-        return JsNumber.create_int(env, Int(len)).value
+        var len = ta.length(b, env)
+        return JsNumber.create_int(b, env, Int(len)).value
     except:
         throw_js_error(env, "getTypedArrayLength failed")
         return NapiValue()
@@ -774,13 +809,14 @@ fn counter_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: Opaqu
 # ---------------------------------------------------------------------------
 fn counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var this_val = CbArgs.get_this(env, info)
-        var arg0 = CbArgs.get_one(env, info)
-        var t = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(b, env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_NUMBER:
-            throw_js_type_error(env, "Counter constructor requires a number argument")
+            throw_js_type_error(b, env, "Counter constructor requires a number argument")
             return NapiValue()
-        var initial = JsNumber.from_napi_value(env, arg0)
+        var initial = JsNumber.from_napi_value(b, env, arg0)
 
         # Heap-allocate native data
         var data_ptr = alloc[CounterData](1)
@@ -791,7 +827,7 @@ fn counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
         # Wrap native data onto this
-        check_status(raw_wrap(
+        check_status(raw_wrap(b,
             env,
             this_val,
             data_ptr.bitcast[NoneType](),              # native_object
@@ -810,8 +846,9 @@ fn counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var ptr = unwrap_native[CounterData](env, info)
-        return JsNumber.create(env, ptr[].count).value
+        var b = CbArgs.get_bindings(env, info)
+        var ptr = unwrap_native[CounterData](b, env, info)
+        return JsNumber.create(b, env, ptr[].count).value
     except:
         throw_js_error(env, "Counter.value getter failed")
         return NapiValue()
@@ -821,15 +858,16 @@ fn counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var t = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_NUMBER:
-            throw_js_type_error(env, "Counter.value setter requires a number")
+            throw_js_type_error(b, env, "Counter.value setter requires a number")
             return NapiValue()
-        var new_val = JsNumber.from_napi_value(env, arg0)
-        var ptr = unwrap_native[CounterData](env, info)
+        var new_val = JsNumber.from_napi_value(b, env, arg0)
+        var ptr = unwrap_native[CounterData](b, env, info)
         ptr[].count = new_val
-        return JsUndefined.create(env).value
+        return JsUndefined.create(b, env).value
     except:
         throw_js_error(env, "Counter.value setter failed")
         return NapiValue()
@@ -839,9 +877,10 @@ fn counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var ptr = unwrap_native[CounterData](env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var ptr = unwrap_native[CounterData](b, env, info)
         ptr[].count += 1.0
-        return JsUndefined.create(env).value
+        return JsUndefined.create(b, env).value
     except:
         throw_js_error(env, "Counter.increment failed")
         return NapiValue()
@@ -851,9 +890,10 @@ fn counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var ptr = unwrap_native[CounterData](env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var ptr = unwrap_native[CounterData](b, env, info)
         ptr[].count = ptr[].initial
-        return JsUndefined.create(env).value
+        return JsUndefined.create(b, env).value
     except:
         throw_js_error(env, "Counter.reset failed")
         return NapiValue()
@@ -868,14 +908,15 @@ fn counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var this_val = CbArgs.get_this(env, info)
-        var arg0 = CbArgs.get_one(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(b, env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
         # napi_instanceof requires object LHS — primitives are never instanceof
-        var t = js_typeof(env, arg0)
+        var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_OBJECT and t != NAPI_TYPE_FUNCTION:
-            return JsBoolean.create(env, False).value
-        var result = JsObject(arg0).instance_of(env, this_val)
-        return JsBoolean.create(env, result).value
+            return JsBoolean.create(b, env, False).value
+        var result = JsObject(arg0).instance_of(b, env, this_val)
+        return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "Counter.isCounter failed")
         return NapiValue()
@@ -888,15 +929,16 @@ fn counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var this_val = CbArgs.get_this(env, info)
-        var arg0 = CbArgs.get_one(env, info)
-        var t = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(b, env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_NUMBER:
-            throw_js_type_error(env, "Counter.fromValue requires a number argument")
+            throw_js_type_error(b, env, "Counter.fromValue requires a number argument")
             return NapiValue()
         var result = NapiValue()
         var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=arg0).bitcast[NoneType]()
-        check_status(raw_new_instance(
+        check_status(raw_new_instance(b,
             env,
             this_val,
             1,
@@ -965,13 +1007,14 @@ fn dog_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePoi
 # ---------------------------------------------------------------------------
 fn animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var this_val = CbArgs.get_this(env, info)
-        var arg0 = CbArgs.get_one(env, info)
-        var t = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(b, env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_STRING:
-            throw_js_type_error(env, "Animal constructor requires a string name")
+            throw_js_type_error(b, env, "Animal constructor requires a string name")
             return NapiValue()
-        var name_str = JsString.from_napi_value(env, arg0)
+        var name_str = JsString.from_napi_value(b, env, arg0)
         var name_len = UInt(len(name_str))
         var name_buf = alloc[Byte](Int(name_len))
         for i in range(Int(name_len)):
@@ -984,7 +1027,7 @@ fn animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
         try:
-            check_status(raw_wrap(
+            check_status(raw_wrap(b,
                 env, this_val,
                 data_ptr.bitcast[NoneType](),
                 fin_ptr,
@@ -1006,11 +1049,12 @@ fn animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn animal_get_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var ptr = unwrap_native[AnimalData](env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var ptr = unwrap_native[AnimalData](b, env, info)
         var name_bytes = ptr[].name_ptr.bitcast[Byte]()
         var span = Span[Byte](ptr=name_bytes, length=Int(ptr[].name_len))
         var name = String(from_utf8=span)
-        return JsString.create(env, name).value
+        return JsString.create(b, env, name).value
     except:
         throw_js_error(env, "Animal.name getter failed")
         return NapiValue()
@@ -1020,12 +1064,13 @@ fn animal_get_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn animal_speak_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var ptr = unwrap_native[AnimalData](env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var ptr = unwrap_native[AnimalData](b, env, info)
         var name_bytes = ptr[].name_ptr.bitcast[Byte]()
         var span = Span[Byte](ptr=name_bytes, length=Int(ptr[].name_len))
         var name = String(from_utf8=span)
         var msg = name + " says hello"
-        return JsString.create(env, msg).value
+        return JsString.create(b, env, msg).value
     except:
         throw_js_error(env, "Animal.speak failed")
         return NapiValue()
@@ -1035,13 +1080,14 @@ fn animal_speak_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn animal_is_animal_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var this_val = CbArgs.get_this(env, info)
-        var arg0 = CbArgs.get_one(env, info)
-        var t = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(b, env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_OBJECT and t != NAPI_TYPE_FUNCTION:
-            return JsBoolean.create(env, False).value
-        var result = JsObject(arg0).instance_of(env, this_val)
-        return JsBoolean.create(env, result).value
+            return JsBoolean.create(b, env, False).value
+        var result = JsObject(arg0).instance_of(b, env, this_val)
+        return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "Animal.isAnimal failed")
         return NapiValue()
@@ -1051,22 +1097,23 @@ fn animal_is_animal_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var this_val = CbArgs.get_this(env, info)
-        var args = CbArgs.get_two(env, info)
-        var t0 = js_typeof(env, args[0])
-        var t1 = js_typeof(env, args[1])
+        var b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(b, env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var t0 = js_typeof(b, env, args[0])
+        var t1 = js_typeof(b, env, args[1])
         if t0 != NAPI_TYPE_STRING or t1 != NAPI_TYPE_STRING:
-            throw_js_type_error(env, "Dog constructor requires (name: string, breed: string)")
+            throw_js_type_error(b, env, "Dog constructor requires (name: string, breed: string)")
             return NapiValue()
 
-        var name_str = JsString.from_napi_value(env, args[0])
+        var name_str = JsString.from_napi_value(b, env, args[0])
         var name_len = UInt(len(name_str))
         var name_buf = alloc[Byte](Int(name_len))
         for i in range(Int(name_len)):
             name_buf[i] = name_str.as_bytes()[i]
 
         try:
-            var breed_str = JsString.from_napi_value(env, args[1])
+            var breed_str = JsString.from_napi_value(b, env, args[1])
             var breed_len = UInt(len(breed_str))
             var breed_buf = alloc[Byte](Int(breed_len))
             for i in range(Int(breed_len)):
@@ -1082,7 +1129,7 @@ fn dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
             try:
-                check_status(raw_wrap(
+                check_status(raw_wrap(b,
                     env, this_val,
                     data_ptr.bitcast[NoneType](),
                     fin_ptr,
@@ -1108,11 +1155,12 @@ fn dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn dog_get_breed_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var ptr = unwrap_native[DogData](env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var ptr = unwrap_native[DogData](b, env, info)
         var breed_bytes = ptr[].breed_ptr.bitcast[Byte]()
         var span = Span[Byte](ptr=breed_bytes, length=Int(ptr[].breed_len))
         var breed = String(from_utf8=span)
-        return JsString.create(env, breed).value
+        return JsString.create(b, env, breed).value
     except:
         throw_js_error(env, "Dog.breed getter failed")
         return NapiValue()
@@ -1125,21 +1173,22 @@ fn dog_get_breed_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn sum_args_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var count = CbArgs.argc(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var count = CbArgs.argc(b, env, info)
         if count == 0:
-            return JsNumber.create(env, 0.0).value
+            return JsNumber.create(b, env, 0.0).value
         var argv = alloc[NapiValue](Int(count))
-        CbArgs.get_argv(env, info, count, argv)
+        CbArgs.get_argv(b, env, info, count, argv)
         var total: Float64 = 0.0
         for i in range(Int(count)):
-            var t = js_typeof(env, argv[i])
+            var t = js_typeof(b, env, argv[i])
             if t != NAPI_TYPE_NUMBER:
                 argv.free()
-                throw_js_error_dynamic(env, "sumArgs: expected number, got " + js_type_name(t))
+                throw_js_error_dynamic(b, env, "sumArgs: expected number, got " + js_type_name(t))
                 return NapiValue()
-            total += JsNumber.from_napi_value(env, argv[i])
+            total += JsNumber.from_napi_value(b, env, argv[i])
         argv.free()
-        return JsNumber.create(env, total).value
+        return JsNumber.create(b, env, total).value
     except:
         throw_js_error(env, "sumArgs failed")
         return NapiValue()
@@ -1162,9 +1211,10 @@ fn inner_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn create_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
+        var b = CbArgs.get_bindings(env, info)
         var cb_ref = inner_callback_fn
         var cb_ptr = UnsafePointer(to=cb_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-        return JsFunction.create(env, "innerCallback", cb_ptr).value
+        return JsFunction.create(b, env, "innerCallback", cb_ptr).value
     except:
         throw_js_error(env, "createCallback failed")
         return NapiValue()
@@ -1194,14 +1244,15 @@ fn inner_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn create_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var n = JsNumber.from_napi_value(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var n = JsNumber.from_napi_value(b, env, arg0)
         # Heap-allocate the captured value
         var n_ptr = alloc[Float64](1)
         n_ptr.init_pointee_move(n)
         var cb_ref = inner_adder_fn
         var cb_ptr = UnsafePointer(to=cb_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-        return JsFunction.create_with_data(
+        return JsFunction.create_with_data(b,
             env, "adder", cb_ptr, n_ptr.bitcast[NoneType]()
         ).value
     except:
@@ -1215,7 +1266,8 @@ fn create_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn get_global_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        return js_get_global(env).value
+        var b = CbArgs.get_bindings(env, info)
+        return js_get_global(b, env).value
     except:
         throw_js_error(env, "getGlobal failed")
         return NapiValue()
@@ -1228,12 +1280,13 @@ fn get_global_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn test_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var obj = JsObject.create(env)
-        obj.set_property(env, "value", JsNumber.create(env, 42.0).value)
-        var js_ref = JsRef.create(env, obj.value, 1)
-        var retrieved = JsObject(js_ref.get(env))
-        js_ref.delete(env)
-        return retrieved.get_named_property(env, "value")
+        var b = CbArgs.get_bindings(env, info)
+        var obj = JsObject.create(b, env)
+        obj.set_property(b, env, "value", JsNumber.create(b, env, 42.0).value)
+        var js_ref = JsRef.create(b, env, obj.value, 1)
+        var retrieved = JsObject(js_ref.get(b, env))
+        js_ref.delete(b, env)
+        return retrieved.get_named_property(b, env, "value")
     except:
         throw_js_error(env, "testRef failed")
         return NapiValue()
@@ -1245,11 +1298,12 @@ fn test_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn test_ref_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var obj = JsObject.create(env)
-        obj.set_property(env, "answer", JsNumber.create(env, 42.0).value)
-        var js_ref = JsRef.create(env, obj.value, 1)
-        var val = js_ref.get(env)
-        js_ref.delete(env)
+        var b = CbArgs.get_bindings(env, info)
+        var obj = JsObject.create(b, env)
+        obj.set_property(b, env, "answer", JsNumber.create(b, env, 42.0).value)
+        var js_ref = JsRef.create(b, env, obj.value, 1)
+        var val = js_ref.get(b, env)
+        js_ref.delete(b, env)
         return val
     except:
         throw_js_error(env, "testRefObject failed")
@@ -1263,13 +1317,14 @@ fn test_ref_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn test_ref_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var obj = JsObject.create(env)
-        obj.set_property(env, "value", arg0)
-        var js_ref = JsRef.create(env, obj.value, 1)
-        var retrieved = JsObject(js_ref.get(env))
-        js_ref.delete(env)
-        return retrieved.get_named_property(env, "value")
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var obj = JsObject.create(b, env)
+        obj.set_property(b, env, "value", arg0)
+        var js_ref = JsRef.create(b, env, obj.value, 1)
+        var retrieved = JsObject(js_ref.get(b, env))
+        js_ref.delete(b, env)
+        return retrieved.get_named_property(b, env, "value")
     except:
         throw_js_error(env, "testRefString requires one string argument")
         return NapiValue()
@@ -1282,12 +1337,13 @@ fn test_ref_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn build_in_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var esc = EscapableHandleScope.open(env)
-        var obj = JsObject.create(env)
-        obj.set_property(env, "created", JsBoolean.create(env, True).value)
-        obj.set_property(env, "answer", JsNumber.create(env, 42.0).value)
-        var escaped = esc.escape(env, obj.value)
-        esc.close(env)
+        var b = CbArgs.get_bindings(env, info)
+        var esc = EscapableHandleScope.open(b, env)
+        var obj = JsObject.create(b, env)
+        obj.set_property(b, env, "created", JsBoolean.create(b, env, True).value)
+        obj.set_property(b, env, "answer", JsNumber.create(b, env, 42.0).value)
+        var escaped = esc.escape(b, env, obj.value)
+        esc.close(b, env)
         return escaped
     except:
         throw_js_error(env, "buildInScope failed")
@@ -1300,16 +1356,17 @@ fn build_in_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn add_bigints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var ta = js_typeof(env, args[0])
-        var tb = js_typeof(env, args[1])
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var ta = js_typeof(b, env, args[0])
+        var tb = js_typeof(b, env, args[1])
         if ta != NAPI_TYPE_BIGINT or tb != NAPI_TYPE_BIGINT:
-            throw_js_error_dynamic(env,
+            throw_js_error_dynamic(b, env,
                 "addBigInts: expected bigint, got " + js_type_name(ta) + " and " + js_type_name(tb))
             return NapiValue()
-        var a = JsBigInt.to_int64(env, args[0])
-        var b = JsBigInt.to_int64(env, args[1])
-        return JsBigInt.from_int64(env, a + b).value
+        var a = JsBigInt.to_int64(b, env, args[0])
+        var b2 = JsBigInt.to_int64(b, env, args[1])
+        return JsBigInt.from_int64(b, env, a + b2).value
     except:
         throw_js_error(env, "addBigInts requires two bigint arguments")
         return NapiValue()
@@ -1321,9 +1378,10 @@ fn add_bigints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn create_date_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var ts = JsNumber.from_napi_value(env, arg0)
-        return JsDate.create(env, ts).value
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var ts = JsNumber.from_napi_value(b, env, arg0)
+        return JsDate.create(b, env, ts).value
     except:
         throw_js_error(env, "createDate requires one number argument")
         return NapiValue()
@@ -1335,10 +1393,11 @@ fn create_date_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn get_date_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
         var d = JsDate(arg0)
-        var ts = d.timestamp_ms(env)
-        return JsNumber.create(env, ts).value
+        var ts = d.timestamp_ms(b, env)
+        return JsNumber.create(b, env, ts).value
     except:
         throw_js_error(env, "getDateValue requires one Date argument")
         return NapiValue()
@@ -1350,8 +1409,9 @@ fn get_date_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn create_symbol_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        return JsSymbol.create(env, arg0).value
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        return JsSymbol.create(b, env, arg0).value
     except:
         throw_js_error(env, "createSymbol requires one string argument")
         return NapiValue()
@@ -1365,15 +1425,16 @@ fn create_symbol_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var key = JsString.from_napi_value(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var key = JsString.from_napi_value(b, env, arg0)
         # node_api_symbol_for takes a C string + length, not a napi_value.
         # We use the Mojo String's unsafe_ptr for the C string.
         var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[NoneType]()
         var key_len = UInt(len(key))
         var result = NapiValue()
         from napi.raw import raw_symbol_for
-        check_status(raw_symbol_for(env, key_ptr, key_len,
+        check_status(raw_symbol_for(b, env, key_ptr, key_len,
             UnsafePointer(to=result).bitcast[NoneType]()))
         _ = key^  # prevent ASAP destruction before raw_symbol_for reads key_ptr
         return result
@@ -1388,13 +1449,14 @@ fn symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn get_keys_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var t0 = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var t0 = js_typeof(b, env, arg0)
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(env, "getKeys: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(b, env, "getKeys: expected object, got " + js_type_name(t0))
             return NapiValue()
         var obj = JsObject(arg0)
-        return obj.keys(env)
+        return obj.keys(b, env)
     except:
         throw_js_error(env, "getKeys requires one object argument")
         return NapiValue()
@@ -1406,14 +1468,15 @@ fn get_keys_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn has_own_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var t0 = js_typeof(env, args[0])
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var t0 = js_typeof(b, env, args[0])
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(env, "hasOwn: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(b, env, "hasOwn: expected object, got " + js_type_name(t0))
             return NapiValue()
         var obj = JsObject(args[0])
-        var result = obj.has_own(env, args[1])
-        return JsBoolean.create(env, result).value
+        var result = obj.has_own(b, env, args[1])
+        return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "hasOwn requires (object, key)")
         return NapiValue()
@@ -1425,13 +1488,14 @@ fn has_own_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn delete_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var t0 = js_typeof(env, args[0])
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var t0 = js_typeof(b, env, args[0])
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(env, "deleteProperty: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(b, env, "deleteProperty: expected object, got " + js_type_name(t0))
             return NapiValue()
         var obj = JsObject(args[0])
-        _ = obj.delete_prop(env, args[1])
+        _ = obj.delete_prop(b, env, args[1])
         return obj.value
     except:
         throw_js_error(env, "deleteProperty requires (object, key)")
@@ -1444,14 +1508,15 @@ fn delete_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn array_has_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        if not js_is_array(env, args[0]):
-            throw_js_error(env, "arrayHasElement: first argument must be an array")
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        if not js_is_array(b, env, args[0]):
+            throw_js_error(b, env, "arrayHasElement: first argument must be an array")
             return NapiValue()
         var arr = JsArray(args[0])
-        var index = JsUInt32.from_napi_value(env, args[1])
-        var result = arr.has(env, index)
-        return JsBoolean.create(env, result).value
+        var index = JsUInt32.from_napi_value(b, env, args[1])
+        var result = arr.has(b, env, index)
+        return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "arrayHasElement requires (array, index)")
         return NapiValue()
@@ -1463,13 +1528,14 @@ fn array_has_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn array_delete_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        if not js_is_array(env, args[0]):
-            throw_js_error(env, "arrayDeleteElement: first argument must be an array")
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        if not js_is_array(b, env, args[0]):
+            throw_js_error(b, env, "arrayDeleteElement: first argument must be an array")
             return NapiValue()
         var arr = JsArray(args[0])
-        var index = JsUInt32.from_napi_value(env, args[1])
-        _ = arr.delete_element(env, index)
+        var index = JsUInt32.from_napi_value(b, env, args[1])
+        _ = arr.delete_element(b, env, index)
         return arr.value
     except:
         throw_js_error(env, "arrayDeleteElement requires (array, index)")
@@ -1482,13 +1548,14 @@ fn array_delete_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn get_prototype_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var t0 = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var t0 = js_typeof(b, env, arg0)
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(env, "getPrototype: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(b, env, "getPrototype: expected object, got " + js_type_name(t0))
             return NapiValue()
         var obj = JsObject(arg0)
-        return obj.prototype(env)
+        return obj.prototype(b, env)
     except:
         throw_js_error(env, "getPrototype requires one object argument")
         return NapiValue()
@@ -1500,9 +1567,10 @@ fn get_prototype_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn strict_equals_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var eq = js_strict_equals(env, args[0], args[1])
-        return JsBoolean.create(env, eq).value
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var eq = js_strict_equals(b, env, args[0], args[1])
+        return JsBoolean.create(b, env, eq).value
     except:
         throw_js_error(env, "strictEquals requires two arguments")
         return NapiValue()
@@ -1514,14 +1582,15 @@ fn strict_equals_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn is_instance_of_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var t1 = js_typeof(env, args[1])
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var t1 = js_typeof(b, env, args[1])
         if t1 != NAPI_TYPE_FUNCTION:
-            throw_js_error_dynamic(env, "isInstanceOf: second arg must be a constructor, got " + js_type_name(t1))
+            throw_js_error_dynamic(b, env, "isInstanceOf: second arg must be a constructor, got " + js_type_name(t1))
             return NapiValue()
         var obj = JsObject(args[0])
-        var result = obj.instance_of(env, args[1])
-        return JsBoolean.create(env, result).value
+        var result = obj.instance_of(b, env, args[1])
+        return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "isInstanceOf requires (value, constructor)")
         return NapiValue()
@@ -1533,13 +1602,14 @@ fn is_instance_of_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn freeze_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var t0 = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var t0 = js_typeof(b, env, arg0)
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(env, "freezeObject: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(b, env, "freezeObject: expected object, got " + js_type_name(t0))
             return NapiValue()
         var obj = JsObject(arg0)
-        obj.freeze(env)
+        obj.freeze(b, env)
         return obj.value
     except:
         throw_js_error(env, "freezeObject requires one object argument")
@@ -1552,13 +1622,14 @@ fn freeze_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn seal_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var t0 = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var t0 = js_typeof(b, env, arg0)
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(env, "sealObject: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(b, env, "sealObject: expected object, got " + js_type_name(t0))
             return NapiValue()
         var obj = JsObject(arg0)
-        obj.seal(env)
+        obj.seal(b, env)
         return obj.value
     except:
         throw_js_error(env, "sealObject requires one object argument")
@@ -1705,16 +1776,17 @@ fn async_progress_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer
 # ---------------------------------------------------------------------------
 fn async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
         var count_val = args[0]
         var callback_val = args[1]
-        var count = JsNumber.from_napi_value(env, count_val)
+        var count = JsNumber.from_napi_value(b, env, count_val)
 
         # Create promise
-        var p = JsPromise.create(env)
+        var p = JsPromise.create(b, env)
 
         # Create resource name for diagnostics
-        var resource_name = JsString.create_literal(env, "asyncProgress")
+        var resource_name = JsString.create_literal(b, env, "asyncProgress")
 
         # Get call_js_cb function pointer
         var call_js_ref = progress_call_js_cb
@@ -1733,7 +1805,7 @@ fn async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
         # Create the TSFN with finalize callback
         var tsfn = ThreadsafeFunction.create(
-            env, callback_val, resource_name.value, UInt(0),
+            b, env, callback_val, resource_name.value, UInt(0),
             call_js_ptr, data_opaque, finalize_ptr)
 
         # Store TSFN handle in data struct
@@ -1750,7 +1822,7 @@ fn async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var work_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=work).bitcast[NoneType]()
         var null_resource = NapiValue()
 
-        check_status(raw_create_async_work(
+        check_status(raw_create_async_work(b,
             env,
             null_resource,
             resource_name.value,
@@ -1764,7 +1836,7 @@ fn async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         data_ptr[].work = work
 
         # Queue the work
-        check_status(raw_queue_async_work(env, work))
+        check_status(raw_queue_async_work(b, env, work))
 
         return p.value
     except:
@@ -1801,14 +1873,15 @@ fn external_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: Opaq
 # ---------------------------------------------------------------------------
 fn create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var x = JsNumber.from_napi_value(env, args[0])
-        var y = JsNumber.from_napi_value(env, args[1])
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var x = JsNumber.from_napi_value(b, env, args[0])
+        var y = JsNumber.from_napi_value(b, env, args[1])
         var data_ptr = alloc[ExternalData](1)
         data_ptr.init_pointee_move(ExternalData(x, y))
         var fin_ref = external_finalize
         var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-        return JsExternal.create(env, data_ptr.bitcast[NoneType](), fin_ptr).value
+        return JsExternal.create(b, env, data_ptr.bitcast[NoneType](), fin_ptr).value
     except:
         throw_js_error(env, "createExternal requires two number arguments")
         return NapiValue()
@@ -1820,17 +1893,18 @@ fn create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn get_external_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var t = js_typeof(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_EXTERNAL:
-            throw_js_type_error_dynamic(env,
+            throw_js_type_error_dynamic(b, env,
                 "getExternalData: expected external, got " + js_type_name(t))
             return NapiValue()
-        var data = JsExternal.get_data(env, arg0)
+        var data = JsExternal.get_data(b, env, arg0)
         var ptr = data.bitcast[ExternalData]()
-        var obj = JsObject.create(env)
-        obj.set_property(env, "x", JsNumber.create(env, ptr[].x).value)
-        obj.set_property(env, "y", JsNumber.create(env, ptr[].y).value)
+        var obj = JsObject.create(b, env)
+        obj.set_property(b, env, "x", JsNumber.create(b, env, ptr[].x).value)
+        obj.set_property(b, env, "y", JsNumber.create(b, env, ptr[].y).value)
         return obj.value
     except:
         throw_js_error(env, "getExternalData failed")
@@ -1843,9 +1917,10 @@ fn get_external_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn is_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var t = js_typeof(env, arg0)
-        return JsBoolean.create(env, t == NAPI_TYPE_EXTERNAL).value
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var t = js_typeof(b, env, arg0)
+        return JsBoolean.create(b, env, t == NAPI_TYPE_EXTERNAL).value
     except:
         throw_js_error(env, "isExternal requires one argument")
         return NapiValue()
@@ -1857,8 +1932,9 @@ fn is_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn coerce_to_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        return js_coerce_to_bool(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        return js_coerce_to_bool(b, env, arg0)
     except:
         throw_js_error(env, "coerceToBool requires one argument")
         return NapiValue()
@@ -1871,8 +1947,9 @@ fn coerce_to_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn coerce_to_number_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        return js_coerce_to_number(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        return js_coerce_to_number(b, env, arg0)
     except:
         # May have a pending exception (e.g., Symbol coercion TypeError)
         # Don't overwrite it — just return
@@ -1886,8 +1963,9 @@ fn coerce_to_number_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn coerce_to_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        return js_coerce_to_string(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        return js_coerce_to_string(b, env, arg0)
     except:
         # May have a pending exception (e.g., Symbol coercion TypeError)
         # Don't overwrite it — just return
@@ -1900,8 +1978,9 @@ fn coerce_to_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn coerce_to_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        return js_coerce_to_object(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        return js_coerce_to_object(b, env, arg0)
     except:
         # May have a pending exception (e.g., null/undefined TypeError)
         # Don't overwrite it — just return
@@ -1916,13 +1995,14 @@ fn coerce_to_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn set_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var argc = CbArgs.argc(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var argc = CbArgs.argc(b, env, info)
         var argv = alloc[NapiValue](Int(argc))
-        CbArgs.get_argv(env, info, argc, argv)
+        CbArgs.get_argv(b, env, info, argc, argv)
         var obj = argv[0]
         var key = argv[1]
         var val = argv[2]
-        JsObject(obj).set(env, key, val)
+        JsObject(obj).set(b, env, key, val)
         argv.free()
         return obj
     except:
@@ -1937,9 +2017,10 @@ fn set_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn has_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var result = JsObject(args[0]).has(env, args[1])
-        return JsBoolean.create(env, result).value
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var result = JsObject(args[0]).has(b, env, args[1])
+        return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "hasPropertyByKey failed")
         return NapiValue()
@@ -1954,8 +2035,9 @@ fn has_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn throw_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        js_throw(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        js_throw(b, env, arg0)
     except:
         pass
     return NapiValue()
@@ -1969,11 +2051,12 @@ fn throw_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn catch_and_return_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
         # Throw the value to set a pending exception
-        js_throw(env, arg0)
+        js_throw(b, env, arg0)
         # Now catch (clear) the pending exception and return it
-        var caught = js_get_and_clear_last_exception(env)
+        var caught = js_get_and_clear_last_exception(b, env)
         return caught
     except:
         return NapiValue()
@@ -1985,8 +2068,9 @@ fn catch_and_return_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn get_napi_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var ver = get_napi_version(env)
-        return JsNumber.create_int(env, Int(ver)).value
+        var b = CbArgs.get_bindings(env, info)
+        var ver = get_napi_version(b, env)
+        return JsNumber.create_int(b, env, Int(ver)).value
     except:
         throw_js_error(env, "getNapiVersion failed")
         return NapiValue()
@@ -1998,11 +2082,12 @@ fn get_napi_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 fn get_node_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var ver = get_node_version_ptr(env)
-        var obj = JsObject.create(env)
-        obj.set_property(env, "major", JsNumber.create_int(env, Int(ver[0])).value)
-        obj.set_property(env, "minor", JsNumber.create_int(env, Int(ver[1])).value)
-        obj.set_property(env, "patch", JsNumber.create_int(env, Int(ver[2])).value)
+        var b = CbArgs.get_bindings(env, info)
+        var ver = get_node_version_ptr(b, env)
+        var obj = JsObject.create(b, env)
+        obj.set_property(b, env, "major", JsNumber.create_int(b, env, Int(ver[0])).value)
+        obj.set_property(b, env, "minor", JsNumber.create_int(b, env, Int(ver[1])).value)
+        obj.set_property(b, env, "patch", JsNumber.create_int(b, env, Int(ver[2])).value)
         return obj.value
     except:
         throw_js_error(env, "getNodeVersion failed")
@@ -2024,8 +2109,9 @@ fn external_ab_finalize(
 ## createExternalArrayBuffer(size) — alloc Mojo memory, wrap as ArrayBuffer
 fn create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var size = JsNumber.from_napi_value(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var size = JsNumber.from_napi_value(b, env, arg0)
         var byte_len = UInt(Int(size))
         # Allocate Mojo-owned memory and fill with incrementing bytes
         var data_ptr = alloc[Byte](Int(byte_len))
@@ -2037,7 +2123,7 @@ fn create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         # Create external arraybuffer — if this fails, free the Mojo-owned buffer
         var result = NapiValue()
         try:
-            check_status(raw_create_external_arraybuffer(env,
+            check_status(raw_create_external_arraybuffer(b, env,
                 data_ptr.bitcast[NoneType](),
                 byte_len,
                 fin_ptr,
@@ -2064,13 +2150,14 @@ fn noop_finalize(
 ## attachFinalizer(obj) — attach a no-op native finalizer to any JS object
 fn attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
         # Allocate a dummy 1-byte native object (napi_add_finalizer needs non-NULL data)
         var dummy = alloc[Byte](1)
         dummy[0] = Byte(0)
         var fin_ref = noop_finalize
         var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-        check_status(raw_add_finalizer(env, arg0,
+        check_status(raw_add_finalizer(b, env, arg0,
             dummy.bitcast[NoneType](),
             fin_ptr,
             OpaquePointer[MutAnyOrigin](),
@@ -2097,17 +2184,18 @@ fn instance_data_finalize(
 ## setInstanceData(n) — stores a Float64 as per-env singleton
 fn set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var n = JsNumber.from_napi_value(env, arg0)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[Float64](1)
         data_ptr.init_pointee_move(n)
         var fin_ref = instance_data_finalize
         var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-        check_status(raw_set_instance_data(env,
+        check_status(raw_set_instance_data(b, env,
             data_ptr.bitcast[NoneType](),
             fin_ptr,
             OpaquePointer[MutAnyOrigin]()))
-        return JsUndefined.create(env).value
+        return JsUndefined.create(b, env).value
     except:
         throw_js_error(env, "setInstanceData failed")
         return NapiValue()
@@ -2115,13 +2203,14 @@ fn set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 ## getInstanceData() — retrieves the Float64 stored as instance data
 fn get_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
+        var b = CbArgs.get_bindings(env, info)
         var data = OpaquePointer[MutAnyOrigin]()
-        check_status(raw_get_instance_data(env,
+        check_status(raw_get_instance_data(b, env,
             UnsafePointer(to=data).bitcast[NoneType]()))
         if Int(data) == 0:
-            return JsNull.create(env).value
+            return JsNull.create(b, env).value
         var ptr = data.bitcast[Float64]()
-        return JsNumber.create(env, ptr[]).value
+        return JsNumber.create(b, env, ptr[]).value
     except:
         throw_js_error(env, "getInstanceData failed")
         return NapiValue()
@@ -2133,13 +2222,14 @@ fn cleanup_hook_noop(arg: OpaquePointer[MutAnyOrigin]):
 ## addCleanupHook() — registers a no-op cleanup hook with a unique arg, returns true
 fn add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
+        var b = CbArgs.get_bindings(env, info)
         var hook_ref = cleanup_hook_noop
         var hook_ptr = UnsafePointer(to=hook_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
         # Allocate a unique 1-byte arg to make each (fun, arg) pair unique
         var arg_ptr = alloc[Byte](1)
         arg_ptr[0] = Byte(0)
-        check_status(raw_add_env_cleanup_hook(env, hook_ptr, arg_ptr.bitcast[NoneType]()))
-        return JsBoolean.create(env, True).value
+        check_status(raw_add_env_cleanup_hook(b, env, hook_ptr, arg_ptr.bitcast[NoneType]()))
+        return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "addCleanupHook failed")
         return NapiValue()
@@ -2150,15 +2240,16 @@ fn add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 ## For testing, we register and immediately remove with the same arg.
 fn remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
+        var b = CbArgs.get_bindings(env, info)
         var hook_ref = cleanup_hook_noop
         var hook_ptr = UnsafePointer(to=hook_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
         # Register with a known arg, then immediately remove it
         var arg_ptr = alloc[Byte](1)
         arg_ptr[0] = Byte(0)
-        check_status(raw_add_env_cleanup_hook(env, hook_ptr, arg_ptr.bitcast[NoneType]()))
-        check_status(raw_remove_env_cleanup_hook(env, hook_ptr, arg_ptr.bitcast[NoneType]()))
+        check_status(raw_add_env_cleanup_hook(b, env, hook_ptr, arg_ptr.bitcast[NoneType]()))
+        check_status(raw_remove_env_cleanup_hook(b, env, hook_ptr, arg_ptr.bitcast[NoneType]()))
         arg_ptr.free()
-        return JsBoolean.create(env, True).value
+        return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "removeCleanupHook failed")
         return NapiValue()
@@ -2204,7 +2295,8 @@ fn cancel_async_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[M
 ## cancelAsyncWork() — queues then immediately cancels async work
 fn cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var p = JsPromise.create(env)
+        var b = CbArgs.get_bindings(env, info)
+        var p = JsPromise.create(b, env)
         var data_ptr = alloc[CancelAsyncData](1)
         data_ptr.init_pointee_move(CancelAsyncData(p.deferred))
 
@@ -2213,19 +2305,19 @@ fn cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var exec_ptr = UnsafePointer(to=exec_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
         var complete_ptr = UnsafePointer(to=complete_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
-        var resource_name = JsString.create_literal(env, "cancelTest")
+        var resource_name = JsString.create_literal(b, env, "cancelTest")
         var work = NapiAsyncWork()
         var work_out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=work).bitcast[NoneType]()
-        check_status(raw_create_async_work(env,
+        check_status(raw_create_async_work(b, env,
             NapiValue(), resource_name.value,
             exec_ptr, complete_ptr,
             data_ptr.bitcast[NoneType](),
             work_out_ptr))
         data_ptr[].work = work
 
-        check_status(raw_queue_async_work(env, work))
+        check_status(raw_queue_async_work(b, env, work))
         # Immediately try to cancel
-        _ = raw_cancel_async_work(env, work)
+        _ = raw_cancel_async_work(b, env, work)
 
         return p.value
     except:
@@ -2239,17 +2331,18 @@ fn cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 ## bigIntFromWords(sign, wordsArray) — create BigInt from sign + UInt64 word array
 fn bigint_from_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var sign_bit = Int32(JsNumber.from_napi_value(env, args[0]))
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var sign_bit = Int32(JsNumber.from_napi_value(b, env, args[0]))
         var arr_val = args[1]
         var arr = JsArray(arr_val)
-        var arr_len = arr.length(env)
+        var arr_len = arr.length(b, env)
         var words_ptr = alloc[UInt64](Int(arr_len))
         for i in range(Int(arr_len)):
-            var elem = arr.get(env, UInt32(i))
-            var num = JsNumber.from_napi_value(env, elem)
+            var elem = arr.get(b, env, UInt32(i))
+            var num = JsNumber.from_napi_value(b, env, elem)
             words_ptr[i] = UInt64(num)
-        var result = JsBigInt.from_words(env, sign_bit, words_ptr.bitcast[NoneType](), UInt(arr_len))
+        var result = JsBigInt.from_words(b, env, sign_bit, words_ptr.bitcast[NoneType](), UInt(arr_len))
         words_ptr.free()
         return result.value
     except:
@@ -2259,23 +2352,24 @@ fn bigint_from_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 ## bigIntToWords(bi) — extract sign and UInt64 words from a BigInt
 fn bigint_to_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
         # Allocate an initial buffer (16 words = 128 bytes, handles up to 1024-bit BigInts)
         var sign: Int32 = 0
         var count: UInt = 16
         var words_ptr = alloc[UInt64](16)
-        check_status(raw_get_value_bigint_words(env, arg0,
+        check_status(raw_get_value_bigint_words(b, env, arg0,
             UnsafePointer(to=sign).bitcast[NoneType](),
             UnsafePointer(to=count).bitcast[NoneType](),
             words_ptr.bitcast[NoneType]()))
         # Build result object {sign, words}
-        var obj = JsObject.create(env)
-        obj.set_property(env, "sign", JsNumber.create_int(env, Int(sign)).value)
-        var arr = JsArray.create_with_length(env, count)
+        var obj = JsObject.create(b, env)
+        obj.set_property(b, env, "sign", JsNumber.create_int(b, env, Int(sign)).value)
+        var arr = JsArray.create_with_length(b, env, count)
         for i in range(Int(count)):
-            var word_val = JsNumber.create(env, Float64(words_ptr[i]))
-            arr.set(env, UInt32(i), word_val.value)
-        obj.set_property(env, "words", arr.value)
+            var word_val = JsNumber.create(b, env, Float64(words_ptr[i]))
+            arr.set(b, env, UInt32(i), word_val.value)
+        obj.set_property(b, env, "words", arr.value)
         words_ptr.free()
         return obj.value
     except:
@@ -2289,17 +2383,18 @@ fn bigint_to_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 ## createDataView(arraybuffer, byteOffset, byteLength) — create DataView over ArrayBuffer
 fn create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var argc = CbArgs.argc(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var argc = CbArgs.argc(b, env, info)
         if argc < 3:
-            throw_js_type_error(env, "createDataView requires 3 arguments")
+            throw_js_type_error(b, env, "createDataView requires 3 arguments")
             return NapiValue()
         var argv_ptr = alloc[NapiValue](Int(argc))
-        CbArgs.get_argv(env, info, argc, argv_ptr)
+        CbArgs.get_argv(b, env, info, argc, argv_ptr)
         var ab = argv_ptr[0]
-        var byte_offset = JsNumber.from_napi_value(env, argv_ptr[1])
-        var byte_length = JsNumber.from_napi_value(env, argv_ptr[2])
+        var byte_offset = JsNumber.from_napi_value(b, env, argv_ptr[1])
+        var byte_length = JsNumber.from_napi_value(b, env, argv_ptr[2])
         argv_ptr.free()
-        var dv = JsDataView.create(env, UInt(Int(byte_length)), ab, UInt(Int(byte_offset)))
+        var dv = JsDataView.create(b, env, UInt(Int(byte_length)), ab, UInt(Int(byte_offset)))
         return dv.value
     except:
         throw_js_error(env, "createDataView failed")
@@ -2308,13 +2403,14 @@ fn create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 ## getDataViewInfo(dv) — returns {byteLength, byteOffset}
 fn get_dataview_info_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
         var dv = JsDataView(arg0)
-        var bl = dv.byte_length(env)
-        var bo = dv.byte_offset(env)
-        var obj = JsObject.create(env)
-        obj.set_property(env, "byteLength", JsNumber.create_int(env, Int(bl)).value)
-        obj.set_property(env, "byteOffset", JsNumber.create_int(env, Int(bo)).value)
+        var bl = dv.byte_length(b, env)
+        var bo = dv.byte_offset(b, env)
+        var obj = JsObject.create(b, env)
+        obj.set_property(b, env, "byteLength", JsNumber.create_int(b, env, Int(bl)).value)
+        obj.set_property(b, env, "byteOffset", JsNumber.create_int(b, env, Int(bo)).value)
         return obj.value
     except:
         throw_js_error(env, "getDataViewInfo failed")
@@ -2323,9 +2419,10 @@ fn get_dataview_info_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 ## isDataView(val) — returns true if val is a DataView
 fn is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var result = JsDataView.is_dataview(env, arg0)
-        return JsBoolean.create(env, result).value
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var result = JsDataView.is_dataview(b, env, arg0)
+        return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "isDataView failed")
         return NapiValue()
@@ -2345,6 +2442,19 @@ fn is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # ---------------------------------------------------------------------------
 @export("napi_register_module_v1", ABI="C")
 fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
+    # Allocate and initialize NapiBindings — resolves all 118 N-API symbols
+    # once via a single OwnedDLHandle. The pointer is passed as callback data
+    # to every registered function so callbacks can retrieve it cheaply.
+    var bindings_ptr = alloc[NapiBindings](1)
+    try:
+        var bindings = NapiBindings()
+        init_bindings(bindings)
+        bindings_ptr.init_pointee_move(bindings^)
+    except:
+        bindings_ptr.free()
+        return exports
+    var cb_data = bindings_ptr.bitcast[NoneType]()
+
     # All fn_ref vars are declared before the try block so they remain alive
     # through all registration calls (ASAP destruction safety).
     var hello_ref = hello_fn
@@ -2440,7 +2550,7 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var dog_get_breed_ref = dog_get_breed_fn
 
     try:
-        var m = ModuleBuilder(env, exports)
+        var m = ModuleBuilder(env, exports, cb_data)
 
         # Generated functions (from src/exports.toml)
         register_generated(m)

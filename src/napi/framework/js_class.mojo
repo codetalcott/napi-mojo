@@ -57,6 +57,27 @@ fn define_class(
     ))
     return result
 
+## define_class with data — pass data pointer to the constructor callback
+fn define_class(
+    env: NapiEnv,
+    name: StringLiteral,
+    constructor_ptr: OpaquePointer[MutAnyOrigin],
+    data_ptr: OpaquePointer[MutAnyOrigin],
+) raises -> NapiValue:
+    var result = NapiValue()
+    var auto_length: UInt = ~UInt(0)
+    check_status(raw_define_class(
+        env,
+        name.unsafe_ptr().bitcast[NoneType](),
+        auto_length,
+        constructor_ptr,
+        data_ptr,
+        0,
+        OpaquePointer[ImmutAnyOrigin](),
+        UnsafePointer(to=result).bitcast[NoneType](),
+    ))
+    return result
+
 fn define_class(
     b: Bindings,
     env: NapiEnv,
@@ -74,6 +95,28 @@ fn define_class(
         OpaquePointer[MutAnyOrigin](),    # data = NULL
         0,                                 # property_count = 0
         OpaquePointer[ImmutAnyOrigin](),  # properties = NULL
+        UnsafePointer(to=result).bitcast[NoneType](),
+    ))
+    return result
+
+fn define_class(
+    b: Bindings,
+    env: NapiEnv,
+    name: StringLiteral,
+    constructor_ptr: OpaquePointer[MutAnyOrigin],
+    data_ptr: OpaquePointer[MutAnyOrigin],
+) raises -> NapiValue:
+    var result = NapiValue()
+    var auto_length: UInt = ~UInt(0)
+    check_status(raw_define_class(
+        b,
+        env,
+        name.unsafe_ptr().bitcast[NoneType](),
+        auto_length,
+        constructor_ptr,
+        data_ptr,
+        0,
+        OpaquePointer[ImmutAnyOrigin](),
         UnsafePointer(to=result).bitcast[NoneType](),
     ))
     return result

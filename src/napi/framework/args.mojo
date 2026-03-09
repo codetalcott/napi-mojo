@@ -12,7 +12,7 @@
 from napi.types import NapiEnv, NapiValue
 from napi.raw import raw_get_cb_info
 from napi.error import check_status
-from napi.bindings import Bindings
+from napi.bindings import NapiBindings, Bindings
 
 ## CbArgs — typed helpers for extracting napi_callback arguments
 struct CbArgs:
@@ -236,3 +236,14 @@ struct CbArgs:
             UnsafePointer(to=data).bitcast[NoneType](),
         ))
         return data
+
+    ## get_bindings — retrieve the NapiBindings pointer from callback data
+    ##
+    ## Every callback registered via ModuleBuilder/ClassBuilder receives the
+    ## bindings pointer as its napi_callback data. This method retrieves it
+    ## via napi_get_cb_info (1 OwnedDLHandle + 1 dlsym per callback entry),
+    ## then all subsequent framework calls use cached function pointers.
+    @staticmethod
+    fn get_bindings(env: NapiEnv, info: NapiValue) raises -> Bindings:
+        var data = CbArgs.get_data(env, info)
+        return data.bitcast[NapiBindings]()
