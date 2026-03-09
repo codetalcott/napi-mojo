@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 20 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks, type coercion (Boolean/Number/String/Object), TypeScript definition generation, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), and version info (N-API + Node.js) are all working. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, an `AsyncWork` helper for ergonomic async work (promise + queue + resolve/reject), and an external code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) for auto-generating callback trampolines.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. Phase 20 complete — all primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks, type coercion (Boolean/Number/String/Object), TypeScript definition generation, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), and version info (N-API + Node.js) are all working. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, an `AsyncWork` helper for ergonomic async work (promise + queue + resolve/reject), an external code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) for auto-generating callback trampolines, and **cached NapiBindings** — all 118 N-API function pointers resolved once at module init, passed through callback data to every entry-point callback (173-389 ns/call, zero per-call dlsym).
 
 ## Commands
 
@@ -13,6 +13,7 @@ pixi run bash build.sh               # compile src/lib.mojo → build/index.node
 npm test                              # run all Jest tests (394 tests)
 npm run test:gc                       # run GC finalizer tests (requires --expose-gc)
 npx jest tests/basic.test.js          # run a single test file
+node scripts/benchmark.mjs            # per-call overhead benchmark
 
 # Spike (run before anything else if starting fresh):
 pixi run mojo build --emit shared-lib spike/ffi_probe.mojo -o build/probe.dylib
@@ -26,12 +27,22 @@ node -e "console.log(require('./build/probe.node').hello())"
 
 N-API functions (`napi_create_string_utf8`, `napi_define_properties`, etc.) are **not in libc** — they live in the Node.js host process. When Node.js loads our `.node` file via `dlopen`, N-API symbols are already in the process address space. We access them via `OwnedDLHandle()` (equivalent to `dlopen(NULL, ...)`), which opens the host process symbol table at runtime.
 
+### Cached NapiBindings (zero per-call dlsym)
+
+All 118 N-API function pointers are resolved once at module init via a single `OwnedDLHandle()` + 118 `dlsym` calls, stored in the `NapiBindings` struct (`src/napi/bindings.mojo`). The pointer is passed through `NapiPropertyDescriptor.data` to every callback. Each callback retrieves it via `CbArgs.get_bindings(env, info)` (1 bootstrap dlsym for `napi_get_cb_info`, then all subsequent calls use cached pointers). This eliminates the per-call `OwnedDLHandle()` + `dlsym` overhead that would otherwise occur on every N-API call.
+
+**Callbacks that DON'T use cached bindings** (must use old `OwnedDLHandle` path):
+
+- `except:` blocks (fallback when bindings retrieval itself fails)
+- Dynamically created inner callbacks (`inner_callback_fn`, `inner_adder_fn`) — their data pointer holds captured values, not bindings
+- Async complete/TSFN/finalizer callbacks — fixed signatures without `info` parameter
+
 ### How a `.node` addon works
 
 1. `mojo build --emit shared-lib` produces a `.dylib` renamed to `.node`
 2. Node.js calls `dlopen` on the `.node` file, then `dlsym("napi_register_module_v1")`
 3. Our `@export("napi_register_module_v1", ABI="C")` function is called with `(env, exports)`
-4. We call `napi_define_properties` to attach Mojo functions to the `exports` object
+4. We allocate `NapiBindings`, resolve all 118 symbols, pass pointer through `ModuleBuilder`
 5. Each exported Mojo function acts as a `napi_callback`: `fn(NapiEnv, NapiValue) -> NapiValue`
 
 ### Module structure
@@ -39,7 +50,8 @@ N-API functions (`napi_create_string_utf8`, `napi_define_properties`, etc.) are 
 ```
 src/lib.mojo                             # entry point: callbacks + register_module
 src/napi/types.mojo                      # NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiPropertyDescriptor, NapiValueType constants, TypedArray type constants, property attribute constants
-src/napi/raw.mojo                        # OwnedDLHandle symbol resolution (sole user of OwnedDLHandle)
+src/napi/bindings.mojo                   # NapiBindings struct (118 cached fn ptrs), init_bindings(), Bindings type alias
+src/napi/raw.mojo                        # OwnedDLHandle symbol resolution + bindings-accepting overloads
 src/napi/error.mojo                      # napi_status_name(), check_status(), throw_js_error(), throw_js_error_dynamic(), throw_js_type_error(), throw_js_range_error()
 src/napi/module.mojo                     # define_property(), register_method()
 src/napi/framework/js_string.mojo        # JsString.create(), create_literal(), from_napi_value(), read_arg_0()
@@ -79,7 +91,8 @@ src/exports.toml                         # Function declarations for code genera
 src/generated/callbacks.mojo             # AUTO-GENERATED callbacks from exports.toml
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
 scripts/generate-dts.js                  # auto-generate build/index.d.ts from lib.mojo
-scripts/generate-addon.mjs              # auto-generate callback trampolines from src/exports.toml
+scripts/generate-addon.mjs              # auto-generate callback trampolines from src/exports.toml (bindings-aware)
+scripts/benchmark.mjs                   # per-call overhead benchmark (node scripts/benchmark.mjs)
 tests/                                   # Jest tests — TDD outside-in
 ```
 
