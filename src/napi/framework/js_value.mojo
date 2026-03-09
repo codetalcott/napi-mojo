@@ -20,6 +20,7 @@ from napi.types import (
     NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_EXTERNAL,
     NAPI_TYPE_BIGINT,
 )
+from napi.bindings import Bindings
 from napi.raw import raw_typeof, raw_is_array, raw_get_global, raw_strict_equals
 from napi.error import check_status
 from napi.framework.js_object import JsObject
@@ -77,5 +78,31 @@ fn js_strict_equals(env: NapiEnv, lhs: NapiValue, rhs: NapiValue) raises -> Bool
 fn js_get_global(env: NapiEnv) raises -> JsObject:
     var result = NapiValue()
     check_status(raw_get_global(env,
+        UnsafePointer(to=result).bitcast[NoneType]()))
+    return JsObject(result)
+
+# --- Bindings-aware overloads ---
+
+fn js_typeof(b: Bindings, env: NapiEnv, val: NapiValue) raises -> NapiValueType:
+    var t: NapiValueType = 0
+    var t_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=t).bitcast[NoneType]()
+    check_status(raw_typeof(b, env, val, t_ptr))
+    return t
+
+fn js_is_array(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
+    var result: Bool = False
+    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+    check_status(raw_is_array(b, env, val, result_ptr))
+    return result
+
+fn js_strict_equals(b: Bindings, env: NapiEnv, lhs: NapiValue, rhs: NapiValue) raises -> Bool:
+    var result: Bool = False
+    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+    check_status(raw_strict_equals(b, env, lhs, rhs, result_ptr))
+    return result
+
+fn js_get_global(b: Bindings, env: NapiEnv) raises -> JsObject:
+    var result = NapiValue()
+    check_status(raw_get_global(b, env,
         UnsafePointer(to=result).bitcast[NoneType]()))
     return JsObject(result)

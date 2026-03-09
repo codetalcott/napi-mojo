@@ -5,6 +5,7 @@
 ##   var len = buf.length(env)              # 16
 
 from napi.types import NapiEnv, NapiValue
+from napi.bindings import Bindings
 from napi.raw import raw_create_buffer, raw_get_buffer_info, raw_is_buffer
 from napi.error import check_status
 
@@ -24,12 +25,33 @@ struct JsBuffer:
             UnsafePointer(to=result).bitcast[NoneType]()))
         return JsBuffer(result)
 
+    @staticmethod
+    fn create(b: Bindings, env: NapiEnv, length: UInt) raises -> JsBuffer:
+        var data = OpaquePointer[MutAnyOrigin]()
+        var result = NapiValue()
+        check_status(raw_create_buffer(b, env, length,
+            UnsafePointer(to=data).bitcast[NoneType](),
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsBuffer(result)
+
     ## create_and_fill — allocate and fill with incrementing byte values
     @staticmethod
     fn create_and_fill(env: NapiEnv, length: UInt) raises -> JsBuffer:
         var data = OpaquePointer[MutAnyOrigin]()
         var result = NapiValue()
         check_status(raw_create_buffer(env, length,
+            UnsafePointer(to=data).bitcast[NoneType](),
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        var ptr = data.bitcast[Byte]()
+        for i in range(Int(length)):
+            ptr[i] = Byte(i)
+        return JsBuffer(result)
+
+    @staticmethod
+    fn create_and_fill(b: Bindings, env: NapiEnv, length: UInt) raises -> JsBuffer:
+        var data = OpaquePointer[MutAnyOrigin]()
+        var result = NapiValue()
+        check_status(raw_create_buffer(b, env, length,
             UnsafePointer(to=data).bitcast[NoneType](),
             UnsafePointer(to=result).bitcast[NoneType]()))
         var ptr = data.bitcast[Byte]()
@@ -45,10 +67,24 @@ struct JsBuffer:
             OpaquePointer[MutAnyOrigin]()))
         return data.bitcast[Byte]()
 
+    fn data_ptr(self, b: Bindings, env: NapiEnv) raises -> UnsafePointer[Byte, MutAnyOrigin]:
+        var data = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_buffer_info(b, env, self.value,
+            UnsafePointer(to=data).bitcast[NoneType](),
+            OpaquePointer[MutAnyOrigin]()))
+        return data.bitcast[Byte]()
+
     ## length — get the Buffer's byte length
     fn length(self, env: NapiEnv) raises -> UInt:
         var len: UInt = 0
         check_status(raw_get_buffer_info(env, self.value,
+            OpaquePointer[MutAnyOrigin](),
+            UnsafePointer(to=len).bitcast[NoneType]()))
+        return len
+
+    fn length(self, b: Bindings, env: NapiEnv) raises -> UInt:
+        var len: UInt = 0
+        check_status(raw_get_buffer_info(b, env, self.value,
             OpaquePointer[MutAnyOrigin](),
             UnsafePointer(to=len).bitcast[NoneType]()))
         return len
@@ -58,5 +94,12 @@ struct JsBuffer:
     fn is_buffer(env: NapiEnv, val: NapiValue) raises -> Bool:
         var result: Bool = False
         check_status(raw_is_buffer(env, val,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return result
+
+    @staticmethod
+    fn is_buffer(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
+        var result: Bool = False
+        check_status(raw_is_buffer(b, env, val,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return result

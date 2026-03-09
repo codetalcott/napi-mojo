@@ -9,6 +9,7 @@
 ##   ref.delete(env)
 
 from napi.types import NapiEnv, NapiValue, NapiRef
+from napi.bindings import Bindings
 from napi.raw import (
     raw_create_reference, raw_delete_reference,
     raw_reference_ref, raw_reference_unref,
@@ -47,5 +48,35 @@ struct JsRef:
     fn get(self, env: NapiEnv) raises -> NapiValue:
         var result = NapiValue()
         check_status(raw_get_reference_value(env, self.handle,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return result
+
+    # --- Bindings-aware overloads ---
+
+    @staticmethod
+    fn create(b: Bindings, env: NapiEnv, value: NapiValue, initial_refcount: UInt32) raises -> JsRef:
+        var result = NapiRef()
+        check_status(raw_create_reference(b, env, value, initial_refcount,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsRef(result)
+
+    fn delete(self, b: Bindings, env: NapiEnv) raises:
+        check_status(raw_delete_reference(b, env, self.handle))
+
+    fn inc(self, b: Bindings, env: NapiEnv) raises -> UInt32:
+        var count: UInt32 = 0
+        check_status(raw_reference_ref(b, env, self.handle,
+            UnsafePointer(to=count).bitcast[NoneType]()))
+        return count
+
+    fn dec(self, b: Bindings, env: NapiEnv) raises -> UInt32:
+        var count: UInt32 = 0
+        check_status(raw_reference_unref(b, env, self.handle,
+            UnsafePointer(to=count).bitcast[NoneType]()))
+        return count
+
+    fn get(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+        var result = NapiValue()
+        check_status(raw_get_reference_value(b, env, self.handle,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return result

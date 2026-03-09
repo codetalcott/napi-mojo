@@ -10,6 +10,7 @@
 ##   tsfn.release()
 
 from napi.types import NapiEnv, NapiValue, NapiThreadsafeFunction, NAPI_TSFN_BLOCKING, NAPI_TSFN_NONBLOCKING, NAPI_TSFN_RELEASE, NAPI_TSFN_ABORT
+from napi.bindings import Bindings
 from napi.raw import raw_create_threadsafe_function, raw_call_threadsafe_function, raw_acquire_threadsafe_function, raw_release_threadsafe_function
 from napi.error import check_status
 
@@ -55,6 +56,36 @@ struct ThreadsafeFunction:
         ))
         return ThreadsafeFunction(tsfn)
 
+    @staticmethod
+    fn create(
+        b: Bindings,
+        env: NapiEnv,
+        func: NapiValue,
+        resource_name_val: NapiValue,
+        max_queue_size: UInt,
+        call_js_cb: OpaquePointer[MutAnyOrigin],
+        finalize_data: OpaquePointer[MutAnyOrigin],
+        finalize_cb: OpaquePointer[MutAnyOrigin],
+    ) raises -> ThreadsafeFunction:
+        var tsfn = NapiThreadsafeFunction()
+        var null_resource = NapiValue()
+        var null_ptr = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_create_threadsafe_function(
+            b,
+            env,
+            func,
+            null_resource,          # async_resource (NULL)
+            resource_name_val,
+            max_queue_size,
+            UInt(1),                # initial_thread_count
+            finalize_data,
+            finalize_cb,
+            null_ptr,               # context
+            call_js_cb,
+            UnsafePointer(to=tsfn).bitcast[NoneType](),
+        ))
+        return ThreadsafeFunction(tsfn)
+
     ## call_blocking — queue data, block if queue is full
     ##
     ## Can be called from ANY thread. The data pointer is passed to call_js_cb.
@@ -63,15 +94,28 @@ struct ThreadsafeFunction:
             self.tsfn, data, NAPI_TSFN_BLOCKING,
         ))
 
+    fn call_blocking(self, b: Bindings, data: OpaquePointer[MutAnyOrigin]) raises:
+        check_status(raw_call_threadsafe_function(
+            b, self.tsfn, data, NAPI_TSFN_BLOCKING,
+        ))
+
     ## call_nonblocking — queue data, return napi_queue_full if queue is full
     fn call_nonblocking(self, data: OpaquePointer[MutAnyOrigin]) raises:
         check_status(raw_call_threadsafe_function(
             self.tsfn, data, NAPI_TSFN_NONBLOCKING,
         ))
 
+    fn call_nonblocking(self, b: Bindings, data: OpaquePointer[MutAnyOrigin]) raises:
+        check_status(raw_call_threadsafe_function(
+            b, self.tsfn, data, NAPI_TSFN_NONBLOCKING,
+        ))
+
     ## acquire — increment the TSFN thread reference count
     fn acquire(self) raises:
         check_status(raw_acquire_threadsafe_function(self.tsfn))
+
+    fn acquire(self, b: Bindings) raises:
+        check_status(raw_acquire_threadsafe_function(b, self.tsfn))
 
     ## release — decrement the thread reference count (normal release)
     ##
@@ -79,6 +123,12 @@ struct ThreadsafeFunction:
     fn release(self) raises:
         check_status(raw_release_threadsafe_function(self.tsfn, NAPI_TSFN_RELEASE))
 
+    fn release(self, b: Bindings) raises:
+        check_status(raw_release_threadsafe_function(b, self.tsfn, NAPI_TSFN_RELEASE))
+
     ## abort — immediately close the TSFN, discard pending items
     fn abort(self) raises:
         check_status(raw_release_threadsafe_function(self.tsfn, NAPI_TSFN_ABORT))
+
+    fn abort(self, b: Bindings) raises:
+        check_status(raw_release_threadsafe_function(b, self.tsfn, NAPI_TSFN_ABORT))

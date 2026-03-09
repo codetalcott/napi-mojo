@@ -15,6 +15,7 @@
 from napi.types import NapiEnv, NapiValue
 from napi.raw import raw_get_boolean, raw_get_value_bool
 from napi.error import check_status
+from napi.bindings import Bindings
 
 ## JsBoolean — typed wrapper for a JavaScript boolean napi_value
 struct JsBoolean:
@@ -36,6 +37,14 @@ struct JsBoolean:
         check_status(status)
         return JsBoolean(result)
 
+    @staticmethod
+    fn create(b: Bindings, env: NapiEnv, bval: Bool) raises -> JsBoolean:
+        var result: NapiValue = NapiValue()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var status = raw_get_boolean(b, env, bval, result_ptr)
+        check_status(status)
+        return JsBoolean(result)
+
     ## from_napi_value — read a NapiValue as a Mojo Bool
     ##
     ## Calls napi_get_value_bool and checks the status.
@@ -47,3 +56,11 @@ struct JsBoolean:
         var status = raw_get_value_bool(env, val, b_ptr)
         check_status(status)
         return b
+
+    @staticmethod
+    fn from_napi_value(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
+        var bval: Bool = False
+        var b_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=bval).bitcast[NoneType]()
+        var status = raw_get_value_bool(b, env, val, b_ptr)
+        check_status(status)
+        return bval

@@ -6,6 +6,7 @@
 ##   return ab.value
 
 from napi.types import NapiEnv, NapiValue
+from napi.bindings import Bindings
 from napi.raw import raw_create_arraybuffer, raw_get_arraybuffer_info, raw_is_arraybuffer
 from napi.error import check_status
 
@@ -25,12 +26,33 @@ struct JsArrayBuffer:
             UnsafePointer(to=result).bitcast[NoneType]()))
         return JsArrayBuffer(result)
 
+    @staticmethod
+    fn create(b: Bindings, env: NapiEnv, byte_length: UInt) raises -> JsArrayBuffer:
+        var data = OpaquePointer[MutAnyOrigin]()
+        var result = NapiValue()
+        check_status(raw_create_arraybuffer(b, env, byte_length,
+            UnsafePointer(to=data).bitcast[NoneType](),
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsArrayBuffer(result)
+
     ## create_and_fill — allocate and fill with incrementing byte values
     @staticmethod
     fn create_and_fill(env: NapiEnv, byte_length: UInt) raises -> JsArrayBuffer:
         var data = OpaquePointer[MutAnyOrigin]()
         var result = NapiValue()
         check_status(raw_create_arraybuffer(env, byte_length,
+            UnsafePointer(to=data).bitcast[NoneType](),
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        var ptr = data.bitcast[Byte]()
+        for i in range(Int(byte_length)):
+            ptr[i] = Byte(i)
+        return JsArrayBuffer(result)
+
+    @staticmethod
+    fn create_and_fill(b: Bindings, env: NapiEnv, byte_length: UInt) raises -> JsArrayBuffer:
+        var data = OpaquePointer[MutAnyOrigin]()
+        var result = NapiValue()
+        check_status(raw_create_arraybuffer(b, env, byte_length,
             UnsafePointer(to=data).bitcast[NoneType](),
             UnsafePointer(to=result).bitcast[NoneType]()))
         var ptr = data.bitcast[Byte]()
@@ -46,10 +68,24 @@ struct JsArrayBuffer:
             UnsafePointer(to=length).bitcast[NoneType]()))
         return length
 
+    fn byte_length(self, b: Bindings, env: NapiEnv) raises -> UInt:
+        var length: UInt = 0
+        check_status(raw_get_arraybuffer_info(b, env, self.value,
+            OpaquePointer[MutAnyOrigin](),
+            UnsafePointer(to=length).bitcast[NoneType]()))
+        return length
+
     ## data_ptr — get a raw pointer to the backing store
     fn data_ptr(self, env: NapiEnv) raises -> UnsafePointer[Byte, MutAnyOrigin]:
         var data = OpaquePointer[MutAnyOrigin]()
         check_status(raw_get_arraybuffer_info(env, self.value,
+            UnsafePointer(to=data).bitcast[NoneType](),
+            OpaquePointer[MutAnyOrigin]()))
+        return data.bitcast[Byte]()
+
+    fn data_ptr(self, b: Bindings, env: NapiEnv) raises -> UnsafePointer[Byte, MutAnyOrigin]:
+        var data = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_arraybuffer_info(b, env, self.value,
             UnsafePointer(to=data).bitcast[NoneType](),
             OpaquePointer[MutAnyOrigin]()))
         return data.bitcast[Byte]()
@@ -59,5 +95,12 @@ struct JsArrayBuffer:
     fn is_arraybuffer(env: NapiEnv, val: NapiValue) raises -> Bool:
         var result: Bool = False
         check_status(raw_is_arraybuffer(env, val,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return result
+
+    @staticmethod
+    fn is_arraybuffer(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
+        var result: Bool = False
+        check_status(raw_is_arraybuffer(b, env, val,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return result

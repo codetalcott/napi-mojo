@@ -5,6 +5,7 @@
 ## so any failure is immediately surfaced as a raised error.
 
 from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor
+from napi.bindings import Bindings
 from napi.raw import raw_define_properties
 from napi.error import check_status
 
@@ -54,3 +55,28 @@ fn register_method(
     desc.method = method_ptr
     desc.attributes = 0
     define_property(env, exports, desc)
+
+# --- Bindings-aware overloads ---
+
+fn define_property(
+    b: Bindings,
+    env: NapiEnv,
+    exports: NapiValue,
+    desc: NapiPropertyDescriptor,
+) raises:
+    var p: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=desc).bitcast[NoneType]()
+    var status = raw_define_properties(b, env, exports, 1, p)
+    check_status(status)
+
+fn register_method(
+    b: Bindings,
+    env: NapiEnv,
+    exports: NapiValue,
+    name: StringLiteral,
+    method_ptr: OpaquePointer[MutAnyOrigin],
+) raises:
+    var desc = NapiPropertyDescriptor()
+    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+    desc.method = method_ptr
+    desc.attributes = 0
+    define_property(b, env, exports, desc)

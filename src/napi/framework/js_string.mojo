@@ -27,6 +27,7 @@ from memory import alloc
 from napi.types import NapiEnv, NapiValue
 from napi.raw import raw_create_string_utf8, raw_get_value_string_utf8
 from napi.error import check_status
+from napi.bindings import Bindings
 from napi.framework.args import CbArgs
 
 ## JsString — typed wrapper for a JavaScript string napi_value
@@ -50,6 +51,15 @@ struct JsString:
         check_status(status)
         return JsString(result)
 
+    @staticmethod
+    fn create(b: Bindings, env: NapiEnv, s: String) raises -> JsString:
+        var result: NapiValue = NapiValue()
+        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var status = raw_create_string_utf8(b, env, str_ptr, UInt(len(s)), result_ptr)
+        check_status(status)
+        return JsString(result)
+
     ## create_literal — construct a JsString from a StringLiteral
     ##
     ## Uses the literal's static (.rodata) pointer directly — no heap allocation.
@@ -60,6 +70,15 @@ struct JsString:
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
         var status = raw_create_string_utf8(env, str_ptr, UInt(s.byte_length()), result_ptr)
+        check_status(status)
+        return JsString(result)
+
+    @staticmethod
+    fn create_literal(b: Bindings, env: NapiEnv, s: StringLiteral) raises -> JsString:
+        var result: NapiValue = NapiValue()
+        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var status = raw_create_string_utf8(b, env, str_ptr, UInt(s.byte_length()), result_ptr)
         check_status(status)
         return JsString(result)
 
@@ -105,6 +124,36 @@ struct JsString:
                 heap_buf.free()
                 raise e^
 
+    @staticmethod
+    fn from_napi_value(b: Bindings, env: NapiEnv, val: NapiValue) raises -> String:
+        var null = OpaquePointer[MutAnyOrigin]()
+        var needed: UInt = 0
+        var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=needed).bitcast[NoneType]()
+        check_status(raw_get_value_string_utf8(b, env, val, null, 0, needed_ptr))
+
+        if needed < 4096:
+            var buf = InlineArray[UInt8, 4096](fill=0)
+            var actual: UInt = 0
+            var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf[0]).bitcast[NoneType]()
+            var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
+            check_status(raw_get_value_string_utf8(b, env, val, buf_ptr, needed + 1, actual_ptr))
+            var span = Span[Byte](ptr=UnsafePointer(to=buf[0]), length=Int(actual))
+            return String(from_utf8=span)
+        else:
+            var heap_buf = alloc[UInt8](Int(needed + 1))
+            try:
+                var actual: UInt = 0
+                var heap_ptr: OpaquePointer[MutAnyOrigin] = heap_buf.bitcast[NoneType]()
+                var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
+                check_status(raw_get_value_string_utf8(b, env, val, heap_ptr, needed + 1, actual_ptr))
+                var span = Span[Byte](ptr=heap_buf, length=Int(actual))
+                var result = String(from_utf8=span)
+                heap_buf.free()
+                return result
+            except e:
+                heap_buf.free()
+                raise e^
+
     ## read_arg_0 — read the first callback argument as a Mojo String
     ##
     ## Extracts the first argument via CbArgs.get_one, then delegates to
@@ -113,3 +162,8 @@ struct JsString:
     fn read_arg_0(env: NapiEnv, info: NapiValue) raises -> String:
         var arg0 = CbArgs.get_one(env, info)
         return JsString.from_napi_value(env, arg0)
+
+    @staticmethod
+    fn read_arg_0(b: Bindings, env: NapiEnv, info: NapiValue) raises -> String:
+        var arg0 = CbArgs.get_one(b, env, info)
+        return JsString.from_napi_value(b, env, arg0)

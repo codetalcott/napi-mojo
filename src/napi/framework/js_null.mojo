@@ -11,6 +11,7 @@
 from napi.types import NapiEnv, NapiValue
 from napi.raw import raw_get_null
 from napi.error import check_status
+from napi.bindings import Bindings
 
 ## JsNull — typed wrapper for the JavaScript null napi_value
 struct JsNull:
@@ -28,5 +29,13 @@ struct JsNull:
         var result: NapiValue = NapiValue()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
         var status = raw_get_null(env, result_ptr)
+        check_status(status)
+        return JsNull(result)
+
+    @staticmethod
+    fn create(b: Bindings, env: NapiEnv) raises -> JsNull:
+        var result: NapiValue = NapiValue()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var status = raw_get_null(b, env, result_ptr)
         check_status(status)
         return JsNull(result)

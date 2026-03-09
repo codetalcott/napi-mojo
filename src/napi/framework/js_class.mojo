@@ -6,6 +6,7 @@
 ## via constructor.prototype).
 
 from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor
+from napi.bindings import Bindings
 from napi.raw import raw_define_class, raw_define_properties, raw_get_named_property, raw_unwrap
 from napi.error import check_status
 from napi.framework.args import CbArgs
@@ -18,6 +19,15 @@ fn _get_prototype(env: NapiEnv, constructor: NapiValue) raises -> NapiValue:
     var proto = NapiValue()
     check_status(raw_get_named_property(
         env, constructor,
+        "prototype".unsafe_ptr().bitcast[NoneType](),
+        UnsafePointer(to=proto).bitcast[NoneType](),
+    ))
+    return proto
+
+fn _get_prototype(b: Bindings, env: NapiEnv, constructor: NapiValue) raises -> NapiValue:
+    var proto = NapiValue()
+    check_status(raw_get_named_property(
+        b, env, constructor,
         "prototype".unsafe_ptr().bitcast[NoneType](),
         UnsafePointer(to=proto).bitcast[NoneType](),
     ))
@@ -47,6 +57,27 @@ fn define_class(
     ))
     return result
 
+fn define_class(
+    b: Bindings,
+    env: NapiEnv,
+    name: StringLiteral,
+    constructor_ptr: OpaquePointer[MutAnyOrigin],
+) raises -> NapiValue:
+    var result = NapiValue()
+    var auto_length: UInt = ~UInt(0)
+    check_status(raw_define_class(
+        b,
+        env,
+        name.unsafe_ptr().bitcast[NoneType](),
+        auto_length,
+        constructor_ptr,
+        OpaquePointer[MutAnyOrigin](),    # data = NULL
+        0,                                 # property_count = 0
+        OpaquePointer[ImmutAnyOrigin](),  # properties = NULL
+        UnsafePointer(to=result).bitcast[NoneType](),
+    ))
+    return result
+
 ## register_instance_method — add an instance method to a class's prototype
 fn register_instance_method(
     env: NapiEnv,
@@ -61,6 +92,20 @@ fn register_instance_method(
     desc.attributes = 0
     define_property(env, proto, desc)
 
+fn register_instance_method(
+    b: Bindings,
+    env: NapiEnv,
+    constructor: NapiValue,
+    name: StringLiteral,
+    method_ptr: OpaquePointer[MutAnyOrigin],
+) raises:
+    var proto = _get_prototype(b, env, constructor)
+    var desc = NapiPropertyDescriptor()
+    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+    desc.method = method_ptr
+    desc.attributes = 0
+    define_property(b, env, proto, desc)
+
 ## register_getter — add a read-only getter to a class's prototype
 fn register_getter(
     env: NapiEnv,
@@ -74,6 +119,20 @@ fn register_getter(
     desc.getter = getter_ptr
     desc.attributes = 0
     define_property(env, proto, desc)
+
+fn register_getter(
+    b: Bindings,
+    env: NapiEnv,
+    constructor: NapiValue,
+    name: StringLiteral,
+    getter_ptr: OpaquePointer[MutAnyOrigin],
+) raises:
+    var proto = _get_prototype(b, env, constructor)
+    var desc = NapiPropertyDescriptor()
+    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+    desc.getter = getter_ptr
+    desc.attributes = 0
+    define_property(b, env, proto, desc)
 
 ## register_getter_setter — add a getter+setter pair to a class's prototype
 fn register_getter_setter(
@@ -90,6 +149,22 @@ fn register_getter_setter(
     desc.setter = setter_ptr
     desc.attributes = 0
     define_property(env, proto, desc)
+
+fn register_getter_setter(
+    b: Bindings,
+    env: NapiEnv,
+    constructor: NapiValue,
+    name: StringLiteral,
+    getter_ptr: OpaquePointer[MutAnyOrigin],
+    setter_ptr: OpaquePointer[MutAnyOrigin],
+) raises:
+    var proto = _get_prototype(b, env, constructor)
+    var desc = NapiPropertyDescriptor()
+    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+    desc.getter = getter_ptr
+    desc.setter = setter_ptr
+    desc.attributes = 0
+    define_property(b, env, proto, desc)
 
 ## register_static_method — add a static method directly to the constructor
 ##
@@ -108,6 +183,19 @@ fn register_static_method(
     desc.attributes = 0
     define_property(env, constructor, desc)
 
+fn register_static_method(
+    b: Bindings,
+    env: NapiEnv,
+    constructor: NapiValue,
+    name: StringLiteral,
+    method_ptr: OpaquePointer[MutAnyOrigin],
+) raises:
+    var desc = NapiPropertyDescriptor()
+    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+    desc.method = method_ptr
+    desc.attributes = 0
+    define_property(b, env, constructor, desc)
+
 ## register_static_getter — add a read-only static getter to a class
 fn register_static_getter(
     env: NapiEnv,
@@ -120,6 +208,19 @@ fn register_static_getter(
     desc.getter = getter_ptr
     desc.attributes = 0
     define_property(env, constructor, desc)
+
+fn register_static_getter(
+    b: Bindings,
+    env: NapiEnv,
+    constructor: NapiValue,
+    name: StringLiteral,
+    getter_ptr: OpaquePointer[MutAnyOrigin],
+) raises:
+    var desc = NapiPropertyDescriptor()
+    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+    desc.getter = getter_ptr
+    desc.attributes = 0
+    define_property(b, env, constructor, desc)
 
 ## set_class_prototype — set up inheritance: Dog.prototype.__proto__ = Animal.prototype
 ##
@@ -151,6 +252,31 @@ fn set_class_prototype(
     # Call Object.setPrototypeOf(childProto, parentProto)
     _ = JsFunction(set_proto_of).call2(env, child_proto, parent_proto)
 
+fn set_class_prototype(
+    b: Bindings,
+    env: NapiEnv,
+    child_ctor: NapiValue,
+    parent_ctor: NapiValue,
+) raises:
+    var child_proto = _get_prototype(b, env, child_ctor)
+    var parent_proto = _get_prototype(b, env, parent_ctor)
+
+    var global_obj = js_get_global(env)
+    var object_key = NapiValue()
+    check_status(raw_get_named_property(
+        b, env, global_obj.value,
+        "Object".unsafe_ptr().bitcast[NoneType](),
+        UnsafePointer(to=object_key).bitcast[NoneType](),
+    ))
+    var set_proto_of = NapiValue()
+    check_status(raw_get_named_property(
+        b, env, object_key,
+        "setPrototypeOf".unsafe_ptr().bitcast[NoneType](),
+        UnsafePointer(to=set_proto_of).bitcast[NoneType](),
+    ))
+
+    _ = JsFunction(set_proto_of).call2(env, child_proto, parent_proto)
+
 ## register_static_getter_setter — add a static getter+setter pair to a class
 fn register_static_getter_setter(
     env: NapiEnv,
@@ -165,6 +291,21 @@ fn register_static_getter_setter(
     desc.setter = setter_ptr
     desc.attributes = 0
     define_property(env, constructor, desc)
+
+fn register_static_getter_setter(
+    b: Bindings,
+    env: NapiEnv,
+    constructor: NapiValue,
+    name: StringLiteral,
+    getter_ptr: OpaquePointer[MutAnyOrigin],
+    setter_ptr: OpaquePointer[MutAnyOrigin],
+) raises:
+    var desc = NapiPropertyDescriptor()
+    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+    desc.getter = getter_ptr
+    desc.setter = setter_ptr
+    desc.attributes = 0
+    define_property(b, env, constructor, desc)
 
 ## unwrap_native — extract the wrapped native pointer from `this` and cast it
 ##
@@ -181,5 +322,12 @@ fn unwrap_native[T: AnyType](env: NapiEnv, info: NapiValue) raises -> UnsafePoin
     var this_val = CbArgs.get_this(env, info)
     var data = OpaquePointer[MutAnyOrigin]()
     check_status(raw_unwrap(env, this_val,
+        UnsafePointer(to=data).bitcast[NoneType]()))
+    return data.bitcast[T]()
+
+fn unwrap_native[T: AnyType](b: Bindings, env: NapiEnv, info: NapiValue) raises -> UnsafePointer[T, MutAnyOrigin]:
+    var this_val = CbArgs.get_this(env, info)
+    var data = OpaquePointer[MutAnyOrigin]()
+    check_status(raw_unwrap(b, env, this_val,
         UnsafePointer(to=data).bitcast[NoneType]()))
     return data.bitcast[T]()

@@ -19,6 +19,7 @@
 ##   ptr.free()
 
 from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork
+from napi.bindings import Bindings
 from napi.raw import raw_create_async_work, raw_queue_async_work, raw_delete_async_work, raw_resolve_deferred, raw_reject_deferred, raw_create_error
 from napi.error import check_status
 from napi.framework.js_promise import JsPromise
@@ -71,12 +72,42 @@ struct AsyncWork:
         check_status(raw_queue_async_work(env, work))
         return AsyncWorkResult(p.value, p.deferred, work)
 
+    @staticmethod
+    fn queue(
+        b: Bindings,
+        env: NapiEnv,
+        name: StringLiteral,
+        data_opaque: OpaquePointer[MutAnyOrigin],
+        execute_ptr: OpaquePointer[MutAnyOrigin],
+        complete_ptr: OpaquePointer[MutAnyOrigin],
+    ) raises -> AsyncWorkResult:
+        var p = JsPromise.create(env)
+        var resource_name = JsString.create_literal(env, name)
+
+        var work = NapiAsyncWork()
+        var work_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=work).bitcast[NoneType]()
+        var null_resource = NapiValue()
+
+        check_status(raw_create_async_work(
+            b, env, null_resource, resource_name.value,
+            execute_ptr, complete_ptr, data_opaque, work_out,
+        ))
+
+        check_status(raw_queue_async_work(b, env, work))
+        return AsyncWorkResult(p.value, p.deferred, work)
+
     ## resolve — resolve deferred + delete async work
     @staticmethod
     fn resolve(env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
                result: NapiValue) raises:
         _ = raw_resolve_deferred(env, deferred, result)
         _ = raw_delete_async_work(env, work)
+
+    @staticmethod
+    fn resolve(b: Bindings, env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
+               result: NapiValue) raises:
+        _ = raw_resolve_deferred(b, env, deferred, result)
+        _ = raw_delete_async_work(b, env, work)
 
     ## reject_with_error — create Error, reject deferred, delete async work
     @staticmethod
@@ -89,3 +120,14 @@ struct AsyncWork:
         _ = raw_create_error(env, null_code, msg_val.value, error_ptr)
         _ = raw_reject_deferred(env, deferred, error_val)
         _ = raw_delete_async_work(env, work)
+
+    @staticmethod
+    fn reject_with_error(b: Bindings, env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
+                         msg: StringLiteral) raises:
+        var msg_val = JsString.create_literal(env, msg)
+        var null_code = NapiValue()
+        var error_val = NapiValue()
+        var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()
+        _ = raw_create_error(b, env, null_code, msg_val.value, error_ptr)
+        _ = raw_reject_deferred(b, env, deferred, error_val)
+        _ = raw_delete_async_work(b, env, work)

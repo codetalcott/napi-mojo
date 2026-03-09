@@ -16,6 +16,7 @@
 from napi.types import NapiEnv, NapiHandleScope
 from napi.raw import raw_open_handle_scope, raw_close_handle_scope
 from napi.error import check_status
+from napi.bindings import Bindings
 
 ## HandleScope — typed wrapper for napi_handle_scope
 struct HandleScope:
@@ -32,6 +33,16 @@ struct HandleScope:
         check_status(raw_open_handle_scope(env, scope_ptr))
         return HandleScope(scope)
 
+    @staticmethod
+    fn open(b: Bindings, env: NapiEnv) raises -> HandleScope:
+        var scope: NapiHandleScope = NapiHandleScope()
+        var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=scope).bitcast[NoneType]()
+        check_status(raw_open_handle_scope(b, env, scope_ptr))
+        return HandleScope(scope)
+
     ## close — destroy this handle scope, releasing all handles within it
     fn close(self, env: NapiEnv) raises:
         check_status(raw_close_handle_scope(env, self.scope))
+
+    fn close(self, b: Bindings, env: NapiEnv) raises:
+        check_status(raw_close_handle_scope(b, env, self.scope))

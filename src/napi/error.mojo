@@ -10,6 +10,7 @@
 ## formatted message, which is compatible with Mojo v26.2's raises system.
 
 from napi.types import NapiEnv, NapiStatus, NAPI_OK
+from napi.bindings import Bindings
 from napi.raw import raw_throw_error, raw_throw_type_error, raw_throw_range_error
 
 # ---------------------------------------------------------------------------
@@ -166,3 +167,41 @@ fn throw_js_range_error_dynamic(env: NapiEnv, msg: String):
         _ = msg_copy^
     except:
         pass
+
+# --- Bindings-aware overloads (no OwnedDLHandle, no raises) ---
+
+fn throw_js_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
+    var null_code = OpaquePointer[ImmutAnyOrigin]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+    _ = raw_throw_error(b, env, null_code, msg_ptr)
+
+fn throw_js_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
+    var msg_copy = msg
+    var null_code = OpaquePointer[ImmutAnyOrigin]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
+    _ = raw_throw_error(b, env, null_code, msg_ptr)
+    _ = msg_copy^
+
+fn throw_js_type_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
+    var null_code = OpaquePointer[ImmutAnyOrigin]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+    _ = raw_throw_type_error(b, env, null_code, msg_ptr)
+
+fn throw_js_type_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
+    var msg_copy = msg
+    var null_code = OpaquePointer[ImmutAnyOrigin]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
+    _ = raw_throw_type_error(b, env, null_code, msg_ptr)
+    _ = msg_copy^
+
+fn throw_js_range_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
+    var null_code = OpaquePointer[ImmutAnyOrigin]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+    _ = raw_throw_range_error(b, env, null_code, msg_ptr)
+
+fn throw_js_range_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
+    var msg_copy = msg
+    var null_code = OpaquePointer[ImmutAnyOrigin]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
+    _ = raw_throw_range_error(b, env, null_code, msg_ptr)
+    _ = msg_copy^

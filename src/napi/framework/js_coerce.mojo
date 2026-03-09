@@ -8,6 +8,7 @@
 ## TypeError when given a Symbol value (matching JS behavior).
 
 from napi.types import NapiEnv, NapiValue
+from napi.bindings import Bindings
 from napi.raw import (
     raw_coerce_to_bool, raw_coerce_to_number,
     raw_coerce_to_string, raw_coerce_to_object,
@@ -42,5 +43,38 @@ fn js_coerce_to_object(env: NapiEnv, val: NapiValue) raises -> NapiValue:
     Wraps primitives in their object wrappers."""
     var result = NapiValue()
     check_status(raw_coerce_to_object(env, val,
+        UnsafePointer(to=result).bitcast[NoneType]()))
+    return result
+
+# --- Bindings-aware overloads ---
+
+fn js_coerce_to_bool(b: Bindings, env: NapiEnv, val: NapiValue) raises -> NapiValue:
+    """Equivalent to Boolean(value) in JavaScript."""
+    var result = NapiValue()
+    check_status(raw_coerce_to_bool(b, env, val,
+        UnsafePointer(to=result).bitcast[NoneType]()))
+    return result
+
+fn js_coerce_to_number(b: Bindings, env: NapiEnv, val: NapiValue) raises -> NapiValue:
+    """Equivalent to Number(value) in JavaScript.
+    Throws TypeError on Symbol values."""
+    var result = NapiValue()
+    check_status(raw_coerce_to_number(b, env, val,
+        UnsafePointer(to=result).bitcast[NoneType]()))
+    return result
+
+fn js_coerce_to_string(b: Bindings, env: NapiEnv, val: NapiValue) raises -> NapiValue:
+    """Equivalent to String(value) in JavaScript.
+    Throws TypeError on Symbol values."""
+    var result = NapiValue()
+    check_status(raw_coerce_to_string(b, env, val,
+        UnsafePointer(to=result).bitcast[NoneType]()))
+    return result
+
+fn js_coerce_to_object(b: Bindings, env: NapiEnv, val: NapiValue) raises -> NapiValue:
+    """Equivalent to Object(value) in JavaScript.
+    Wraps primitives in their object wrappers."""
+    var result = NapiValue()
+    check_status(raw_coerce_to_object(b, env, val,
         UnsafePointer(to=result).bitcast[NoneType]()))
     return result

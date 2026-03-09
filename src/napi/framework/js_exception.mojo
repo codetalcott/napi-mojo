@@ -17,6 +17,7 @@
 ##       # ... inspect or return `caught`
 
 from napi.types import NapiEnv, NapiValue
+from napi.bindings import Bindings
 from napi.raw import raw_throw, raw_is_exception_pending, raw_get_and_clear_last_exception
 from napi.error import check_status
 
@@ -48,4 +49,21 @@ fn js_get_and_clear_last_exception(env: NapiEnv) raises -> NapiValue:
     var result = NapiValue()
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_get_and_clear_last_exception(env, result_ptr))
+    return result
+
+# --- Bindings-aware overloads ---
+
+fn js_throw(b: Bindings, env: NapiEnv, error: NapiValue) raises:
+    check_status(raw_throw(b, env, error))
+
+fn js_is_exception_pending(b: Bindings, env: NapiEnv) raises -> Bool:
+    var result: Bool = False
+    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+    check_status(raw_is_exception_pending(b, env, result_ptr))
+    return result
+
+fn js_get_and_clear_last_exception(b: Bindings, env: NapiEnv) raises -> NapiValue:
+    var result = NapiValue()
+    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+    check_status(raw_get_and_clear_last_exception(b, env, result_ptr))
     return result

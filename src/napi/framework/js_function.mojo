@@ -11,6 +11,7 @@
 ## already be a valid JS function napi_value (check with js_typeof first).
 
 from napi.types import NapiEnv, NapiValue
+from napi.bindings import Bindings
 from napi.raw import raw_call_function, raw_get_undefined, raw_create_function
 from napi.error import check_status
 
@@ -82,6 +83,68 @@ struct JsFunction:
         var result = NapiValue()
         var auto_length: UInt = ~UInt(0)
         check_status(raw_create_function(env,
+            name.unsafe_ptr().bitcast[NoneType](),
+            auto_length,
+            cb_ptr,
+            data,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsFunction(result)
+
+    # --- Bindings-aware overloads ---
+
+    fn call0(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+        var recv: NapiValue = NapiValue()
+        var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()
+        check_status(raw_get_undefined(b, env, recv_ptr))
+        var result: NapiValue = NapiValue()
+        var null_argv = OpaquePointer[ImmutAnyOrigin]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        check_status(raw_call_function(b, env, recv, self.value, 0, null_argv, result_ptr))
+        return result
+
+    fn call1(self, b: Bindings, env: NapiEnv, arg0: NapiValue) raises -> NapiValue:
+        var recv: NapiValue = NapiValue()
+        var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()
+        check_status(raw_get_undefined(b, env, recv_ptr))
+        var result: NapiValue = NapiValue()
+        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=arg0).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        check_status(raw_call_function(b, env, recv, self.value, 1, argv_ptr, result_ptr))
+        return result
+
+    fn call2(self, b: Bindings, env: NapiEnv, arg0: NapiValue, arg1: NapiValue) raises -> NapiValue:
+        var recv: NapiValue = NapiValue()
+        var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()
+        check_status(raw_get_undefined(b, env, recv_ptr))
+        var args = InlineArray[NapiValue, 2](fill=NapiValue())
+        args[0] = arg0
+        args[1] = arg1
+        var result: NapiValue = NapiValue()
+        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=args[0]).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        check_status(raw_call_function(b, env, recv, self.value, 2, argv_ptr, result_ptr))
+        return result
+
+    @staticmethod
+    fn create(b: Bindings, env: NapiEnv, name: StringLiteral,
+              cb_ptr: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
+        var result = NapiValue()
+        var auto_length: UInt = ~UInt(0)
+        check_status(raw_create_function(b, env,
+            name.unsafe_ptr().bitcast[NoneType](),
+            auto_length,
+            cb_ptr,
+            OpaquePointer[MutAnyOrigin](),
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsFunction(result)
+
+    @staticmethod
+    fn create_with_data(b: Bindings, env: NapiEnv, name: StringLiteral,
+                        cb_ptr: OpaquePointer[MutAnyOrigin],
+                        data: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
+        var result = NapiValue()
+        var auto_length: UInt = ~UInt(0)
+        check_status(raw_create_function(b, env,
             name.unsafe_ptr().bitcast[NoneType](),
             auto_length,
             cb_ptr,

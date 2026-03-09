@@ -6,6 +6,7 @@
 ##   return dv.value
 
 from napi.types import NapiEnv, NapiValue
+from napi.bindings import Bindings
 from napi.raw import raw_create_dataview, raw_get_dataview_info, raw_is_dataview
 from napi.error import check_status
 
@@ -23,10 +24,26 @@ struct JsDataView:
             UnsafePointer(to=result).bitcast[NoneType]()))
         return JsDataView(result)
 
+    @staticmethod
+    fn create(b: Bindings, env: NapiEnv, byte_length: UInt, arraybuffer: NapiValue, byte_offset: UInt) raises -> JsDataView:
+        var result = NapiValue()
+        check_status(raw_create_dataview(b, env, byte_length, arraybuffer, byte_offset,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsDataView(result)
+
     ## byte_length — get the DataView's byte length
     fn byte_length(self, env: NapiEnv) raises -> UInt:
         var length: UInt = 0
         check_status(raw_get_dataview_info(env, self.value,
+            UnsafePointer(to=length).bitcast[NoneType](),
+            OpaquePointer[MutAnyOrigin](),
+            OpaquePointer[MutAnyOrigin](),
+            OpaquePointer[MutAnyOrigin]()))
+        return length
+
+    fn byte_length(self, b: Bindings, env: NapiEnv) raises -> UInt:
+        var length: UInt = 0
+        check_status(raw_get_dataview_info(b, env, self.value,
             UnsafePointer(to=length).bitcast[NoneType](),
             OpaquePointer[MutAnyOrigin](),
             OpaquePointer[MutAnyOrigin](),
@@ -43,10 +60,28 @@ struct JsDataView:
             UnsafePointer(to=offset).bitcast[NoneType]()))
         return offset
 
+    fn byte_offset(self, b: Bindings, env: NapiEnv) raises -> UInt:
+        var offset: UInt = 0
+        check_status(raw_get_dataview_info(b, env, self.value,
+            OpaquePointer[MutAnyOrigin](),
+            OpaquePointer[MutAnyOrigin](),
+            OpaquePointer[MutAnyOrigin](),
+            UnsafePointer(to=offset).bitcast[NoneType]()))
+        return offset
+
     ## data_ptr — get a raw pointer to the DataView's data
     fn data_ptr(self, env: NapiEnv) raises -> UnsafePointer[Byte, MutAnyOrigin]:
         var data = OpaquePointer[MutAnyOrigin]()
         check_status(raw_get_dataview_info(env, self.value,
+            OpaquePointer[MutAnyOrigin](),
+            UnsafePointer(to=data).bitcast[NoneType](),
+            OpaquePointer[MutAnyOrigin](),
+            OpaquePointer[MutAnyOrigin]()))
+        return data.bitcast[Byte]()
+
+    fn data_ptr(self, b: Bindings, env: NapiEnv) raises -> UnsafePointer[Byte, MutAnyOrigin]:
+        var data = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_dataview_info(b, env, self.value,
             OpaquePointer[MutAnyOrigin](),
             UnsafePointer(to=data).bitcast[NoneType](),
             OpaquePointer[MutAnyOrigin](),
@@ -63,10 +98,26 @@ struct JsDataView:
             OpaquePointer[MutAnyOrigin]()))
         return ab
 
+    fn arraybuffer(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+        var ab = NapiValue()
+        check_status(raw_get_dataview_info(b, env, self.value,
+            OpaquePointer[MutAnyOrigin](),
+            OpaquePointer[MutAnyOrigin](),
+            UnsafePointer(to=ab).bitcast[NoneType](),
+            OpaquePointer[MutAnyOrigin]()))
+        return ab
+
     ## is_dataview — check if a napi_value is a DataView
     @staticmethod
     fn is_dataview(env: NapiEnv, val: NapiValue) raises -> Bool:
         var result: Bool = False
         check_status(raw_is_dataview(env, val,
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return result
+
+    @staticmethod
+    fn is_dataview(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
+        var result: Bool = False
+        check_status(raw_is_dataview(b, env, val,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return result

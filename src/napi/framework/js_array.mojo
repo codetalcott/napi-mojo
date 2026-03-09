@@ -17,6 +17,7 @@
 ##   var len = arr.length(env)
 
 from napi.types import NapiEnv, NapiValue
+from napi.bindings import Bindings
 from napi.raw import (
     raw_create_array_with_length,
     raw_set_element,
@@ -92,5 +93,47 @@ struct JsArray:
         var deleted: Bool = False
         var deleted_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=deleted).bitcast[NoneType]()
         var status = raw_delete_element(env, self.value, index, deleted_ptr)
+        check_status(status)
+        return deleted
+
+    # --- Bindings-aware overloads ---
+
+    @staticmethod
+    fn create_with_length(b: Bindings, env: NapiEnv, len: UInt) raises -> JsArray:
+        var result: NapiValue = NapiValue()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var status = raw_create_array_with_length(b, env, len, result_ptr)
+        check_status(status)
+        return JsArray(result)
+
+    fn set(self, b: Bindings, env: NapiEnv, index: UInt32, val: NapiValue) raises:
+        var status = raw_set_element(b, env, self.value, index, val)
+        check_status(status)
+
+    fn get(self, b: Bindings, env: NapiEnv, index: UInt32) raises -> NapiValue:
+        var result: NapiValue = NapiValue()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var status = raw_get_element(b, env, self.value, index, result_ptr)
+        check_status(status)
+        return result
+
+    fn length(self, b: Bindings, env: NapiEnv) raises -> UInt32:
+        var len: UInt32 = 0
+        var len_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=len).bitcast[NoneType]()
+        var status = raw_get_array_length(b, env, self.value, len_ptr)
+        check_status(status)
+        return len
+
+    fn has(self, b: Bindings, env: NapiEnv, index: UInt32) raises -> Bool:
+        var result: Bool = False
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var status = raw_has_element(b, env, self.value, index, result_ptr)
+        check_status(status)
+        return result
+
+    fn delete_element(self, b: Bindings, env: NapiEnv, index: UInt32) raises -> Bool:
+        var deleted: Bool = False
+        var deleted_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=deleted).bitcast[NoneType]()
+        var status = raw_delete_element(b, env, self.value, index, deleted_ptr)
         check_status(status)
         return deleted
