@@ -14,7 +14,7 @@ addon.greet('world');     // "Hello, world!"
 
 ## Features
 
-- **85 exported functions** and **3 classes** covering the full N-API surface
+- **80 exported functions** and **3 classes** covering the full N-API surface
 - Primitives: strings, numbers (Float64/Int32/UInt32/Int64), booleans, null, undefined, BigInt, Symbol, Date
 - Objects: create, read/write properties, enumerate keys, freeze/seal, prototype access
 - Arrays: create, map, element access, has/delete
@@ -45,7 +45,7 @@ git clone https://github.com/codetalcott/mojo-node-api.git
 cd mojo-node-api
 npm install
 npm run build    # compiles Mojo → build/index.node + generates TypeScript defs
-npm test         # 394 tests
+npm test         # 555 tests
 ```
 
 **Prerequisites:** [Mojo nightly](https://docs.modular.com/magic/) (v26.2.x) via [pixi](https://pixi.sh), Node.js 18+
@@ -136,7 +136,7 @@ TypeScript definitions are auto-generated at `build/index.d.ts`.
 
 ```bash
 npm run build        # compile + generate TypeScript defs
-npm test             # run Jest test suite (394 tests)
+npm test             # run Jest test suite (555 tests)
 npx jest tests/basic.test.js   # run a single test file
 ```
 

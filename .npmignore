@@ -1,0 +1,29 @@
+# Source and build inputs
+src/
+spike/
+build/
+build.sh
+pixi.toml
+pixi.lock
+
+# Tests and benchmarks
+tests/
+benchmarks/
+scripts/
+
+# Docs and dev notes
+docs/
+CLAUDE.md
+CONTRIBUTING.md
+TDD_PROMPTS.md
+PLANNING.md
+SPEC.md
+n-api-addendum.txt
+
+# Platform sub-packages (published separately)
+npm/
+
+# Dev artifacts
+.git/
+node_modules/
+package-lock.json
