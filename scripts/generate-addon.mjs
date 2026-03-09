@@ -101,34 +101,35 @@ function parseTOML(text) {
 }
 
 // --- Type mapping: declaration type -> arg extraction code ---
+// Uses _b (cached NapiBindings pointer) for all N-API calls
 const TYPE_MAP = {
   number: {
     napi_type: 'NAPI_TYPE_NUMBER',
     type_name: 'number',
     extract: (varName, argExpr) =>
-      `        var ${varName} = JsNumber.from_napi_value(env, ${argExpr})`,
-    create: (expr) => `JsNumber.create(env, ${expr}).value`,
+      `        var ${varName} = JsNumber.from_napi_value(_b, env, ${argExpr})`,
+    create: (expr) => `JsNumber.create(_b, env, ${expr}).value`,
   },
   string: {
     napi_type: 'NAPI_TYPE_STRING',
     type_name: 'string',
     extract: (varName, argExpr) =>
-      `        var ${varName} = JsString.from_napi_value(env, ${argExpr})`,
-    create: (expr) => `JsString.create(env, ${expr}).value`,
+      `        var ${varName} = JsString.from_napi_value(_b, env, ${argExpr})`,
+    create: (expr) => `JsString.create(_b, env, ${expr}).value`,
   },
   boolean: {
     napi_type: 'NAPI_TYPE_BOOLEAN',
     type_name: 'boolean',
     extract: (varName, argExpr) =>
-      `        var ${varName} = JsBoolean.from_napi_value(env, ${argExpr})`,
-    create: (expr) => `JsBoolean.create(env, ${expr}).value`,
+      `        var ${varName} = JsBoolean.from_napi_value(_b, env, ${argExpr})`,
+    create: (expr) => `JsBoolean.create(_b, env, ${expr}).value`,
   },
   int32: {
     napi_type: 'NAPI_TYPE_NUMBER',
     type_name: 'number',
     extract: (varName, argExpr) =>
-      `        var ${varName} = JsInt32.from_napi_value(env, ${argExpr})`,
-    create: (expr) => `JsInt32.create(env, ${expr}).value`,
+      `        var ${varName} = JsInt32.from_napi_value(_b, env, ${argExpr})`,
+    create: (expr) => `JsInt32.create(_b, env, ${expr}).value`,
   },
   any: {
     napi_type: null, // no type check
@@ -150,26 +151,27 @@ function generateCallback(name, decl) {
   const lines = [];
   lines.push(`fn ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
   lines.push(`    try:`);
+  lines.push(`        var _b = CbArgs.get_bindings(env, info)`);
 
   if (args.length === 0) {
     // No args — just run body
   } else if (args.length === 1) {
-    lines.push(`        var arg0 = CbArgs.get_one(env, info)`);
+    lines.push(`        var arg0 = CbArgs.get_one(_b, env, info)`);
     const typeInfo = TYPE_MAP[args[0]];
     if (typeInfo && typeInfo.napi_type) {
-      lines.push(`        var t0 = js_typeof(env, arg0)`);
+      lines.push(`        var t0 = js_typeof(_b, env, arg0)`);
       lines.push(`        if t0 != ${typeInfo.napi_type}:`);
-      lines.push(`            throw_js_type_error_dynamic(env, "${jsName}: expected ${typeInfo.type_name}, got " + js_type_name(t0))`);
+      lines.push(`            throw_js_type_error_dynamic(_b, env, "${jsName}: expected ${typeInfo.type_name}, got " + js_type_name(t0))`);
       lines.push(`            return NapiValue()`);
     }
   } else if (args.length === 2) {
-    lines.push(`        var args = CbArgs.get_two(env, info)`);
+    lines.push(`        var args = CbArgs.get_two(_b, env, info)`);
     for (let i = 0; i < 2; i++) {
       const typeInfo = TYPE_MAP[args[i]];
       if (typeInfo && typeInfo.napi_type) {
-        lines.push(`        var t${i} = js_typeof(env, args[${i}])`);
+        lines.push(`        var t${i} = js_typeof(_b, env, args[${i}])`);
         lines.push(`        if t${i} != ${typeInfo.napi_type}:`);
-        lines.push(`            throw_js_type_error_dynamic(env, "${jsName}: expected ${typeInfo.type_name} for arg ${i + 1}, got " + js_type_name(t${i}))`);
+        lines.push(`            throw_js_type_error_dynamic(_b, env, "${jsName}: expected ${typeInfo.type_name} for arg ${i + 1}, got " + js_type_name(t${i}))`);
         lines.push(`            return NapiValue()`);
       }
     }
@@ -247,6 +249,7 @@ function main() {
   output.push('## Do not edit manually. Regenerate with: node scripts/generate-addon.mjs');
   output.push('');
   output.push('from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_BOOLEAN');
+  output.push('from napi.bindings import Bindings');
   output.push('from napi.framework.js_string import JsString');
   output.push('from napi.framework.js_number import JsNumber');
   output.push('from napi.framework.js_boolean import JsBoolean');

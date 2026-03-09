@@ -2,6 +2,7 @@
 ## Do not edit manually. Regenerate with: node scripts/generate-addon.mjs
 
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER, NAPI_TYPE_BOOLEAN
+from napi.bindings import Bindings
 from napi.framework.js_string import JsString
 from napi.framework.js_number import JsNumber
 from napi.framework.js_boolean import JsBoolean
@@ -14,18 +15,19 @@ from napi.framework.register import fn_ptr, ModuleBuilder
 # exampleAdd
 fn example_add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
-        var t0 = js_typeof(env, args[0])
+        var _b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(_b, env, info)
+        var t0 = js_typeof(_b, env, args[0])
         if t0 != NAPI_TYPE_NUMBER:
-            throw_js_type_error_dynamic(env, "exampleAdd: expected number for arg 1, got " + js_type_name(t0))
+            throw_js_type_error_dynamic(_b, env, "exampleAdd: expected number for arg 1, got " + js_type_name(t0))
             return NapiValue()
-        var t1 = js_typeof(env, args[1])
+        var t1 = js_typeof(_b, env, args[1])
         if t1 != NAPI_TYPE_NUMBER:
-            throw_js_type_error_dynamic(env, "exampleAdd: expected number for arg 2, got " + js_type_name(t1))
+            throw_js_type_error_dynamic(_b, env, "exampleAdd: expected number for arg 2, got " + js_type_name(t1))
             return NapiValue()
-        var a = JsNumber.from_napi_value(env, args[0])
-        var b = JsNumber.from_napi_value(env, args[1])
-        return JsNumber.create(env, a + b).value
+        var a = JsNumber.from_napi_value(_b, env, args[0])
+        var b = JsNumber.from_napi_value(_b, env, args[1])
+        return JsNumber.create(_b, env, a + b).value
     except:
         throw_js_error(env, "exampleAdd failed")
         return NapiValue()
@@ -33,13 +35,14 @@ fn example_add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # exampleGreet
 fn example_greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var t0 = js_typeof(env, arg0)
+        var _b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(_b, env, info)
+        var t0 = js_typeof(_b, env, arg0)
         if t0 != NAPI_TYPE_STRING:
-            throw_js_type_error_dynamic(env, "exampleGreet: expected string, got " + js_type_name(t0))
+            throw_js_type_error_dynamic(_b, env, "exampleGreet: expected string, got " + js_type_name(t0))
             return NapiValue()
-        var name = JsString.from_napi_value(env, arg0)
-        return JsString.create(env, "Hello, " + name + "!").value
+        var name = JsString.from_napi_value(_b, env, arg0)
+        return JsString.create(_b, env, "Hello, " + name + "!").value
     except:
         throw_js_error(env, "exampleGreet failed")
         return NapiValue()
@@ -47,13 +50,14 @@ fn example_greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # exampleIsPositive
 fn example_is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        var t0 = js_typeof(env, arg0)
+        var _b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(_b, env, info)
+        var t0 = js_typeof(_b, env, arg0)
         if t0 != NAPI_TYPE_NUMBER:
-            throw_js_type_error_dynamic(env, "exampleIsPositive: expected number, got " + js_type_name(t0))
+            throw_js_type_error_dynamic(_b, env, "exampleIsPositive: expected number, got " + js_type_name(t0))
             return NapiValue()
-        var n = JsNumber.from_napi_value(env, arg0)
-        return JsBoolean.create(env, n > 0.0).value
+        var n = JsNumber.from_napi_value(_b, env, arg0)
+        return JsBoolean.create(_b, env, n > 0.0).value
     except:
         throw_js_error(env, "exampleIsPositive failed")
         return NapiValue()

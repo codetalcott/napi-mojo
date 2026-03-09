@@ -19,9 +19,9 @@ js_name = "exampleAdd"
 args = ["number", "number"]
 returns = "number"
 body = """
-var a = JsNumber.from_napi_value(env, args[0])
-var b = JsNumber.from_napi_value(env, args[1])
-return JsNumber.create(env, a + b).value
+var a = JsNumber.from_napi_value(_b, env, args[0])
+var b = JsNumber.from_napi_value(_b, env, args[1])
+return JsNumber.create(_b, env, a + b).value
 """
 
 [functions.example_greet]
@@ -29,8 +29,8 @@ js_name = "exampleGreet"
 args = ["string"]
 returns = "string"
 body = """
-var name = JsString.from_napi_value(env, arg0)
-return JsString.create(env, "Hello, " + name + "!").value
+var name = JsString.from_napi_value(_b, env, arg0)
+return JsString.create(_b, env, "Hello, " + name + "!").value
 """
 
 [functions.example_is_positive]
@@ -38,6 +38,6 @@ js_name = "exampleIsPositive"
 args = ["number"]
 returns = "boolean"
 body = """
-var n = JsNumber.from_napi_value(env, arg0)
-return JsBoolean.create(env, n > 0.0).value
+var n = JsNumber.from_napi_value(_b, env, arg0)
+return JsBoolean.create(_b, env, n > 0.0).value
 """
