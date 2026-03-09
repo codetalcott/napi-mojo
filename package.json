@@ -23,6 +23,7 @@
     "build": "bash build.sh && npm run generate:dts",
     "generate:dts": "node scripts/generate-dts.js",
     "generate:addon": "node scripts/generate-addon.mjs",
+    "generate:docs": "npm run generate:dts && npx typedoc build/index.d.ts --out docs/api --name napi-mojo",
     "test": "jest",
     "test:gc": "NODE_OPTIONS='--expose-gc' npx jest tests/finalizer_gc.test.js"
   },

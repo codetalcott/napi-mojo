@@ -433,6 +433,140 @@ function inferPropertyType(className, propName) {
   return 'any';
 }
 
+// One-line JSDoc descriptions emitted as /** ... */ before each export.
+// Pattern from napi-rs: keep the DTS self-describing so IDE hover and
+// typedoc (npm run generate:docs) work without a separate docs file.
+const DOCS = {
+  // Math & arithmetic
+  hello:          'Returns "Hello from Mojo!".',
+  add:            'Returns a + b (Float64).',
+  addInts:        'Returns a + b (Int32).',
+  bitwiseOr:      'Returns a | b (UInt32 bitwise OR).',
+  addIntsStrict:  'Like addInts but throws TypeError if either argument is not a number.',
+  addBigInts:     'Returns a + b for arbitrary-precision BigInt values.',
+  sumArgs:        'Returns the sum of any number of Float64 arguments.',
+  isPositive:     'Returns true if n > 0.',
+  // Strings
+  greet:          'Returns "Hello, <name>!".',
+  toJsString:     'Coerces any value to a string (equivalent to String(val)).',
+  // Objects
+  createObject:   'Returns an empty plain object {}.',
+  makeGreeting:   'Returns { message: "Hello!" }.',
+  getProperty:    'Returns obj[key] using napi_get_property.',
+  getKeys:        'Returns the own enumerable property names of obj (Object.keys).',
+  hasOwn:         'Returns true if obj has own property key.',
+  deleteProperty: 'Deletes obj[key] and returns the mutated object.',
+  setPropertyByKey:  'Sets obj[key] = value using a string or symbol key; returns obj.',
+  hasPropertyByKey:  'Returns key in obj (walks the prototype chain).',
+  freezeObject:   'Freezes obj and returns it (Object.freeze).',
+  sealObject:     'Seals obj and returns it (Object.seal).',
+  getPrototype:   'Returns Object.getPrototypeOf(obj).',
+  getAllPropertyNames: 'Returns all property names including non-enumerable and inherited.',
+  getOptValue:    'Returns obj.x if present, null otherwise.',
+  getGlobal:      'Returns the global object (globalThis).',
+  // Arrays
+  sumArray:       'Returns the sum of a JavaScript number array.',
+  mapArray:       'Returns arr.map(fn), using a Mojo handle scope to avoid GC pressure.',
+  arrayHasElement:   'Returns true if arr[index] exists.',
+  arrayDeleteElement: 'Deletes arr[index] (sparse deletion); returns the array.',
+  sumJsArray:     'Sums a Float64Array or plain number[] using Mojo-side iteration.',
+  doubleArray:    'Doubles each element of a number[] in place.',
+  joinStrings:    'Concatenates two strings.',
+  reverseStrings: 'Reverses a string[].',
+  genericDoubleArray:    'Doubles each element of a number[] and returns a new array.',
+  genericReverseStrings: 'Reverses a string[] and returns a new array.',
+  objectFromArrays: 'Zips parallel string keys[] and number values[] into a plain object.',
+  objectToArrays:   'Splits an object into parallel { keys: string[], values: number[] } arrays.',
+  // Binary data
+  createArrayBuffer:      'Creates an ArrayBuffer of `size` bytes filled with incrementing values.',
+  arrayBufferLength:      'Returns the byte length of an ArrayBuffer.',
+  createBuffer:           'Creates a Node.js Buffer of `size` bytes filled with incrementing values.',
+  createBufferCopy:       'Creates a new Buffer with a copy of the source Buffer\'s bytes.',
+  sumBuffer:              'Returns the sum of all bytes in a Node.js Buffer.',
+  doubleFloat64Array:     'Doubles each element of a Float64Array in place.',
+  createTypedArrayView:   'Creates a typed array view (Int8/Uint8/Int32/Float64 etc.) over an ArrayBuffer.',
+  getTypedArrayType:      'Returns the NAPI_*_ARRAY type constant for a TypedArray.',
+  getTypedArrayLength:    'Returns the element count (not bytes) of a TypedArray.',
+  createDataView:         'Creates a DataView over an ArrayBuffer with the given byte offset and length.',
+  getDataViewInfo:        'Returns { byteLength, byteOffset } for a DataView.',
+  isDataView:             'Returns true if val is a DataView.',
+  createExternalArrayBuffer: 'Creates an ArrayBuffer backed by Mojo-managed memory; GC finalizer frees it.',
+  isDetachedArrayBuffer:  'Returns true if the ArrayBuffer has been detached.',
+  detachArrayBuffer:      'Detaches an ArrayBuffer, rendering it zero-length.',
+  // Async & promises
+  resolveWith:    'Returns a Promise that immediately resolves with value.',
+  rejectWith:     'Returns a Promise that immediately rejects with Error(msg).',
+  asyncDouble:    'Returns a Promise that resolves with arg * 2 (computed on a worker thread).',
+  asyncTriple:    'Returns a Promise that resolves with arg * 3 (computed on a worker thread).',
+  asyncProgress:  'Calls cb(i) for i in 0..count-1 from a worker thread via ThreadsafeFunction; returns a Promise.',
+  cancelAsyncWork: 'Queues then immediately cancels async work; returns a rejected Promise.',
+  // Callbacks & async context
+  callFunction:   'Calls fn(arg) and returns the result.',
+  createCallback: 'Returns a new Mojo-created JavaScript function.',
+  createAdder:    'Returns a function that adds n to its argument.',
+  makeCallback:   'Calls fn(arg) within the current async context (napi_make_callback).',
+  makeCallback0:  'Calls fn() within the current async context.',
+  makeCallback2:  'Calls fn(a, b) within the current async context.',
+  makeCallbackScope: 'Calls fn() inside an explicit napi_callback_scope.',
+  createNamedFn:  'Creates and returns a named JavaScript function with explicit arity.',
+  // Symbols, BigInt, Date
+  createSymbol:   'Creates a new unique Symbol with the given description.',
+  symbolFor:      'Returns the global Symbol for key (Symbol.for).',
+  createDate:     'Creates a Date from a millisecond timestamp.',
+  getDateValue:   'Returns the millisecond timestamp of a Date.',
+  bigIntFromWords: 'Creates a BigInt from a sign flag and an array of 64-bit words.',
+  bigIntToWords:   'Returns { sign, words } decomposition of a BigInt.',
+  // Type checks & coercion
+  strictEquals:   'Returns a === b (uses napi_strict_equals).',
+  isInstanceOf:   'Returns obj instanceof ctor.',
+  coerceToBool:   'Returns Boolean(val).',
+  coerceToNumber: 'Returns Number(val); throws TypeError for Symbol.',
+  coerceToString: 'Returns String(val); throws TypeError for Symbol.',
+  coerceToObject: 'Returns Object(val); throws TypeError for null/undefined.',
+  isExternal:     'Returns true if val is an N-API external (opaque native pointer).',
+  isError:        'Returns true if val is an Error object.',
+  // Error handling
+  throwTypeError:  'Throws a TypeError. Always returns undefined.',
+  throwRangeError: 'Throws a RangeError. Always returns undefined.',
+  throwSyntaxError: 'Throws a SyntaxError. Always returns undefined.',
+  throwValue:      'Throws any JavaScript value as an exception.',
+  catchAndReturn:  'Throws then catches val; returns the caught value.',
+  getErrorMessage: 'Returns the .message property of an Error (or any object).',
+  getErrorStack:   'Returns the .stack property of an Error (or any object).',
+  // GC & lifecycle
+  createExternal:    'Wraps native { x, y } data as an N-API external with a GC finalizer.',
+  getExternalData:   'Retrieves the { x, y } from an N-API external value.',
+  attachFinalizer:   'Attaches a native GC finalizer to any JavaScript object.',
+  setInstanceData:   'Stores a number as per-environment singleton data.',
+  getInstanceData:   'Retrieves the per-environment singleton number.',
+  addCleanupHook:    'Registers an env cleanup hook; returns true.',
+  removeCleanupHook: 'Registers then removes an env cleanup hook; returns true.',
+  addAsyncCleanupHook:    'Registers an async env cleanup hook; returns true.',
+  removeAsyncCleanupHook: 'Registers then removes an async env cleanup hook; returns true.',
+  // Runtime introspection
+  getNapiVersion: 'Returns the highest N-API version supported by this Node.js runtime.',
+  getNodeVersion: 'Returns { major, minor, patch } of the running Node.js version.',
+  runScript:      'Evaluates a JavaScript string and returns the result (napi_run_script).',
+  adjustExternalMemory: 'Hints the V8 GC about native memory held outside the JS heap.',
+  getUvEventLoop: 'Returns the address of the libuv event loop as a BigInt pointer.',
+  // Type tagging
+  typeTagObject:        'Tags an object with a 128-bit type ID (lower/upper uint32 halves).',
+  checkObjectTypeTag:   'Returns true if the object\'s tag matches lower/upper.',
+  // Refs & scopes (internal/test)
+  testRef:        'Creates an object, stores it in an napi_ref, retrieves it, and returns it.',
+  testRefObject:  'Round-trips an object through an napi_ref.',
+  testRefString:  'Wraps a string in an object, stores in an napi_ref, returns the wrapper.',
+  testWeakRef:    'Creates a weak reference (refcount=0) and returns the value.',
+  buildInScope:   'Creates an object inside an escapable handle scope and escapes it.',
+  newCounterFromRegistry: 'Creates a Counter via the ClassRegistry new_instance helper.',
+  // Misc
+  getNull:        'Returns JavaScript null.',
+  getUndefined:   'Returns JavaScript undefined.',
+  getAllPropertyNames: 'Returns all own + inherited property names (napi_get_all_property_names).',
+  objectFromArrays: 'Zips parallel string keys[] and number values[] into a plain object.',
+  objectToArrays:   'Splits an object into { keys: string[], values: number[] }.',
+};
+
 // --- Generate output ---
 const output = [];
 output.push('// Auto-generated by scripts/generate-dts.js — do not edit manually');
@@ -441,6 +575,7 @@ output.push('');
 // Generate function declarations
 for (const jsName of registeredFunctions) {
   const sig = buildSignature(jsName);
+  if (DOCS[jsName]) output.push(`/** ${DOCS[jsName]} */`);
   output.push(`export function ${jsName}${sig};`);
 }
 

@@ -120,9 +120,23 @@ m.getDataViewInfo(dv);                    // { byteLength: 8, byteOffset: 0 }
 
 ## API Reference
 
-See [CLAUDE.md](CLAUDE.md) for the complete function table (110 exports + 3 classes) and architecture documentation.
+Full typed API: [`build/index.d.ts`](build/index.d.ts) — auto-generated on every build, works in any TypeScript-aware IDE.
 
-TypeScript definitions are auto-generated at `build/index.d.ts`.
+| Category | Exports |
+| -------- | ------- |
+| Math & arithmetic | `add` `addInts` `bitwiseOr` `addIntsStrict` `addBigInts` `sumArgs` `isPositive` |
+| Strings | `hello` `greet` `toJsString` |
+| Objects | `createObject` `makeGreeting` `getProperty` `getKeys` `hasOwn` `deleteProperty` `setPropertyByKey` `hasPropertyByKey` `freezeObject` `sealObject` `getPrototype` |
+| Arrays | `sumArray` `mapArray` `arrayHasElement` `arrayDeleteElement` |
+| Binary data | `createArrayBuffer` `createBuffer` `createBufferCopy` `doubleFloat64Array` `createTypedArrayView` `createDataView` `createExternalArrayBuffer` |
+| Async & promises | `asyncDouble` `asyncTriple` `asyncProgress` `resolveWith` `rejectWith` `cancelAsyncWork` |
+| Callbacks | `callFunction` `createCallback` `createAdder` `makeCallback` `makeCallback0` `makeCallback2` |
+| Classes | `Counter` (increment/reset/value) · `Animal` (name/speak) · `Dog` (breed) |
+| BigInt / Symbol / Date | `createSymbol` `symbolFor` `addBigInts` `bigIntFromWords` `bigIntToWords` `createDate` `getDateValue` |
+| Type checks & coercion | `strictEquals` `isInstanceOf` `coerceToBool` `coerceToNumber` `coerceToString` `coerceToObject` `isExternal` `isError` `isDataView` |
+| Errors | `throwTypeError` `throwRangeError` `throwSyntaxError` `throwValue` `catchAndReturn` |
+| GC & lifecycle | `createExternal` `attachFinalizer` `setInstanceData` `getInstanceData` `addCleanupHook` `removeCleanupHook` |
+| Runtime introspection | `getGlobal` `getNapiVersion` `getNodeVersion` `runScript` `adjustExternalMemory` |
 
 ## Architecture
 
@@ -138,6 +152,7 @@ TypeScript definitions are auto-generated at `build/index.d.ts`.
 npm run build        # compile + generate TypeScript defs
 npm test             # run Jest test suite (555 tests)
 npx jest tests/basic.test.js   # run a single test file
+npm run generate:docs  # generate HTML API docs → docs/api/ (requires: npm i -D typedoc)
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for coding standards and [docs/METHODOLOGY.md](docs/METHODOLOGY.md) for the TDD workflow.
