@@ -19,6 +19,7 @@ from napi.types import NapiEnv, NapiValue
 from napi.error import throw_js_error
 from napi.framework.js_number import JsNumber
 from napi.framework.js_typedarray import JsTypedArray
+from napi.framework.js_mojo_array import MojoFloat64Array
 from napi.framework.args import CbArgs
 from napi.framework.register import fn_ptr, ModuleBuilder
 from napi.framework.runtime import init_async_runtime
@@ -173,8 +174,8 @@ fn dot_product_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         if len_a != len_b:
             throw_js_error(env, "vectors must have equal length")
             return NapiValue()
-        var ptr_a = ta_a.data_ptr(env).bitcast[Float64]()
-        var ptr_b = ta_b.data_ptr(env).bitcast[Float64]()
+        var ptr_a = ta_a.data_ptr_float64(env)
+        var ptr_b = ta_b.data_ptr_float64(env)
         return JsNumber.create(env, dot_product(ptr_a, ptr_b, len_a)).value
     except:
         throw_js_error(env, "dotProduct failed")
@@ -194,8 +195,8 @@ fn cosine_similarity_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         if len_a != len_b:
             throw_js_error(env, "vectors must have equal length")
             return NapiValue()
-        var ptr_a = ta_a.data_ptr(env).bitcast[Float64]()
-        var ptr_b = ta_b.data_ptr(env).bitcast[Float64]()
+        var ptr_a = ta_a.data_ptr_float64(env)
+        var ptr_b = ta_b.data_ptr_float64(env)
         return JsNumber.create(env, cosine_similarity(ptr_a, ptr_b, len_a)).value
     except:
         throw_js_error(env, "cosineSimilarity failed")
@@ -215,11 +216,46 @@ fn euclidean_distance_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         if len_a != len_b:
             throw_js_error(env, "vectors must have equal length")
             return NapiValue()
-        var ptr_a = ta_a.data_ptr(env).bitcast[Float64]()
-        var ptr_b = ta_b.data_ptr(env).bitcast[Float64]()
+        var ptr_a = ta_a.data_ptr_float64(env)
+        var ptr_b = ta_b.data_ptr_float64(env)
         return JsNumber.create(env, euclidean_distance(ptr_a, ptr_b, len_a)).value
     except:
         throw_js_error(env, "euclideanDistance failed")
+        return NapiValue()
+
+
+fn normalize_vector_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    # Compute L2-normalized copy of a Float64Array (zero-copy output via MojoFloat64Array).
+    # Raises if input is not a Float64Array. Output is owned by JS GC.
+    try:
+        var arg0 = CbArgs.get_one(env, info)
+        if not JsTypedArray.is_typedarray(env, arg0):
+            throw_js_error(env, "normalizeVector requires a Float64Array argument")
+            return NapiValue()
+        var ta = JsTypedArray(arg0)
+        var n = Int(ta.length(env))
+        var v_ptr = ta.data_ptr_float64(env)  # validates Float64Array + gets ptr in one call
+        # Compute L2 norm via SIMD vectorize
+        var norm_sq: Float64 = 0.0
+        fn compute_norm[width: Int](offset: Int) unified {mut}:
+            var x = v_ptr.load[width=width](offset)
+            norm_sq += (x * x).reduce_add()
+        vectorize[simd_width_of[DType.float64]()](n, compute_norm)
+        var norm = sqrt(norm_sq)
+        if norm == 0.0:
+            norm = 1.0
+        # Allocate Mojo output buffer, fill, and hand to JS with no copy
+        var out = MojoFloat64Array(n)
+        var inv_norm = 1.0 / norm
+        for i in range(n):
+            out.ptr[i] = v_ptr[i] * inv_norm
+        try:
+            return out.to_js(env)
+        except e:
+            out.ptr.free()  # to_js failed — free before re-raise
+            raise e^
+    except:
+        throw_js_error(env, "normalizeVector failed")
         return NapiValue()
 
 
@@ -236,12 +272,14 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     var dot_ref = dot_product_fn
     var cos_ref = cosine_similarity_fn
     var euc_ref = euclidean_distance_fn
+    var norm_ref = normalize_vector_fn
 
     try:
         var m = ModuleBuilder(env, exports)
         m.method("dotProduct", fn_ptr(dot_ref))
         m.method("cosineSimilarity", fn_ptr(cos_ref))
         m.method("euclideanDistance", fn_ptr(euc_ref))
+        m.method("normalizeVector", fn_ptr(norm_ref))
     except:
         pass
 

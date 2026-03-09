@@ -243,6 +243,103 @@ struct JsTypedArray:
             null))
         return ab
 
+    ## data_ptr_float64 — raw Float64 pointer, raises if not a Float64Array
+    ##
+    ## Validates the element type in the same napi_get_typedarray_info call
+    ## that retrieves the data pointer — one N-API call, not two.
+    ## Raises if the caller passed a different TypedArray (Int32Array, etc.),
+    ## preventing silent data corruption from an unchecked bitcast.
+    fn data_ptr_float64(self, env: NapiEnv) raises -> UnsafePointer[Float64, MutAnyOrigin]:
+        var t: Int32 = 0
+        var data = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_typedarray_info(env, self.value,
+            UnsafePointer(to=t).bitcast[NoneType](), null,
+            UnsafePointer(to=data).bitcast[NoneType](), null, null))
+        if t != NAPI_FLOAT64_ARRAY:
+            raise Error("expected Float64Array (type 8), got type " + String(t))
+        return data.bitcast[Float64]()
+
+    fn data_ptr_float64(self, b: Bindings, env: NapiEnv) raises -> UnsafePointer[Float64, MutAnyOrigin]:
+        var t: Int32 = 0
+        var data = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_typedarray_info(b, env, self.value,
+            UnsafePointer(to=t).bitcast[NoneType](), null,
+            UnsafePointer(to=data).bitcast[NoneType](), null, null))
+        if t != NAPI_FLOAT64_ARRAY:
+            raise Error("expected Float64Array (type 8), got type " + String(t))
+        return data.bitcast[Float64]()
+
+    ## data_ptr_float32 — raw Float32 pointer, raises if not a Float32Array
+    fn data_ptr_float32(self, env: NapiEnv) raises -> UnsafePointer[Float32, MutAnyOrigin]:
+        var t: Int32 = 0
+        var data = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_typedarray_info(env, self.value,
+            UnsafePointer(to=t).bitcast[NoneType](), null,
+            UnsafePointer(to=data).bitcast[NoneType](), null, null))
+        if t != NAPI_FLOAT32_ARRAY:
+            raise Error("expected Float32Array (type 7), got type " + String(t))
+        return data.bitcast[Float32]()
+
+    fn data_ptr_float32(self, b: Bindings, env: NapiEnv) raises -> UnsafePointer[Float32, MutAnyOrigin]:
+        var t: Int32 = 0
+        var data = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_typedarray_info(b, env, self.value,
+            UnsafePointer(to=t).bitcast[NoneType](), null,
+            UnsafePointer(to=data).bitcast[NoneType](), null, null))
+        if t != NAPI_FLOAT32_ARRAY:
+            raise Error("expected Float32Array (type 7), got type " + String(t))
+        return data.bitcast[Float32]()
+
+    ## data_ptr_int32 — raw Int32 pointer, raises if not an Int32Array
+    fn data_ptr_int32(self, env: NapiEnv) raises -> UnsafePointer[Int32, MutAnyOrigin]:
+        var t: Int32 = 0
+        var data = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_typedarray_info(env, self.value,
+            UnsafePointer(to=t).bitcast[NoneType](), null,
+            UnsafePointer(to=data).bitcast[NoneType](), null, null))
+        if t != NAPI_INT32_ARRAY:
+            raise Error("expected Int32Array (type 5), got type " + String(t))
+        return data.bitcast[Int32]()
+
+    fn data_ptr_int32(self, b: Bindings, env: NapiEnv) raises -> UnsafePointer[Int32, MutAnyOrigin]:
+        var t: Int32 = 0
+        var data = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_typedarray_info(b, env, self.value,
+            UnsafePointer(to=t).bitcast[NoneType](), null,
+            UnsafePointer(to=data).bitcast[NoneType](), null, null))
+        if t != NAPI_INT32_ARRAY:
+            raise Error("expected Int32Array (type 5), got type " + String(t))
+        return data.bitcast[Int32]()
+
+    ## data_ptr_uint8 — raw UInt8 pointer, raises if not a Uint8Array
+    fn data_ptr_uint8(self, env: NapiEnv) raises -> UnsafePointer[UInt8, MutAnyOrigin]:
+        var t: Int32 = 0
+        var data = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_typedarray_info(env, self.value,
+            UnsafePointer(to=t).bitcast[NoneType](), null,
+            UnsafePointer(to=data).bitcast[NoneType](), null, null))
+        if t != NAPI_UINT8_ARRAY:
+            raise Error("expected Uint8Array (type 1), got type " + String(t))
+        return data.bitcast[UInt8]()
+
+    fn data_ptr_uint8(self, b: Bindings, env: NapiEnv) raises -> UnsafePointer[UInt8, MutAnyOrigin]:
+        var t: Int32 = 0
+        var data = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin]()
+        check_status(raw_get_typedarray_info(b, env, self.value,
+            UnsafePointer(to=t).bitcast[NoneType](), null,
+            UnsafePointer(to=data).bitcast[NoneType](), null, null))
+        if t != NAPI_UINT8_ARRAY:
+            raise Error("expected Uint8Array (type 1), got type " + String(t))
+        return data.bitcast[UInt8]()
+
     ## is_typedarray — check if a napi_value is a TypedArray
     @staticmethod
     fn is_typedarray(env: NapiEnv, val: NapiValue) raises -> Bool:
