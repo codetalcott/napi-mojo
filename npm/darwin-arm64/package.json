@@ -1,6 +1,6 @@
 {
   "name": "@napi-mojo/darwin-arm64",
-  "version": "0.2.2",
+  "version": "0.2.4",
   "description": "napi-mojo prebuilt binary for macOS arm64",
   "main": "index.node",
   "files": [
