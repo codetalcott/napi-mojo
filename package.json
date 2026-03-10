@@ -1,6 +1,6 @@
 {
   "name": "napi-mojo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Build Node.js native addons in Mojo — the Mojo equivalent of napi-rs",
   "main": "index.js",
   "types": "build/index.d.ts",
@@ -42,8 +42,8 @@
     "node-addon"
   ],
   "optionalDependencies": {
-    "@napi-mojo/darwin-arm64": "0.1.0",
-    "@napi-mojo/linux-x64": "0.1.0"
+    "@napi-mojo/darwin-arm64": "0.2.0",
+    "@napi-mojo/linux-x64": "0.2.0"
   },
   "devDependencies": {
     "jest": "^29.0.0"
