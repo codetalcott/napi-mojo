@@ -77,10 +77,11 @@ jobs:
 
       - name: Stage platform packages
         run: |
-          cp artifacts/darwin-arm64/build/index.node npm/darwin-arm64/index.node
-          cp artifacts/darwin-arm64/build/*.dylib npm/darwin-arm64/ 2>/dev/null || true
-          cp artifacts/linux-x64/build/index.node npm/linux-x64/index.node
-          cp artifacts/linux-x64/build/*.so npm/linux-x64/ 2>/dev/null || true
+          ls -R artifacts/
+          cp artifacts/darwin-arm64/index.node npm/darwin-arm64/index.node
+          cp artifacts/darwin-arm64/*.dylib npm/darwin-arm64/ 2>/dev/null || true
+          cp artifacts/linux-x64/index.node npm/linux-x64/index.node
+          cp artifacts/linux-x64/*.so npm/linux-x64/ 2>/dev/null || true
 
       - name: Sync versions from root package.json
         run: node scripts/sync-versions.mjs
