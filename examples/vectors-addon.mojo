@@ -5,7 +5,7 @@
 ## memory — zero copies. Automatically parallelizes across CPU cores for
 ## vectors > 4096 elements.
 ##
-## Build:  cd /path/to/mojo-node-api
+## Build:  cd /path/to/napi-mojo
 ##         mojo build --emit shared-lib -I src examples/vectors-addon.mojo -o build/vectors.dylib
 ##         mv build/vectors.dylib build/vectors.node   # macOS
 ## Run:    node examples/vectors.js

@@ -15,9 +15,23 @@ if (pkg) {
     module.exports = require(pkg);
   } catch {
     // Platform package not installed — fall back to local build (development)
-    module.exports = require(path.join(__dirname, 'build', 'index.node'));
+    try {
+      module.exports = require(path.join(__dirname, 'build', 'index.node'));
+    } catch {
+      throw new Error(
+        `napi-mojo: No prebuilt binary available for ${key}.\n` +
+        `Prebuilt binaries are not yet distributed via npm.\n` +
+        `To use napi-mojo, build from source: https://github.com/codetalcott/napi-mojo`
+      );
+    }
   }
 } else {
-  // Unsupported platform — try local build
-  module.exports = require(path.join(__dirname, 'build', 'index.node'));
+  try {
+    module.exports = require(path.join(__dirname, 'build', 'index.node'));
+  } catch {
+    throw new Error(
+      `napi-mojo: Unsupported platform ${key}.\n` +
+      `To use napi-mojo, build from source: https://github.com/codetalcott/napi-mojo`
+    );
+  }
 }

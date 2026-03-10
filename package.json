@@ -13,12 +13,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/codetalcott/mojo-node-api.git"
+    "url": "git+https://github.com/codetalcott/napi-mojo.git"
   },
   "bugs": {
-    "url": "https://github.com/codetalcott/mojo-node-api/issues"
+    "url": "https://github.com/codetalcott/napi-mojo/issues"
   },
-  "homepage": "https://github.com/codetalcott/mojo-node-api#readme",
+  "homepage": "https://github.com/codetalcott/napi-mojo#readme",
   "scripts": {
     "build": "bash build.sh && npm run generate:dts",
     "generate:dts": "node scripts/generate-dts.js",
