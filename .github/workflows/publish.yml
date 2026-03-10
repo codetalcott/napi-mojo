@@ -41,6 +41,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Bundle runtime libraries
+        run: pixi run bash scripts/bundle-runtime.sh
+
       - name: Upload binary and runtime libs
         uses: actions/upload-artifact@v4
         with:
