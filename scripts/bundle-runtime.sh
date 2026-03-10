@@ -23,6 +23,11 @@ if [ "$(uname -s)" = "Darwin" ]; then
     for dep in $MOJO_LIBS; do
         install_name_tool -change "@rpath/${dep}.dylib" "@loader_path/${dep}.dylib" build/index.node 2>/dev/null || true
     done
+    # Re-sign all modified binaries (required on macOS arm64)
+    codesign --force --sign - build/index.node
+    for lib in $MOJO_LIBS; do
+        codesign --force --sign - "build/${lib}.dylib"
+    done
 else
     for lib in $MOJO_LIBS; do
         cp "$PIXI_LIB/${lib}.so" build/
