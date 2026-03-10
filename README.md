@@ -12,6 +12,15 @@ addon.add(2, 3);         // 5
 addon.greet('world');     // "Hello, world!"
 ```
 
+## Project Status
+
+**Alpha** — napi-mojo is under active development and not yet proven in production. The API covers the full N-API surface (110 exported functions, 3 classes, 555 tests), but there has been no real-world usage beyond this repository's test suite and examples. Expect breaking changes as the project matures.
+
+- **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a complete, ergonomic framework for building Node.js native addons in Mojo. We're not there yet; reaching that bar requires exhaustive real-world testing, community feedback, and a stable Mojo language release.
+- **Mojo compatibility:** Tracks Mojo nightly (currently v26.2.x). As Mojo approaches v1.0, this project aims to stay current with each nightly release. Expect occasional build breakage during Mojo language transitions.
+- **What works:** Core N-API bindings, type wrappers, async work, classes, error handling, TypeScript definition generation, and a code generator for callback trampolines — all validated by the test suite.
+- **What's missing:** Production hardening, cross-platform prebuild distribution, performance benchmarking against napi-rs, and documentation beyond this README and the generated `.d.ts`.
+
 ## Features
 
 - **110 exported functions** and **3 classes** covering the full N-API surface
