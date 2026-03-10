@@ -78,13 +78,13 @@ jobs:
         run: node scripts/sync-versions.mjs
 
       - name: Publish @napi-mojo/darwin-arm64
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance || [[ "$?" == "1" && $(npm view @napi-mojo/darwin-arm64 version 2>/dev/null) == "$(node -p 'require("./package.json").version')" ]]
         working-directory: npm/darwin-arm64
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN2 }}
 
       - name: Publish @napi-mojo/linux-x64
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance || [[ "$?" == "1" && $(npm view @napi-mojo/linux-x64 version 2>/dev/null) == "$(node -p 'require("./package.json").version')" ]]
         working-directory: npm/linux-x64
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN2 }}
