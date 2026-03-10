@@ -1,10 +1,11 @@
 {
   "name": "@napi-mojo/linux-x64",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "napi-mojo prebuilt binary for Linux x64",
   "main": "index.node",
   "files": [
-    "index.node"
+    "index.node",
+    "*.so"
   ],
   "os": [
     "linux"

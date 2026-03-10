@@ -41,11 +41,14 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Upload binary
+      - name: Upload binary and runtime libs
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}
-          path: build/index.node
+          path: |
+            build/index.node
+            build/*.dylib
+            build/*.so
 
   publish:
     needs: build
@@ -71,8 +74,10 @@ jobs:
 
       - name: Stage platform packages
         run: |
-          cp artifacts/darwin-arm64/index.node npm/darwin-arm64/index.node
-          cp artifacts/linux-x64/index.node npm/linux-x64/index.node
+          cp artifacts/darwin-arm64/build/index.node npm/darwin-arm64/index.node
+          cp artifacts/darwin-arm64/build/*.dylib npm/darwin-arm64/ 2>/dev/null || true
+          cp artifacts/linux-x64/build/index.node npm/linux-x64/index.node
+          cp artifacts/linux-x64/build/*.so npm/linux-x64/ 2>/dev/null || true
 
       - name: Sync versions from root package.json
         run: node scripts/sync-versions.mjs
