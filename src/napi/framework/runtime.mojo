@@ -22,7 +22,17 @@ fn init_async_runtime() raises:
     Must be called before parallelize() or other async primitives.
     Safe to call multiple times — the runtime handles re-init internally.
     """
-    var lib = OwnedDLHandle()
+    # On Linux, Node.js loads .node addons with dlopen(RTLD_LOCAL), so
+    # dlsym(RTLD_DEFAULT, ...) via OwnedDLHandle() can't find symbols from
+    # the addon's linked libraries. Explicitly open libKGENCompilerRTShared
+    # by name — the linker finds it via the RUNPATH/rpath that `mojo build`
+    # embeds in the shared library. Try .dylib first (macOS), fall back to
+    # .so (Linux).
+    var lib: OwnedDLHandle
+    try:
+        lib = OwnedDLHandle("libKGENCompilerRTShared.dylib")
+    except:
+        lib = OwnedDLHandle("libKGENCompilerRTShared.so")
     var create_rt = lib.get_function[
         fn () -> OpaquePointer[MutAnyOrigin]
     ]("KGEN_CompilerRT_AsyncRT_CreateRuntime")
