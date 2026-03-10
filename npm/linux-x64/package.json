@@ -1,10 +1,21 @@
 {
   "name": "@napi-mojo/linux-x64",
   "version": "0.1.0",
-  "description": "Linux x64 binary for napi-mojo",
-  "os": ["linux"],
-  "cpu": ["x64"],
+  "description": "napi-mojo prebuilt binary for Linux x64",
   "main": "index.node",
-  "files": ["index.node"],
-  "license": "MIT"
+  "files": [
+    "index.node"
+  ],
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "license": "MIT",
+  "author": "Wm Talcott <wtalcott@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codetalcott/napi-mojo.git"
+  }
 }
