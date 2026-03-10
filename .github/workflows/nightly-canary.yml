@@ -11,10 +11,7 @@ concurrency:
 
 jobs:
   canary:
-    strategy:
-      matrix:
-        os: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' && fromJSON('["macos-latest", "ubuntu-latest"]') || fromJSON('["ubuntu-latest"]') }}
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -28,7 +25,7 @@ jobs:
           pixi-version: latest
 
       - name: Unpin Mojo version (use latest nightly)
-        run: sed -i.bak 's/mojo = "==.*/mojo = ">=0.26"/' pixi.toml
+        run: sed -i '' 's/mojo = "==.*/mojo = ">=0.26"/' pixi.toml
 
       - name: Install dependencies
         run: |
@@ -47,7 +44,7 @@ jobs:
         run: echo "version=$(pixi run mojo --version 2>/dev/null || echo 'unknown')" >> "$GITHUB_OUTPUT"
 
       - name: Create issue on failure
-        if: failure() && matrix.os == 'macos-latest'
+        if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

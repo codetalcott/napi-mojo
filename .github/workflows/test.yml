@@ -24,7 +24,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' && fromJSON('["macos-latest", "ubuntu-latest"]') || fromJSON('["ubuntu-latest"]') }}
+        os: ${{ github.event_name == 'pull_request' && fromJSON('["macos-latest", "ubuntu-latest"]') || fromJSON('["macos-latest"]') }}
     runs-on: ${{ matrix.os }}
 
     steps:
