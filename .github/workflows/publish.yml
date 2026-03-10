@@ -4,6 +4,10 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     strategy:
@@ -45,6 +49,7 @@ jobs:
         with:
           name: ${{ matrix.platform }}
           path: npm/${{ matrix.platform }}/index.node
+          retention-days: 3
 
   publish:
     needs: build

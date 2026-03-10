@@ -2,14 +2,18 @@ name: Nightly Canary
 
 on:
   schedule:
-    - cron: '0 8 * * 1,4'  # Monday and Thursday 8am UTC
+    - cron: '0 8 * * 1'  # Monday 8am UTC
   workflow_dispatch:  # Allow manual trigger
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   canary:
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' && fromJSON('["macos-latest", "ubuntu-latest"]') || fromJSON('["ubuntu-latest"]') }}
     runs-on: ${{ matrix.os }}
 
     steps:
