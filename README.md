@@ -17,7 +17,7 @@ addon.greet("world"); // "Hello, world!"
 
 **Alpha** — napi-mojo is under active development and not yet proven in
 production. The API covers the full N-API surface (110 exported functions, 3
-classes, 555 tests). Expect breaking changes as the project matures.
+classes, 561 tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
   complete, ergonomic framework for building Node.js native addons in Mojo.
@@ -62,24 +62,15 @@ classes, 555 tests). Expect breaking changes as the project matures.
 
 ## Installation
 
-```bash
-npm install napi-mojo
-```
-
-Prebuilt binaries are available for **macOS ARM64** and **Linux x64**. On
-supported platforms, `npm install` downloads only the binary for your platform —
-no compiler needed.
-
-### Build from source
-
-For unsupported platforms or development:
+> **Note:** Prebuilt binaries are not yet available. Currently you must build
+> from source.
 
 ```bash
 git clone https://github.com/codetalcott/napi-mojo.git
 cd napi-mojo
 npm install
 npm run build    # compiles Mojo → build/index.node + generates TypeScript defs
-npm test         # 555 tests
+npm test         # 561 tests
 ```
 
 **Prerequisites:** [Mojo nightly](https://docs.modular.com/magic/) (v26.2.x) via
@@ -190,7 +181,7 @@ build, works in any TypeScript-aware IDE.
 
 ```bash
 npm run build        # compile + generate TypeScript defs
-npm test             # run Jest test suite (555 tests)
+npm test             # run Jest test suite (561 tests)
 npx jest tests/basic.test.js   # run a single test file
 npm run generate:docs  # generate HTML API docs → docs/api/ (requires: npm i -D typedoc)
 ```
