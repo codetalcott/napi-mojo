@@ -26,7 +26,10 @@ struct JsPromise:
         self.value = value
         self.deferred = deferred
 
-    ## create — construct a new JavaScript Promise
+    ## create — construct a new JavaScript Promise (env-only)
+    ##
+    ## env-only: for async complete, TSFN, finalizer, and except-block callbacks
+    ## where NapiBindings is unavailable. Use create(b, env) in hot paths.
     ##
     ## Calls napi_create_promise. Returns a JsPromise holding both the promise
     ## napi_value (to return to JS) and the deferred handle (to settle it).

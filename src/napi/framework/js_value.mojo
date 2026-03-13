@@ -28,7 +28,10 @@ from napi.raw import (
 from napi.error import check_status
 from napi.framework.js_object import JsObject
 
-## js_typeof — return the napi_valuetype of a JavaScript value
+## js_typeof — return the napi_valuetype of a JavaScript value (env-only)
+##
+## env-only: for async complete, TSFN, finalizer, and except-block callbacks
+## where NapiBindings is unavailable. Use js_typeof(b, env, val) in hot paths.
 ##
 ## Calls napi_typeof and returns the result as a NapiValueType (Int32).
 ## Compare the result against the NAPI_TYPE_* constants from napi.types.

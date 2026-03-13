@@ -249,11 +249,7 @@ fn normalize_vector_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var inv_norm = 1.0 / norm
         for i in range(n):
             out.ptr[i] = v_ptr[i] * inv_norm
-        try:
-            return out.to_js(env)
-        except e:
-            out.ptr.free()  # to_js failed — free before re-raise
-            raise e^
+        return out.to_js(env)  # __del__ frees buffer if to_js() raises
     except:
         throw_js_error(env, "normalizeVector failed")
         return NapiValue()

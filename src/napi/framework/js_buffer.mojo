@@ -15,7 +15,10 @@ struct JsBuffer:
     fn __init__(out self, value: NapiValue):
         self.value = value
 
-    ## create — allocate a new Buffer with `length` bytes (uninitialized)
+    ## create — allocate a new Buffer with `length` bytes (env-only)
+    ##
+    ## env-only: for async complete, TSFN, finalizer, and except-block callbacks
+    ## where NapiBindings is unavailable. Use create(b, env, length) in hot paths.
     @staticmethod
     fn create(env: NapiEnv, length: UInt) raises -> JsBuffer:
         var data = OpaquePointer[MutAnyOrigin]()

@@ -48,3 +48,8 @@ test('Counter constructor without args throws', () => {
 test('Counter constructor with non-number throws', () => {
   expect(() => new addon.Counter('hello')).toThrow();
 });
+
+test('method on non-wrapped prototype object throws', () => {
+  const fake = Object.create(addon.Counter.prototype);
+  expect(() => fake.increment()).toThrow();
+});

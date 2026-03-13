@@ -31,7 +31,10 @@ struct JsObject:
     fn __init__(out self, value: NapiValue):
         self.value = value
 
-    ## create — construct a new empty JavaScript object {}
+    ## create — construct a new empty JavaScript object {} (env-only)
+    ##
+    ## env-only: for async complete, TSFN, finalizer, and except-block callbacks
+    ## where NapiBindings is unavailable. Use create(b, env) in hot paths.
     ##
     ## Calls napi_create_object and checks the status.
     @staticmethod

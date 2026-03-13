@@ -15,6 +15,10 @@ from napi.raw import (
 )
 from napi.error import check_status
 
+## env-only overloads below: for async complete, TSFN, finalizer, and
+## except-block callbacks where NapiBindings is unavailable.
+## Use the bindings overloads (b, env, val) in hot paths.
+
 fn js_coerce_to_bool(env: NapiEnv, val: NapiValue) raises -> NapiValue:
     """Equivalent to Boolean(value) in JavaScript."""
     var result = NapiValue()

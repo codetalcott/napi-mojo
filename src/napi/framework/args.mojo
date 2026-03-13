@@ -84,7 +84,10 @@ struct BindingsThisAndOne:
 ## CbArgs — typed helpers for extracting napi_callback arguments
 struct CbArgs:
 
-    ## get_one — extract exactly one callback argument
+    ## get_one — extract exactly one callback argument (env-only)
+    ##
+    ## env-only: for async complete, TSFN, finalizer, and except-block callbacks
+    ## where NapiBindings is unavailable. Use the bindings overload in hot paths.
     ##
     ## Calls napi_get_cb_info requesting 1 argument. Raises if the caller
     ## provided fewer than 1 argument.

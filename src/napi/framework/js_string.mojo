@@ -40,7 +40,10 @@ struct JsString:
     fn __init__(out self, value: NapiValue):
         self.value = value
 
-    ## create — construct a JsString from a Mojo String
+    ## create — construct a JsString from a Mojo String (env-only)
+    ##
+    ## env-only: for async complete, TSFN, finalizer, and except-block callbacks
+    ## where NapiBindings is unavailable. Use create(b, env, s) in hot paths.
     ##
     ## Calls napi_create_string_utf8 and checks the status. The input string `s`
     ## must remain alive for the duration of this call (it is borrowed, not copied).

@@ -366,6 +366,8 @@ fn unwrap_native[T: AnyType](env: NapiEnv, info: NapiValue) raises -> UnsafePoin
     var data = OpaquePointer[MutAnyOrigin]()
     check_status(raw_unwrap(env, this_val,
         UnsafePointer(to=data).bitcast[NoneType]()))
+    if not data:
+        raise Error("unwrap failed: NULL native pointer")
     return data.bitcast[T]()
 
 fn unwrap_native[T: AnyType](b: Bindings, env: NapiEnv, info: NapiValue) raises -> UnsafePointer[T, MutAnyOrigin]:
@@ -373,6 +375,8 @@ fn unwrap_native[T: AnyType](b: Bindings, env: NapiEnv, info: NapiValue) raises 
     var data = OpaquePointer[MutAnyOrigin]()
     check_status(raw_unwrap(b, env, this_val,
         UnsafePointer(to=data).bitcast[NoneType]()))
+    if not data:
+        raise Error("unwrap failed: NULL native pointer")
     return data.bitcast[T]()
 
 ## unwrap_native_from_this — unwrap using a pre-extracted this_val
@@ -384,4 +388,6 @@ fn unwrap_native_from_this[T: AnyType](b: Bindings, env: NapiEnv, this_val: Napi
     var data = OpaquePointer[MutAnyOrigin]()
     check_status(raw_unwrap(b, env, this_val,
         UnsafePointer(to=data).bitcast[NoneType]()))
+    if not data:
+        raise Error("unwrap failed: NULL native pointer")
     return data.bitcast[T]()
