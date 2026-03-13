@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (555 tests)
+npm test                              # run all Jest tests (556 tests)
 npm run test:gc                       # run GC finalizer tests (requires --expose-gc)
 npx jest tests/basic.test.js          # run a single test file
 node scripts/benchmark.mjs            # per-call overhead benchmark
@@ -29,7 +29,7 @@ N-API functions (`napi_create_string_utf8`, `napi_define_properties`, etc.) are 
 
 ### Cached NapiBindings (zero per-call dlsym)
 
-All 118 N-API function pointers are resolved once at module init via a single `OwnedDLHandle()` + 118 `dlsym` calls, stored in the `NapiBindings` struct (`src/napi/bindings.mojo`). The pointer is passed through `NapiPropertyDescriptor.data` to every callback. Each callback retrieves it via `CbArgs.get_bindings(env, info)` (1 bootstrap dlsym for `napi_get_cb_info`, then all subsequent calls use cached pointers). This eliminates the per-call `OwnedDLHandle()` + `dlsym` overhead that would otherwise occur on every N-API call.
+All 134 N-API function pointers are resolved once at module init via a single `OwnedDLHandle()` + 134 `dlsym` calls, stored in the `NapiBindings` struct (`src/napi/bindings.mojo`). The pointer is passed through `NapiPropertyDescriptor.data` to every callback. Each callback retrieves it via `CbArgs.get_bindings(env, info)` (1 bootstrap dlsym for `napi_get_cb_info`, then all subsequent calls use cached pointers). This eliminates the per-call `OwnedDLHandle()` + `dlsym` overhead that would otherwise occur on every N-API call.
 
 **Callbacks that DON'T use cached bindings** (must use old `OwnedDLHandle` path):
 
@@ -42,15 +42,16 @@ All 118 N-API function pointers are resolved once at module init via a single `O
 1. `mojo build --emit shared-lib` produces a `.dylib` renamed to `.node`
 2. Node.js calls `dlopen` on the `.node` file, then `dlsym("napi_register_module_v1")`
 3. Our `@export("napi_register_module_v1", ABI="C")` function is called with `(env, exports)`
-4. We allocate `NapiBindings`, resolve all 118 symbols, pass pointer through `ModuleBuilder`
+4. We allocate `NapiBindings`, resolve all 134 symbols, pass pointer through `ModuleBuilder`
 5. Each exported Mojo function acts as a `napi_callback`: `fn(NapiEnv, NapiValue) -> NapiValue`
 
 ### Module structure
 
 ```
-src/lib.mojo                             # entry point: callbacks + register_module
+src/lib.mojo                             # entry point: thin orchestrator calling src/addon/ register_* fns
+src/addon/*.mojo                         # 16 callback implementation files (primitives, collections, async_ops, class_counter, etc.)
 src/napi/types.mojo                      # NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiPropertyDescriptor, NapiValueType constants, TypedArray type constants, property attribute constants
-src/napi/bindings.mojo                   # NapiBindings struct (118 cached fn ptrs), init_bindings(), Bindings type alias
+src/napi/bindings.mojo                   # NapiBindings struct (134 cached fn ptrs + registry), init_bindings(), Bindings type alias
 src/napi/raw.mojo                        # OwnedDLHandle symbol resolution + bindings-accepting overloads
 src/napi/error.mojo                      # napi_status_name(), check_status(), throw_js_error(), throw_js_error_dynamic(), throw_js_type_error(), throw_js_range_error()
 src/napi/module.mojo                     # define_property(), register_method()
@@ -126,7 +127,7 @@ desc.method = UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 **Status checking**: Every N-API call returning `NapiStatus` must be immediately passed to `check_status()`. Errors now surface as readable names (e.g., `napi_string_expected`) via `napi_status_name()`.
 
-**String construction from bytes** (Mojo v26.2): Use `String(from_utf8: Span[Byte])` to build a Mojo String from a raw byte buffer — validates UTF-8 and handles all Unicode correctly. The old `chr()` byte-by-byte approach is ASCII-only and broken for multi-byte sequences.
+**String construction from bytes** (Mojo 0.26.3+): Use `String(from_utf8: Span[Byte])` to build a Mojo String from a raw byte buffer — validates UTF-8 and handles all Unicode correctly. The old `chr()` byte-by-byte approach is ASCII-only and broken for multi-byte sequences.
 
 **`StringLiteral` cannot be returned from runtime-branch functions** — it is parameterized on its compile-time value. Use `String` as the return type for any function that picks from multiple string literals at runtime (see `js_type_name`, `napi_status_name`).
 
@@ -136,7 +137,7 @@ desc.method = UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 **Handle scopes for loops**: When a loop creates many temporary `napi_value` handles (e.g., `mapArray`), wrap each iteration in `HandleScope.open(env)` / `hs.close(env)`. Values set on objects/arrays outside the scope survive closure. The result container (array/object) MUST be created outside the loop's handle scope. Mojo has no RAII — `close()` must be called explicitly.
 
-**Heap allocation** (Mojo v26.2): Use `alloc[T](count)` from `memory` module (NOT `UnsafePointer[T].alloc(count)` — that syntax was removed). The struct must implement `Movable` with `fn __moveinit__(out self, deinit take: Self)`. Free with `ptr.destroy_pointee()` then `ptr.free()`.
+**Heap allocation** (Mojo 0.26.3+): Use `alloc[T](count)` from `memory` module (NOT `UnsafePointer[T].alloc(count)` — that syntax was removed). The struct must implement `Movable` with `fn __moveinit__(out self, deinit take: Self)`. Free with `ptr.destroy_pointee()` then `ptr.free()`. For destructors use `fn __del__(deinit self)` — the `owned` keyword has been removed.
 
 **Async work callbacks**: The execute callback (`fn(NapiEnv, OpaquePointer[MutAnyOrigin])`) runs on a **worker thread** and MUST NOT call any N-API functions — only pure computation on the heap-allocated data struct. The complete callback (`fn(NapiEnv, NapiStatus, OpaquePointer[MutAnyOrigin])`) runs on the **main thread** and can safely call N-API functions. Both return `None` (not `NapiValue`). The same bitcast pattern works for extracting function pointers.
 

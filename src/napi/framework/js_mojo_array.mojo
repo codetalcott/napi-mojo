@@ -57,7 +57,7 @@ struct MojoFloat64Array(Movable):
         self.length = take.length
         self._transferred = take._transferred
 
-    fn __del__(owned self):
+    fn __del__(deinit self):
         if not self._transferred:
             self.ptr.free()
 
