@@ -17,7 +17,7 @@ from napi.error import throw_js_error, throw_js_type_error_dynamic
 from napi.framework.register import fn_ptr, ModuleBuilder, ClassBuilder
 from napi.framework.js_object import JsObject
 from napi.framework.js_array import JsArray
-from memory import alloc
+from std.memory import alloc
 from napi.framework.async_work import AsyncWork, AsyncWorkResult
 from napi.framework.convert import from_js_array_f64, to_js_array_f64
 from addon.user_fns import square_pure

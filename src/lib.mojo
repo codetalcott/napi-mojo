@@ -3,7 +3,7 @@
 ## Allocates NapiBindings, creates ModuleBuilder, then delegates all
 ## callback registration to per-feature addon modules.
 
-from memory import alloc
+from std.memory import alloc
 from napi.types import NapiEnv, NapiValue
 from napi.bindings import NapiBindings, Bindings, init_bindings
 from napi.raw import raw_create_error, raw_fatal_exception

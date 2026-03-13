@@ -1,7 +1,7 @@
 ## src/addon/misc_ops.mojo — exceptions, version info, error utils,
 ##                           detach/type-tag, property enumeration
 
-from memory import alloc
+from std.memory import alloc
 from napi.types import NapiEnv, NapiValue, NapiTypeTag
 from napi.bindings import Bindings
 from napi.error import throw_js_error, throw_js_syntax_error, check_status

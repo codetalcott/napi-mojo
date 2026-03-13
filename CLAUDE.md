@@ -222,7 +222,7 @@ tests/                                   # Jest tests — TDD outside-in
 
 ## Critical Mojo FFI rules
 
-**Imports** (2026 nightly): `from ffi import OwnedDLHandle` — the `sys.ffi` path is deprecated.
+**Imports** (2026 nightly, 0.26.3+): All stdlib imports require `std.` prefix: `from std.ffi import OwnedDLHandle`, `from std.memory import alloc`, `from std.collections import Optional`, `from std.algorithm import parallelize`. The old bare paths (`from ffi import`, `from memory import`, etc.) are deprecated.
 
 **Build flag**: `mojo build --emit shared-lib` — not `-shared`.
 

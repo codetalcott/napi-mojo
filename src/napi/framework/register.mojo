@@ -16,7 +16,7 @@
 ##   var inc_ref = counter_increment_fn
 ##   c.instance_method("increment", fn_ptr(inc_ref))
 
-from memory import alloc
+from std.memory import alloc
 from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor, NapiRef
 from napi.bindings import Bindings
 from napi.module import register_method, define_property
@@ -60,7 +60,7 @@ fn fn_ptr[T: AnyType](func: T) -> OpaquePointer[MutAnyOrigin]:
 ## ~90 individual napi_define_properties calls to 1 during module init.
 ## Maximum descriptors ModuleBuilder can hold before flush().
 ## Increase if a single module registers more than this many exports.
-alias MAX_DESCRIPTORS: Int = 128
+comptime MAX_DESCRIPTORS: Int = 128
 
 struct ModuleBuilder(Movable):
     var env: NapiEnv

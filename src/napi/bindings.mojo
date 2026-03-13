@@ -9,7 +9,7 @@
 ##   init_bindings(bindings)
 ##   # Store via napi_set_instance_data, retrieve via get_bindings()
 
-from ffi import OwnedDLHandle
+from std.ffi import OwnedDLHandle
 from napi.types import NapiEnv, NapiValue, NapiStatus, NapiAsyncContext, NapiCallbackScope
 
 struct NapiBindings(Movable):

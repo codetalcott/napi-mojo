@@ -1,6 +1,6 @@
 ## src/addon/class_counter.mojo — Counter class (constructor + methods + ClassRegistry)
 
-from memory import alloc
+from std.memory import alloc
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION
 from napi.bindings import NapiBindings, Bindings
 from napi.error import throw_js_error, throw_js_type_error, check_status

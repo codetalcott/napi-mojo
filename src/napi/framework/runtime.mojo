@@ -12,8 +12,8 @@
 ##   Rule of thumb: use parallelize_safe() for n >= 64 Float64 elements,
 ##   or n >= 128 Float32/Int32 elements; fall back to scalar for smaller arrays.
 
-from ffi import OwnedDLHandle
-from algorithm import parallelize
+from std.ffi import OwnedDLHandle
+from std.algorithm import parallelize
 
 
 fn init_async_runtime() raises:

@@ -16,7 +16,7 @@
 ## After to_js() is called, do NOT call arr.ptr.free() — GC owns the memory.
 ## If to_js() is never reached (error path), call arr.ptr.free() to avoid a leak.
 
-from memory import alloc
+from std.memory import alloc
 from napi.types import NapiEnv, NapiValue
 from napi.bindings import Bindings
 from napi.raw import raw_create_external_arraybuffer

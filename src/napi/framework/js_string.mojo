@@ -23,7 +23,7 @@
 ## from_napi_value uses a fast stack buffer for strings up to 4095 bytes
 ## and falls back to heap allocation for larger strings.
 
-from memory import alloc
+from std.memory import alloc
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING
 from napi.raw import raw_create_string_utf8, raw_get_value_string_utf8
 from napi.error import check_status

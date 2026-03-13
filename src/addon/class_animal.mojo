@@ -1,6 +1,6 @@
 ## src/addon/class_animal.mojo — Animal and Dog classes (with inheritance)
 
-from memory import alloc
+from std.memory import alloc
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION
 from napi.bindings import Bindings
 from napi.error import throw_js_error, throw_js_type_error, check_status

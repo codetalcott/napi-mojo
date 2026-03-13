@@ -12,7 +12,7 @@
 ## All raw_* functions are marked `raises` because OwnedDLHandle() can fail
 ## (e.g., symbol not found). Callers must handle or propagate the error.
 
-from ffi import OwnedDLHandle
+from std.ffi import OwnedDLHandle
 from napi.types import NapiEnv, NapiValue, NapiStatus, NapiAsyncContext, NapiCallbackScope
 from napi.bindings import NapiBindings, Bindings
 

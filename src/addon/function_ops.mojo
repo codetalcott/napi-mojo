@@ -1,6 +1,6 @@
 ## src/addon/function_ops.mojo — function creation, closures, varargs, named fns
 
-from memory import alloc
+from std.memory import alloc
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_NUMBER
 from napi.bindings import NapiBindings, Bindings
 from napi.error import throw_js_error, throw_js_error_dynamic, check_status

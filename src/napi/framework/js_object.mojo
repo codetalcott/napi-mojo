@@ -17,7 +17,7 @@
 ## set_property takes a StringLiteral (static lifetime), so no lifetime
 ## management is needed on the caller side.
 
-from collections import Optional
+from std.collections import Optional
 from napi.types import NapiEnv, NapiValue, NAPI_KEY_OWN_ONLY, NAPI_KEY_ENUMERABLE, NAPI_KEY_SKIP_SYMBOLS, NAPI_KEY_NUMBERS_TO_STRINGS
 from napi.bindings import Bindings
 from napi.raw import raw_create_object, raw_set_named_property, raw_get_named_property, raw_has_named_property, raw_get_property, raw_set_property, raw_has_property, raw_get_property_names, raw_get_all_property_names, raw_has_own_property, raw_delete_property, raw_instanceof, raw_object_freeze, raw_object_seal, raw_get_prototype

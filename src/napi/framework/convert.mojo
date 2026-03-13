@@ -73,7 +73,7 @@ struct JsF64(ToJsValue, FromJsValue, Copyable):
         self.val = copy.val
 
     fn __init__(out self, *, deinit take: Self):
-        self.val = take.val^
+        self.val = take.val
 
     fn to_js(self, env: NapiEnv) raises -> NapiValue:
         return JsNumber.create(env, self.val).value

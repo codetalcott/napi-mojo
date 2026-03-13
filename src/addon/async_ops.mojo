@@ -3,7 +3,7 @@
 ## Covers: resolveWith, rejectWith, asyncDouble, asyncTriple,
 ##         asyncProgress (with TSFN), cancelAsyncWork
 
-from memory import alloc
+from std.memory import alloc
 from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiThreadsafeFunction, NAPI_OK, NAPI_TSFN_BLOCKING, NAPI_TSFN_RELEASE
 from napi.bindings import Bindings
 from napi.error import throw_js_error, check_status

@@ -13,7 +13,7 @@ from napi.raw import (
     raw_get_value_bigint_int64, raw_get_value_bigint_uint64,
     raw_create_bigint_words, raw_get_value_bigint_words,
 )
-from memory import alloc
+from std.memory import alloc
 from napi.error import check_status
 
 struct JsBigInt:

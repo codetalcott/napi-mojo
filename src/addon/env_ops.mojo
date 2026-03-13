@@ -1,7 +1,7 @@
 ## src/addon/env_ops.mojo — instance data, cleanup hooks, UV event loop,
 ##                           coerce ops
 
-from memory import alloc
+from std.memory import alloc
 from napi.types import NapiEnv, NapiValue
 from napi.bindings import Bindings
 from napi.error import throw_js_error, check_status

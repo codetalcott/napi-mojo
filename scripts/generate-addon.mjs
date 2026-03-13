@@ -750,7 +750,7 @@ function main() {
   output.push('from napi.framework.js_object import JsObject');
   output.push('from napi.framework.js_array import JsArray');
   if (hasAsync || hasNPlusArgs) {
-    output.push('from memory import alloc');
+    output.push('from std.memory import alloc');
   }
   if (hasAsync) {
     output.push('from napi.framework.async_work import AsyncWork, AsyncWorkResult');

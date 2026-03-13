@@ -1,6 +1,6 @@
 ## src/addon/value_types.mojo — BigInt, Date, Symbol, and word-level BigInt ops
 
-from memory import alloc
+from std.memory import alloc
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_BIGINT
 from napi.bindings import Bindings
 from napi.error import throw_js_error, throw_js_error_dynamic, check_status

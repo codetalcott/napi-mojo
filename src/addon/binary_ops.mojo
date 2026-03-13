@@ -1,6 +1,6 @@
 ## src/addon/binary_ops.mojo — ArrayBuffer, Buffer, TypedArray, DataView callbacks
 
-from memory import alloc
+from std.memory import alloc
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_NUMBER, NAPI_INT8_ARRAY, NAPI_UINT8_ARRAY, NAPI_UINT8_CLAMPED_ARRAY, NAPI_INT16_ARRAY, NAPI_UINT16_ARRAY, NAPI_INT32_ARRAY, NAPI_UINT32_ARRAY, NAPI_FLOAT32_ARRAY, NAPI_FLOAT64_ARRAY
 from napi.bindings import Bindings
 from napi.error import throw_js_error, throw_js_type_error, throw_js_error_dynamic, check_status

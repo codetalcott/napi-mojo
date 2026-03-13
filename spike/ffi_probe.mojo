@@ -37,7 +37,7 @@
 ##
 ## Each step below builds on the previous.
 
-from ffi import OwnedDLHandle
+from std.ffi import OwnedDLHandle
 
 # ---------------------------------------------------------------------------
 # Opaque handle types
