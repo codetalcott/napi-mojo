@@ -43,4 +43,26 @@ for (const rel of platformPkgs) {
   console.log(`${rel} → ${version}`);
 }
 
+// Update package-lock.json
+const lockPath = join(root, 'package-lock.json');
+const lock = JSON.parse(readFileSync(lockPath, 'utf8'));
+lock.version = version;
+if (lock.packages?.['']) {
+  lock.packages[''].version = version;
+  if (lock.packages[''].optionalDependencies) {
+    for (const dep of Object.keys(lock.packages[''].optionalDependencies)) {
+      lock.packages[''].optionalDependencies[dep] = version;
+    }
+  }
+}
+// Update node_modules entries for optional platform packages
+for (const dep of Object.keys(rootPkg.optionalDependencies || {})) {
+  const key = `node_modules/${dep}`;
+  if (lock.packages?.[key]) {
+    lock.packages[key].version = version;
+  }
+}
+writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
+console.log(`package-lock.json → ${version}`);
+
 console.log(`\nAll packages synced to v${version}`);
