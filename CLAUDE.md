@@ -107,6 +107,12 @@ tests/                                   # Jest tests — TDD outside-in
 
 ## Critical Mojo FFI rules
 
+**`def` replaces `fn`** (dev2026032105+): `fn` keyword is no longer supported. All function/method declarations must use `def`. Example: `def my_func(arg: Int) -> Int:`. The code generator (`generate-addon.mjs`) and DTS generator (`generate-dts.js`) have been updated accordingly.
+
+**`@value` removed** (dev2026032105+): The `@value` decorator is no longer recognized. Structs must provide explicit `__init__`, `__moveinit__`, and copy constructors. Simple single-field wrapper structs (like `JsI32`, `JsBool`, `JsRaw`) now have explicit `__init__` methods.
+
+**Trait `...` body works** (dev2026032105+): Trait method bodies can now use `...` (ellipsis) instead of `raise Error("abstract")`. The `-> Self` return type issue with `...` is fixed. `Self(...)` also works reliably in static trait methods.
+
 **Imports** (2026 nightly, 0.26.3+): All stdlib imports require `std.` prefix: `from std.ffi import OwnedDLHandle`, `from std.memory import alloc`, `from std.collections import Optional`, `from std.algorithm import parallelize`. The old bare paths (`from ffi import`, `from memory import`, etc.) are deprecated.
 
 **Build flag**: `mojo build --emit shared-lib` — not `-shared`.

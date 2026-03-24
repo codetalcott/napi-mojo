@@ -12,7 +12,7 @@ from napi.framework.escapable_handle_scope import EscapableHandleScope
 from napi.framework.args import CbArgs
 from napi.framework.register import fn_ptr, ModuleBuilder
 
-fn test_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def test_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var obj = JsObject.create(b, env)
@@ -25,7 +25,7 @@ fn test_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "testRef failed")
         return NapiValue()
 
-fn test_ref_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def test_ref_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var obj = JsObject.create(b, env)
@@ -38,7 +38,7 @@ fn test_ref_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "testRefObject failed")
         return NapiValue()
 
-fn test_ref_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def test_ref_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -52,7 +52,7 @@ fn test_ref_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "testRefString requires one string argument")
         return NapiValue()
 
-fn build_in_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def build_in_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var esc = EscapableHandleScope.open(b, env)
@@ -66,7 +66,7 @@ fn build_in_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "buildInScope failed")
         return NapiValue()
 
-fn test_weak_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def test_weak_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -78,7 +78,7 @@ fn test_weak_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "testWeakRef failed")
         return NapiValue()
 
-fn register_refs(mut m: ModuleBuilder) raises:
+def register_refs(mut m: ModuleBuilder) raises:
     var test_ref_ref = test_ref_fn
     var test_ref_object_ref = test_ref_object_fn
     var test_ref_string_ref = test_ref_string_fn

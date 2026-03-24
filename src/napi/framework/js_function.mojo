@@ -22,11 +22,11 @@ struct JsFunction:
     ## The underlying napi_value handle. Valid within the current handle scope.
     var value: NapiValue
 
-    fn __init__(out self, value: NapiValue):
+    def __init__(out self, value: NapiValue):
         self.value = value
 
     ## call0 — call with no arguments, undefined as `this`
-    fn call0(self, env: NapiEnv) raises -> NapiValue:
+    def call0(self, env: NapiEnv) raises -> NapiValue:
         var recv: NapiValue = NapiValue()
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()
         check_status(raw_get_undefined(env, recv_ptr))
@@ -39,7 +39,7 @@ struct JsFunction:
     ## call1 — call with one argument, undefined as `this`
     ## bootstrap-safe: retained for TSFN call_js_cb which lacks an `info`
     ## parameter. Use call1(b, env, arg0) in all hot-path callbacks.
-    fn call1(self, env: NapiEnv, arg0: NapiValue) raises -> NapiValue:
+    def call1(self, env: NapiEnv, arg0: NapiValue) raises -> NapiValue:
         var recv: NapiValue = NapiValue()
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()
         check_status(raw_get_undefined(env, recv_ptr))
@@ -50,7 +50,7 @@ struct JsFunction:
         return result
 
     ## call2 — call with two arguments, undefined as `this`
-    fn call2(self, env: NapiEnv, arg0: NapiValue, arg1: NapiValue) raises -> NapiValue:
+    def call2(self, env: NapiEnv, arg0: NapiValue, arg1: NapiValue) raises -> NapiValue:
         var recv: NapiValue = NapiValue()
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()
         check_status(raw_get_undefined(env, recv_ptr))
@@ -65,7 +65,7 @@ struct JsFunction:
 
     ## create — create a new JavaScript function from a napi_callback
     @staticmethod
-    fn create(env: NapiEnv, name: StringLiteral,
+    def create(env: NapiEnv, name: StringLiteral,
               cb_ptr: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
         var result = NapiValue()
         var auto_length: UInt = ~UInt(0)
@@ -81,7 +81,7 @@ struct JsFunction:
     ##
     ## The data pointer is passed to the callback via napi_get_cb_info.
     @staticmethod
-    fn create_with_data(env: NapiEnv, name: StringLiteral,
+    def create_with_data(env: NapiEnv, name: StringLiteral,
                         cb_ptr: OpaquePointer[MutAnyOrigin],
                         data: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
         var result = NapiValue()
@@ -96,7 +96,7 @@ struct JsFunction:
 
     # --- Bindings-aware overloads ---
 
-    fn call0(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+    def call0(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         var recv: NapiValue = NapiValue()
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()
         check_status(raw_get_undefined(b, env, recv_ptr))
@@ -106,7 +106,7 @@ struct JsFunction:
         check_status(raw_call_function(b, env, recv, self.value, 0, null_argv, result_ptr))
         return result
 
-    fn call1(self, b: Bindings, env: NapiEnv, arg0: NapiValue) raises -> NapiValue:
+    def call1(self, b: Bindings, env: NapiEnv, arg0: NapiValue) raises -> NapiValue:
         var recv: NapiValue = NapiValue()
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()
         check_status(raw_get_undefined(b, env, recv_ptr))
@@ -116,7 +116,7 @@ struct JsFunction:
         check_status(raw_call_function(b, env, recv, self.value, 1, argv_ptr, result_ptr))
         return result
 
-    fn call2(self, b: Bindings, env: NapiEnv, arg0: NapiValue, arg1: NapiValue) raises -> NapiValue:
+    def call2(self, b: Bindings, env: NapiEnv, arg0: NapiValue, arg1: NapiValue) raises -> NapiValue:
         var recv: NapiValue = NapiValue()
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=recv).bitcast[NoneType]()
         check_status(raw_get_undefined(b, env, recv_ptr))
@@ -130,7 +130,7 @@ struct JsFunction:
         return result
 
     @staticmethod
-    fn create(b: Bindings, env: NapiEnv, name: StringLiteral,
+    def create(b: Bindings, env: NapiEnv, name: StringLiteral,
               cb_ptr: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
         var result = NapiValue()
         var auto_length: UInt = ~UInt(0)
@@ -143,7 +143,7 @@ struct JsFunction:
         return JsFunction(result)
 
     @staticmethod
-    fn create_with_data(b: Bindings, env: NapiEnv, name: StringLiteral,
+    def create_with_data(b: Bindings, env: NapiEnv, name: StringLiteral,
                         cb_ptr: OpaquePointer[MutAnyOrigin],
                         data: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
         var result = NapiValue()
@@ -168,7 +168,7 @@ struct JsFunction:
     ## name. The `length` Int parameter is the JavaScript arity, not the string
     ## byte-count.
     @staticmethod
-    fn create_named(env: NapiEnv, name: String, length: Int,
+    def create_named(env: NapiEnv, name: String, length: Int,
                     cb_ptr: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
         var result = NapiValue()
         var auto_length: UInt = ~UInt(0)
@@ -192,12 +192,12 @@ struct JsFunction:
         return JsFunction(result)
 
     @staticmethod
-    fn create_named(b: Bindings, env: NapiEnv, name: String, length: Int,
+    def create_named(b: Bindings, env: NapiEnv, name: String, length: Int,
                     cb_ptr: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
         return JsFunction.create_named(b, env, name, length, cb_ptr, OpaquePointer[MutAnyOrigin]())
 
     @staticmethod
-    fn create_named(b: Bindings, env: NapiEnv, name: String, length: Int,
+    def create_named(b: Bindings, env: NapiEnv, name: String, length: Int,
                     cb_ptr: OpaquePointer[MutAnyOrigin],
                     data_ptr: OpaquePointer[MutAnyOrigin]) raises -> JsFunction:
         var result = NapiValue()

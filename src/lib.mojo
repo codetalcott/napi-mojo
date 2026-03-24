@@ -26,7 +26,7 @@ from addon.async_context_ops import register_async_context
 from addon.convert_ops import register_convert
 
 @export("napi_register_module_v1", ABI="C")
-fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
+def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     # Allocate and initialize NapiBindings — resolves all N-API symbols
     # once via a single OwnedDLHandle. The pointer is passed as callback
     # data to every registered function so callbacks can retrieve it cheaply.

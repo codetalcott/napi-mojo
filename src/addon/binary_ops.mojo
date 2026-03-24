@@ -16,7 +16,7 @@ from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof
 from napi.framework.register import fn_ptr, ModuleBuilder
 
-fn create_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def create_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -30,7 +30,7 @@ fn create_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createArrayBuffer requires a number argument")
         return NapiValue()
 
-fn arraybuffer_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def arraybuffer_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -44,7 +44,7 @@ fn arraybuffer_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "arrayBufferLength requires an ArrayBuffer argument")
         return NapiValue()
 
-fn sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -62,7 +62,7 @@ fn sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "sumBuffer requires a Buffer argument")
         return NapiValue()
 
-fn create_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def create_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -76,7 +76,7 @@ fn create_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createBuffer requires a number argument")
         return NapiValue()
 
-fn create_buffer_copy_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def create_buffer_copy_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -89,7 +89,7 @@ fn create_buffer_copy_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createBufferCopy failed")
         return NapiValue()
 
-fn double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -107,7 +107,7 @@ fn double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "doubleFloat64Array requires a TypedArray argument")
         return NapiValue()
 
-fn create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var argc = CbArgs.argc(b, env, info)
@@ -149,7 +149,7 @@ fn create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createTypedArrayView failed")
         return NapiValue()
 
-fn get_typed_array_type_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_typed_array_type_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -163,7 +163,7 @@ fn get_typed_array_type_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getTypedArrayType failed")
         return NapiValue()
 
-fn get_typed_array_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_typed_array_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -177,7 +177,7 @@ fn get_typed_array_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getTypedArrayLength failed")
         return NapiValue()
 
-fn create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var argc = CbArgs.argc(b, env, info)
@@ -196,7 +196,7 @@ fn create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createDataView failed")
         return NapiValue()
 
-fn get_dataview_info_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_dataview_info_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -211,7 +211,7 @@ fn get_dataview_info_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getDataViewInfo failed")
         return NapiValue()
 
-fn is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -221,7 +221,7 @@ fn is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "isDataView failed")
         return NapiValue()
 
-fn register_binary(mut m: ModuleBuilder) raises:
+def register_binary(mut m: ModuleBuilder) raises:
     var create_arraybuffer_ref = create_arraybuffer_fn
     var arraybuffer_length_ref = arraybuffer_length_fn
     var sum_buffer_ref = sum_buffer_fn

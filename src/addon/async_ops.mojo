@@ -21,7 +21,7 @@ from napi.framework.register import fn_ptr, ModuleBuilder
 # resolveWith / rejectWith
 # ---------------------------------------------------------------------------
 
-fn resolve_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def resolve_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -32,7 +32,7 @@ fn resolve_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "resolveWith requires one argument")
         return NapiValue()
 
-fn reject_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def reject_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -57,23 +57,23 @@ struct AsyncDoubleData(Movable):
     var input: Float64
     var result: Float64
 
-    fn __init__(out self, input: Float64):
+    def __init__(out self, input: Float64):
         self.deferred = NapiDeferred()
         self.work = NapiAsyncWork()
         self.input = input
         self.result = 0.0
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.deferred = take.deferred
         self.work = take.work
         self.input = take.input
         self.result = take.result
 
-fn async_double_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
+def async_double_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[AsyncDoubleData]()
     ptr[].result = ptr[].input * 2.0
 
-fn async_double_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
+def async_double_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[AsyncDoubleData]()
     try:
         if status == NAPI_OK:
@@ -86,7 +86,7 @@ fn async_double_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[M
     ptr.destroy_pointee()
     ptr.free()
 
-fn async_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def async_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -116,23 +116,23 @@ struct AsyncTripleData(Movable):
     var input: Float64
     var result: Float64
 
-    fn __init__(out self, input: Float64):
+    def __init__(out self, input: Float64):
         self.deferred = NapiDeferred()
         self.work = NapiAsyncWork()
         self.input = input
         self.result = 0.0
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.deferred = take.deferred
         self.work = take.work
         self.input = take.input
         self.result = take.result
 
-fn async_triple_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
+def async_triple_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[AsyncTripleData]()
     ptr[].result = ptr[].input * 3.0
 
-fn async_triple_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
+def async_triple_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[AsyncTripleData]()
     try:
         if status == NAPI_OK:
@@ -145,7 +145,7 @@ fn async_triple_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[M
     ptr.destroy_pointee()
     ptr.free()
 
-fn async_triple_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def async_triple_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -176,7 +176,7 @@ struct AsyncProgressData(Movable):
     var count: Int
     var status: NapiStatus
 
-    fn __init__(out self, deferred: NapiDeferred, work: NapiAsyncWork,
+    def __init__(out self, deferred: NapiDeferred, work: NapiAsyncWork,
                 tsfn: NapiThreadsafeFunction, count: Int):
         self.deferred = deferred
         self.work = work
@@ -184,14 +184,14 @@ struct AsyncProgressData(Movable):
         self.count = count
         self.status = NAPI_OK
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.deferred = take.deferred
         self.work = take.work
         self.tsfn = take.tsfn
         self.count = take.count
         self.status = take.status
 
-fn progress_call_js_cb(
+def progress_call_js_cb(
     env: NapiEnv,
     js_callback: NapiValue,
     context: OpaquePointer[MutAnyOrigin],
@@ -211,7 +211,7 @@ fn progress_call_js_cb(
     except:
         pass
 
-fn progress_finalize_cb(
+def progress_finalize_cb(
     env: NapiEnv,
     finalize_data: OpaquePointer[MutAnyOrigin],
     finalize_hint: OpaquePointer[MutAnyOrigin],
@@ -235,7 +235,7 @@ fn progress_finalize_cb(
     ptr.destroy_pointee()
     ptr.free()
 
-fn async_progress_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
+def async_progress_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[AsyncProgressData]()
     var count = ptr[].count
     var tsfn = ptr[].tsfn
@@ -249,7 +249,7 @@ fn async_progress_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
             val_ptr.destroy_pointee()
             val_ptr.free()
 
-fn async_progress_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
+def async_progress_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[AsyncProgressData]()
     ptr[].status = status
     try:
@@ -257,7 +257,7 @@ fn async_progress_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer
     except:
         pass
 
-fn async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -310,18 +310,18 @@ struct CancelAsyncData(Movable):
     var deferred: NapiDeferred
     var work: NapiAsyncWork
 
-    fn __init__(out self, deferred: NapiDeferred):
+    def __init__(out self, deferred: NapiDeferred):
         self.deferred = deferred
         self.work = NapiAsyncWork()
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.deferred = take.deferred
         self.work = take.work
 
-fn cancel_async_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
+def cancel_async_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
     pass
 
-fn cancel_async_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
+def cancel_async_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[CancelAsyncData]()
     try:
         _ = raw_delete_async_work(env, ptr[].work)
@@ -340,7 +340,7 @@ fn cancel_async_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[M
     ptr.destroy_pointee()
     ptr.free()
 
-fn cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var p = JsPromise.create(b, env)
@@ -366,7 +366,7 @@ fn cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "cancelAsyncWork failed")
         return NapiValue()
 
-fn register_async(mut m: ModuleBuilder) raises:
+def register_async(mut m: ModuleBuilder) raises:
     var resolve_with_ref = resolve_with_fn
     var reject_with_ref = reject_with_fn
     var async_double_ref = async_double_fn

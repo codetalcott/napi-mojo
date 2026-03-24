@@ -17,20 +17,20 @@ struct ExternalData(Movable):
     var x: Float64
     var y: Float64
 
-    fn __init__(out self, x: Float64, y: Float64):
+    def __init__(out self, x: Float64, y: Float64):
         self.x = x
         self.y = y
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.x = take.x
         self.y = take.y
 
-fn external_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+def external_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[ExternalData]()
     ptr.destroy_pointee()
     ptr.free()
 
-fn create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -45,7 +45,7 @@ fn create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createExternal requires two number arguments")
         return NapiValue()
 
-fn get_external_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_external_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -64,7 +64,7 @@ fn get_external_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getExternalData failed")
         return NapiValue()
 
-fn is_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def is_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -74,7 +74,7 @@ fn is_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "isExternal requires one argument")
         return NapiValue()
 
-fn external_ab_finalize(
+def external_ab_finalize(
     env: NapiEnv,
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
@@ -82,7 +82,7 @@ fn external_ab_finalize(
     var ptr = data.bitcast[Byte]()
     ptr.free()
 
-fn create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -109,7 +109,7 @@ fn create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createExternalArrayBuffer failed")
         return NapiValue()
 
-fn noop_finalize(
+def noop_finalize(
     env: NapiEnv,
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
@@ -117,7 +117,7 @@ fn noop_finalize(
     var ptr = data.bitcast[Byte]()
     ptr.free()
 
-fn attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -135,7 +135,7 @@ fn attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "attachFinalizer failed")
         return NapiValue()
 
-fn register_externals(mut m: ModuleBuilder) raises:
+def register_externals(mut m: ModuleBuilder) raises:
     var create_external_ref = create_external_fn
     var get_external_data_ref = get_external_data_fn
     var is_external_ref = is_external_fn

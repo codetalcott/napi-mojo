@@ -38,8 +38,7 @@ from napi.error import throw_js_type_error_dynamic
 ## but those are not part of the trait (Mojo traits don't support overloads).
 ## Parametric helpers (to_js_array[T]) call the env-only trait method.
 trait ToJsValue:
-    fn to_js(self, env: NapiEnv) raises -> NapiValue:
-        raise Error("abstract")
+    def to_js(self, env: NapiEnv) raises -> NapiValue: ...
 
 
 ## FromJsValue — extract a Mojo value from a JavaScript NapiValue
@@ -50,12 +49,11 @@ trait ToJsValue:
 ## but those are not part of the trait (Mojo traits don't support overloads).
 trait FromJsValue:
     @staticmethod
-    fn from_js(env: NapiEnv, val: NapiValue) raises -> Self:
-        raise Error("abstract")
+    def from_js(env: NapiEnv, val: NapiValue) raises -> Self: ...
 
 
 ## _check_type — validate that a NapiValue has the expected type, throw TypeError if not
-fn _check_type(env: NapiEnv, val: NapiValue, expected: NapiValueType, expected_name: StringLiteral) raises:
+def _check_type(env: NapiEnv, val: NapiValue, expected: NapiValueType, expected_name: StringLiteral) raises:
     var actual = js_typeof(env, val)
     if actual != expected:
         throw_js_type_error_dynamic(env, "expected " + expected_name + ", got " + js_type_name(actual))
@@ -66,74 +64,78 @@ fn _check_type(env: NapiEnv, val: NapiValue, expected: NapiValueType, expected_n
 struct JsF64(ToJsValue, FromJsValue, Copyable):
     var val: Float64
 
-    fn __init__(out self, val: Float64):
+    def __init__(out self, val: Float64):
         self.val = val
 
-    fn __init__(out self, *, copy: Self):
+    def __init__(out self, *, copy: Self):
         self.val = copy.val
 
-    fn __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit take: Self):
         self.val = take.val
 
-    fn to_js(self, env: NapiEnv) raises -> NapiValue:
+    def to_js(self, env: NapiEnv) raises -> NapiValue:
         return JsNumber.create(env, self.val).value
 
-    fn to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+    def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         return JsNumber.create(b, env, self.val).value
 
     @staticmethod
-    fn from_js(env: NapiEnv, val: NapiValue) raises -> Self:
+    def from_js(env: NapiEnv, val: NapiValue) raises -> Self:
         _check_type(env, val, NAPI_TYPE_NUMBER, "number")
         var n: Float64 = JsNumber.from_napi_value(env, val)
         return JsF64(n)
 
     @staticmethod
-    fn from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
+    def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
         _check_type(env, val, NAPI_TYPE_NUMBER, "number")
         var n: Float64 = JsNumber.from_napi_value(b, env, val)
         return JsF64(n)
 
 
 ## JsI32 — Int32 ↔ JS number (int32)
-@value
 struct JsI32(ToJsValue, FromJsValue):
     var val: Int32
 
-    fn to_js(self, env: NapiEnv) raises -> NapiValue:
+    def __init__(out self, val: Int32):
+        self.val = val
+
+    def to_js(self, env: NapiEnv) raises -> NapiValue:
         return JsInt32.create(env, self.val).value
 
-    fn to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+    def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         return JsInt32.create(b, env, self.val).value
 
     @staticmethod
-    fn from_js(env: NapiEnv, val: NapiValue) raises -> Self:
+    def from_js(env: NapiEnv, val: NapiValue) raises -> Self:
         _check_type(env, val, NAPI_TYPE_NUMBER, "number")
         return JsI32(JsInt32.from_napi_value(env, val))
 
     @staticmethod
-    fn from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
+    def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
         _check_type(env, val, NAPI_TYPE_NUMBER, "number")
         return JsI32(JsInt32.from_napi_value(b, env, val))
 
 
 ## JsBool — Bool ↔ JS boolean
-@value
 struct JsBool(ToJsValue, FromJsValue):
     var val: Bool
 
-    fn to_js(self, env: NapiEnv) raises -> NapiValue:
+    def __init__(out self, val: Bool):
+        self.val = val
+
+    def to_js(self, env: NapiEnv) raises -> NapiValue:
         return JsBoolean.create(env, self.val).value
 
-    fn to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+    def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         return JsBoolean.create(b, env, self.val).value
 
     @staticmethod
-    fn from_js(env: NapiEnv, val: NapiValue) raises -> Self:
+    def from_js(env: NapiEnv, val: NapiValue) raises -> Self:
         _check_type(env, val, NAPI_TYPE_BOOLEAN, "boolean")
         return JsBool(JsBoolean.from_napi_value(env, val))
 
     @staticmethod
-    fn from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
+    def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
         _check_type(env, val, NAPI_TYPE_BOOLEAN, "boolean")
         return JsBool(JsBoolean.from_napi_value(b, env, val))
 
@@ -142,51 +144,53 @@ struct JsBool(ToJsValue, FromJsValue):
 struct JsStr(ToJsValue, FromJsValue, Copyable):
     var val: String
 
-    fn __init__(out self, val: String):
+    def __init__(out self, val: String):
         self.val = val
 
-    fn __init__(out self, *, copy: Self):
+    def __init__(out self, *, copy: Self):
         self.val = copy.val
 
-    fn __init__(out self, *, deinit take: Self):
+    def __init__(out self, *, deinit take: Self):
         self.val = take.val^
 
-    fn to_js(self, env: NapiEnv) raises -> NapiValue:
+    def to_js(self, env: NapiEnv) raises -> NapiValue:
         return JsString.create(env, self.val).value
 
-    fn to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+    def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         return JsString.create(b, env, self.val).value
 
     @staticmethod
-    fn from_js(env: NapiEnv, val: NapiValue) raises -> Self:
+    def from_js(env: NapiEnv, val: NapiValue) raises -> Self:
         _check_type(env, val, NAPI_TYPE_STRING, "string")
         var s: String = JsString.from_napi_value(env, val)
         return JsStr(s)
 
     @staticmethod
-    fn from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
+    def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
         _check_type(env, val, NAPI_TYPE_STRING, "string")
         var s: String = JsString.from_napi_value(b, env, val)
         return JsStr(s)
 
 
 ## JsRaw — NapiValue pass-through (no type checking)
-@value
 struct JsRaw(ToJsValue, FromJsValue):
     var val: NapiValue
 
-    fn to_js(self, env: NapiEnv) raises -> NapiValue:
+    def __init__(out self, val: NapiValue):
+        self.val = val
+
+    def to_js(self, env: NapiEnv) raises -> NapiValue:
         return self.val
 
-    fn to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+    def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         return self.val
 
     @staticmethod
-    fn from_js(env: NapiEnv, val: NapiValue) raises -> Self:
+    def from_js(env: NapiEnv, val: NapiValue) raises -> Self:
         return JsRaw(val)
 
     @staticmethod
-    fn from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
+    def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
         return JsRaw(val)
 
 
@@ -198,7 +202,7 @@ struct JsRaw(ToJsValue, FromJsValue):
 # ---------------------------------------------------------------------------
 
 ## to_js_array_f64 — convert List[Float64] to a JavaScript Array<number>
-fn to_js_array_f64(b: Bindings, env: NapiEnv, items: List[Float64]) raises -> NapiValue:
+def to_js_array_f64(b: Bindings, env: NapiEnv, items: List[Float64]) raises -> NapiValue:
     var arr = JsArray.create_with_length(b, env, UInt(len(items)))
     for i in range(len(items)):
         arr.set(b, env, UInt32(i), JsNumber.create(b, env, items[i]).value)
@@ -208,7 +212,7 @@ fn to_js_array_f64(b: Bindings, env: NapiEnv, items: List[Float64]) raises -> Na
 ##
 ## Raises TypeError if val is not an array. Each element is read as Float64
 ## via napi_get_value_double. Non-number elements produce 0 (N-API behavior).
-fn from_js_array_f64(b: Bindings, env: NapiEnv, val: NapiValue) raises -> List[Float64]:
+def from_js_array_f64(b: Bindings, env: NapiEnv, val: NapiValue) raises -> List[Float64]:
     if not js_is_array(b, env, val):
         throw_js_type_error_dynamic(env, "from_js_array_f64: expected array")
         raise Error("type mismatch")
@@ -220,7 +224,7 @@ fn from_js_array_f64(b: Bindings, env: NapiEnv, val: NapiValue) raises -> List[F
     return result^
 
 ## to_js_array_str — convert List[String] to a JavaScript Array<string>
-fn to_js_array_str(b: Bindings, env: NapiEnv, items: List[String]) raises -> NapiValue:
+def to_js_array_str(b: Bindings, env: NapiEnv, items: List[String]) raises -> NapiValue:
     var arr = JsArray.create_with_length(b, env, UInt(len(items)))
     for i in range(len(items)):
         arr.set(b, env, UInt32(i), JsString.create(b, env, items[i]).value)
@@ -230,7 +234,7 @@ fn to_js_array_str(b: Bindings, env: NapiEnv, items: List[String]) raises -> Nap
 ##
 ## Raises TypeError if val is not an array. Non-string elements become
 ## empty strings (N-API behavior when napi_get_value_string_utf8 fails).
-fn from_js_array_str(b: Bindings, env: NapiEnv, val: NapiValue) raises -> List[String]:
+def from_js_array_str(b: Bindings, env: NapiEnv, val: NapiValue) raises -> List[String]:
     if not js_is_array(b, env, val):
         throw_js_type_error_dynamic(env, "from_js_array_str: expected array")
         raise Error("type mismatch")
@@ -254,7 +258,7 @@ fn from_js_array_str(b: Bindings, env: NapiEnv, val: NapiValue) raises -> List[S
 ##
 ## Array create/set operations use cached Bindings; element conversion uses
 ## the env-only trait method (Mojo traits don't support overloads).
-fn to_js_array[T: ToJsValue & Copyable](
+def to_js_array[T: ToJsValue & Copyable](
     b: Bindings, env: NapiEnv, items: List[T]
 ) raises -> NapiValue:
     var arr = JsArray.create_with_length(b, env, UInt(len(items)))
@@ -266,7 +270,7 @@ fn to_js_array[T: ToJsValue & Copyable](
 ##
 ## Raises TypeError if val is not an array. Array get/length use cached Bindings;
 ## element conversion uses the env-only trait method.
-fn from_js_array[T: FromJsValue & Copyable](
+def from_js_array[T: FromJsValue & Copyable](
     b: Bindings, env: NapiEnv, val: NapiValue
 ) raises -> List[T]:
     if not js_is_array(b, env, val):

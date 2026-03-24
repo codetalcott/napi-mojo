@@ -18,7 +18,7 @@ from napi.framework.convert import (
 )
 
 ## sumJsArray — accepts a JS number array, returns sum of all elements
-fn sum_js_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def sum_js_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -32,7 +32,7 @@ fn sum_js_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 ## doubleArray — accepts a JS number array, returns new array with each element doubled
-fn double_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def double_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -46,7 +46,7 @@ fn double_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 ## joinStrings — accepts a JS string array and separator, returns joined string
-fn join_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def join_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -65,7 +65,7 @@ fn join_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 ## reverseStrings — accepts a JS string array, returns new array reversed
-fn reverse_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def reverse_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -80,7 +80,7 @@ fn reverse_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 ## genericDoubleArray — doubles each element using parametric to_js_array[JsF64]/from_js_array[JsF64]
-fn generic_double_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def generic_double_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var ba = CbArgs.get_bindings_and_one(env, info)
         var items = from_js_array[JsF64](ba.b, env, ba.arg0)
@@ -93,7 +93,7 @@ fn generic_double_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 ## genericReverseStrings — reverses a string array using parametric helpers
-fn generic_reverse_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def generic_reverse_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var ba = CbArgs.get_bindings_and_one(env, info)
         var items = from_js_array[JsStr](ba.b, env, ba.arg0)
@@ -107,7 +107,7 @@ fn generic_reverse_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 ## objectFromArrays — builds a JS object from parallel key/value arrays
-fn object_from_arrays_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def object_from_arrays_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var ba = CbArgs.get_bindings_and_two(env, info)
         var keys = from_js_array_str(ba.b, env, ba.arg0)
@@ -125,7 +125,7 @@ fn object_from_arrays_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 ## objectToArrays — extracts {keys, values} from a plain JS object
-fn object_to_arrays_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def object_to_arrays_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var ba = CbArgs.get_bindings_and_one(env, info)
         var key_arr_val = JsObject(ba.arg0).keys(ba.b, env)
@@ -147,7 +147,7 @@ fn object_to_arrays_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_type_error(env, "objectToArrays: expected a plain object")
         return NapiValue()
 
-fn register_convert(mut m: ModuleBuilder) raises:
+def register_convert(mut m: ModuleBuilder) raises:
     var sum_js_array_ref = sum_js_array_fn
     var double_array_ref = double_array_fn
     var join_strings_ref = join_strings_fn

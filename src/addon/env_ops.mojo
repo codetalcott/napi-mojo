@@ -16,7 +16,7 @@ from napi.framework.args import CbArgs
 from napi.framework.js_version import add_async_cleanup_hook, remove_async_cleanup_hook, get_uv_event_loop
 from napi.framework.register import fn_ptr, ModuleBuilder
 
-fn instance_data_finalize(
+def instance_data_finalize(
     env: NapiEnv,
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
@@ -25,7 +25,7 @@ fn instance_data_finalize(
     ptr.destroy_pointee()
     ptr.free()
 
-fn set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -43,7 +43,7 @@ fn set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "setInstanceData failed")
         return NapiValue()
 
-fn get_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var data = OpaquePointer[MutAnyOrigin]()
@@ -57,10 +57,10 @@ fn get_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getInstanceData failed")
         return NapiValue()
 
-fn cleanup_hook_noop(arg: OpaquePointer[MutAnyOrigin]):
+def cleanup_hook_noop(arg: OpaquePointer[MutAnyOrigin]):
     pass
 
-fn add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var hook_ref = cleanup_hook_noop
@@ -73,7 +73,7 @@ fn add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "addCleanupHook failed")
         return NapiValue()
 
-fn remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var hook_ref = cleanup_hook_noop
@@ -88,10 +88,10 @@ fn remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "removeCleanupHook failed")
         return NapiValue()
 
-fn async_cleanup_hook_noop(handle: OpaquePointer[MutAnyOrigin], arg: OpaquePointer[MutAnyOrigin]):
+def async_cleanup_hook_noop(handle: OpaquePointer[MutAnyOrigin], arg: OpaquePointer[MutAnyOrigin]):
     pass
 
-fn add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var hook_ref = async_cleanup_hook_noop
@@ -102,7 +102,7 @@ fn add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "addAsyncCleanupHook failed")
         return NapiValue()
 
-fn remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var hook_ref = async_cleanup_hook_noop
@@ -114,7 +114,7 @@ fn remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "removeAsyncCleanupHook failed")
         return NapiValue()
 
-fn get_uv_event_loop_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_uv_event_loop_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var loop_ptr = get_uv_event_loop(b, env)
@@ -123,7 +123,7 @@ fn get_uv_event_loop_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getUvEventLoop failed")
         return NapiValue()
 
-fn coerce_to_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def coerce_to_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -132,7 +132,7 @@ fn coerce_to_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "coerceToBool requires one argument")
         return NapiValue()
 
-fn coerce_to_number_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def coerce_to_number_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -140,7 +140,7 @@ fn coerce_to_number_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         return NapiValue()
 
-fn coerce_to_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def coerce_to_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -148,7 +148,7 @@ fn coerce_to_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         return NapiValue()
 
-fn coerce_to_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def coerce_to_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -156,7 +156,7 @@ fn coerce_to_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         return NapiValue()
 
-fn register_env(mut m: ModuleBuilder) raises:
+def register_env(mut m: ModuleBuilder) raises:
     var set_instance_data_ref = set_instance_data_fn
     var get_instance_data_ref = get_instance_data_fn
     var add_cleanup_hook_ref = add_cleanup_hook_fn

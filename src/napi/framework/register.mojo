@@ -44,7 +44,7 @@ from napi.error import check_status
 ##   fn_ptr(ref)
 ##
 ## The caller's var binding keeps the reference alive (ASAP safety).
-fn fn_ptr[T: AnyType](func: T) -> OpaquePointer[MutAnyOrigin]:
+def fn_ptr[T: AnyType](func: T) -> OpaquePointer[MutAnyOrigin]:
     return UnsafePointer(to=func).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 
@@ -70,7 +70,7 @@ struct ModuleBuilder(Movable):
     var _count: Int
     var _capacity: Int
 
-    fn __init__(out self, env: NapiEnv, exports: NapiValue):
+    def __init__(out self, env: NapiEnv, exports: NapiValue):
         self.env = env
         self.exports = exports
         self.data = OpaquePointer[MutAnyOrigin]()
@@ -78,7 +78,7 @@ struct ModuleBuilder(Movable):
         self._count = 0
         self._capacity = MAX_DESCRIPTORS
 
-    fn __init__(out self, env: NapiEnv, exports: NapiValue, data: OpaquePointer[MutAnyOrigin]):
+    def __init__(out self, env: NapiEnv, exports: NapiValue, data: OpaquePointer[MutAnyOrigin]):
         self.env = env
         self.exports = exports
         self.data = data
@@ -86,7 +86,7 @@ struct ModuleBuilder(Movable):
         self._count = 0
         self._capacity = MAX_DESCRIPTORS
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.env = take.env
         self.exports = take.exports
         self.data = take.data
@@ -97,7 +97,7 @@ struct ModuleBuilder(Movable):
     ## method — accumulate a named method descriptor (flushed by flush())
     ##
     ## Sets desc.data = self.data so the callback can retrieve bindings.
-    fn method(mut self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+    def method(mut self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
         if self._count >= self._capacity:
             raise Error("ModuleBuilder: descriptor capacity exceeded (max " + String(MAX_DESCRIPTORS) + ")")
         var desc = NapiPropertyDescriptor()
@@ -108,7 +108,7 @@ struct ModuleBuilder(Movable):
         (self._descs + self._count).init_pointee_move(desc^)
         self._count += 1
 
-    fn method(mut self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+    def method(mut self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
         if self._count >= self._capacity:
             raise Error("ModuleBuilder: descriptor capacity exceeded (max " + String(MAX_DESCRIPTORS) + ")")
         var desc = NapiPropertyDescriptor()
@@ -124,7 +124,7 @@ struct ModuleBuilder(Movable):
     ## Must be called exactly once after all method() calls. Frees the internal
     ## heap array. The fn_ref vars in the caller must remain alive until after
     ## flush() returns (ASAP safety — StringLiteral names are static lifetime).
-    fn flush(mut self) raises:
+    def flush(mut self) raises:
         if self._count == 0:
             self._descs.free()
             return
@@ -135,7 +135,7 @@ struct ModuleBuilder(Movable):
         self._descs.free()
         self._count = 0
 
-    fn flush(mut self, b: Bindings) raises:
+    def flush(mut self, b: Bindings) raises:
         if self._count == 0:
             self._descs.free()
             return
@@ -147,12 +147,12 @@ struct ModuleBuilder(Movable):
         self._count = 0
 
     ## class_def — define a class and attach it to exports, returns ClassBuilder
-    fn class_def(self, name: StringLiteral, ctor_ptr: OpaquePointer[MutAnyOrigin]) raises -> ClassBuilder:
+    def class_def(self, name: StringLiteral, ctor_ptr: OpaquePointer[MutAnyOrigin]) raises -> ClassBuilder:
         var ctor = define_class(self.env, name, ctor_ptr, self.data)
         JsObject(self.exports).set_property(self.env, name, ctor)
         return ClassBuilder(self.env, ctor, self.data)
 
-    fn class_def(self, b: Bindings, name: StringLiteral, ctor_ptr: OpaquePointer[MutAnyOrigin]) raises -> ClassBuilder:
+    def class_def(self, b: Bindings, name: StringLiteral, ctor_ptr: OpaquePointer[MutAnyOrigin]) raises -> ClassBuilder:
         var ctor = define_class(b, self.env, name, ctor_ptr, self.data)
         JsObject(self.exports).set_property(self.env, name, ctor)
         return ClassBuilder(self.env, ctor, self.data)
@@ -168,18 +168,18 @@ struct ClassBuilder:
     var ctor: NapiValue
     var data: OpaquePointer[MutAnyOrigin]
 
-    fn __init__(out self, env: NapiEnv, ctor: NapiValue):
+    def __init__(out self, env: NapiEnv, ctor: NapiValue):
         self.env = env
         self.ctor = ctor
         self.data = OpaquePointer[MutAnyOrigin]()
 
-    fn __init__(out self, env: NapiEnv, ctor: NapiValue, data: OpaquePointer[MutAnyOrigin]):
+    def __init__(out self, env: NapiEnv, ctor: NapiValue, data: OpaquePointer[MutAnyOrigin]):
         self.env = env
         self.ctor = ctor
         self.data = data
 
     ## instance_method — add an instance method to the class prototype
-    fn instance_method(self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+    def instance_method(self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
         var proto = _get_prototype(self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
@@ -188,7 +188,7 @@ struct ClassBuilder:
         desc.attributes = 0
         define_property(self.env, proto, desc)
 
-    fn instance_method(self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+    def instance_method(self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
@@ -198,7 +198,7 @@ struct ClassBuilder:
         define_property(b, self.env, proto, desc)
 
     ## getter — add a read-only getter to the class prototype
-    fn getter(self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+    def getter(self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
         var proto = _get_prototype(self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
@@ -207,7 +207,7 @@ struct ClassBuilder:
         desc.attributes = 0
         define_property(self.env, proto, desc)
 
-    fn getter(self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+    def getter(self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
@@ -217,7 +217,7 @@ struct ClassBuilder:
         define_property(b, self.env, proto, desc)
 
     ## getter_setter — add a getter+setter pair to the class prototype
-    fn getter_setter(
+    def getter_setter(
         self,
         name: StringLiteral,
         get_ptr: OpaquePointer[MutAnyOrigin],
@@ -232,7 +232,7 @@ struct ClassBuilder:
         desc.attributes = 0
         define_property(self.env, proto, desc)
 
-    fn getter_setter(
+    def getter_setter(
         self,
         b: Bindings,
         name: StringLiteral,
@@ -249,7 +249,7 @@ struct ClassBuilder:
         define_property(b, self.env, proto, desc)
 
     ## static_method — add a static method to the constructor
-    fn static_method(self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+    def static_method(self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
         desc.method = ptr
@@ -257,7 +257,7 @@ struct ClassBuilder:
         desc.attributes = 0
         define_property(self.env, self.ctor, desc)
 
-    fn static_method(self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+    def static_method(self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
         desc.method = ptr
@@ -266,7 +266,7 @@ struct ClassBuilder:
         define_property(b, self.env, self.ctor, desc)
 
     ## static_getter — add a read-only static getter to the constructor
-    fn static_getter(self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+    def static_getter(self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
         desc.getter = ptr
@@ -274,7 +274,7 @@ struct ClassBuilder:
         desc.attributes = 0
         define_property(self.env, self.ctor, desc)
 
-    fn static_getter(self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
+    def static_getter(self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
         desc.getter = ptr
@@ -283,7 +283,7 @@ struct ClassBuilder:
         define_property(b, self.env, self.ctor, desc)
 
     ## static_getter_setter — add a static getter+setter pair to the constructor
-    fn static_getter_setter(
+    def static_getter_setter(
         self,
         name: StringLiteral,
         get_ptr: OpaquePointer[MutAnyOrigin],
@@ -297,7 +297,7 @@ struct ClassBuilder:
         desc.attributes = 0
         define_property(self.env, self.ctor, desc)
 
-    fn static_getter_setter(
+    def static_getter_setter(
         self,
         b: Bindings,
         name: StringLiteral,
@@ -313,10 +313,10 @@ struct ClassBuilder:
         define_property(b, self.env, self.ctor, desc)
 
     ## inherits — set up prototype chain inheritance from parent class
-    fn inherits(self, parent: ClassBuilder) raises:
+    def inherits(self, parent: ClassBuilder) raises:
         set_class_prototype(self.env, self.ctor, parent.ctor)
 
-    fn inherits(self, b: Bindings, parent: ClassBuilder) raises:
+    def inherits(self, b: Bindings, parent: ClassBuilder) raises:
         set_class_prototype(b, self.env, self.ctor, parent.ctor)
 
 
@@ -330,12 +330,12 @@ struct ClassEntry(Movable):
     var name_len: Int
     var ctor_ref: NapiRef
 
-    fn __init__(out self):
+    def __init__(out self):
         self.name_ptr = OpaquePointer[ImmutAnyOrigin]()
         self.name_len = 0
         self.ctor_ref = NapiRef()
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.name_ptr = take.name_ptr
         self.name_len = take.name_len
         self.ctor_ref = take.ctor_ref
@@ -358,16 +358,16 @@ struct ClassRegistry(Movable):
     var _entries: UnsafePointer[ClassEntry, MutAnyOrigin]
     var _count: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self._entries = alloc[ClassEntry](16)
         self._count = 0
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self._entries = take._entries
         self._count = take._count
 
     ## register — store a strong NapiRef to a constructor, keyed by name
-    fn register(mut self, b: Bindings, env: NapiEnv, name: StringLiteral, ctor: NapiValue) raises:
+    def register(mut self, b: Bindings, env: NapiEnv, name: StringLiteral, ctor: NapiValue) raises:
         if self._count >= 16:
             raise Error("ClassRegistry: capacity exceeded (max 16 classes)")
         var entry = ClassEntry()
@@ -381,7 +381,7 @@ struct ClassRegistry(Movable):
     ##
     ## Looks up the constructor by byte-comparing the StringLiteral name,
     ## then calls napi_new_instance. Raises if the class is not registered.
-    fn new_instance(
+    def new_instance(
         self,
         b: Bindings,
         env: NapiEnv,

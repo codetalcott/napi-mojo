@@ -18,20 +18,20 @@ struct CounterData(Movable):
     var count: Float64
     var initial: Float64
 
-    fn __init__(out self, initial: Float64):
+    def __init__(out self, initial: Float64):
         self.count = initial
         self.initial = initial
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.count = take.count
         self.initial = take.initial
 
-fn counter_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+def counter_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[CounterData]()
     ptr.destroy_pointee()
     ptr.free()
 
-fn counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var this_val = CbArgs.get_this(b, env, info)
@@ -58,7 +58,7 @@ fn counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Counter constructor failed")
         return NapiValue()
 
-fn counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
         var ptr = unwrap_native_from_this[CounterData](a.b, env, a.this_val)
@@ -67,7 +67,7 @@ fn counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Counter.value getter failed")
         return NapiValue()
 
-fn counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_this_and_one(env, info)
         var t = js_typeof(a.b, env, a.arg0)
@@ -82,7 +82,7 @@ fn counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Counter.value setter failed")
         return NapiValue()
 
-fn counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
         var ptr = unwrap_native_from_this[CounterData](a.b, env, a.this_val)
@@ -92,7 +92,7 @@ fn counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Counter.increment failed")
         return NapiValue()
 
-fn counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
         var ptr = unwrap_native_from_this[CounterData](a.b, env, a.this_val)
@@ -102,7 +102,7 @@ fn counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Counter.reset failed")
         return NapiValue()
 
-fn counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var this_val = CbArgs.get_this(b, env, info)
@@ -116,7 +116,7 @@ fn counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Counter.isCounter failed")
         return NapiValue()
 
-fn counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var this_val = CbArgs.get_this(b, env, info)
@@ -139,7 +139,7 @@ fn counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Counter.fromValue failed")
         return NapiValue()
 
-fn register_counter(mut m: ModuleBuilder, b: Bindings) raises:
+def register_counter(mut m: ModuleBuilder, b: Bindings) raises:
     var counter_constructor_ref = counter_constructor_fn
     var counter_get_value_ref = counter_get_value_fn
     var counter_set_value_ref = counter_set_value_fn

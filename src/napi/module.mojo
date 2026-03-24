@@ -21,7 +21,7 @@ from napi.error import check_status
 ##
 ## Safety invariant: `desc.utf8name` must point to a string that remains alive
 ## for the duration of this call. Use a named `var` binding in the caller.
-fn define_property(
+def define_property(
     env: NapiEnv,
     exports: NapiValue,
     desc: NapiPropertyDescriptor,
@@ -44,7 +44,7 @@ fn define_property(
 ##                 var fn_ref = my_fn
 ##                 register_method(env, exports, "myFn",
 ##                     UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
-fn register_method(
+def register_method(
     env: NapiEnv,
     exports: NapiValue,
     name: StringLiteral,
@@ -58,7 +58,7 @@ fn register_method(
 
 # --- Bindings-aware overloads ---
 
-fn define_property(
+def define_property(
     b: Bindings,
     env: NapiEnv,
     exports: NapiValue,
@@ -68,7 +68,7 @@ fn define_property(
     var status = raw_define_properties(b, env, exports, 1, p)
     check_status(status)
 
-fn register_method(
+def register_method(
     b: Bindings,
     env: NapiEnv,
     exports: NapiValue,

@@ -19,21 +19,21 @@ from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof, js_type_name
 from napi.framework.register import fn_ptr, ModuleBuilder
 
-fn hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         return JsString.create_literal(b, env, "Hello from Mojo!").value
     except:
         return NapiValue()
 
-fn create_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def create_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         return JsObject.create(b, env).value
     except:
         return NapiValue()
 
-fn make_greeting_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def make_greeting_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var obj = JsObject.create(b, env)
@@ -43,7 +43,7 @@ fn make_greeting_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         return NapiValue()
 
-fn greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -57,7 +57,7 @@ fn greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "greet requires one string argument")
         return NapiValue()
 
-fn add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -68,7 +68,7 @@ fn add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "add requires two number arguments")
         return NapiValue()
 
-fn is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -78,21 +78,21 @@ fn is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "isPositive requires one number argument")
         return NapiValue()
 
-fn get_null_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_null_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         return JsNull.create(b, env).value
     except:
         return NapiValue()
 
-fn get_undefined_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_undefined_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         return JsUndefined.create(b, env).value
     except:
         return NapiValue()
 
-fn add_ints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def add_ints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -108,7 +108,7 @@ fn add_ints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "addInts requires two number arguments")
         return NapiValue()
 
-fn bitwise_or_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def bitwise_or_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -124,7 +124,7 @@ fn bitwise_or_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "bitwiseOr requires two number arguments")
         return NapiValue()
 
-fn throw_type_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def throw_type_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         throw_js_type_error(b, env, "wrong type")
@@ -132,7 +132,7 @@ fn throw_type_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_type_error(env, "wrong type")
     return NapiValue()
 
-fn throw_range_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def throw_range_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         throw_js_range_error(b, env, "out of range")
@@ -140,7 +140,7 @@ fn throw_range_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_range_error(env, "out of range")
     return NapiValue()
 
-fn add_ints_strict_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def add_ints_strict_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -157,7 +157,7 @@ fn add_ints_strict_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_type_error(env, "addIntsStrict requires two number arguments")
         return NapiValue()
 
-fn register_primitives(mut m: ModuleBuilder) raises:
+def register_primitives(mut m: ModuleBuilder) raises:
     var hello_ref = hello_fn
     var create_object_ref = create_object_fn
     var make_greeting_ref = make_greeting_fn

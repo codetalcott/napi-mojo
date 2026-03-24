@@ -37,7 +37,7 @@ struct JsString:
     ## The underlying napi_value handle. Valid within the current handle scope.
     var value: NapiValue
 
-    fn __init__(out self, value: NapiValue):
+    def __init__(out self, value: NapiValue):
         self.value = value
 
     ## create — construct a JsString from a Mojo String (env-only)
@@ -48,7 +48,7 @@ struct JsString:
     ## Calls napi_create_string_utf8 and checks the status. The input string `s`
     ## must remain alive for the duration of this call (it is borrowed, not copied).
     @staticmethod
-    fn create(env: NapiEnv, s: String) raises -> JsString:
+    def create(env: NapiEnv, s: String) raises -> JsString:
         var result: NapiValue = NapiValue()
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
@@ -57,7 +57,7 @@ struct JsString:
         return JsString(result)
 
     @staticmethod
-    fn create(b: Bindings, env: NapiEnv, s: String) raises -> JsString:
+    def create(b: Bindings, env: NapiEnv, s: String) raises -> JsString:
         var result: NapiValue = NapiValue()
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
@@ -70,7 +70,7 @@ struct JsString:
     ## Uses the literal's static (.rodata) pointer directly — no heap allocation.
     ## Preferred over create() when the string content is known at compile time.
     @staticmethod
-    fn create_literal(env: NapiEnv, s: StringLiteral) raises -> JsString:
+    def create_literal(env: NapiEnv, s: StringLiteral) raises -> JsString:
         var result: NapiValue = NapiValue()
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
@@ -79,7 +79,7 @@ struct JsString:
         return JsString(result)
 
     @staticmethod
-    fn create_literal(b: Bindings, env: NapiEnv, s: StringLiteral) raises -> JsString:
+    def create_literal(b: Bindings, env: NapiEnv, s: StringLiteral) raises -> JsString:
         var result: NapiValue = NapiValue()
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
@@ -96,7 +96,7 @@ struct JsString:
     ##
     ## The NapiValue must hold a JS string; raises otherwise.
     @staticmethod
-    fn from_napi_value(env: NapiEnv, val: NapiValue) raises -> String:
+    def from_napi_value(env: NapiEnv, val: NapiValue) raises -> String:
         # Optimistic single-pass: read into a 256-byte stack buffer.
         # If actual < 255, the full string fit — return immediately.
         var buf = InlineArray[UInt8, 256](fill=0)
@@ -138,7 +138,7 @@ struct JsString:
                 raise e^
 
     @staticmethod
-    fn from_napi_value(b: Bindings, env: NapiEnv, val: NapiValue) raises -> String:
+    def from_napi_value(b: Bindings, env: NapiEnv, val: NapiValue) raises -> String:
         # Optimistic single-pass: read into a 256-byte stack buffer.
         var buf = InlineArray[UInt8, 256](fill=0)
         var actual: UInt = 0
@@ -183,12 +183,12 @@ struct JsString:
     ## Extracts the first argument via CbArgs.get_one, then delegates to
     ## from_napi_value to read it. Raises on any N-API failure.
     @staticmethod
-    fn read_arg_0(env: NapiEnv, info: NapiValue) raises -> String:
+    def read_arg_0(env: NapiEnv, info: NapiValue) raises -> String:
         var arg0 = CbArgs.get_one(env, info)
         return JsString.from_napi_value(env, arg0)
 
     @staticmethod
-    fn read_arg_0(b: Bindings, env: NapiEnv, info: NapiValue) raises -> String:
+    def read_arg_0(b: Bindings, env: NapiEnv, info: NapiValue) raises -> String:
         var arg0 = CbArgs.get_one(b, env, info)
         return JsString.from_napi_value(b, env, arg0)
 
@@ -197,13 +197,13 @@ struct JsString:
 ## If val is already a JS string, reads it directly via from_napi_value.
 ## Otherwise coerces via napi_coerce_to_string (equivalent to String(val)
 ## in JavaScript) then reads the result. Throws TypeError on Symbol values.
-fn js_to_string(env: NapiEnv, val: NapiValue) raises -> String:
+def js_to_string(env: NapiEnv, val: NapiValue) raises -> String:
     if js_typeof(env, val) == NAPI_TYPE_STRING:
         return JsString.from_napi_value(env, val)
     var coerced = js_coerce_to_string(env, val)
     return JsString.from_napi_value(env, coerced)
 
-fn js_to_string(b: Bindings, env: NapiEnv, val: NapiValue) raises -> String:
+def js_to_string(b: Bindings, env: NapiEnv, val: NapiValue) raises -> String:
     if js_typeof(b, env, val) == NAPI_TYPE_STRING:
         return JsString.from_napi_value(b, env, val)
     var coerced = js_coerce_to_string(b, env, val)

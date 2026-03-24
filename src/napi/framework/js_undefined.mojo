@@ -18,7 +18,7 @@ struct JsUndefined:
     ## The underlying napi_value handle (the undefined singleton).
     var value: NapiValue
 
-    fn __init__(out self, value: NapiValue):
+    def __init__(out self, value: NapiValue):
         self.value = value
 
     ## create — return the JavaScript undefined singleton
@@ -26,7 +26,7 @@ struct JsUndefined:
     ## Calls napi_get_undefined and checks the status.
 
     @staticmethod
-    fn create(b: Bindings, env: NapiEnv) raises -> JsUndefined:
+    def create(b: Bindings, env: NapiEnv) raises -> JsUndefined:
         var result: NapiValue = NapiValue()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
         var status = raw_get_undefined(b, env, result_ptr)

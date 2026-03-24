@@ -22,27 +22,27 @@ from napi.bindings import Bindings
 struct HandleScope:
     var scope: NapiHandleScope
 
-    fn __init__(out self, scope: NapiHandleScope):
+    def __init__(out self, scope: NapiHandleScope):
         self.scope = scope
 
     ## open — create a new handle scope
     @staticmethod
-    fn open(env: NapiEnv) raises -> HandleScope:
+    def open(env: NapiEnv) raises -> HandleScope:
         var scope: NapiHandleScope = NapiHandleScope()
         var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=scope).bitcast[NoneType]()
         check_status(raw_open_handle_scope(env, scope_ptr))
         return HandleScope(scope)
 
     @staticmethod
-    fn open(b: Bindings, env: NapiEnv) raises -> HandleScope:
+    def open(b: Bindings, env: NapiEnv) raises -> HandleScope:
         var scope: NapiHandleScope = NapiHandleScope()
         var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=scope).bitcast[NoneType]()
         check_status(raw_open_handle_scope(b, env, scope_ptr))
         return HandleScope(scope)
 
     ## close — destroy this handle scope, releasing all handles within it
-    fn close(self, env: NapiEnv) raises:
+    def close(self, env: NapiEnv) raises:
         check_status(raw_close_handle_scope(env, self.scope))
 
-    fn close(self, b: Bindings, env: NapiEnv) raises:
+    def close(self, b: Bindings, env: NapiEnv) raises:
         check_status(raw_close_handle_scope(b, env, self.scope))

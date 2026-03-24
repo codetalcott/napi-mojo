@@ -20,7 +20,7 @@ from napi.raw import raw_throw_error, raw_throw_type_error, raw_throw_range_erro
 # check_status() error messages are immediately actionable without looking
 # up the napi_status enum.
 # ---------------------------------------------------------------------------
-fn napi_status_name(status: NapiStatus) -> String:
+def napi_status_name(status: NapiStatus) -> String:
     if status == 0:  return "napi_ok"
     if status == 1:  return "napi_invalid_arg"
     if status == 2:  return "napi_object_expected"
@@ -57,10 +57,10 @@ struct NapiError:
     ## The raw napi_status code that caused the error.
     var status: NapiStatus
 
-    fn __init__(out self, status: NapiStatus):
+    def __init__(out self, status: NapiStatus):
         self.status = status
 
-    fn __str__(self) -> String:
+    def __str__(self) -> String:
         return "NapiError: " + napi_status_name(self.status)
 
 # ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ struct NapiError:
 #   var status = raw_create_string_utf8(env, str_ptr, len, result_ptr)
 #   check_status(status)
 # ---------------------------------------------------------------------------
-fn check_status(status: NapiStatus) raises:
+def check_status(status: NapiStatus) raises:
     if status != NAPI_OK:
         raise Error(napi_status_name(status))
 
@@ -92,7 +92,7 @@ fn check_status(status: NapiStatus) raises:
 #   throw_js_error(env, "expected a string argument")
 #   return NapiValue()
 # ---------------------------------------------------------------------------
-fn throw_js_error(env: NapiEnv, msg: StringLiteral):
+def throw_js_error(env: NapiEnv, msg: StringLiteral):
     try:
         var null_code = OpaquePointer[ImmutAnyOrigin]()
         var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
@@ -116,7 +116,7 @@ fn throw_js_error(env: NapiEnv, msg: StringLiteral):
 #   throw_js_error_dynamic(env, "expected string but got " + type_name)
 #   return NapiValue()
 # ---------------------------------------------------------------------------
-fn throw_js_error_dynamic(env: NapiEnv, msg: String):
+def throw_js_error_dynamic(env: NapiEnv, msg: String):
     try:
         var msg_copy = msg   # owns the heap String bytes
         var null_code = OpaquePointer[ImmutAnyOrigin]()
@@ -129,7 +129,7 @@ fn throw_js_error_dynamic(env: NapiEnv, msg: String):
 # ---------------------------------------------------------------------------
 # throw_js_type_error — set a pending JavaScript TypeError exception
 # ---------------------------------------------------------------------------
-fn throw_js_type_error(env: NapiEnv, msg: StringLiteral):
+def throw_js_type_error(env: NapiEnv, msg: StringLiteral):
     try:
         var null_code = OpaquePointer[ImmutAnyOrigin]()
         var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
@@ -137,7 +137,7 @@ fn throw_js_type_error(env: NapiEnv, msg: StringLiteral):
     except:
         pass
 
-fn throw_js_type_error_dynamic(env: NapiEnv, msg: String):
+def throw_js_type_error_dynamic(env: NapiEnv, msg: String):
     try:
         var msg_copy = msg
         var null_code = OpaquePointer[ImmutAnyOrigin]()
@@ -150,7 +150,7 @@ fn throw_js_type_error_dynamic(env: NapiEnv, msg: String):
 # ---------------------------------------------------------------------------
 # throw_js_range_error — set a pending JavaScript RangeError exception
 # ---------------------------------------------------------------------------
-fn throw_js_range_error(env: NapiEnv, msg: StringLiteral):
+def throw_js_range_error(env: NapiEnv, msg: StringLiteral):
     try:
         var null_code = OpaquePointer[ImmutAnyOrigin]()
         var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
@@ -158,7 +158,7 @@ fn throw_js_range_error(env: NapiEnv, msg: StringLiteral):
     except:
         pass
 
-fn throw_js_range_error_dynamic(env: NapiEnv, msg: String):
+def throw_js_range_error_dynamic(env: NapiEnv, msg: String):
     try:
         var msg_copy = msg
         var null_code = OpaquePointer[ImmutAnyOrigin]()
@@ -170,36 +170,36 @@ fn throw_js_range_error_dynamic(env: NapiEnv, msg: String):
 
 # --- Bindings-aware overloads (no OwnedDLHandle, no raises) ---
 
-fn throw_js_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
+def throw_js_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
     var null_code = OpaquePointer[ImmutAnyOrigin]()
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
     _ = raw_throw_error(b, env, null_code, msg_ptr)
 
-fn throw_js_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
+def throw_js_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin]()
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
     _ = raw_throw_error(b, env, null_code, msg_ptr)
     _ = msg_copy^
 
-fn throw_js_type_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
+def throw_js_type_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
     var null_code = OpaquePointer[ImmutAnyOrigin]()
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
     _ = raw_throw_type_error(b, env, null_code, msg_ptr)
 
-fn throw_js_type_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
+def throw_js_type_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin]()
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
     _ = raw_throw_type_error(b, env, null_code, msg_ptr)
     _ = msg_copy^
 
-fn throw_js_range_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
+def throw_js_range_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
     var null_code = OpaquePointer[ImmutAnyOrigin]()
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
     _ = raw_throw_range_error(b, env, null_code, msg_ptr)
 
-fn throw_js_range_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
+def throw_js_range_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin]()
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
@@ -211,7 +211,7 @@ fn throw_js_range_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
 #
 # Uses node_api_throw_syntax_error (node_api_ prefix, N-API v9).
 # ---------------------------------------------------------------------------
-fn throw_js_syntax_error(env: NapiEnv, msg: StringLiteral):
+def throw_js_syntax_error(env: NapiEnv, msg: StringLiteral):
     try:
         var null_code = OpaquePointer[ImmutAnyOrigin]()
         var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
@@ -219,7 +219,7 @@ fn throw_js_syntax_error(env: NapiEnv, msg: StringLiteral):
     except:
         pass
 
-fn throw_js_syntax_error_dynamic(env: NapiEnv, msg: String):
+def throw_js_syntax_error_dynamic(env: NapiEnv, msg: String):
     try:
         var msg_copy = msg
         var null_code = OpaquePointer[ImmutAnyOrigin]()
@@ -229,12 +229,12 @@ fn throw_js_syntax_error_dynamic(env: NapiEnv, msg: String):
     except:
         pass
 
-fn throw_js_syntax_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
+def throw_js_syntax_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
     var null_code = OpaquePointer[ImmutAnyOrigin]()
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
     _ = raw_throw_syntax_error(b, env, null_code, msg_ptr)
 
-fn throw_js_syntax_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
+def throw_js_syntax_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin]()
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()

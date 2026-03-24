@@ -17,11 +17,11 @@ struct AnimalData(Movable):
     var name_ptr: OpaquePointer[MutAnyOrigin]
     var name_len: UInt
 
-    fn __init__(out self, name_ptr: OpaquePointer[MutAnyOrigin], name_len: UInt):
+    def __init__(out self, name_ptr: OpaquePointer[MutAnyOrigin], name_len: UInt):
         self.name_ptr = name_ptr
         self.name_len = name_len
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.name_ptr = take.name_ptr
         self.name_len = take.name_len
 
@@ -31,33 +31,33 @@ struct DogData(Movable):
     var breed_ptr: OpaquePointer[MutAnyOrigin]
     var breed_len: UInt
 
-    fn __init__(out self, name_ptr: OpaquePointer[MutAnyOrigin], name_len: UInt,
+    def __init__(out self, name_ptr: OpaquePointer[MutAnyOrigin], name_len: UInt,
                 breed_ptr: OpaquePointer[MutAnyOrigin], breed_len: UInt):
         self.name_ptr = name_ptr
         self.name_len = name_len
         self.breed_ptr = breed_ptr
         self.breed_len = breed_len
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.name_ptr = take.name_ptr
         self.name_len = take.name_len
         self.breed_ptr = take.breed_ptr
         self.breed_len = take.breed_len
 
-fn animal_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+def animal_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[AnimalData]()
     ptr[].name_ptr.bitcast[Byte]().free()
     ptr.destroy_pointee()
     ptr.free()
 
-fn dog_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+def dog_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[DogData]()
     ptr[].name_ptr.bitcast[Byte]().free()
     ptr[].breed_ptr.bitcast[Byte]().free()
     ptr.destroy_pointee()
     ptr.free()
 
-fn animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var this_val = CbArgs.get_this(b, env, info)
@@ -93,7 +93,7 @@ fn animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Animal constructor failed")
         return NapiValue()
 
-fn animal_get_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def animal_get_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
         var ptr = unwrap_native_from_this[AnimalData](a.b, env, a.this_val)
@@ -105,7 +105,7 @@ fn animal_get_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Animal.name getter failed")
         return NapiValue()
 
-fn animal_speak_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def animal_speak_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
         var ptr = unwrap_native_from_this[AnimalData](a.b, env, a.this_val)
@@ -118,7 +118,7 @@ fn animal_speak_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Animal.speak failed")
         return NapiValue()
 
-fn animal_is_animal_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def animal_is_animal_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var this_val = CbArgs.get_this(b, env, info)
@@ -132,7 +132,7 @@ fn animal_is_animal_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Animal.isAnimal failed")
         return NapiValue()
 
-fn dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var this_val = CbArgs.get_this(b, env, info)
@@ -182,7 +182,7 @@ fn dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Dog constructor failed")
         return NapiValue()
 
-fn dog_get_breed_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def dog_get_breed_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
         var ptr = unwrap_native_from_this[DogData](a.b, env, a.this_val)
@@ -194,7 +194,7 @@ fn dog_get_breed_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Dog.breed getter failed")
         return NapiValue()
 
-fn register_animal(mut m: ModuleBuilder) raises:
+def register_animal(mut m: ModuleBuilder) raises:
     var animal_constructor_ref = animal_constructor_fn
     var animal_get_name_ref = animal_get_name_fn
     var animal_speak_ref = animal_speak_fn

@@ -16,22 +16,22 @@ struct AdderCapture(Movable):
     var n: Float64
     var b_raw: OpaquePointer[MutAnyOrigin]
 
-    fn __init__(out self, n: Float64, b: Bindings):
+    def __init__(out self, n: Float64, b: Bindings):
         self.n = n
         self.b_raw = b.bitcast[NoneType]()
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.n = take.n
         self.b_raw = take.b_raw
 
-fn inner_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def inner_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         return JsString.create_literal(b, env, "hello from callback").value
     except:
         return NapiValue()
 
-fn create_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def create_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var cb_ref = inner_callback_fn
@@ -42,7 +42,7 @@ fn create_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createCallback failed")
         return NapiValue()
 
-fn inner_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def inner_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var raw_data = CbArgs.get_data(env, info)
         var cap = raw_data.bitcast[AdderCapture]()
@@ -54,7 +54,7 @@ fn inner_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "adder callback failed")
         return NapiValue()
 
-fn create_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def create_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -70,7 +70,7 @@ fn create_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createAdder requires one number argument")
         return NapiValue()
 
-fn sum_args_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def sum_args_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var count = CbArgs.argc(b, env, info)
@@ -92,7 +92,7 @@ fn sum_args_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "sumArgs failed")
         return NapiValue()
 
-fn get_global_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_global_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         return js_get_global(b, env).value
@@ -100,7 +100,7 @@ fn get_global_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getGlobal failed")
         return NapiValue()
 
-fn create_named_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def create_named_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var cb_ref = inner_callback_fn
@@ -111,7 +111,7 @@ fn create_named_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createNamedFn failed")
         return NapiValue()
 
-fn new_counter_from_registry_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def new_counter_from_registry_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -122,7 +122,7 @@ fn new_counter_from_registry_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "newCounterFromRegistry failed")
         return NapiValue()
 
-fn register_functions(mut m: ModuleBuilder) raises:
+def register_functions(mut m: ModuleBuilder) raises:
     var sum_args_ref = sum_args_fn
     var create_callback_ref = create_callback_fn
     var create_adder_ref = create_adder_fn

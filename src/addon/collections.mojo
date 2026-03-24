@@ -20,7 +20,7 @@ from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof, js_type_name, js_is_array, js_strict_equals
 from napi.framework.register import fn_ptr, ModuleBuilder
 
-fn sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -39,7 +39,7 @@ fn sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "sumArray requires one array argument")
         return NapiValue()
 
-fn get_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -57,7 +57,7 @@ fn get_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getProperty requires (object, string)")
         return NapiValue()
 
-fn call_function_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def call_function_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -71,7 +71,7 @@ fn call_function_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "callFunction requires (function, arg)")
         return NapiValue()
 
-fn map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -104,7 +104,7 @@ fn map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "mapArray requires (array, function)")
         return NapiValue()
 
-fn get_keys_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_keys_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -118,7 +118,7 @@ fn get_keys_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getKeys requires one object argument")
         return NapiValue()
 
-fn has_own_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def has_own_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -133,7 +133,7 @@ fn has_own_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "hasOwn requires (object, key)")
         return NapiValue()
 
-fn delete_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def delete_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -148,7 +148,7 @@ fn delete_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "deleteProperty requires (object, key)")
         return NapiValue()
 
-fn array_has_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def array_has_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -163,7 +163,7 @@ fn array_has_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "arrayHasElement requires (array, index)")
         return NapiValue()
 
-fn array_delete_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def array_delete_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -178,7 +178,7 @@ fn array_delete_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "arrayDeleteElement requires (array, index)")
         return NapiValue()
 
-fn get_prototype_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_prototype_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -192,7 +192,7 @@ fn get_prototype_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getPrototype requires one object argument")
         return NapiValue()
 
-fn strict_equals_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def strict_equals_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -202,7 +202,7 @@ fn strict_equals_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "strictEquals requires two arguments")
         return NapiValue()
 
-fn is_instance_of_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def is_instance_of_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -217,7 +217,7 @@ fn is_instance_of_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "isInstanceOf requires (value, constructor)")
         return NapiValue()
 
-fn freeze_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def freeze_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -232,7 +232,7 @@ fn freeze_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "freezeObject requires one object argument")
         return NapiValue()
 
-fn seal_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def seal_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -247,7 +247,7 @@ fn seal_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "sealObject requires one object argument")
         return NapiValue()
 
-fn set_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def set_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var argc = CbArgs.argc(b, env, info)
@@ -263,7 +263,7 @@ fn set_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "setPropertyByKey failed")
         return NapiValue()
 
-fn has_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def has_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -273,7 +273,7 @@ fn has_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "hasPropertyByKey failed")
         return NapiValue()
 
-fn register_collections(mut m: ModuleBuilder) raises:
+def register_collections(mut m: ModuleBuilder) raises:
     var sum_array_ref = sum_array_fn
     var get_property_ref = get_property_fn
     var call_function_ref = call_function_fn

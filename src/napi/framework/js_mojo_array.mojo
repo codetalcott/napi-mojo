@@ -24,7 +24,7 @@ from napi.error import check_status
 from napi.framework.js_typedarray import JsTypedArray
 
 
-fn _mojo_float64_finalizer(
+def _mojo_float64_finalizer(
     env: NapiEnv,
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
@@ -47,22 +47,22 @@ struct MojoFloat64Array(Movable):
     var length: Int
     var _transferred: Bool
 
-    fn __init__(out self, length: Int):
+    def __init__(out self, length: Int):
         self.ptr = alloc[Float64](length)
         self.length = length
         self._transferred = False
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.ptr = take.ptr
         self.length = take.length
         self._transferred = take._transferred
 
-    fn __del__(deinit self):
+    def __del__(deinit self):
         if not self._transferred:
             self.ptr.free()
 
     ## to_js — transfer ownership to JS as a Float64Array (with cached bindings)
-    fn to_js(mut self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+    def to_js(mut self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         """Wrap buffer as Float64Array (zero-copy). GC finalizer owns memory after this."""
         var byte_len = UInt(self.length * 8)  # Float64 = 8 bytes
         var fin_ref = _mojo_float64_finalizer
@@ -78,7 +78,7 @@ struct MojoFloat64Array(Movable):
         return JsTypedArray.create_float64(b, env, ab, 0, UInt(self.length)).value
 
     ## to_js — transfer ownership to JS as a Float64Array (env-only overload)
-    fn to_js(mut self, env: NapiEnv) raises -> NapiValue:
+    def to_js(mut self, env: NapiEnv) raises -> NapiValue:
         """Wrap buffer as Float64Array (zero-copy). GC finalizer owns memory after this."""
         var byte_len = UInt(self.length * 8)
         var fin_ref = _mojo_float64_finalizer

@@ -17,7 +17,7 @@ from napi.framework.register import fn_ptr, ModuleBuilder
 ## Creates a temporary async context, calls fn(arg) inside it, destroys the
 ## context, returns the result. Demonstrates that napi_make_callback correctly
 ## propagates AsyncLocalStorage context.
-fn make_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def make_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -34,7 +34,7 @@ fn make_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 ## makeCallback0(fn) — call fn() via napi_make_callback (no arguments)
-fn make_callback0_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def make_callback0_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -49,7 +49,7 @@ fn make_callback0_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 ## makeCallback2(fn, a, b) — call fn(a, b) via napi_make_callback
-fn make_callback2_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def make_callback2_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_three(b, env, info)
@@ -67,7 +67,7 @@ fn make_callback2_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 ## makeCallbackScope(fn, arg) — open a CallbackScope, call fn(arg), close scope
-fn make_callback_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def make_callback_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -85,7 +85,7 @@ fn make_callback_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "makeCallbackScope failed")
         return NapiValue()
 
-fn register_async_context(mut m: ModuleBuilder) raises:
+def register_async_context(mut m: ModuleBuilder) raises:
     var make_callback_ref = make_callback_fn
     var make_callback0_ref = make_callback0_fn
     var make_callback2_ref = make_callback2_fn

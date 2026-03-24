@@ -18,7 +18,7 @@ from napi.framework.js_exception import js_throw, js_get_and_clear_last_exceptio
 from napi.framework.js_version import get_napi_version, get_node_version_ptr
 from napi.framework.register import fn_ptr, ModuleBuilder
 
-fn throw_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def throw_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -27,7 +27,7 @@ fn throw_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         pass
     return NapiValue()
 
-fn catch_and_return_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def catch_and_return_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -37,7 +37,7 @@ fn catch_and_return_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         return NapiValue()
 
-fn get_napi_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_napi_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var ver = get_napi_version(b, env)
@@ -46,7 +46,7 @@ fn get_napi_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getNapiVersion failed")
         return NapiValue()
 
-fn get_node_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_node_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var ver = get_node_version_ptr(b, env)
@@ -59,7 +59,7 @@ fn get_node_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getNodeVersion failed")
         return NapiValue()
 
-fn is_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def is_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -68,7 +68,7 @@ fn is_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "isError requires one argument")
         return NapiValue()
 
-fn adjust_external_memory_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def adjust_external_memory_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -79,7 +79,7 @@ fn adjust_external_memory_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "adjustExternalMemory failed")
         return NapiValue()
 
-fn run_script_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def run_script_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -88,7 +88,7 @@ fn run_script_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "runScript failed")
         return NapiValue()
 
-fn throw_syntax_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def throw_syntax_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         throw_js_syntax_error(b, env, "test syntax error")
@@ -96,7 +96,7 @@ fn throw_syntax_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "throwSyntaxError failed")
     return NapiValue()
 
-fn is_detached_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def is_detached_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -105,7 +105,7 @@ fn is_detached_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "isDetachedArrayBuffer failed")
         return NapiValue()
 
-fn detach_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def detach_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -116,7 +116,7 @@ fn detach_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "detachArrayBuffer failed")
         return NapiValue()
 
-fn type_tag_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def type_tag_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var argc = CbArgs.argc(b, env, info)
@@ -134,7 +134,7 @@ fn type_tag_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "typeTagObject failed")
         return NapiValue()
 
-fn check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var argc = CbArgs.argc(b, env, info)
@@ -154,7 +154,7 @@ fn check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "checkObjectTypeTag failed")
         return NapiValue()
 
-fn get_all_property_names_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_all_property_names_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var argc: UInt = 4
@@ -171,7 +171,7 @@ fn get_all_property_names_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getAllPropertyNames failed")
         return NapiValue()
 
-fn get_error_message_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_error_message_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -181,7 +181,7 @@ fn get_error_message_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getErrorMessage failed")
         return NapiValue()
 
-fn get_error_stack_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_error_stack_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -191,7 +191,7 @@ fn get_error_stack_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getErrorStack failed")
         return NapiValue()
 
-fn get_opt_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_opt_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -203,7 +203,7 @@ fn get_opt_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getOptValue failed")
         return NapiValue()
 
-fn to_js_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def to_js_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -213,7 +213,7 @@ fn to_js_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "toJsString failed")
         return NapiValue()
 
-fn register_misc(mut m: ModuleBuilder) raises:
+def register_misc(mut m: ModuleBuilder) raises:
     var throw_value_ref = throw_value_fn
     var catch_and_return_ref = catch_and_return_fn
     var get_napi_version_ref = get_napi_version_fn

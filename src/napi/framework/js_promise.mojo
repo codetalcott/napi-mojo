@@ -22,7 +22,7 @@ struct JsPromise:
     var value: NapiValue       # the promise — return this to JavaScript
     var deferred: NapiDeferred # used once to resolve or reject
 
-    fn __init__(out self, value: NapiValue, deferred: NapiDeferred):
+    def __init__(out self, value: NapiValue, deferred: NapiDeferred):
         self.value = value
         self.deferred = deferred
 
@@ -34,7 +34,7 @@ struct JsPromise:
     ## Calls napi_create_promise. Returns a JsPromise holding both the promise
     ## napi_value (to return to JS) and the deferred handle (to settle it).
     @staticmethod
-    fn create(env: NapiEnv) raises -> JsPromise:
+    def create(env: NapiEnv) raises -> JsPromise:
         var deferred = NapiDeferred()
         var promise = NapiValue()
         var deferred_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=deferred).bitcast[NoneType]()
@@ -46,7 +46,7 @@ struct JsPromise:
     ## resolve — resolve the promise with a value
     ##
     ## Calls napi_resolve_deferred. After this, the deferred is consumed.
-    fn resolve(self, env: NapiEnv, resolution: NapiValue) raises:
+    def resolve(self, env: NapiEnv, resolution: NapiValue) raises:
         var status = raw_resolve_deferred(env, self.deferred, resolution)
         check_status(status)
 
@@ -54,14 +54,14 @@ struct JsPromise:
     ##
     ## Calls napi_reject_deferred. After this, the deferred is consumed.
     ## Typically `rejection` should be a JavaScript Error object.
-    fn reject(self, env: NapiEnv, rejection: NapiValue) raises:
+    def reject(self, env: NapiEnv, rejection: NapiValue) raises:
         var status = raw_reject_deferred(env, self.deferred, rejection)
         check_status(status)
 
     # --- Bindings-aware overloads ---
 
     @staticmethod
-    fn create(b: Bindings, env: NapiEnv) raises -> JsPromise:
+    def create(b: Bindings, env: NapiEnv) raises -> JsPromise:
         var deferred = NapiDeferred()
         var promise = NapiValue()
         var deferred_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=deferred).bitcast[NoneType]()
@@ -70,10 +70,10 @@ struct JsPromise:
         check_status(status)
         return JsPromise(promise, deferred)
 
-    fn resolve(self, b: Bindings, env: NapiEnv, resolution: NapiValue) raises:
+    def resolve(self, b: Bindings, env: NapiEnv, resolution: NapiValue) raises:
         var status = raw_resolve_deferred(b, env, self.deferred, resolution)
         check_status(status)
 
-    fn reject(self, b: Bindings, env: NapiEnv, rejection: NapiValue) raises:
+    def reject(self, b: Bindings, env: NapiEnv, rejection: NapiValue) raises:
         var status = raw_reject_deferred(b, env, self.deferred, rejection)
         check_status(status)

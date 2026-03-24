@@ -152,7 +152,7 @@ for (let i = 0; i < lines.length; i++) {
 
 // --- Pass 3: Extract function bodies ---
 const fnBodies = {};
-const fnStartRe = /^fn (\w+)\(env: NapiEnv, info: NapiValue\) -> NapiValue:/;
+const fnStartRe = /^def (\w+)\(env: NapiEnv, info: NapiValue\) -> NapiValue:/;
 let currentFn = null;
 let currentBody = [];
 
@@ -164,7 +164,7 @@ for (const line of lines) {
     currentBody = [];
   } else if (currentFn) {
     // End of function: next top-level declaration or blank + comment block
-    if (/^(fn |@export|struct |##)/.test(line) && !line.startsWith('    ')) {
+    if (/^(def |@export|struct |##)/.test(line) && !line.startsWith('    ')) {
       fnBodies[currentFn] = currentBody.join('\n');
       currentFn = null;
       currentBody = [];

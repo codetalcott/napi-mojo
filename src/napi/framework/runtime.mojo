@@ -16,7 +16,7 @@ from std.ffi import OwnedDLHandle
 from std.algorithm import parallelize
 
 
-fn init_async_runtime() raises:
+def init_async_runtime() raises:
     """Initialize the Mojo async runtime for shared library addons.
 
     Must be called before parallelize() or other async primitives.
@@ -34,12 +34,12 @@ fn init_async_runtime() raises:
     except:
         lib = OwnedDLHandle("libKGENCompilerRTShared.so")
     var create_rt = lib.get_function[
-        fn () -> OpaquePointer[MutAnyOrigin]
+        def () -> OpaquePointer[MutAnyOrigin]
     ]("KGEN_CompilerRT_AsyncRT_CreateRuntime")
     _ = create_rt()
 
 
-fn parallelize_safe[func: fn (Int) capturing -> None](n: Int):
+def parallelize_safe[func: def (Int) capturing -> None](n: Int):
     """Run func(i) for i in 0..n-1 in parallel, with runtime auto-init.
 
     Equivalent to parallelize[func](n) but safe to call from a .node addon

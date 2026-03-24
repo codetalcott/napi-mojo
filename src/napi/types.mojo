@@ -185,19 +185,19 @@ struct NapiTypeTag(Movable):
     var lower: UInt64
     var upper: UInt64
 
-    fn __init__(out self):
+    def __init__(out self):
         self.lower = 0
         self.upper = 0
 
-    fn __init__(out self, lower: UInt64, upper: UInt64):
+    def __init__(out self, lower: UInt64, upper: UInt64):
         self.lower = lower
         self.upper = upper
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.lower = copy.lower
         self.upper = copy.upper
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.lower = take.lower
         self.upper = take.upper
 
@@ -221,25 +221,25 @@ struct NapiNodeVersion:
     var patch: UInt32
     var release: OpaquePointer[ImmutAnyOrigin]  # const char*
 
-    fn __init__(out self):
+    def __init__(out self):
         self.major = 0
         self.minor = 0
         self.patch = 0
         self.release = OpaquePointer[ImmutAnyOrigin]()
 
-    fn __init__(out self, major: UInt32, minor: UInt32, patch: UInt32, release: OpaquePointer[ImmutAnyOrigin]):
+    def __init__(out self, major: UInt32, minor: UInt32, patch: UInt32, release: OpaquePointer[ImmutAnyOrigin]):
         self.major = major
         self.minor = minor
         self.patch = patch
         self.release = release
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.major = copy.major
         self.minor = copy.minor
         self.patch = copy.patch
         self.release = copy.release
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.major = take.major
         self.minor = take.minor
         self.patch = take.patch
@@ -252,9 +252,9 @@ struct NapiNodeVersion:
 # plus 4 bytes implicit padding = 64 bytes total):
 #   const char* utf8name;              // 8 bytes (pointer)
 #   napi_value name;                   // 8 bytes (pointer)
-#   napi_callback method;              // 8 bytes (fn pointer)
-#   napi_callback getter;              // 8 bytes (fn pointer)
-#   napi_callback setter;              // 8 bytes (fn pointer)
+#   napi_callback method;              // 8 bytes (def pointer)
+#   napi_callback getter;              // 8 bytes (def pointer)
+#   napi_callback setter;              // 8 bytes (def pointer)
 #   napi_value value;                  // 8 bytes (pointer)
 #   napi_property_attributes attributes; // 4 bytes (UInt32)
 #   void* data;                        // 8 bytes (pointer)
@@ -268,14 +268,14 @@ struct NapiPropertyDescriptor(Movable):
     # literals (static lifetime) rather than Mojo heap Strings (ASAP-freed).
     var utf8name: OpaquePointer[ImmutAnyOrigin]
     var name: OpaquePointer[MutAnyOrigin]
-    var method: OpaquePointer[MutAnyOrigin]   # napi_callback fn pointer
+    var method: OpaquePointer[MutAnyOrigin]   # napi_callback def pointer
     var getter: OpaquePointer[MutAnyOrigin]
     var setter: OpaquePointer[MutAnyOrigin]
     var value: OpaquePointer[MutAnyOrigin]
     var attributes: UInt32                     # napi_property_attributes; 0 = napi_default
     var data: OpaquePointer[MutAnyOrigin]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.utf8name = OpaquePointer[ImmutAnyOrigin]()
         self.name = OpaquePointer[MutAnyOrigin]()
         self.method = OpaquePointer[MutAnyOrigin]()
@@ -285,7 +285,7 @@ struct NapiPropertyDescriptor(Movable):
         self.attributes = 0
         self.data = OpaquePointer[MutAnyOrigin]()
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.utf8name = take.utf8name
         self.name = take.name
         self.method = take.method

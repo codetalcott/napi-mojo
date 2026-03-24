@@ -15,7 +15,7 @@ from napi.framework.js_value import js_get_global
 from napi.framework.js_function import JsFunction
 
 ## _get_prototype — get constructor.prototype as a napi_value
-fn _get_prototype(env: NapiEnv, constructor: NapiValue) raises -> NapiValue:
+def _get_prototype(env: NapiEnv, constructor: NapiValue) raises -> NapiValue:
     var proto = NapiValue()
     check_status(raw_get_named_property(
         env, constructor,
@@ -24,7 +24,7 @@ fn _get_prototype(env: NapiEnv, constructor: NapiValue) raises -> NapiValue:
     ))
     return proto
 
-fn _get_prototype(b: Bindings, env: NapiEnv, constructor: NapiValue) raises -> NapiValue:
+def _get_prototype(b: Bindings, env: NapiEnv, constructor: NapiValue) raises -> NapiValue:
     var proto = NapiValue()
     check_status(raw_get_named_property(
         b, env, constructor,
@@ -37,7 +37,7 @@ fn _get_prototype(b: Bindings, env: NapiEnv, constructor: NapiValue) raises -> N
 ##
 ## Calls napi_define_class with property_count=0 (bare constructor).
 ## Instance methods/getters are added afterward via register_instance_method().
-fn define_class(
+def define_class(
     env: NapiEnv,
     name: StringLiteral,
     constructor_ptr: OpaquePointer[MutAnyOrigin],
@@ -58,7 +58,7 @@ fn define_class(
     return result
 
 ## define_class with data — pass data pointer to the constructor callback
-fn define_class(
+def define_class(
     env: NapiEnv,
     name: StringLiteral,
     constructor_ptr: OpaquePointer[MutAnyOrigin],
@@ -78,7 +78,7 @@ fn define_class(
     ))
     return result
 
-fn define_class(
+def define_class(
     b: Bindings,
     env: NapiEnv,
     name: StringLiteral,
@@ -99,7 +99,7 @@ fn define_class(
     ))
     return result
 
-fn define_class(
+def define_class(
     b: Bindings,
     env: NapiEnv,
     name: StringLiteral,
@@ -122,7 +122,7 @@ fn define_class(
     return result
 
 ## register_instance_method — add an instance method to a class's prototype
-fn register_instance_method(
+def register_instance_method(
     env: NapiEnv,
     constructor: NapiValue,
     name: StringLiteral,
@@ -135,7 +135,7 @@ fn register_instance_method(
     desc.attributes = 0
     define_property(env, proto, desc)
 
-fn register_instance_method(
+def register_instance_method(
     b: Bindings,
     env: NapiEnv,
     constructor: NapiValue,
@@ -150,7 +150,7 @@ fn register_instance_method(
     define_property(b, env, proto, desc)
 
 ## register_getter — add a read-only getter to a class's prototype
-fn register_getter(
+def register_getter(
     env: NapiEnv,
     constructor: NapiValue,
     name: StringLiteral,
@@ -163,7 +163,7 @@ fn register_getter(
     desc.attributes = 0
     define_property(env, proto, desc)
 
-fn register_getter(
+def register_getter(
     b: Bindings,
     env: NapiEnv,
     constructor: NapiValue,
@@ -178,7 +178,7 @@ fn register_getter(
     define_property(b, env, proto, desc)
 
 ## register_getter_setter — add a getter+setter pair to a class's prototype
-fn register_getter_setter(
+def register_getter_setter(
     env: NapiEnv,
     constructor: NapiValue,
     name: StringLiteral,
@@ -193,7 +193,7 @@ fn register_getter_setter(
     desc.attributes = 0
     define_property(env, proto, desc)
 
-fn register_getter_setter(
+def register_getter_setter(
     b: Bindings,
     env: NapiEnv,
     constructor: NapiValue,
@@ -214,7 +214,7 @@ fn register_getter_setter(
 ## Unlike register_instance_method (which targets the prototype), this applies
 ## the property descriptor to the constructor itself. The method appears as
 ## Class.method() and is NOT available on instances.
-fn register_static_method(
+def register_static_method(
     env: NapiEnv,
     constructor: NapiValue,
     name: StringLiteral,
@@ -226,7 +226,7 @@ fn register_static_method(
     desc.attributes = 0
     define_property(env, constructor, desc)
 
-fn register_static_method(
+def register_static_method(
     b: Bindings,
     env: NapiEnv,
     constructor: NapiValue,
@@ -240,7 +240,7 @@ fn register_static_method(
     define_property(b, env, constructor, desc)
 
 ## register_static_getter — add a read-only static getter to a class
-fn register_static_getter(
+def register_static_getter(
     env: NapiEnv,
     constructor: NapiValue,
     name: StringLiteral,
@@ -252,7 +252,7 @@ fn register_static_getter(
     desc.attributes = 0
     define_property(env, constructor, desc)
 
-fn register_static_getter(
+def register_static_getter(
     b: Bindings,
     env: NapiEnv,
     constructor: NapiValue,
@@ -269,7 +269,7 @@ fn register_static_getter(
 ##
 ## Uses Object.setPrototypeOf(childProto, parentProto) via JS global.
 ## Works on all Node versions with N-API (no node_api_set_prototype needed).
-fn set_class_prototype(
+def set_class_prototype(
     env: NapiEnv,
     child_ctor: NapiValue,
     parent_ctor: NapiValue,
@@ -295,7 +295,7 @@ fn set_class_prototype(
     # Call Object.setPrototypeOf(childProto, parentProto)
     _ = JsFunction(set_proto_of).call2(env, child_proto, parent_proto)
 
-fn set_class_prototype(
+def set_class_prototype(
     b: Bindings,
     env: NapiEnv,
     child_ctor: NapiValue,
@@ -321,7 +321,7 @@ fn set_class_prototype(
     _ = JsFunction(set_proto_of).call2(b, env, child_proto, parent_proto)
 
 ## register_static_getter_setter — add a static getter+setter pair to a class
-fn register_static_getter_setter(
+def register_static_getter_setter(
     env: NapiEnv,
     constructor: NapiValue,
     name: StringLiteral,
@@ -335,7 +335,7 @@ fn register_static_getter_setter(
     desc.attributes = 0
     define_property(env, constructor, desc)
 
-fn register_static_getter_setter(
+def register_static_getter_setter(
     b: Bindings,
     env: NapiEnv,
     constructor: NapiValue,
@@ -361,7 +361,7 @@ fn register_static_getter_setter(
 ## Usage:
 ##   var ptr = unwrap_native[CounterData](env, info)
 ##   return JsNumber.create(env, ptr[].count).value
-fn unwrap_native[T: AnyType](env: NapiEnv, info: NapiValue) raises -> UnsafePointer[T, MutAnyOrigin]:
+def unwrap_native[T: AnyType](env: NapiEnv, info: NapiValue) raises -> UnsafePointer[T, MutAnyOrigin]:
     var this_val = CbArgs.get_this(env, info)
     var data = OpaquePointer[MutAnyOrigin]()
     check_status(raw_unwrap(env, this_val,
@@ -370,7 +370,7 @@ fn unwrap_native[T: AnyType](env: NapiEnv, info: NapiValue) raises -> UnsafePoin
         raise Error("unwrap failed: NULL native pointer")
     return data.bitcast[T]()
 
-fn unwrap_native[T: AnyType](b: Bindings, env: NapiEnv, info: NapiValue) raises -> UnsafePointer[T, MutAnyOrigin]:
+def unwrap_native[T: AnyType](b: Bindings, env: NapiEnv, info: NapiValue) raises -> UnsafePointer[T, MutAnyOrigin]:
     var this_val = CbArgs.get_this(env, info)
     var data = OpaquePointer[MutAnyOrigin]()
     check_status(raw_unwrap(b, env, this_val,
@@ -384,7 +384,7 @@ fn unwrap_native[T: AnyType](b: Bindings, env: NapiEnv, info: NapiValue) raises 
 ## Use when this_val was already retrieved via get_bindings_and_this or
 ## get_bindings_this_and_one, avoiding a second napi_get_cb_info call.
 ## Distinct name required: same type signature as unwrap_native[T](b, env, info).
-fn unwrap_native_from_this[T: AnyType](b: Bindings, env: NapiEnv, this_val: NapiValue) raises -> UnsafePointer[T, MutAnyOrigin]:
+def unwrap_native_from_this[T: AnyType](b: Bindings, env: NapiEnv, this_val: NapiValue) raises -> UnsafePointer[T, MutAnyOrigin]:
     var data = OpaquePointer[MutAnyOrigin]()
     check_status(raw_unwrap(b, env, this_val,
         UnsafePointer(to=data).bitcast[NoneType]()))

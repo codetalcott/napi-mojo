@@ -36,7 +36,7 @@ from napi.framework.js_object import JsObject
 ## Calls napi_typeof and returns the result as a NapiValueType (Int32).
 ## Compare the result against the NAPI_TYPE_* constants from napi.types.
 ## Raises on N-API failure.
-fn js_typeof(env: NapiEnv, val: NapiValue) raises -> NapiValueType:
+def js_typeof(env: NapiEnv, val: NapiValue) raises -> NapiValueType:
     var t: NapiValueType = 0
     var t_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=t).bitcast[NoneType]()
     check_status(raw_typeof(env, val, t_ptr))
@@ -48,7 +48,7 @@ fn js_typeof(env: NapiEnv, val: NapiValue) raises -> NapiValueType:
 ## (e.g., "string", "number", "boolean"). Useful for building error messages.
 ## Returns String (not StringLiteral) because StringLiteral is parameterized on
 ## its compile-time value and cannot be returned from a runtime-branch function.
-fn js_type_name(t: NapiValueType) -> String:
+def js_type_name(t: NapiValueType) -> String:
     if t == NAPI_TYPE_UNDEFINED: return "undefined"
     if t == NAPI_TYPE_NULL:      return "object"   # typeof null === "object" in JS
     if t == NAPI_TYPE_BOOLEAN:   return "boolean"
@@ -65,7 +65,7 @@ fn js_type_name(t: NapiValueType) -> String:
 ##
 ## napi_typeof returns NAPI_TYPE_OBJECT for arrays, so this function uses
 ## napi_is_array to distinguish arrays from plain objects.
-fn js_is_array(env: NapiEnv, val: NapiValue) raises -> Bool:
+def js_is_array(env: NapiEnv, val: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_is_array(env, val, result_ptr))
@@ -74,14 +74,14 @@ fn js_is_array(env: NapiEnv, val: NapiValue) raises -> Bool:
 ## js_strict_equals — check strict equality (===) between any two JS values
 ##
 ## Works on all value types (primitives, objects, etc.).
-fn js_strict_equals(env: NapiEnv, lhs: NapiValue, rhs: NapiValue) raises -> Bool:
+def js_strict_equals(env: NapiEnv, lhs: NapiValue, rhs: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_strict_equals(env, lhs, rhs, result_ptr))
     return result
 
 ## js_get_global — return the global object (globalThis)
-fn js_get_global(env: NapiEnv) raises -> JsObject:
+def js_get_global(env: NapiEnv) raises -> JsObject:
     var result = NapiValue()
     check_status(raw_get_global(env,
         UnsafePointer(to=result).bitcast[NoneType]()))
@@ -89,38 +89,38 @@ fn js_get_global(env: NapiEnv) raises -> JsObject:
 
 # --- Bindings-aware overloads ---
 
-fn js_typeof(b: Bindings, env: NapiEnv, val: NapiValue) raises -> NapiValueType:
+def js_typeof(b: Bindings, env: NapiEnv, val: NapiValue) raises -> NapiValueType:
     var t: NapiValueType = 0
     var t_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=t).bitcast[NoneType]()
     check_status(raw_typeof(b, env, val, t_ptr))
     return t
 
-fn js_is_array(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
+def js_is_array(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_is_array(b, env, val, result_ptr))
     return result
 
-fn js_strict_equals(b: Bindings, env: NapiEnv, lhs: NapiValue, rhs: NapiValue) raises -> Bool:
+def js_strict_equals(b: Bindings, env: NapiEnv, lhs: NapiValue, rhs: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_strict_equals(b, env, lhs, rhs, result_ptr))
     return result
 
-fn js_get_global(b: Bindings, env: NapiEnv) raises -> JsObject:
+def js_get_global(b: Bindings, env: NapiEnv) raises -> JsObject:
     var result = NapiValue()
     check_status(raw_get_global(b, env,
         UnsafePointer(to=result).bitcast[NoneType]()))
     return JsObject(result)
 
 ## js_is_error — check whether a JavaScript value is an Error object
-fn js_is_error(env: NapiEnv, val: NapiValue) raises -> Bool:
+def js_is_error(env: NapiEnv, val: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_is_error(env, val, result_ptr))
     return result
 
-fn js_is_error(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
+def js_is_error(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_is_error(b, env, val, result_ptr))
@@ -129,13 +129,13 @@ fn js_is_error(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
 ## js_adjust_external_memory — inform V8 about native memory allocations
 ##
 ## Returns the adjusted external memory value.
-fn js_adjust_external_memory(env: NapiEnv, change_in_bytes: Int64) raises -> Int64:
+def js_adjust_external_memory(env: NapiEnv, change_in_bytes: Int64) raises -> Int64:
     var result: Int64 = 0
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_adjust_external_memory(env, change_in_bytes, result_ptr))
     return result
 
-fn js_adjust_external_memory(b: Bindings, env: NapiEnv, change_in_bytes: Int64) raises -> Int64:
+def js_adjust_external_memory(b: Bindings, env: NapiEnv, change_in_bytes: Int64) raises -> Int64:
     var result: Int64 = 0
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_adjust_external_memory(b, env, change_in_bytes, result_ptr))
@@ -144,13 +144,13 @@ fn js_adjust_external_memory(b: Bindings, env: NapiEnv, change_in_bytes: Int64) 
 ## js_run_script — evaluate a JavaScript string (like eval())
 ##
 ## Takes a napi_value containing the script string, returns the result.
-fn js_run_script(env: NapiEnv, script: NapiValue) raises -> NapiValue:
+def js_run_script(env: NapiEnv, script: NapiValue) raises -> NapiValue:
     var result = NapiValue()
     check_status(raw_run_script(env, script,
         UnsafePointer(to=result).bitcast[NoneType]()))
     return result
 
-fn js_run_script(b: Bindings, env: NapiEnv, script: NapiValue) raises -> NapiValue:
+def js_run_script(b: Bindings, env: NapiEnv, script: NapiValue) raises -> NapiValue:
     var result = NapiValue()
     check_status(raw_run_script(b, env, script,
         UnsafePointer(to=result).bitcast[NoneType]()))

@@ -34,7 +34,7 @@ struct AsyncWorkResult:
     var deferred: NapiDeferred
     var work: NapiAsyncWork
 
-    fn __init__(out self, value: NapiValue, deferred: NapiDeferred, work: NapiAsyncWork):
+    def __init__(out self, value: NapiValue, deferred: NapiDeferred, work: NapiAsyncWork):
         self.value = value
         self.deferred = deferred
         self.work = work
@@ -50,7 +50,7 @@ struct AsyncWork:
     ##
     ## Returns AsyncWorkResult with {value, deferred, work}.
     @staticmethod
-    fn queue(
+    def queue(
         env: NapiEnv,
         name: StringLiteral,
         data_opaque: OpaquePointer[MutAnyOrigin],
@@ -73,7 +73,7 @@ struct AsyncWork:
         return AsyncWorkResult(p.value, p.deferred, work)
 
     @staticmethod
-    fn queue(
+    def queue(
         b: Bindings,
         env: NapiEnv,
         name: StringLiteral,
@@ -98,20 +98,20 @@ struct AsyncWork:
 
     ## resolve — resolve deferred + delete async work
     @staticmethod
-    fn resolve(env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
+    def resolve(env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
                result: NapiValue) raises:
         check_status(raw_resolve_deferred(env, deferred, result))
         check_status(raw_delete_async_work(env, work))
 
     @staticmethod
-    fn resolve(b: Bindings, env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
+    def resolve(b: Bindings, env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
                result: NapiValue) raises:
         check_status(raw_resolve_deferred(b, env, deferred, result))
         check_status(raw_delete_async_work(b, env, work))
 
     ## reject_with_error — create Error, reject deferred, delete async work
     @staticmethod
-    fn reject_with_error(env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
+    def reject_with_error(env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
                          msg: StringLiteral) raises:
         var msg_val = JsString.create_literal(env, msg)
         var null_code = NapiValue()
@@ -122,7 +122,7 @@ struct AsyncWork:
         check_status(raw_delete_async_work(env, work))
 
     @staticmethod
-    fn reject_with_error(b: Bindings, env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
+    def reject_with_error(b: Bindings, env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
                          msg: StringLiteral) raises:
         var msg_val = JsString.create_literal(b, env, msg)
         var null_code = NapiValue()
@@ -139,7 +139,7 @@ struct AsyncWork:
     ## msg_copy owns the bytes; explicit transfer keeps them alive past the
     ## napi_create_string_utf8 call inside JsString.create.
     @staticmethod
-    fn reject_with_error_dynamic(env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
+    def reject_with_error_dynamic(env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
                                  msg: String) raises:
         var msg_copy = msg
         var msg_val = JsString.create(env, msg_copy)
@@ -152,7 +152,7 @@ struct AsyncWork:
         check_status(raw_delete_async_work(env, work))
 
     @staticmethod
-    fn reject_with_error_dynamic(b: Bindings, env: NapiEnv, deferred: NapiDeferred,
+    def reject_with_error_dynamic(b: Bindings, env: NapiEnv, deferred: NapiDeferred,
                                  work: NapiAsyncWork, msg: String) raises:
         var msg_copy = msg
         var msg_val = JsString.create(b, env, msg_copy)

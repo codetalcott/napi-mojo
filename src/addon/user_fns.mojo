@@ -4,10 +4,10 @@
 ## The code generator (scripts/generate-addon.mjs) wraps them with
 ## type-checked N-API trampolines based on exports.toml declarations.
 
-fn square_pure(x: Float64) -> Float64:
+def square_pure(x: Float64) -> Float64:
     return x * x
 
-fn clamp_pure(val: Float64, lo: Float64, hi: Float64) -> Float64:
+def clamp_pure(val: Float64, lo: Float64, hi: Float64) -> Float64:
     if val < lo:
         return lo
     if val > hi:
@@ -15,7 +15,7 @@ fn clamp_pure(val: Float64, lo: Float64, hi: Float64) -> Float64:
     return val
 
 ## uppercase_pure — ASCII uppercase (a-z → A-Z, other bytes unchanged)
-fn uppercase_pure(s: String) raises -> String:
+def uppercase_pure(s: String) raises -> String:
     var bytes = s.as_bytes()
     var result = List[UInt8](capacity=len(bytes))
     for i in range(len(bytes)):
@@ -28,7 +28,7 @@ fn uppercase_pure(s: String) raises -> String:
     return String(from_utf8=span)
 
 ## sum_array_pure — sum all elements of a Float64 list
-fn sum_array_pure(items: List[Float64]) -> Float64:
+def sum_array_pure(items: List[Float64]) -> Float64:
     var total: Float64 = 0.0
     for i in range(len(items)):
         total += items[i]

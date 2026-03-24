@@ -61,9 +61,9 @@ comptime NAPI_OK: NapiStatus = 0
 #   typedef struct {
 #     const char* utf8name;         // 8 bytes (pointer)
 #     napi_value name;              // 8 bytes (pointer)
-#     napi_callback method;         // 8 bytes (fn pointer)
-#     napi_callback getter;         // 8 bytes (fn pointer)
-#     napi_callback setter;         // 8 bytes (fn pointer)
+#     napi_callback method;         // 8 bytes (def pointer)
+#     napi_callback getter;         // 8 bytes (def pointer)
+#     napi_callback setter;         // 8 bytes (def pointer)
 #     napi_value value;             // 8 bytes (pointer)
 #     napi_property_attributes attributes; // 4 bytes (int32)
 #     void* data;                   // 8 bytes (pointer)
@@ -77,14 +77,14 @@ comptime NAPI_OK: NapiStatus = 0
 struct NapiPropertyDescriptor:
     var utf8name: OpaquePointer[MutAnyOrigin]
     var name: OpaquePointer[MutAnyOrigin]
-    var method: OpaquePointer[MutAnyOrigin]    # napi_callback fn pointer
+    var method: OpaquePointer[MutAnyOrigin]    # napi_callback def pointer
     var getter: OpaquePointer[MutAnyOrigin]
     var setter: OpaquePointer[MutAnyOrigin]
     var value: OpaquePointer[MutAnyOrigin]
     var attributes: UInt32                      # napi_default = 0
     var data: OpaquePointer[MutAnyOrigin]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.utf8name = OpaquePointer[MutAnyOrigin]()
         self.name = OpaquePointer[MutAnyOrigin]()
         self.method = OpaquePointer[MutAnyOrigin]()
@@ -102,7 +102,7 @@ struct NapiPropertyDescriptor:
 # The no-arg OwnedDLHandle() constructor is v26.2's form; "" (empty string)
 # was the previous convention but now tries to open a file named "".
 # ---------------------------------------------------------------------------
-fn get_node_symbols() raises -> OwnedDLHandle:
+def get_node_symbols() raises -> OwnedDLHandle:
     return OwnedDLHandle()
 
 # ---------------------------------------------------------------------------
@@ -116,7 +116,7 @@ fn get_node_symbols() raises -> OwnedDLHandle:
 #     napi_value* result     <- MutAnyOrigin: N-API writes the result here
 #   );
 # ---------------------------------------------------------------------------
-fn napi_create_string_utf8(
+def napi_create_string_utf8(
     env: NapiEnv,
     str_ptr: OpaquePointer[ImmutAnyOrigin],
     length: UInt,
@@ -124,7 +124,7 @@ fn napi_create_string_utf8(
 ) raises -> NapiStatus:
     var h = get_node_symbols()
     var f = h.get_function[
-        fn (
+        def (
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
             UInt,
@@ -144,7 +144,7 @@ fn napi_create_string_utf8(
 #     const napi_property_descriptor* properties  <- ImmutAnyOrigin: read-only
 #   );
 # ---------------------------------------------------------------------------
-fn napi_define_properties(
+def napi_define_properties(
     env: NapiEnv,
     object: NapiValue,
     property_count: UInt,
@@ -152,7 +152,7 @@ fn napi_define_properties(
 ) raises -> NapiStatus:
     var h = get_node_symbols()
     var f = h.get_function[
-        fn (
+        def (
             NapiEnv,
             NapiValue,
             UInt,
@@ -171,7 +171,7 @@ fn napi_define_properties(
 # method pointer, calling napi_define_properties validates struct layout
 # (Step 3). The function pointer syntax will be resolved in a follow-up.
 # ---------------------------------------------------------------------------
-fn hello_callback(env: NapiEnv, info: NapiValue) -> NapiValue:
+def hello_callback(env: NapiEnv, info: NapiValue) -> NapiValue:
     var greeting = String("Hello from spike!")
     var result: NapiValue = NapiValue()
     try:
@@ -202,7 +202,7 @@ fn hello_callback(env: NapiEnv, info: NapiValue) -> NapiValue:
 #   node -e "require('./build/probe.node')"                   -> no crash
 # ---------------------------------------------------------------------------
 @export("napi_register_module_v1", ABI="C")
-fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
+def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     # Keep `name` alive until napi_define_properties returns — Mojo's ASAP
     # destruction would free stack Strings before N-API reads the pointer.
     var name = String("hello")
@@ -214,9 +214,9 @@ fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     desc.utf8name = name.unsafe_ptr_mut().bitcast[NoneType]()
 
     # Get a C-callable function pointer to hello_callback.
-    # v26.2 confirmed syntax: a Mojo fn reference is an 8-byte value holding the
+    # v26.2 confirmed syntax: a Mojo def reference is an 8-byte value holding the
     # code address. UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-    # dereferences the fn reference's memory to extract the raw code pointer.
+    # dereferences the def reference's memory to extract the raw code pointer.
     var hello_fn_ref = hello_callback
     desc.method = UnsafePointer(to=hello_fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
     desc.attributes = 0  # napi_default

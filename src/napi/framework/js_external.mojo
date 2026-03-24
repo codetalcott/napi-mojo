@@ -12,11 +12,11 @@ from napi.error import check_status
 struct JsExternal:
     var value: NapiValue
 
-    fn __init__(out self, value: NapiValue):
+    def __init__(out self, value: NapiValue):
         self.value = value
 
     @staticmethod
-    fn create(
+    def create(
         env: NapiEnv,
         data: OpaquePointer[MutAnyOrigin],
         finalize_cb: OpaquePointer[MutAnyOrigin],
@@ -33,7 +33,7 @@ struct JsExternal:
         return JsExternal(result)
 
     @staticmethod
-    fn create(
+    def create(
         b: Bindings,
         env: NapiEnv,
         data: OpaquePointer[MutAnyOrigin],
@@ -52,7 +52,7 @@ struct JsExternal:
         return JsExternal(result)
 
     @staticmethod
-    fn create_no_release(
+    def create_no_release(
         env: NapiEnv,
         data: OpaquePointer[MutAnyOrigin],
     ) raises -> JsExternal:
@@ -68,7 +68,7 @@ struct JsExternal:
         return JsExternal(result)
 
     @staticmethod
-    fn create_no_release(
+    def create_no_release(
         b: Bindings,
         env: NapiEnv,
         data: OpaquePointer[MutAnyOrigin],
@@ -86,7 +86,7 @@ struct JsExternal:
         return JsExternal(result)
 
     @staticmethod
-    fn get_data(env: NapiEnv, val: NapiValue) raises -> OpaquePointer[MutAnyOrigin]:
+    def get_data(env: NapiEnv, val: NapiValue) raises -> OpaquePointer[MutAnyOrigin]:
         """Retrieve the opaque data pointer from an external value."""
         var result = OpaquePointer[MutAnyOrigin]()
         check_status(raw_get_value_external(
@@ -96,7 +96,7 @@ struct JsExternal:
         return result
 
     @staticmethod
-    fn get_data(b: Bindings, env: NapiEnv, val: NapiValue) raises -> OpaquePointer[MutAnyOrigin]:
+    def get_data(b: Bindings, env: NapiEnv, val: NapiValue) raises -> OpaquePointer[MutAnyOrigin]:
         """Retrieve the opaque data pointer from an external value."""
         var result = OpaquePointer[MutAnyOrigin]()
         check_status(raw_get_value_external(

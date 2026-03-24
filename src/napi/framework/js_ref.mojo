@@ -20,32 +20,32 @@ from napi.error import check_status
 struct JsRef:
     var handle: NapiRef
 
-    fn __init__(out self, handle: NapiRef):
+    def __init__(out self, handle: NapiRef):
         self.handle = handle
 
     @staticmethod
-    fn create(env: NapiEnv, value: NapiValue, initial_refcount: UInt32) raises -> JsRef:
+    def create(env: NapiEnv, value: NapiValue, initial_refcount: UInt32) raises -> JsRef:
         var result = NapiRef()
         check_status(raw_create_reference(env, value, initial_refcount,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return JsRef(result)
 
-    fn delete(self, env: NapiEnv) raises:
+    def delete(self, env: NapiEnv) raises:
         check_status(raw_delete_reference(env, self.handle))
 
-    fn inc(self, env: NapiEnv) raises -> UInt32:
+    def inc(self, env: NapiEnv) raises -> UInt32:
         var count: UInt32 = 0
         check_status(raw_reference_ref(env, self.handle,
             UnsafePointer(to=count).bitcast[NoneType]()))
         return count
 
-    fn dec(self, env: NapiEnv) raises -> UInt32:
+    def dec(self, env: NapiEnv) raises -> UInt32:
         var count: UInt32 = 0
         check_status(raw_reference_unref(env, self.handle,
             UnsafePointer(to=count).bitcast[NoneType]()))
         return count
 
-    fn get(self, env: NapiEnv) raises -> NapiValue:
+    def get(self, env: NapiEnv) raises -> NapiValue:
         var result = NapiValue()
         check_status(raw_get_reference_value(env, self.handle,
             UnsafePointer(to=result).bitcast[NoneType]()))
@@ -54,39 +54,39 @@ struct JsRef:
     # --- Bindings-aware overloads ---
 
     @staticmethod
-    fn create_weak(env: NapiEnv, value: NapiValue) raises -> JsRef:
+    def create_weak(env: NapiEnv, value: NapiValue) raises -> JsRef:
         return JsRef.create(env, value, 0)
 
     # --- Bindings-aware overloads ---
 
     @staticmethod
-    fn create(b: Bindings, env: NapiEnv, value: NapiValue, initial_refcount: UInt32) raises -> JsRef:
+    def create(b: Bindings, env: NapiEnv, value: NapiValue, initial_refcount: UInt32) raises -> JsRef:
         var result = NapiRef()
         check_status(raw_create_reference(b, env, value, initial_refcount,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return JsRef(result)
 
-    fn delete(self, b: Bindings, env: NapiEnv) raises:
+    def delete(self, b: Bindings, env: NapiEnv) raises:
         check_status(raw_delete_reference(b, env, self.handle))
 
-    fn inc(self, b: Bindings, env: NapiEnv) raises -> UInt32:
+    def inc(self, b: Bindings, env: NapiEnv) raises -> UInt32:
         var count: UInt32 = 0
         check_status(raw_reference_ref(b, env, self.handle,
             UnsafePointer(to=count).bitcast[NoneType]()))
         return count
 
-    fn dec(self, b: Bindings, env: NapiEnv) raises -> UInt32:
+    def dec(self, b: Bindings, env: NapiEnv) raises -> UInt32:
         var count: UInt32 = 0
         check_status(raw_reference_unref(b, env, self.handle,
             UnsafePointer(to=count).bitcast[NoneType]()))
         return count
 
-    fn get(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+    def get(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         var result = NapiValue()
         check_status(raw_get_reference_value(b, env, self.handle,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return result
 
     @staticmethod
-    fn create_weak(b: Bindings, env: NapiEnv, value: NapiValue) raises -> JsRef:
+    def create_weak(b: Bindings, env: NapiEnv, value: NapiValue) raises -> JsRef:
         return JsRef.create(b, env, value, 0)

@@ -244,7 +244,7 @@ function generateCallback(name, decl) {
   const fnName = `${name}_fn`;
 
   const lines = [];
-  lines.push(`fn ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
+  lines.push(`def ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
   lines.push(`    try:`);
   lines.push(`        var _b = CbArgs.get_bindings(env, info)`);
 
@@ -349,7 +349,7 @@ function generateAsyncFunction(name, decl) {
   out.push(`    var result: ${retType.mojoType}`);
   out.push('');
   const initParams = argMojoTypes.map((t, i) => `input${i}: ${t.mojoType}`).join(', ');
-  out.push(`    fn __init__(out self${initParams ? ', ' + initParams : ''}):`);
+  out.push(`    def __init__(out self${initParams ? ', ' + initParams : ''}):`);
   out.push(`        self.deferred = NapiDeferred()`);
   out.push(`        self.work = NapiAsyncWork()`);
   for (let i = 0; i < args.length; i++) {
@@ -357,7 +357,7 @@ function generateAsyncFunction(name, decl) {
   }
   out.push(`        self.result = ${retType.zeroVal}`);
   out.push('');
-  out.push(`    fn __moveinit__(out self, deinit take: Self):`);
+  out.push(`    def __moveinit__(out self, deinit take: Self):`);
   out.push(`        self.deferred = take.deferred`);
   out.push(`        self.work = take.work`);
   for (let i = 0; i < args.length; i++) {
@@ -367,7 +367,7 @@ function generateAsyncFunction(name, decl) {
 
   // 2. Execute callback (worker thread — no N-API calls allowed)
   out.push('');
-  out.push(`fn ${name}_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):`);
+  out.push(`def ${name}_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):`);
   out.push(`    var ptr = data.bitcast[${structName}]()`);
   for (const el of executeBody.split('\n')) {
     if (el.trim()) out.push(`    ${el.trim()}`);
@@ -375,7 +375,7 @@ function generateAsyncFunction(name, decl) {
 
   // 3. Complete callback (main thread — resolve/reject, then free heap)
   out.push('');
-  out.push(`fn ${name}_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):`);
+  out.push(`def ${name}_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):`);
   out.push(`    var ptr = data.bitcast[${structName}]()`);
   out.push(`    try:`);
   out.push(`        if status == NAPI_OK:`);
@@ -390,7 +390,7 @@ function generateAsyncFunction(name, decl) {
 
   // 4. Entry-point callback (standard N-API: type-check, alloc, queue, return promise)
   out.push('');
-  out.push(`fn ${name}_fn(env: NapiEnv, info: NapiValue) -> NapiValue:`);
+  out.push(`def ${name}_fn(env: NapiEnv, info: NapiValue) -> NapiValue:`);
   out.push(`    try:`);
   out.push(`        var _b = CbArgs.get_bindings(env, info)`);
   if (args.length === 1) {
@@ -458,7 +458,7 @@ function generateClassConstructor(className, decl) {
   const fnName = `${className}_ctor_fn`;
 
   const lines = [];
-  lines.push(`fn ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
+  lines.push(`def ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
   lines.push(`    try:`);
   lines.push(`        var _b = CbArgs.get_bindings(env, info)`);
   lines.push(`        var this_val = CbArgs.get_this(_b, env, info)`);
@@ -499,7 +499,7 @@ function generateClassMethod(className, methodName, decl) {
   const body = decl.body || 'return JsUndefined.create(_b, env).value';
 
   const lines = [];
-  lines.push(`fn ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
+  lines.push(`def ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
   lines.push(`    try:`);
   lines.push(`        var _b = CbArgs.get_bindings(env, info)`);
   lines.push(`        var this_val = CbArgs.get_this(_b, env, info)`);
@@ -544,7 +544,7 @@ function generateClassStaticMethod(className, methodName, decl) {
   const body = decl.body || 'return JsUndefined.create(_b, env).value';
 
   const lines = [];
-  lines.push(`fn ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
+  lines.push(`def ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
   lines.push(`    try:`);
   lines.push(`        var _b = CbArgs.get_bindings(env, info)`);
 
@@ -581,7 +581,7 @@ function generateClassSetter(className, propName, decl) {
   const body = decl.body || 'return val';
 
   const lines = [];
-  lines.push(`fn ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
+  lines.push(`def ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
   lines.push(`    try:`);
   lines.push(`        var _b = CbArgs.get_bindings(env, info)`);
   lines.push(`        var this_val = CbArgs.get_this(_b, env, info)`);
@@ -605,7 +605,7 @@ function generateClassGetter(className, getterName, decl) {
   const body = decl.body || 'return JsUndefined.create(_b, env).value';
 
   const lines = [];
-  lines.push(`fn ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
+  lines.push(`def ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
   lines.push(`    try:`);
   lines.push(`        var _b = CbArgs.get_bindings(env, info)`);
   lines.push(`        var this_val = CbArgs.get_this(_b, env, info)`);
@@ -817,7 +817,7 @@ function main() {
   output.push('##');
   output.push('## Call from register_module after creating the ModuleBuilder:');
   output.push('##   register_generated(m)');
-  output.push('fn register_generated(mut m: ModuleBuilder) raises:');
+  output.push('def register_generated(mut m: ModuleBuilder) raises:');
   // All functions (sync + async) register via m.method
   output.push(generateRegistration(functions));
   if (hasClasses) {

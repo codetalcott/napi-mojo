@@ -26,7 +26,7 @@ from addon.user_fns import uppercase_pure
 from addon.user_fns import sum_array_pure
 
 # exampleAdd
-fn example_add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(_b, env, info)
@@ -46,7 +46,7 @@ fn example_add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # exampleGreet
-fn example_greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(_b, env, info)
@@ -61,7 +61,7 @@ fn example_greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # exampleIsPositive
-fn example_is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(_b, env, info)
@@ -76,7 +76,7 @@ fn example_is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # exampleAddUInt32
-fn example_add_uint32_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_add_uint32_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(_b, env, info)
@@ -96,7 +96,7 @@ fn example_add_uint32_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # exampleDoubleInt64
-fn example_double_int64_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_double_int64_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(_b, env, info)
@@ -111,7 +111,7 @@ fn example_double_int64_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # exampleNegateBool
-fn example_negate_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_negate_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(_b, env, info)
@@ -126,7 +126,7 @@ fn example_negate_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # exampleHasKey
-fn example_has_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_has_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(_b, env, info)
@@ -144,7 +144,7 @@ fn example_has_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # exampleArrayLen
-fn example_array_len_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_array_len_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(_b, env, info)
@@ -157,7 +157,7 @@ fn example_array_len_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # exampleNullableEcho
-fn example_nullable_echo_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_nullable_echo_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(_b, env, info)
@@ -167,7 +167,7 @@ fn example_nullable_echo_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # square
-fn square_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def square_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(_b, env, info)
@@ -183,7 +183,7 @@ fn square_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # clamp
-fn clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_three(_b, env, info)
@@ -209,7 +209,7 @@ fn clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # uppercase
-fn uppercase_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def uppercase_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(_b, env, info)
@@ -225,7 +225,7 @@ fn uppercase_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # sumArrayPure
-fn sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(_b, env, info)
@@ -240,7 +240,7 @@ fn sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # exampleClamp
-fn example_clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_three(_b, env, info)
@@ -277,25 +277,25 @@ struct AsyncSumData(Movable):
     var input1: Float64
     var result: Float64
 
-    fn __init__(out self, input0: Float64, input1: Float64):
+    def __init__(out self, input0: Float64, input1: Float64):
         self.deferred = NapiDeferred()
         self.work = NapiAsyncWork()
         self.input0 = input0
         self.input1 = input1
         self.result = 0.0
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.deferred = take.deferred
         self.work = take.work
         self.input0 = take.input0
         self.input1 = take.input1
         self.result = take.result
 
-fn async_sum_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
+def async_sum_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[AsyncSumData]()
     ptr[].result = ptr[].input0 + ptr[].input1
 
-fn async_sum_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
+def async_sum_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
     var ptr = data.bitcast[AsyncSumData]()
     try:
         if status == NAPI_OK:
@@ -308,7 +308,7 @@ fn async_sum_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutA
     ptr.destroy_pointee()
     ptr.free()
 
-fn async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(_b, env, info)
@@ -335,7 +335,7 @@ fn async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ExamplePoint class — constructor
-fn example_point_ctor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_point_ctor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var this_val = CbArgs.get_this(_b, env, info)
@@ -356,7 +356,7 @@ fn example_point_ctor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ExamplePoint.sum (instance method)
-fn example_point_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_point_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var this_val = CbArgs.get_this(_b, env, info)
@@ -368,7 +368,7 @@ fn example_point_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ExamplePoint.x (getter)
-fn example_point_get_x_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_point_get_x_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var this_val = CbArgs.get_this(_b, env, info)
@@ -378,7 +378,7 @@ fn example_point_get_x_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ExamplePoint.y (getter)
-fn example_point_get_y_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_point_get_y_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var this_val = CbArgs.get_this(_b, env, info)
@@ -388,7 +388,7 @@ fn example_point_get_y_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ExamplePoint.x (setter)
-fn example_point_set_x_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_point_set_x_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var this_val = CbArgs.get_this(_b, env, info)
@@ -400,7 +400,7 @@ fn example_point_set_x_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ExamplePoint.y (setter)
-fn example_point_set_y_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_point_set_y_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var this_val = CbArgs.get_this(_b, env, info)
@@ -412,7 +412,7 @@ fn example_point_set_y_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 # ExamplePoint.isPoint (static method)
-fn example_point_static_is_point_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def example_point_static_is_point_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var _b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(_b, env, info)
@@ -428,7 +428,7 @@ fn example_point_static_is_point_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 ##
 ## Call from register_module after creating the ModuleBuilder:
 ##   register_generated(m)
-fn register_generated(mut m: ModuleBuilder) raises:
+def register_generated(mut m: ModuleBuilder) raises:
     var example_add_gen_ref = example_add_fn
     var example_greet_gen_ref = example_greet_fn
     var example_is_positive_gen_ref = example_is_positive_fn

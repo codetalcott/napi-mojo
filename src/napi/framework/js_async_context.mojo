@@ -22,7 +22,7 @@ from napi.error import check_status
 struct JsAsyncContext:
     var value: NapiAsyncContext
 
-    fn __init__(out self, value: NapiAsyncContext):
+    def __init__(out self, value: NapiAsyncContext):
         self.value = value
 
     ## create — initialize an async context
@@ -32,7 +32,7 @@ struct JsAsyncContext:
     ## async_resource_name: napi_value string naming the resource type
     ##                      (e.g. JsString.create_literal(b, env, "MyOp"))
     @staticmethod
-    fn create(
+    def create(
         b: Bindings,
         env: NapiEnv,
         async_resource: NapiValue,
@@ -47,11 +47,11 @@ struct JsAsyncContext:
     ##
     ## Must be called when the async operation is complete.
     ## After calling, self.value is invalid.
-    fn destroy(self, b: Bindings, env: NapiEnv) raises:
+    def destroy(self, b: Bindings, env: NapiEnv) raises:
         check_status(raw_async_destroy(b, env, self.value))
 
     ## make_callback0 — call a JS function with no arguments in this context
-    fn make_callback0(
+    def make_callback0(
         self,
         b: Bindings,
         env: NapiEnv,
@@ -65,7 +65,7 @@ struct JsAsyncContext:
         return result
 
     ## make_callback1 — call a JS function with one argument in this context
-    fn make_callback1(
+    def make_callback1(
         self,
         b: Bindings,
         env: NapiEnv,
@@ -81,7 +81,7 @@ struct JsAsyncContext:
         return result
 
     ## make_callback2 — call a JS function with two arguments in this context
-    fn make_callback2(
+    def make_callback2(
         self,
         b: Bindings,
         env: NapiEnv,

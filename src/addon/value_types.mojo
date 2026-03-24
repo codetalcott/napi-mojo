@@ -16,7 +16,7 @@ from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof, js_type_name
 from napi.framework.register import fn_ptr, ModuleBuilder
 
-fn add_bigints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def add_bigints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -33,7 +33,7 @@ fn add_bigints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "addBigInts requires two bigint arguments")
         return NapiValue()
 
-fn create_date_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def create_date_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -43,7 +43,7 @@ fn create_date_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createDate requires one number argument")
         return NapiValue()
 
-fn get_date_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def get_date_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -54,7 +54,7 @@ fn get_date_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getDateValue requires one Date argument")
         return NapiValue()
 
-fn create_symbol_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def create_symbol_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -63,7 +63,7 @@ fn create_symbol_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createSymbol requires one string argument")
         return NapiValue()
 
-fn symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -79,7 +79,7 @@ fn symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "symbolFor requires one string argument")
         return NapiValue()
 
-fn bigint_from_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def bigint_from_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
@@ -99,7 +99,7 @@ fn bigint_from_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "bigIntFromWords failed")
         return NapiValue()
 
-fn bigint_to_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def bigint_to_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
@@ -123,7 +123,7 @@ fn bigint_to_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "bigIntToWords failed")
         return NapiValue()
 
-fn register_value_types(mut m: ModuleBuilder) raises:
+def register_value_types(mut m: ModuleBuilder) raises:
     var add_bigints_ref = add_bigints_fn
     var create_date_ref = create_date_fn
     var get_date_value_ref = get_date_value_fn

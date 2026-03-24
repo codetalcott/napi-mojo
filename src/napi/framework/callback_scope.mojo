@@ -19,7 +19,7 @@ from napi.error import check_status
 struct CallbackScope:
     var value: NapiCallbackScope
 
-    fn __init__(out self, value: NapiCallbackScope):
+    def __init__(out self, value: NapiCallbackScope):
         self.value = value
 
     ## open — create a new callback scope
@@ -27,7 +27,7 @@ struct CallbackScope:
     ## resource_object: JS object for async_hooks tracking, or undefined
     ## context:         async context created by JsAsyncContext.create()
     @staticmethod
-    fn open(
+    def open(
         b: Bindings,
         env: NapiEnv,
         resource_object: NapiValue,
@@ -42,5 +42,5 @@ struct CallbackScope:
     ##
     ## Must be called exactly once after open(). After calling, self.value
     ## is invalid — do not use it again.
-    fn close(self, b: Bindings, env: NapiEnv) raises:
+    def close(self, b: Bindings, env: NapiEnv) raises:
         check_status(raw_close_callback_scope(b, env, self.value))

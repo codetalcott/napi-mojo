@@ -13,7 +13,7 @@ from napi.raw import raw_get_version, raw_get_node_version, raw_add_async_cleanu
 from napi.error import check_status
 
 ## get_napi_version — return the highest N-API version supported by this runtime
-fn get_napi_version(env: NapiEnv) raises -> UInt32:
+def get_napi_version(env: NapiEnv) raises -> UInt32:
     var result: UInt32 = 0
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_get_version(env, result_ptr))
@@ -23,7 +23,7 @@ fn get_napi_version(env: NapiEnv) raises -> UInt32:
 ##
 ## napi_get_node_version writes a const napi_node_version* into our out-param.
 ## Returns the raw pointer; caller reads fields via UnsafePointer offsets.
-fn get_node_version_ptr(env: NapiEnv) raises -> UnsafePointer[UInt32, MutAnyOrigin]:
+def get_node_version_ptr(env: NapiEnv) raises -> UnsafePointer[UInt32, MutAnyOrigin]:
     # The API writes a pointer-to-struct into our out variable
     var ptr_val = OpaquePointer[MutAnyOrigin]()
     var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=ptr_val).bitcast[NoneType]()
@@ -34,13 +34,13 @@ fn get_node_version_ptr(env: NapiEnv) raises -> UnsafePointer[UInt32, MutAnyOrig
 
 # --- Bindings-aware overloads ---
 
-fn get_napi_version(b: Bindings, env: NapiEnv) raises -> UInt32:
+def get_napi_version(b: Bindings, env: NapiEnv) raises -> UInt32:
     var result: UInt32 = 0
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
     check_status(raw_get_version(b, env, result_ptr))
     return result
 
-fn get_node_version_ptr(b: Bindings, env: NapiEnv) raises -> UnsafePointer[UInt32, MutAnyOrigin]:
+def get_node_version_ptr(b: Bindings, env: NapiEnv) raises -> UnsafePointer[UInt32, MutAnyOrigin]:
     var ptr_val = OpaquePointer[MutAnyOrigin]()
     var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=ptr_val).bitcast[NoneType]()
     check_status(raw_get_node_version(b, env, out_ptr))
@@ -51,7 +51,7 @@ fn get_node_version_ptr(b: Bindings, env: NapiEnv) raises -> UnsafePointer[UInt3
 ## The hook fires after the event loop drains on environment teardown.
 ## Returns an opaque handle that can be passed to remove_async_cleanup_hook.
 ## hook_cb: fn(handle, arg) — called with the handle and the arg pointer.
-fn add_async_cleanup_hook(
+def add_async_cleanup_hook(
     b: Bindings,
     env: NapiEnv,
     hook_cb: OpaquePointer[MutAnyOrigin],
@@ -65,7 +65,7 @@ fn add_async_cleanup_hook(
 ## remove_async_cleanup_hook — unregister an async cleanup hook (N-API v8)
 ##
 ## Uses the handle returned by add_async_cleanup_hook. No env needed.
-fn remove_async_cleanup_hook(
+def remove_async_cleanup_hook(
     b: Bindings,
     handle: OpaquePointer[MutAnyOrigin],
 ) raises:
@@ -75,7 +75,7 @@ fn remove_async_cleanup_hook(
 ##
 ## Returns the uv_loop_t* as an opaque pointer. Useful for addons that
 ## integrate directly with libuv timers or I/O. Valid for env lifetime.
-fn get_uv_event_loop(
+def get_uv_event_loop(
     b: Bindings,
     env: NapiEnv,
 ) raises -> OpaquePointer[MutAnyOrigin]:

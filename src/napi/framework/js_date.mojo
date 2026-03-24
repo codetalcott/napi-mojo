@@ -15,24 +15,24 @@ from napi.error import check_status
 struct JsDate:
     var value: NapiValue
 
-    fn __init__(out self, value: NapiValue):
+    def __init__(out self, value: NapiValue):
         self.value = value
 
     @staticmethod
-    fn create(env: NapiEnv, timestamp_ms: Float64) raises -> JsDate:
+    def create(env: NapiEnv, timestamp_ms: Float64) raises -> JsDate:
         var result = NapiValue()
         check_status(raw_create_date(env, timestamp_ms,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return JsDate(result)
 
-    fn timestamp_ms(self, env: NapiEnv) raises -> Float64:
+    def timestamp_ms(self, env: NapiEnv) raises -> Float64:
         var result: Float64 = 0.0
         check_status(raw_get_date_value(env, self.value,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return result
 
     @staticmethod
-    fn is_date(env: NapiEnv, val: NapiValue) raises -> Bool:
+    def is_date(env: NapiEnv, val: NapiValue) raises -> Bool:
         var result: Bool = False
         check_status(raw_is_date(env, val,
             UnsafePointer(to=result).bitcast[NoneType]()))
@@ -41,20 +41,20 @@ struct JsDate:
     # --- Bindings-aware overloads ---
 
     @staticmethod
-    fn create(b: Bindings, env: NapiEnv, timestamp_ms: Float64) raises -> JsDate:
+    def create(b: Bindings, env: NapiEnv, timestamp_ms: Float64) raises -> JsDate:
         var result = NapiValue()
         check_status(raw_create_date(b, env, timestamp_ms,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return JsDate(result)
 
-    fn timestamp_ms(self, b: Bindings, env: NapiEnv) raises -> Float64:
+    def timestamp_ms(self, b: Bindings, env: NapiEnv) raises -> Float64:
         var result: Float64 = 0.0
         check_status(raw_get_date_value(b, env, self.value,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return result
 
     @staticmethod
-    fn is_date(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
+    def is_date(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
         var result: Bool = False
         check_status(raw_is_date(b, env, val,
             UnsafePointer(to=result).bitcast[NoneType]()))

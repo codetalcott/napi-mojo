@@ -23,37 +23,37 @@ from napi.bindings import Bindings
 struct EscapableHandleScope:
     var scope: NapiEscapableHandleScope
 
-    fn __init__(out self, scope: NapiEscapableHandleScope):
+    def __init__(out self, scope: NapiEscapableHandleScope):
         self.scope = scope
 
     @staticmethod
-    fn open(env: NapiEnv) raises -> EscapableHandleScope:
+    def open(env: NapiEnv) raises -> EscapableHandleScope:
         var scope = NapiEscapableHandleScope()
         check_status(raw_open_escapable_handle_scope(env,
             UnsafePointer(to=scope).bitcast[NoneType]()))
         return EscapableHandleScope(scope)
 
     @staticmethod
-    fn open(b: Bindings, env: NapiEnv) raises -> EscapableHandleScope:
+    def open(b: Bindings, env: NapiEnv) raises -> EscapableHandleScope:
         var scope = NapiEscapableHandleScope()
         check_status(raw_open_escapable_handle_scope(b, env,
             UnsafePointer(to=scope).bitcast[NoneType]()))
         return EscapableHandleScope(scope)
 
-    fn escape(self, env: NapiEnv, value: NapiValue) raises -> NapiValue:
+    def escape(self, env: NapiEnv, value: NapiValue) raises -> NapiValue:
         var result = NapiValue()
         check_status(raw_escape_handle(env, self.scope, value,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return result
 
-    fn escape(self, b: Bindings, env: NapiEnv, value: NapiValue) raises -> NapiValue:
+    def escape(self, b: Bindings, env: NapiEnv, value: NapiValue) raises -> NapiValue:
         var result = NapiValue()
         check_status(raw_escape_handle(b, env, self.scope, value,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return result
 
-    fn close(self, env: NapiEnv) raises:
+    def close(self, env: NapiEnv) raises:
         check_status(raw_close_escapable_handle_scope(env, self.scope))
 
-    fn close(self, b: Bindings, env: NapiEnv) raises:
+    def close(self, b: Bindings, env: NapiEnv) raises:
         check_status(raw_close_escapable_handle_scope(b, env, self.scope))

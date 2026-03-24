@@ -15,19 +15,19 @@ from napi.bindings import Bindings
 struct JsUInt32:
     var value: NapiValue
 
-    fn __init__(out self, value: NapiValue):
+    def __init__(out self, value: NapiValue):
         self.value = value
 
 
     @staticmethod
-    fn create(b: Bindings, env: NapiEnv, n: UInt32) raises -> JsUInt32:
+    def create(b: Bindings, env: NapiEnv, n: UInt32) raises -> JsUInt32:
         var result = NapiValue()
         check_status(raw_create_uint32(b, env, n, UnsafePointer(to=result).bitcast[NoneType]()))
         return JsUInt32(result)
 
 
     @staticmethod
-    fn from_napi_value(b: Bindings, env: NapiEnv, val: NapiValue) raises -> UInt32:
+    def from_napi_value(b: Bindings, env: NapiEnv, val: NapiValue) raises -> UInt32:
         var n: UInt32 = 0
         check_status(raw_get_value_uint32(b, env, val, UnsafePointer(to=n).bitcast[NoneType]()))
         return n
