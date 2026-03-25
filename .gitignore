@@ -9,3 +9,9 @@ build/
 !.pixi/config.toml
 # Claude session data
 .claude/
+# Agent skills (installed via npx skills)
+.agents/
+skills/
+skills-lock.json
+# Grail domain config
+grail.yaml
