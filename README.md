@@ -16,8 +16,8 @@ addon.greet("world"); // "Hello, world!"
 ## Project Status
 
 **Alpha** — napi-mojo is under active development and not yet proven in
-production. The API covers the full N-API surface (110 exported functions, 3
-classes, 561 tests). Expect breaking changes as the project matures.
+production. The API covers the full N-API v10 surface (113 exported functions, 3
+classes, 571 tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
   complete, ergonomic framework for building Node.js native addons in Mojo.
@@ -35,15 +35,14 @@ classes, 561 tests). Expect breaking changes as the project matures.
 
 ## Features
 
-- **110 exported functions** and **3 classes** covering the full N-API surface
+- **113 exported functions** and **3 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
 - Primitives: strings, numbers (Float64/Int32/UInt32/Int64), booleans, null,
   undefined, BigInt, Symbol, Date
 - Objects: create, read/write properties, enumerate keys, freeze/seal, prototype
   access
 - Arrays: create, map, element access, has/delete
 - Functions: call, create from Mojo, closures with captured data
-- Binary data: ArrayBuffer, Buffer, TypedArray, DataView, external (Mojo-owned)
-  memory
+- Binary data: ArrayBuffer, Buffer (including zero-copy slice from ArrayBuffer), TypedArray, DataView, external (Mojo-owned) memory
 - Classes: constructors, instance methods, getters/setters, static methods,
   inheritance
 - Async: Promises, worker thread execution, ThreadsafeFunction (call JS from
@@ -70,11 +69,11 @@ git clone https://github.com/codetalcott/napi-mojo.git
 cd napi-mojo
 npm install
 npm run build    # compiles Mojo → build/index.node + generates TypeScript defs
-npm test         # 561 tests
+npm test         # 571 tests
 ```
 
 **Prerequisites:** [Mojo nightly](https://docs.modular.com/magic/) (v26.2.x) via
-[pixi](https://pixi.sh), Node.js 18+
+[pixi](https://pixi.sh), Node.js 22.12+ (N-API v10)
 
 See [`examples/`](examples/) for runnable scripts.
 
@@ -149,21 +148,21 @@ m.getDataViewInfo(dv); // { byteLength: 8, byteOffset: 0 }
 Full typed API: [`build/index.d.ts`](build/index.d.ts) — auto-generated on every
 build, works in any TypeScript-aware IDE.
 
-| Category               | Exports                                                                                                                                                          |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Math & arithmetic      | `add` `addInts` `bitwiseOr` `addIntsStrict` `addBigInts` `sumArgs` `isPositive`                                                                                  |
-| Strings                | `hello` `greet` `toJsString`                                                                                                                                     |
-| Objects                | `createObject` `makeGreeting` `getProperty` `getKeys` `hasOwn` `deleteProperty` `setPropertyByKey` `hasPropertyByKey` `freezeObject` `sealObject` `getPrototype` |
-| Arrays                 | `sumArray` `mapArray` `arrayHasElement` `arrayDeleteElement`                                                                                                     |
-| Binary data            | `createArrayBuffer` `createBuffer` `createBufferCopy` `doubleFloat64Array` `createTypedArrayView` `createDataView` `createExternalArrayBuffer`                   |
-| Async & promises       | `asyncDouble` `asyncTriple` `asyncProgress` `resolveWith` `rejectWith` `cancelAsyncWork`                                                                         |
-| Callbacks              | `callFunction` `createCallback` `createAdder` `makeCallback` `makeCallback0` `makeCallback2`                                                                     |
-| Classes                | `Counter` (increment/reset/value) · `Animal` (name/speak) · `Dog` (breed)                                                                                        |
-| BigInt / Symbol / Date | `createSymbol` `symbolFor` `addBigInts` `bigIntFromWords` `bigIntToWords` `createDate` `getDateValue`                                                            |
-| Type checks & coercion | `strictEquals` `isInstanceOf` `coerceToBool` `coerceToNumber` `coerceToString` `coerceToObject` `isExternal` `isError` `isDataView`                              |
-| Errors                 | `throwTypeError` `throwRangeError` `throwSyntaxError` `throwValue` `catchAndReturn`                                                                              |
-| GC & lifecycle         | `createExternal` `attachFinalizer` `setInstanceData` `getInstanceData` `addCleanupHook` `removeCleanupHook`                                                      |
-| Runtime introspection  | `getGlobal` `getNapiVersion` `getNodeVersion` `runScript` `adjustExternalMemory`                                                                                 |
+| Category | Exports |
+| --- | --- |
+| Math & arithmetic | `add` `addInts` `bitwiseOr` `addIntsStrict` `addBigInts` `sumArgs` `isPositive` |
+| Strings | `hello` `greet` `toJsString` `createPropertyKey` `createExternalString` |
+| Objects | `createObject` `makeGreeting` `getProperty` `getKeys` `hasOwn` `deleteProperty` `setPropertyByKey` `hasPropertyByKey` `freezeObject` `sealObject` `getPrototype` |
+| Arrays | `sumArray` `mapArray` `arrayHasElement` `arrayDeleteElement` |
+| Binary data | `createArrayBuffer` `createBuffer` `createBufferCopy` `bufferFromArrayBuffer` `doubleFloat64Array` `createTypedArrayView` `createDataView` `createExternalArrayBuffer` |
+| Async & promises | `asyncDouble` `asyncTriple` `asyncProgress` `resolveWith` `rejectWith` `cancelAsyncWork` |
+| Callbacks | `callFunction` `createCallback` `createAdder` `makeCallback` `makeCallback0` `makeCallback2` |
+| Classes | `Counter` (increment/reset/value) · `Animal` (name/speak) · `Dog` (breed) |
+| BigInt / Symbol / Date | `createSymbol` `symbolFor` `addBigInts` `bigIntFromWords` `bigIntToWords` `createDate` `getDateValue` |
+| Type checks & coercion | `strictEquals` `isInstanceOf` `coerceToBool` `coerceToNumber` `coerceToString` `coerceToObject` `isExternal` `isError` `isDataView` |
+| Errors | `throwTypeError` `throwRangeError` `throwSyntaxError` `throwValue` `catchAndReturn` |
+| GC & lifecycle | `createExternal` `attachFinalizer` `setInstanceData` `getInstanceData` `addCleanupHook` `removeCleanupHook` |
+| Runtime introspection | `getGlobal` `getNapiVersion` `getNodeVersion` `runScript` `adjustExternalMemory` |
 
 ## Architecture
 

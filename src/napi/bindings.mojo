@@ -13,7 +13,7 @@ from std.ffi import OwnedDLHandle
 from napi.types import NapiEnv, NapiValue, NapiStatus, NapiAsyncContext, NapiCallbackScope
 
 struct NapiBindings(Movable):
-    # --- 135 fields, one per raw_* function ---
+    # --- 142 fields, one per raw_* function ---
     var create_string_utf8: OpaquePointer[MutAnyOrigin]
     var create_object: OpaquePointer[MutAnyOrigin]
     var set_named_property: OpaquePointer[MutAnyOrigin]
@@ -152,6 +152,15 @@ struct NapiBindings(Movable):
     # Phase C3 additions (134-135): callback scope
     var open_callback_scope: OpaquePointer[MutAnyOrigin]
     var close_callback_scope: OpaquePointer[MutAnyOrigin]
+    # N-API v10 additions (136-141)
+    var create_external_string_latin1: OpaquePointer[MutAnyOrigin]
+    var create_external_string_utf16: OpaquePointer[MutAnyOrigin]
+    var create_property_key_utf8: OpaquePointer[MutAnyOrigin]
+    var create_property_key_latin1: OpaquePointer[MutAnyOrigin]
+    var create_property_key_utf16: OpaquePointer[MutAnyOrigin]
+    var create_buffer_from_arraybuffer: OpaquePointer[MutAnyOrigin]
+    # Missing N-API v1 function (needed for external string Latin-1 path)
+    var get_value_string_latin1: OpaquePointer[MutAnyOrigin]  # 142
     # Non-function-pointer slot: ClassRegistry pointer (set after module init)
     var registry: OpaquePointer[MutAnyOrigin]
 
@@ -291,6 +300,13 @@ struct NapiBindings(Movable):
         self.make_callback = OpaquePointer[MutAnyOrigin]()
         self.open_callback_scope = OpaquePointer[MutAnyOrigin]()
         self.close_callback_scope = OpaquePointer[MutAnyOrigin]()
+        self.create_external_string_latin1 = OpaquePointer[MutAnyOrigin]()
+        self.create_external_string_utf16 = OpaquePointer[MutAnyOrigin]()
+        self.create_property_key_utf8 = OpaquePointer[MutAnyOrigin]()
+        self.create_property_key_latin1 = OpaquePointer[MutAnyOrigin]()
+        self.create_property_key_utf16 = OpaquePointer[MutAnyOrigin]()
+        self.create_buffer_from_arraybuffer = OpaquePointer[MutAnyOrigin]()
+        self.get_value_string_latin1 = OpaquePointer[MutAnyOrigin]()
         self.registry = OpaquePointer[MutAnyOrigin]()
 
     def __moveinit__(out self, deinit take: Self):
@@ -429,13 +445,20 @@ struct NapiBindings(Movable):
         self.make_callback = take.make_callback
         self.open_callback_scope = take.open_callback_scope
         self.close_callback_scope = take.close_callback_scope
+        self.create_external_string_latin1 = take.create_external_string_latin1
+        self.create_external_string_utf16 = take.create_external_string_utf16
+        self.create_property_key_utf8 = take.create_property_key_utf8
+        self.create_property_key_latin1 = take.create_property_key_latin1
+        self.create_property_key_utf16 = take.create_property_key_utf16
+        self.create_buffer_from_arraybuffer = take.create_buffer_from_arraybuffer
+        self.get_value_string_latin1 = take.get_value_string_latin1
         self.registry = take.registry
 
 
 comptime Bindings = UnsafePointer[NapiBindings, MutAnyOrigin]
 
 def init_bindings(mut bindings: NapiBindings) raises:
-    """Resolve all 118 N-API symbols from the host process once."""
+    """Resolve all 142 N-API symbols from the host process once."""
     var h = OwnedDLHandle()
 
     # 1. napi_create_string_utf8
@@ -1259,6 +1282,61 @@ def init_bindings(mut bindings: NapiBindings) raises:
         def (NapiEnv, NapiCallbackScope) -> NapiStatus
     ]("napi_close_callback_scope")
     bindings.close_callback_scope = UnsafePointer(to=_close_callback_scope).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # N-API v10 additions (136-141)
+
+    # 136. node_api_create_external_string_latin1 (N-API v10)
+    # Creates a JS string backed by a native Latin-1 buffer without copying.
+    # finalize_cb fires when the string is GC'd; copied_out indicates if a copy was forced.
+    var _create_external_string_latin1 = h.get_function[
+        def (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("node_api_create_external_string_latin1")
+    bindings.create_external_string_latin1 = UnsafePointer(to=_create_external_string_latin1).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 137. node_api_create_external_string_utf16 (N-API v10)
+    # Creates a JS string backed by a native UTF-16LE buffer without copying.
+    var _create_external_string_utf16 = h.get_function[
+        def (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("node_api_create_external_string_utf16")
+    bindings.create_external_string_utf16 = UnsafePointer(to=_create_external_string_utf16).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 138. node_api_create_property_key_utf8 (N-API v10)
+    # Creates an engine-internalized string from UTF-8 for use as a property key.
+    # More efficient than napi_create_string_utf8 for repeated property access.
+    var _create_property_key_utf8 = h.get_function[
+        def (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("node_api_create_property_key_utf8")
+    bindings.create_property_key_utf8 = UnsafePointer(to=_create_property_key_utf8).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 139. node_api_create_property_key_latin1 (N-API v10)
+    # Creates an engine-internalized string from Latin-1 for use as a property key.
+    var _create_property_key_latin1 = h.get_function[
+        def (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("node_api_create_property_key_latin1")
+    bindings.create_property_key_latin1 = UnsafePointer(to=_create_property_key_latin1).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 140. node_api_create_property_key_utf16 (N-API v10)
+    # Creates an engine-internalized string from UTF-16LE for use as a property key.
+    var _create_property_key_utf16 = h.get_function[
+        def (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("node_api_create_property_key_utf16")
+    bindings.create_property_key_utf16 = UnsafePointer(to=_create_property_key_utf16).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 141. node_api_create_buffer_from_arraybuffer (N-API v10)
+    # Creates a zero-copy Node.js Buffer view into a slice of an existing ArrayBuffer.
+    # Raises RangeError if offset+length exceeds the ArrayBuffer bounds.
+    var _create_buffer_from_arraybuffer = h.get_function[
+        def (NapiEnv, NapiValue, UInt, UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("node_api_create_buffer_from_arraybuffer")
+    bindings.create_buffer_from_arraybuffer = UnsafePointer(to=_create_buffer_from_arraybuffer).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+    # 142. napi_get_value_string_latin1 (N-API v1)
+    # Reads a JS string as Latin-1 (ISO-8859-1) bytes.
+    # Same signature as napi_get_value_string_utf8 but output is single-byte Latin-1.
+    var _get_value_string_latin1 = h.get_function[
+        def (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]("napi_get_value_string_latin1")
+    bindings.get_value_string_latin1 = UnsafePointer(to=_get_value_string_latin1).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 
 def get_bindings(env: NapiEnv) raises -> Bindings:

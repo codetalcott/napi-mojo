@@ -213,6 +213,22 @@ def to_js_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "toJsString failed")
         return NapiValue()
 
+## createPropertyKey — create an engine-internalized property key string (N-API v10)
+##
+## Accepts a JS string, creates an internalized key, and returns it as a JS string.
+## The returned value is typeof 'string' and compares equal to the input. Its
+## advantage is V8 interning: repeated napi_get/set_property calls using this key
+## skip the string hash lookup, giving faster property access in hot paths.
+def create_property_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var s = JsString.from_napi_value(b, env, arg0)
+        return JsString.create_property_key(b, env, s).value
+    except:
+        throw_js_error(env, "createPropertyKey requires a string argument")
+        return NapiValue()
+
 def register_misc(mut m: ModuleBuilder) raises:
     var throw_value_ref = throw_value_fn
     var catch_and_return_ref = catch_and_return_fn
@@ -231,6 +247,7 @@ def register_misc(mut m: ModuleBuilder) raises:
     var get_error_stack_ref = get_error_stack_fn
     var get_opt_value_ref = get_opt_value_fn
     var to_js_string_ref = to_js_string_fn
+    var create_property_key_ref = create_property_key_fn
     m.method("throwValue", fn_ptr(throw_value_ref))
     m.method("catchAndReturn", fn_ptr(catch_and_return_ref))
     m.method("getNapiVersion", fn_ptr(get_napi_version_ref))
@@ -248,3 +265,4 @@ def register_misc(mut m: ModuleBuilder) raises:
     m.method("getErrorStack", fn_ptr(get_error_stack_ref))
     m.method("getOptValue", fn_ptr(get_opt_value_ref))
     m.method("toJsString", fn_ptr(to_js_string_ref))
+    m.method("createPropertyKey", fn_ptr(create_property_key_ref))

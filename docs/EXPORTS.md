@@ -117,3 +117,6 @@
 | `objectToArrays(obj)` | `object_to_arrays_fn` | Returns `{keys, values}` arrays from an object |
 | `genericDoubleArray(arr)` | `generic_double_array_fn` | Generic parametric version of `doubleArray` (demonstrates `ToJsValue`/`FromJsValue`) |
 | `genericReverseStrings(arr)` | `generic_reverse_strings_ref` | Generic parametric version of `reverseStrings` |
+| `createPropertyKey(str)` | `create_property_key_fn` | Creates an engine-internalized property key string (N-API v10) |
+| `createExternalString(str)` | `create_external_string_fn` | Creates a zero-copy external Latin-1 string with GC finalizer (N-API v10) |
+| `bufferFromArrayBuffer(ab, offset, length)` | `buffer_from_arraybuffer_fn` | Zero-copy Buffer view into an ArrayBuffer slice (N-API v10) |

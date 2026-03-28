@@ -3707,3 +3707,142 @@ def raw_close_callback_scope(
         def (NapiEnv, NapiCallbackScope) -> NapiStatus
     ]()[]
     return f(env, scope)
+
+## raw_get_value_string_latin1 — wraps napi_get_value_string_latin1 (N-API v1)
+##
+## Reads a JavaScript string value into a Latin-1 (ISO-8859-1) byte buffer.
+## Same calling convention as raw_get_value_string_utf8:
+##   - buf=null + bufsize=0: writes required byte count into result (excl. null)
+##   - buf!=null: writes Latin-1 bytes + null terminator, result = bytes written
+## Each JS character that fits in Latin-1 produces one byte. Characters outside
+## the Latin-1 range (U+0100+) are replaced with '?' by the engine.
+def raw_get_value_string_latin1(
+    b: Bindings,
+    env: NapiEnv,
+    value: NapiValue,
+    buf: OpaquePointer[MutAnyOrigin],
+    bufsize: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].get_value_string_latin1).bitcast[
+        def (NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, value, buf, bufsize, result)
+
+## N-API v10 additions (136-141)
+
+## raw_create_external_string_latin1 — wraps node_api_create_external_string_latin1 (N-API v10)
+##
+## Creates a JS string backed by a native Latin-1 buffer without copying.
+## finalize_cb: called when the string is GC'd (may be NULL)
+## finalize_hint: opaque pointer passed to finalize_cb
+## result: out-pointer; receives the new JS string napi_value
+## copied_out: out-pointer to Bool; set to True if the engine was forced to copy
+def raw_create_external_string_latin1(
+    b: Bindings,
+    env: NapiEnv,
+    str_ptr: OpaquePointer[ImmutAnyOrigin],
+    length: UInt,
+    finalize_cb: OpaquePointer[MutAnyOrigin],
+    finalize_hint: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+    copied_out: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_external_string_latin1).bitcast[
+        def (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, str_ptr, length, finalize_cb, finalize_hint, result, copied_out)
+
+## raw_create_external_string_utf16 — wraps node_api_create_external_string_utf16 (N-API v10)
+##
+## Creates a JS string backed by a native UTF-16LE buffer without copying.
+## str_ptr: pointer to char16_t[] data (as opaque pointer)
+## length: number of char16_t code units (not bytes)
+## finalize_cb: called when the string is GC'd (may be NULL)
+## finalize_hint: opaque pointer passed to finalize_cb
+## result: out-pointer; receives the new JS string napi_value
+## copied_out: out-pointer to Bool; set to True if the engine was forced to copy
+def raw_create_external_string_utf16(
+    b: Bindings,
+    env: NapiEnv,
+    str_ptr: OpaquePointer[ImmutAnyOrigin],
+    length: UInt,
+    finalize_cb: OpaquePointer[MutAnyOrigin],
+    finalize_hint: OpaquePointer[MutAnyOrigin],
+    result: OpaquePointer[MutAnyOrigin],
+    copied_out: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_external_string_utf16).bitcast[
+        def (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, str_ptr, length, finalize_cb, finalize_hint, result, copied_out)
+
+## raw_create_property_key_utf8 — wraps node_api_create_property_key_utf8 (N-API v10)
+##
+## Creates an engine-internalized string from UTF-8 for use as a property key.
+## Repeated calls with the same data may return the same interned value,
+## making subsequent napi_get/set_property calls faster than with regular strings.
+def raw_create_property_key_utf8(
+    b: Bindings,
+    env: NapiEnv,
+    str_ptr: OpaquePointer[ImmutAnyOrigin],
+    length: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_property_key_utf8).bitcast[
+        def (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, str_ptr, length, result)
+
+## raw_create_property_key_latin1 — wraps node_api_create_property_key_latin1 (N-API v10)
+##
+## Creates an engine-internalized string from Latin-1 for use as a property key.
+def raw_create_property_key_latin1(
+    b: Bindings,
+    env: NapiEnv,
+    str_ptr: OpaquePointer[ImmutAnyOrigin],
+    length: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_property_key_latin1).bitcast[
+        def (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, str_ptr, length, result)
+
+## raw_create_property_key_utf16 — wraps node_api_create_property_key_utf16 (N-API v10)
+##
+## Creates an engine-internalized string from UTF-16LE for use as a property key.
+## str_ptr: pointer to char16_t[] data (as opaque pointer)
+## length: number of char16_t code units (not bytes)
+def raw_create_property_key_utf16(
+    b: Bindings,
+    env: NapiEnv,
+    str_ptr: OpaquePointer[ImmutAnyOrigin],
+    length: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_property_key_utf16).bitcast[
+        def (NapiEnv, OpaquePointer[ImmutAnyOrigin], UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, str_ptr, length, result)
+
+## raw_create_buffer_from_arraybuffer — wraps node_api_create_buffer_from_arraybuffer (N-API v10)
+##
+## Creates a zero-copy Node.js Buffer view into a slice of an existing ArrayBuffer.
+## arraybuffer: the source napi_value ArrayBuffer
+## byte_offset: start of the slice in bytes
+## byte_length: length of the slice in bytes
+## result: out-pointer; receives the new Buffer napi_value
+## Raises RangeError at the JS level if offset+length exceeds the ArrayBuffer bounds.
+def raw_create_buffer_from_arraybuffer(
+    b: Bindings,
+    env: NapiEnv,
+    arraybuffer: NapiValue,
+    byte_offset: UInt,
+    byte_length: UInt,
+    result: OpaquePointer[MutAnyOrigin],
+) -> NapiStatus:
+    var f = UnsafePointer(to=b[].create_buffer_from_arraybuffer).bitcast[
+        def (NapiEnv, NapiValue, UInt, UInt, OpaquePointer[MutAnyOrigin]) -> NapiStatus
+    ]()[]
+    return f(env, arraybuffer, byte_offset, byte_length, result)

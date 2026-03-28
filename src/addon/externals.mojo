@@ -6,6 +6,7 @@ from napi.bindings import Bindings
 from napi.error import throw_js_error, throw_js_type_error_dynamic, check_status
 from napi.raw import raw_add_finalizer, raw_create_external_arraybuffer
 from napi.framework.js_number import JsNumber
+from napi.framework.js_string import JsString, Latin1Buf
 from napi.framework.js_boolean import JsBoolean
 from napi.framework.js_object import JsObject
 from napi.framework.js_external import JsExternal
@@ -135,14 +136,48 @@ def attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "attachFinalizer failed")
         return NapiValue()
 
+## external_string_finalize — GC callback for createExternalString heap buffers
+##
+## Called by Node.js when the externally-backed string is collected or when the
+## engine was forced to copy the data. Frees the heap-allocated Latin-1 byte buffer.
+def external_string_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.bitcast[UInt8]()
+    ptr.free()
+
+## createExternalString — zero-copy JS string from a Mojo-owned Latin-1 buffer (N-API v10)
+##
+## Accepts a JS string, reads it as Latin-1 bytes via napi_get_value_string_latin1,
+## then wraps that buffer as an external JS string (no V8 copy of the data).
+## The finalizer frees the heap buffer when the string is GC'd. The returned
+## value is typeof 'string' and compares equal to the input for Latin-1 content.
+## Characters outside Latin-1 (U+0100+) are replaced by the engine.
+def create_external_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        # Read JS string as Latin-1 bytes (NOT UTF-8) — correct encoding for
+        # node_api_create_external_string_latin1
+        var latin1 = JsString.read_latin1(b, env, arg0)
+        var buf = latin1.ptr
+        var length = latin1.length
+        var fin_ref = external_string_finalize
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        var data_ptr: OpaquePointer[ImmutAnyOrigin] = buf.bitcast[NoneType]()
+        return JsString.create_external_latin1(b, env, data_ptr, length, fin_ptr, OpaquePointer[MutAnyOrigin]()).value
+    except:
+        throw_js_error(env, "createExternalString requires a string argument")
+        return NapiValue()
+
 def register_externals(mut m: ModuleBuilder) raises:
     var create_external_ref = create_external_fn
     var get_external_data_ref = get_external_data_fn
     var is_external_ref = is_external_fn
     var create_external_arraybuffer_ref = create_external_arraybuffer_fn
     var attach_finalizer_ref = attach_finalizer_fn
+    var create_external_string_ref = create_external_string_fn
     m.method("createExternal", fn_ptr(create_external_ref))
     m.method("getExternalData", fn_ptr(get_external_data_ref))
     m.method("isExternal", fn_ptr(is_external_ref))
     m.method("createExternalArrayBuffer", fn_ptr(create_external_arraybuffer_ref))
     m.method("attachFinalizer", fn_ptr(attach_finalizer_ref))
+    m.method("createExternalString", fn_ptr(create_external_string_ref))

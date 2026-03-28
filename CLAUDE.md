@@ -165,7 +165,7 @@ desc.method = UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 **TSFN `call_js_cb` teardown safety**: During Node.js shutdown, `call_js_cb` may receive `env=NULL` and `js_callback=NULL`. Must check before calling N-API functions — only free the data pointer and return.
 
-**napi_create_reference only supports objects/functions/symbols**: Primitive values (numbers, strings, booleans) cannot be stored in napi_ref. Wrap in an object first if you need to reference a primitive.
+**napi_create_reference supports all value types at N-API v10+**: At N-API v9 and earlier, only objects, functions, and symbols could be stored in napi_ref. At N-API v10+ (Node.js 22.12+ / 24+), primitives (numbers, strings, booleans) also work — but they do not support weak reference semantics (count reaching 0 releases the value). No wrapping in an object is needed on modern Node.js.
 
 **Variable-length arguments**: Use `CbArgs.argc(env, info)` to query count, `alloc[NapiValue](count)` for the buffer, `CbArgs.get_argv(env, info, count, argv_ptr)` to fill it. The argv_ptr parameter requires `UnsafePointer[NapiValue, MutAnyOrigin]` (explicit origin).
 

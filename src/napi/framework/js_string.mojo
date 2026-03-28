@@ -25,12 +25,27 @@
 
 from std.memory import alloc
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING
-from napi.raw import raw_create_string_utf8, raw_get_value_string_utf8
+from napi.raw import raw_create_string_utf8, raw_get_value_string_utf8, raw_get_value_string_latin1, raw_create_property_key_utf8, raw_create_external_string_latin1
 from napi.error import check_status
 from napi.bindings import Bindings
 from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof
 from napi.framework.js_coerce import js_coerce_to_string
+
+## Latin1Buf — heap-allocated Latin-1 byte buffer returned by JsString.read_latin1
+##
+## Holds a pointer and length. The caller owns the pointer and must free it.
+struct Latin1Buf(Movable):
+    var ptr: UnsafePointer[UInt8, MutAnyOrigin]
+    var length: UInt
+
+    def __init__(out self, ptr: UnsafePointer[UInt8, MutAnyOrigin], length: UInt):
+        self.ptr = ptr
+        self.length = length
+
+    def __moveinit__(out self, deinit take: Self):
+        self.ptr = take.ptr
+        self.length = take.length
 
 ## JsString — typed wrapper for a JavaScript string napi_value
 struct JsString:
@@ -191,6 +206,80 @@ struct JsString:
     def read_arg_0(b: Bindings, env: NapiEnv, info: NapiValue) raises -> String:
         var arg0 = CbArgs.get_one(b, env, info)
         return JsString.from_napi_value(b, env, arg0)
+
+    ## read_latin1 — read a JS string as Latin-1 bytes into a heap buffer
+    ##
+    ## Returns the Latin-1 data as a Latin1Buf (pointer + length). The caller OWNS
+    ## the pointer and must call ptr.free() when done. Each JS character that fits
+    ## in Latin-1 (U+0000–U+00FF) maps to one byte; characters outside that range
+    ## are replaced by the engine.
+    ##
+    ## This is the correct way to obtain data for node_api_create_external_string_latin1,
+    ## which expects Latin-1 bytes — NOT UTF-8 bytes.
+    @staticmethod
+    def read_latin1(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Latin1Buf:
+        # Size query: null buf + 0 bufsize → writes required byte count
+        var needed: UInt = 0
+        var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=needed).bitcast[NoneType]()
+        check_status(raw_get_value_string_latin1(b, env, val,
+            OpaquePointer[MutAnyOrigin](), 0, needed_ptr))
+        # Allocate buffer (+ 1 for null terminator that napi writes)
+        var buf = alloc[UInt8](Int(needed + 1))
+        var actual: UInt = 0
+        var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
+        check_status(raw_get_value_string_latin1(b, env, val,
+            buf.bitcast[NoneType](), needed + 1, actual_ptr))
+        return Latin1Buf(buf, actual)
+
+    ## create_property_key — create an engine-internalized string for property access (N-API v10)
+    ##
+    ## Returns a JS string that V8 interns, making repeated napi_get/set_property
+    ## calls with the same key faster than using regular strings. The returned value
+    ## behaves exactly like a regular JS string (typeof === 'string').
+    @staticmethod
+    def create_property_key(b: Bindings, env: NapiEnv, s: String) raises -> JsString:
+        var result: NapiValue = NapiValue()
+        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        check_status(raw_create_property_key_utf8(b, env, str_ptr, UInt(len(s)), result_ptr))
+        return JsString(result)
+
+    ## create_property_key_literal — create an internalized property key from a StringLiteral (N-API v10)
+    ##
+    ## Uses the literal's static pointer — no heap allocation. Preferred when the key
+    ## is a compile-time constant (e.g., object field names in hot loops).
+    @staticmethod
+    def create_property_key_literal(b: Bindings, env: NapiEnv, s: StringLiteral) raises -> JsString:
+        var result: NapiValue = NapiValue()
+        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        check_status(raw_create_property_key_utf8(b, env, str_ptr, UInt(s.byte_length()), result_ptr))
+        return JsString(result)
+
+    ## create_external_latin1 — zero-copy JS string from a native Latin-1 buffer (N-API v10)
+    ##
+    ## The returned JS string directly references the caller's buffer — no copy occurs
+    ## unless the engine cannot accommodate the external reference (in which case
+    ## finalize_cb is called immediately). The buffer must remain valid until
+    ## finalize_cb fires.
+    ##
+    ## finalize_cb:   fn(env, data, hint) — called when the string is GC'd or copied
+    ## finalize_hint: opaque pointer passed unchanged to finalize_cb (may be null)
+    @staticmethod
+    def create_external_latin1(
+        b: Bindings,
+        env: NapiEnv,
+        data: OpaquePointer[ImmutAnyOrigin],
+        length: UInt,
+        finalize_cb: OpaquePointer[MutAnyOrigin],
+        finalize_hint: OpaquePointer[MutAnyOrigin],
+    ) raises -> JsString:
+        var result: NapiValue = NapiValue()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var copied: Bool = False
+        var copied_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=copied).bitcast[NoneType]()
+        check_status(raw_create_external_string_latin1(b, env, data, length, finalize_cb, finalize_hint, result_ptr, copied_ptr))
+        return JsString(result)
 
 ## js_to_string — convert any JavaScript value to a Mojo String
 ##

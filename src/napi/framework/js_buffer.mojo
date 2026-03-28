@@ -6,7 +6,8 @@
 
 from napi.types import NapiEnv, NapiValue
 from napi.bindings import Bindings
-from napi.raw import raw_create_buffer, raw_create_buffer_copy, raw_get_buffer_info, raw_is_buffer
+from napi.raw import raw_create_buffer, raw_create_buffer_copy, raw_get_buffer_info, raw_is_buffer, raw_create_buffer_from_arraybuffer
+from napi.framework.js_arraybuffer import JsArrayBuffer
 from napi.error import check_status
 
 struct JsBuffer:
@@ -114,6 +115,19 @@ struct JsBuffer:
         var result = NapiValue()
         check_status(raw_create_buffer_copy(b, env, src_len, src_data,
             UnsafePointer(to=copy_data).bitcast[NoneType](),
+            UnsafePointer(to=result).bitcast[NoneType]()))
+        return JsBuffer(result)
+
+    ## from_arraybuffer — zero-copy Buffer view into an ArrayBuffer slice (N-API v10)
+    ##
+    ## Creates a Node.js Buffer that directly references a byte range of an existing
+    ## ArrayBuffer — no copy of the data. The ArrayBuffer must remain alive (referenced)
+    ## for the Buffer to be valid. Raises if byte_offset + byte_length exceeds the
+    ## ArrayBuffer's size (Node.js surfaces this as a RangeError).
+    @staticmethod
+    def from_arraybuffer(b: Bindings, env: NapiEnv, ab: JsArrayBuffer, byte_offset: UInt, byte_length: UInt) raises -> JsBuffer:
+        var result = NapiValue()
+        check_status(raw_create_buffer_from_arraybuffer(b, env, ab.value, byte_offset, byte_length,
             UnsafePointer(to=result).bitcast[NoneType]()))
         return JsBuffer(result)
 

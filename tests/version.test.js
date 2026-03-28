@@ -14,9 +14,9 @@ describe('Version Info', () => {
     expect(Number.isInteger(v)).toBe(true);
   });
 
-  test('getNapiVersion returns at least 6', () => {
-    // N-API v6 is the minimum for all features we use
-    expect(addon.getNapiVersion()).toBeGreaterThanOrEqual(6);
+  test('getNapiVersion returns at least 10', () => {
+    // N-API v10 is the minimum — required for property keys, external strings, buffer-from-arraybuffer
+    expect(addon.getNapiVersion()).toBeGreaterThanOrEqual(10);
   });
 
   // getNodeVersion — returns {major, minor, patch} object
@@ -35,9 +35,9 @@ describe('Version Info', () => {
     expect(typeof v.patch).toBe('number');
   });
 
-  test('getNodeVersion.major is at least 18', () => {
-    // Node.js 18+ is required (engines field in package.json)
-    expect(addon.getNodeVersion().major).toBeGreaterThanOrEqual(18);
+  test('getNodeVersion.major is at least 22', () => {
+    // Node.js 22.12+ required for N-API v10
+    expect(addon.getNodeVersion().major).toBeGreaterThanOrEqual(22);
   });
 
   test('getNodeVersion matches process.version', () => {

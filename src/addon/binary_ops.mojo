@@ -221,6 +221,23 @@ def is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "isDataView failed")
         return NapiValue()
 
+## bufferFromArrayBuffer — zero-copy Buffer view into an ArrayBuffer slice (N-API v10)
+##
+## bufferFromArrayBuffer(arraybuffer, byteOffset, byteLength) -> Buffer
+## The returned Buffer shares memory with the ArrayBuffer — mutations to one
+## are visible in the other. Throws RangeError if the range is out of bounds.
+def buffer_from_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_three(b, env, info)
+        var ab = JsArrayBuffer(args[0])
+        var byte_offset = UInt(Int(JsNumber.from_napi_value(b, env, args[1])))
+        var byte_length = UInt(Int(JsNumber.from_napi_value(b, env, args[2])))
+        return JsBuffer.from_arraybuffer(b, env, ab, byte_offset, byte_length).value
+    except:
+        throw_js_error(env, "bufferFromArrayBuffer requires (arraybuffer, byteOffset, byteLength)")
+        return NapiValue()
+
 def register_binary(mut m: ModuleBuilder) raises:
     var create_arraybuffer_ref = create_arraybuffer_fn
     var arraybuffer_length_ref = arraybuffer_length_fn
@@ -234,6 +251,7 @@ def register_binary(mut m: ModuleBuilder) raises:
     var create_dataview_ref = create_dataview_fn
     var get_dataview_info_ref = get_dataview_info_fn
     var is_dataview_ref = is_dataview_fn
+    var buffer_from_arraybuffer_ref = buffer_from_arraybuffer_fn
     m.method("createArrayBuffer", fn_ptr(create_arraybuffer_ref))
     m.method("arrayBufferLength", fn_ptr(arraybuffer_length_ref))
     m.method("sumBuffer", fn_ptr(sum_buffer_ref))
@@ -246,3 +264,4 @@ def register_binary(mut m: ModuleBuilder) raises:
     m.method("createDataView", fn_ptr(create_dataview_ref))
     m.method("getDataViewInfo", fn_ptr(get_dataview_info_ref))
     m.method("isDataView", fn_ptr(is_dataview_ref))
+    m.method("bufferFromArrayBuffer", fn_ptr(buffer_from_arraybuffer_ref))
