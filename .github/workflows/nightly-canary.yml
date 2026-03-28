@@ -2,7 +2,8 @@ name: Nightly Canary
 
 on:
   schedule:
-    - cron: '0 8 * * 1'  # Monday 8am UTC
+    - cron: '0 22 * * 2'  # Tuesday 10pm UTC
+    - cron: '0 22 * * 5'  # Friday 10pm UTC
   workflow_dispatch:  # Allow manual trigger
 
 concurrency:
