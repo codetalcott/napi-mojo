@@ -19,11 +19,21 @@ from napi.framework.js_object import JsObject
 from napi.framework.js_array import JsArray
 from std.memory import alloc
 from napi.framework.async_work import AsyncWork, AsyncWorkResult
-from napi.framework.convert import from_js_array_f64, to_js_array_f64
+from napi.framework.js_null import JsNull
+from napi.framework.convert import from_js_array_f64, to_js_array_f64, from_js_array_str, to_js_array_str
 from addon.user_fns import square_pure
 from addon.user_fns import clamp_pure
 from addon.user_fns import uppercase_pure
 from addon.user_fns import sum_array_pure
+from addon.user_fns import negate_bool_pure
+from addon.user_fns import add_int32_pure
+from addon.user_fns import describe_pure
+from addon.user_fns import reverse_strings_pure
+from addon.user_fns import safe_divide_pure
+from addon.user_fns import find_name_pure
+from addon.struct_fns import echo_config_pure
+from addon.struct_fns import config_summary_pure
+from generated.structs import ConfigData, config_from_js, config_to_js
 
 # exampleAdd
 def example_add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -269,6 +279,156 @@ def example_clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "exampleClamp failed")
         return NapiValue()
 
+# negateBoolPure
+def negate_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(_b, env, info)
+        var _t_arg0 = js_typeof(_b, env, arg0)
+        if _t_arg0 != NAPI_TYPE_BOOLEAN:
+            throw_js_type_error_dynamic(_b, env, "negateBoolPure: expected boolean, got " + js_type_name(_t_arg0))
+            return NapiValue()
+        var mojo_arg0 = JsBoolean.from_napi_value(_b, env, arg0)
+        var mojo_result = negate_bool_pure(mojo_arg0)
+        return JsBoolean.create(_b, env, mojo_result).value
+    except:
+        throw_js_error(env, "negateBoolPure failed")
+        return NapiValue()
+
+# addInt32Pure
+def add_int32_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(_b, env, info)
+        var _t_args_0_ = js_typeof(_b, env, args[0])
+        if _t_args_0_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "addInt32Pure: expected number for arg 1, got " + js_type_name(_t_args_0_))
+            return NapiValue()
+        var _t_args_1_ = js_typeof(_b, env, args[1])
+        if _t_args_1_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "addInt32Pure: expected number for arg 2, got " + js_type_name(_t_args_1_))
+            return NapiValue()
+        var mojo_arg0 = JsInt32.from_napi_value(_b, env, args[0])
+        var mojo_arg1 = JsInt32.from_napi_value(_b, env, args[1])
+        var mojo_result = add_int32_pure(mojo_arg0, mojo_arg1)
+        return JsInt32.create(_b, env, mojo_result).value
+    except:
+        throw_js_error(env, "addInt32Pure failed")
+        return NapiValue()
+
+# describePure
+def describe_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(_b, env, info)
+        var _t_args_0_ = js_typeof(_b, env, args[0])
+        if _t_args_0_ != NAPI_TYPE_STRING:
+            throw_js_type_error_dynamic(_b, env, "describePure: expected string for arg 1, got " + js_type_name(_t_args_0_))
+            return NapiValue()
+        var _t_args_1_ = js_typeof(_b, env, args[1])
+        if _t_args_1_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "describePure: expected number for arg 2, got " + js_type_name(_t_args_1_))
+            return NapiValue()
+        var mojo_arg0 = JsString.from_napi_value(_b, env, args[0])
+        var mojo_arg1 = JsNumber.from_napi_value(_b, env, args[1])
+        var mojo_result = describe_pure(mojo_arg0, mojo_arg1)
+        return JsString.create(_b, env, mojo_result).value
+    except:
+        throw_js_error(env, "describePure failed")
+        return NapiValue()
+
+# reverseStringsPure
+def reverse_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(_b, env, info)
+        if not js_is_array(_b, env, arg0):
+            throw_js_type_error_dynamic(_b, env, "reverseStringsPure: expected array")
+            return NapiValue()
+        var mojo_arg0 = from_js_array_str(_b, env, arg0)
+        var mojo_result = reverse_strings_pure(mojo_arg0)
+        return to_js_array_str(_b, env, mojo_result)
+    except:
+        throw_js_error(env, "reverseStringsPure failed")
+        return NapiValue()
+
+# safeDivide
+def safe_divide_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(_b, env, info)
+        var _t_args_0_ = js_typeof(_b, env, args[0])
+        if _t_args_0_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "safeDivide: expected number for arg 1, got " + js_type_name(_t_args_0_))
+            return NapiValue()
+        var _t_args_1_ = js_typeof(_b, env, args[1])
+        if _t_args_1_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "safeDivide: expected number for arg 2, got " + js_type_name(_t_args_1_))
+            return NapiValue()
+        var mojo_arg0 = JsNumber.from_napi_value(_b, env, args[0])
+        var mojo_arg1 = JsNumber.from_napi_value(_b, env, args[1])
+        var mojo_result = safe_divide_pure(mojo_arg0, mojo_arg1)
+        if not mojo_result:
+            return JsNull.create(_b, env).value
+        return JsNumber.create(_b, env, mojo_result.value()).value
+    except:
+        throw_js_error(env, "safeDivide failed")
+        return NapiValue()
+
+# findName
+def find_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(_b, env, info)
+        if not js_is_array(_b, env, args[0]):
+            throw_js_type_error_dynamic(_b, env, "findName: expected array for arg 1")
+            return NapiValue()
+        var _t_args_1_ = js_typeof(_b, env, args[1])
+        if _t_args_1_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "findName: expected number for arg 2, got " + js_type_name(_t_args_1_))
+            return NapiValue()
+        var mojo_arg0 = from_js_array_str(_b, env, args[0])
+        var mojo_arg1 = JsNumber.from_napi_value(_b, env, args[1])
+        var mojo_result = find_name_pure(mojo_arg0, mojo_arg1)
+        if not mojo_result:
+            return JsNull.create(_b, env).value
+        return JsString.create(_b, env, mojo_result.value()).value
+    except:
+        throw_js_error(env, "findName failed")
+        return NapiValue()
+
+# echoConfig
+def echo_config_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(_b, env, info)
+        var _t_arg0 = js_typeof(_b, env, arg0)
+        if _t_arg0 != NAPI_TYPE_OBJECT:
+            throw_js_type_error_dynamic(_b, env, "echoConfig: expected Config, got " + js_type_name(_t_arg0))
+            return NapiValue()
+        var mojo_arg0 = config_from_js(_b, env, arg0)
+        var mojo_result = echo_config_pure(mojo_arg0)
+        return config_to_js(_b, env, mojo_result)
+    except:
+        throw_js_error(env, "echoConfig failed")
+        return NapiValue()
+
+# configSummary
+def config_summary_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(_b, env, info)
+        var _t_arg0 = js_typeof(_b, env, arg0)
+        if _t_arg0 != NAPI_TYPE_OBJECT:
+            throw_js_type_error_dynamic(_b, env, "configSummary: expected Config, got " + js_type_name(_t_arg0))
+            return NapiValue()
+        var mojo_arg0 = config_from_js(_b, env, arg0)
+        var mojo_result = config_summary_pure(mojo_arg0)
+        return JsString.create(_b, env, mojo_result).value
+    except:
+        throw_js_error(env, "configSummary failed")
+        return NapiValue()
+
 # asyncSum (async)
 struct AsyncSumData(Movable):
     var deferred: NapiDeferred
@@ -444,6 +604,14 @@ def register_generated(mut m: ModuleBuilder) raises:
     var sum_array_gen_ref = sum_array_fn
     var example_clamp_gen_ref = example_clamp_fn
     var async_sum_gen_ref = async_sum_fn
+    var negate_bool_gen_ref = negate_bool_fn
+    var add_int32_gen_ref = add_int32_fn
+    var describe_gen_ref = describe_fn
+    var reverse_strings_gen_ref = reverse_strings_fn
+    var safe_divide_gen_ref = safe_divide_fn
+    var find_name_gen_ref = find_name_fn
+    var echo_config_gen_ref = echo_config_fn
+    var config_summary_gen_ref = config_summary_fn
 
     m.method("exampleAdd", fn_ptr(example_add_gen_ref))
     m.method("exampleGreet", fn_ptr(example_greet_gen_ref))
@@ -460,6 +628,14 @@ def register_generated(mut m: ModuleBuilder) raises:
     m.method("sumArrayPure", fn_ptr(sum_array_gen_ref))
     m.method("exampleClamp", fn_ptr(example_clamp_gen_ref))
     m.method("asyncSum", fn_ptr(async_sum_gen_ref))
+    m.method("negateBoolPure", fn_ptr(negate_bool_gen_ref))
+    m.method("addInt32Pure", fn_ptr(add_int32_gen_ref))
+    m.method("describePure", fn_ptr(describe_gen_ref))
+    m.method("reverseStringsPure", fn_ptr(reverse_strings_gen_ref))
+    m.method("safeDivide", fn_ptr(safe_divide_gen_ref))
+    m.method("findName", fn_ptr(find_name_gen_ref))
+    m.method("echoConfig", fn_ptr(echo_config_gen_ref))
+    m.method("configSummary", fn_ptr(config_summary_gen_ref))
     var example_point_ctor_gen_ref = example_point_ctor_fn
     var example_point_sum_gen_ref = example_point_sum_fn
     var example_point_get_x_gen_ref = example_point_get_x_fn

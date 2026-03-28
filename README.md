@@ -16,26 +16,27 @@ addon.greet("world"); // "Hello, world!"
 ## Project Status
 
 **Alpha** — napi-mojo is under active development and not yet proven in
-production. The API covers the full N-API v10 surface (113 exported functions, 3
-classes, 571 tests). Expect breaking changes as the project matures.
+production. The API covers the full N-API v10 surface (140 exported functions, 3
+classes, 605 tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
   complete, ergonomic framework for building Node.js native addons in Mojo.
   We're not there yet; reaching that bar requires exhaustive real-world testing,
   community feedback, and a stable Mojo language release.
-- **Mojo compatibility:** Tracks Mojo nightly (currently v26.2.x). As Mojo
+- **Mojo compatibility:** Tracks Mojo nightly (currently dev2026032105). As Mojo
   approaches v1.0, this project aims to stay current with each nightly release.
   Expect occasional build breakage during Mojo language transitions.
 - **What works:** Core N-API bindings, type wrappers, async work, classes, error
-  handling, TypeScript definition generation, and a code generator for callback
-  trampolines — all validated by the test suite.
+  handling, TypeScript definition generation, and a TOML-driven code generator
+  with `mojo_fn` auto-trampolines, nullable returns, and struct-to-object
+  mapping — all validated by the test suite.
 - **What's missing:** Production hardening, cross-platform prebuild
   distribution, performance benchmarking against napi-rs, and documentation
   beyond this README and the generated `.d.ts`.
 
 ## Features
 
-- **113 exported functions** and **3 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
+- **140 exported functions** and **3 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
 - Primitives: strings, numbers (Float64/Int32/UInt32/Int64), booleans, null,
   undefined, BigInt, Symbol, Date
 - Objects: create, read/write properties, enumerate keys, freeze/seal, prototype
@@ -52,12 +53,22 @@ classes, 571 tests). Expect breaking changes as the project matures.
 - References, handle scopes, escapable handle scopes, GC finalizers
 - Type coercion, strict equality, instanceof, external data with GC cleanup
 - Auto-generated TypeScript definitions
+- **TOML code generator** (`npm run generate:addon` + `src/exports.toml`):
+  - `mojo_fn` auto-trampolines — write a pure Mojo function, declare it in
+    TOML, and the generator creates type-checked N-API callbacks with zero
+    boilerplate
+  - **Nullable returns** — `returns = "number?"` generates `Optional[T]` →
+    `T | null` in JS/TS
+  - **Struct-to-object mapping** — `[structs.*]` TOML sections define typed
+    JS object shapes, generating bidirectional Mojo struct ↔ JS object
+    converters (the Mojo equivalent of napi-rs `#[napi(object)]`)
+  - Async function generation, class generation (constructor + methods +
+    getters/setters + statics), auto-generated TypeScript `.d.ts` with
+    interfaces
 - **Ergonomic API**: `ModuleBuilder`/`ClassBuilder` for registration, `fn_ptr()`
   helper, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue`
-  conversion traits, `AsyncWork` helpers for async work boilerplate, a code
-  generator (`npm run generate:addon` + `src/exports.toml`) for auto-generating
-  callback trampolines, `MojoFloat64Array` for zero-copy TypedArray output, and
-  `parallelize_safe()` for SIMD parallel computation with automatic runtime init
+  conversion traits, `AsyncWork` helpers, `MojoFloat64Array` for zero-copy
+  TypedArray output, and `parallelize_safe()` for SIMD parallel computation
 
 ## Installation
 
@@ -69,10 +80,10 @@ git clone https://github.com/codetalcott/napi-mojo.git
 cd napi-mojo
 npm install
 npm run build    # compiles Mojo → build/index.node + generates TypeScript defs
-npm test         # 571 tests
+npm test         # 605 tests
 ```
 
-**Prerequisites:** [Mojo nightly](https://docs.modular.com/magic/) (v26.2.x) via
+**Prerequisites:** [Mojo nightly](https://docs.modular.com/magic/) (dev2026032105) via
 [pixi](https://pixi.sh), Node.js 22.12+ (N-API v10)
 
 See [`examples/`](examples/) for runnable scripts.
@@ -143,6 +154,100 @@ const dv = m.createDataView(ab, 0, 8); // DataView over ArrayBuffer
 m.getDataViewInfo(dv); // { byteLength: 8, byteOffset: 0 }
 ```
 
+## Code Generator
+
+The TOML code generator eliminates N-API boilerplate. Write a pure Mojo function,
+declare it in `src/exports.toml`, and run `npm run generate:addon` — the generator
+creates type-checked callbacks, struct converters, and TypeScript definitions
+automatically.
+
+### Bind a pure Mojo function (`mojo_fn`)
+
+```toml
+# src/exports.toml
+[functions.square]
+js_name = "square"
+args = ["number"]
+returns = "number"
+mojo_fn = "square_pure"
+```
+
+```mojo
+# src/addon/user_fns.mojo
+def square_pure(x: Float64) -> Float64:
+    return x * x
+```
+
+Supported type tokens: `number`, `string`, `boolean`/`bool`, `int32`, `uint32`,
+`int64`, `object`, `array`, `number[]`, `string[]`, `any`. Append `?` to skip
+type validation on args.
+
+### Nullable returns (`Optional[T]` → `T | null`)
+
+```toml
+[functions.safe_divide]
+js_name = "safeDivide"
+args = ["number", "number"]
+returns = "number?"
+mojo_fn = "safe_divide_pure"
+```
+
+```mojo
+def safe_divide_pure(a: Float64, b: Float64) -> Optional[Float64]:
+    if b == 0.0:
+        return None
+    return a / b
+```
+
+```js
+safeDivide(10, 2); // 5
+safeDivide(10, 0); // null
+```
+
+### Struct-to-object mapping (`[structs.*]`)
+
+Define a typed JS object shape and get bidirectional Mojo struct ↔ JS object
+converters — the Mojo equivalent of napi-rs `#[napi(object)]`:
+
+```toml
+[structs.config]
+js_name = "Config"
+[structs.config.fields]
+host = "string"
+port = "number"
+verbose = "boolean"
+
+[functions.process_config]
+js_name = "processConfig"
+args = ["config"]
+returns = "string"
+mojo_fn = "process_config_pure"
+```
+
+```mojo
+from generated.structs import ConfigData
+
+def process_config_pure(c: ConfigData) -> String:
+    return c.host + ":" + String(Int(c.port))
+```
+
+Generates TypeScript:
+
+```ts
+export interface Config { host: string; port: number; verbose: boolean; }
+export function processConfig(arg0: Config): string;
+```
+
+### Other generator features
+
+- **Async functions**: `async = true` + `execute_body` for worker-thread computation
+- **Classes**: `[classes.*]` with constructor, instance methods, getters/setters,
+  static methods
+- **Inline body**: Use `body` instead of `mojo_fn` for callbacks that need direct
+  N-API access
+
+See `src/exports.toml` for the full set of examples.
+
 ## API Reference
 
 Full typed API: [`build/index.d.ts`](build/index.d.ts) — auto-generated on every
@@ -163,6 +268,7 @@ build, works in any TypeScript-aware IDE.
 | Errors | `throwTypeError` `throwRangeError` `throwSyntaxError` `throwValue` `catchAndReturn` |
 | GC & lifecycle | `createExternal` `attachFinalizer` `setInstanceData` `getInstanceData` `addCleanupHook` `removeCleanupHook` |
 | Runtime introspection | `getGlobal` `getNapiVersion` `getNodeVersion` `runScript` `adjustExternalMemory` |
+| Code-generated | `square` `clamp` `uppercase` `sumArrayPure` `negateBoolPure` `addInt32Pure` `describePure` `reverseStringsPure` `safeDivide` `findName` `echoConfig` `configSummary` `exampleAdd` `exampleGreet` `exampleIsPositive` `exampleClamp` `asyncSum` `ExamplePoint` |
 
 ## Architecture
 
@@ -180,7 +286,8 @@ build, works in any TypeScript-aware IDE.
 
 ```bash
 npm run build        # compile + generate TypeScript defs
-npm test             # run Jest test suite (561 tests)
+npm test             # run Jest test suite (605 tests)
+npm run generate:addon  # regenerate src/generated/ from src/exports.toml
 npx jest tests/basic.test.js   # run a single test file
 npm run generate:docs  # generate HTML API docs → docs/api/ (requires: npm i -D typedoc)
 ```

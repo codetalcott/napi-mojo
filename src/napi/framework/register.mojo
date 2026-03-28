@@ -60,7 +60,7 @@ def fn_ptr[T: AnyType](func: T) -> OpaquePointer[MutAnyOrigin]:
 ## ~90 individual napi_define_properties calls to 1 during module init.
 ## Maximum descriptors ModuleBuilder can hold before flush().
 ## Increase if a single module registers more than this many exports.
-comptime MAX_DESCRIPTORS: Int = 128
+comptime MAX_DESCRIPTORS: Int = 192
 
 struct ModuleBuilder(Movable):
     var env: NapiEnv
@@ -108,17 +108,6 @@ struct ModuleBuilder(Movable):
         (self._descs + self._count).init_pointee_move(desc^)
         self._count += 1
 
-    def method(mut self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]) raises:
-        if self._count >= self._capacity:
-            raise Error("ModuleBuilder: descriptor capacity exceeded (max " + String(MAX_DESCRIPTORS) + ")")
-        var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
-        desc.method = ptr
-        desc.data = self.data
-        desc.attributes = 0
-        (self._descs + self._count).init_pointee_move(desc^)
-        self._count += 1
-
     ## flush — register all accumulated method descriptors in one N-API call
     ##
     ## Must be called exactly once after all method() calls. Frees the internal
@@ -130,17 +119,6 @@ struct ModuleBuilder(Movable):
             return
         check_status(raw_define_properties(
             self.env, self.exports, UInt(self._count),
-            UnsafePointer(to=self._descs[0]).bitcast[NoneType](),
-        ))
-        self._descs.free()
-        self._count = 0
-
-    def flush(mut self, b: Bindings) raises:
-        if self._count == 0:
-            self._descs.free()
-            return
-        check_status(raw_define_properties(
-            b, self.env, self.exports, UInt(self._count),
             UnsafePointer(to=self._descs[0]).bitcast[NoneType](),
         ))
         self._descs.free()
@@ -320,6 +298,18 @@ struct ClassBuilder:
         set_class_prototype(b, self.env, self.ctor, parent.ctor)
 
 
+## _bytes_equal — compare two byte buffers of known equal length
+def _bytes_equal(
+    a: OpaquePointer[ImmutAnyOrigin], b: OpaquePointer[ImmutAnyOrigin], length: Int
+) -> Bool:
+    var a_bytes = a.bitcast[UInt8]()
+    var b_bytes = b.bitcast[UInt8]()
+    for i in range(length):
+        if a_bytes[i] != b_bytes[i]:
+            return False
+    return True
+
+
 ## ClassEntry — one slot in a ClassRegistry
 ##
 ## Stores the .rodata pointer + byte length from a StringLiteral name,
@@ -392,22 +382,13 @@ struct ClassRegistry(Movable):
         var target_len = name.byte_length()
         var target_ptr = name.unsafe_ptr()
         for i in range(self._count):
-            var stored_len = (self._entries + i)[].name_len
-            var stored_ptr = (self._entries + i)[].name_ptr
-            if stored_len == target_len:
-                var name_match = True
-                var s_bytes = stored_ptr.bitcast[UInt8]()
-                for j in range(stored_len):
-                    if s_bytes[j] != target_ptr[j]:
-                        name_match = False
-                        break
-                if name_match:
-                    var stored_ref = (self._entries + i)[].ctor_ref
-                    var ctor_val = JsRef(stored_ref).get(b, env)
-                    var result = NapiValue()
-                    check_status(raw_new_instance(
-                        b, env, ctor_val, argc, argv,
-                        UnsafePointer(to=result).bitcast[NoneType](),
-                    ))
-                    return result
+            var ep = self._entries + i
+            if ep[].name_len == target_len and _bytes_equal(ep[].name_ptr, target_ptr.bitcast[NoneType](), target_len):
+                var ctor_val = JsRef(ep[].ctor_ref).get(b, env)
+                var result = NapiValue()
+                check_status(raw_new_instance(
+                    b, env, ctor_val, argc, argv,
+                    UnsafePointer(to=result).bitcast[NoneType](),
+                ))
+                return result
         raise Error("ClassRegistry: class not found")

@@ -685,14 +685,36 @@ try {
   console.log(`Note: ${TOML_PATH} not found or unreadable — skipping TOML-declared exports.`);
 }
 
+// Register struct types and emit TypeScript interfaces
+const tomlStructs = toml.structs || {};
+for (const [sName, sDecl] of Object.entries(tomlStructs)) {
+  const jsName = sDecl.js_name || sName;
+  // Register the TOML struct name as a TS type mapping
+  TOML_TYPE_TO_TS[sName] = jsName;
+  // Emit interface
+  const fields = sDecl.fields || {};
+  output.push(`export interface ${jsName} {`);
+  for (const [fName, fType] of Object.entries(fields)) {
+    const tsType = tomlTokenToTs(fType);
+    output.push(`  ${fName}: ${tsType};`);
+  }
+  output.push('}');
+  output.push('');
+}
+
 // Emit DTS for TOML-declared functions (sync + async)
 for (const [, fn] of Object.entries(toml.functions || {})) {
   const jsName = fn.js_name;
   if (!jsName) continue;
   const fnArgs = (fn.args || []).map((t, i) => `arg${i}: ${tomlTokenToTs(t)}`).join(', ');
-  const retToken = (fn.returns || 'any').replace(/\?$/, '');
+  const rawRet = fn.returns || 'any';
+  const retNullable = rawRet.endsWith('?');
+  const retToken = rawRet.replace(/\?$/, '');
   const isAsync = fn.async === 'true' || fn.async === true;
-  const retTs = isAsync ? `Promise<${tomlTokenToTs(retToken)}>` : tomlTokenToTs(retToken);
+  const baseRetTs = tomlTokenToTs(retToken);
+  const retTs = isAsync
+    ? `Promise<${retNullable ? baseRetTs + ' | null' : baseRetTs}>`
+    : (retNullable ? `${baseRetTs} | null` : baseRetTs);
   output.push(`export function ${jsName}(${fnArgs}): ${retTs};`);
 }
 

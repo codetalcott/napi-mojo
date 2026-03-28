@@ -4,15 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. All planned phases complete — 110 exported functions + 3 classes covering the full N-API surface: primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError/SyntaxError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal/detach, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks (sync + async), type coercion (Boolean/Number/String/Object), TypeScript definition generation with JSDoc, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), version info (N-API + Node.js), script execution, async context + callback scope, type tagging, and external memory tracking. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, parametric array helpers (`to/from_js_array_f64/str`), an `AsyncWork` helper for ergonomic async work (promise + queue + resolve/reject), an external code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) for auto-generating callback trampolines, `MojoFloat64Array` for zero-copy TypedArray output, `parallelize_safe()` for SIMD parallel computation with automatic runtime init, and **cached NapiBindings** — all 135 N-API function pointers resolved once at module init, passed through callback data to every entry-point callback (173-389 ns/call, zero per-call dlsym).
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. All planned phases complete — 140 exported functions + 3 classes covering the full N-API surface (605 tests): primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError/SyntaxError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal/detach, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks (sync + async), type coercion (Boolean/Number/String/Object), TypeScript definition generation with JSDoc, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), version info (N-API + Node.js), script execution, async context + callback scope, type tagging, and external memory tracking. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, parametric array helpers (`to/from_js_array_f64/str`), an `AsyncWork` helper for ergonomic async work (promise + queue + resolve/reject), a TOML code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) with `mojo_fn` auto-trampolines, nullable returns (`Optional[T]` → `T | null`), struct-to-object mapping (`[structs.*]` → bidirectional converters), async/class generation, and auto-generated TypeScript `.d.ts` with interfaces, `MojoFloat64Array` for zero-copy TypedArray output, `parallelize_safe()` for SIMD parallel computation with automatic runtime init, and **cached NapiBindings** — all 142 N-API function pointers resolved once at module init, passed through callback data to every entry-point callback (173-389 ns/call, zero per-call dlsym).
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (556 tests)
+npm test                              # run all Jest tests (605 tests)
 npm run test:gc                       # run GC finalizer tests (requires --expose-gc)
 npx jest tests/basic.test.js          # run a single test file
+npm run generate:addon                # regenerate src/generated/ from src/exports.toml
 node scripts/benchmark.mjs            # per-call overhead benchmark
 
 # Spike (run before anything else if starting fresh):
@@ -29,7 +30,7 @@ N-API functions (`napi_create_string_utf8`, `napi_define_properties`, etc.) are 
 
 ### Cached NapiBindings (zero per-call dlsym)
 
-All 134 N-API function pointers are resolved once at module init via a single `OwnedDLHandle()` + 134 `dlsym` calls, stored in the `NapiBindings` struct (`src/napi/bindings.mojo`). The pointer is passed through `NapiPropertyDescriptor.data` to every callback. Each callback retrieves it via `CbArgs.get_bindings(env, info)` (1 bootstrap dlsym for `napi_get_cb_info`, then all subsequent calls use cached pointers). This eliminates the per-call `OwnedDLHandle()` + `dlsym` overhead that would otherwise occur on every N-API call.
+All 142 N-API function pointers are resolved once at module init via a single `OwnedDLHandle()` + 142 `dlsym` calls, stored in the `NapiBindings` struct (`src/napi/bindings.mojo`). The pointer is passed through `NapiPropertyDescriptor.data` to every callback. Each callback retrieves it via `CbArgs.get_bindings(env, info)` (1 bootstrap dlsym for `napi_get_cb_info`, then all subsequent calls use cached pointers). This eliminates the per-call `OwnedDLHandle()` + `dlsym` overhead that would otherwise occur on every N-API call.
 
 **Callbacks that DON'T use cached bindings** (must use old `OwnedDLHandle` path):
 
@@ -42,14 +43,16 @@ All 134 N-API function pointers are resolved once at module init via a single `O
 1. `mojo build --emit shared-lib` produces a `.dylib` renamed to `.node`
 2. Node.js calls `dlopen` on the `.node` file, then `dlsym("napi_register_module_v1")`
 3. Our `@export("napi_register_module_v1", ABI="C")` function is called with `(env, exports)`
-4. We allocate `NapiBindings`, resolve all 134 symbols, pass pointer through `ModuleBuilder`
+4. We allocate `NapiBindings`, resolve all 142 symbols, pass pointer through `ModuleBuilder`
 5. Each exported Mojo function acts as a `napi_callback`: `fn(NapiEnv, NapiValue) -> NapiValue`
 
 ### Module structure
 
 ```
 src/lib.mojo                             # entry point: thin orchestrator calling src/addon/ register_* fns
-src/addon/*.mojo                         # 16 callback implementation files (primitives, collections, async_ops, class_counter, etc.)
+src/addon/*.mojo                         # 17 callback implementation files (primitives, collections, async_ops, class_counter, etc.)
+src/addon/user_fns.mojo                  # pure Mojo functions for mojo_fn trampolines (no N-API deps)
+src/addon/struct_fns.mojo                # pure Mojo functions that use generated struct types
 src/napi/types.mojo                      # NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiPropertyDescriptor, NapiValueType constants, TypedArray type constants, property attribute constants
 src/napi/bindings.mojo                   # NapiBindings struct (134 cached fn ptrs + registry), init_bindings(), Bindings type alias
 src/napi/raw.mojo                        # OwnedDLHandle symbol resolution + bindings-accepting overloads
@@ -92,8 +95,9 @@ src/napi/framework/runtime.mojo          # init_async_runtime(), parallelize_saf
 src/napi/framework/js_mojo_array.mojo    # MojoFloat64Array — Mojo-owned Float64 buffer with zero-copy to_js() output
 src/napi/framework/js_async_context.mojo # JsAsyncContext — napi_async_init/destroy wrappers
 src/napi/framework/callback_scope.mojo   # CallbackScope — napi_open/close_callback_scope wrappers
-src/exports.toml                         # Function declarations for code generator
+src/exports.toml                         # Function/class/struct declarations for code generator
 src/generated/callbacks.mojo             # AUTO-GENERATED callbacks from exports.toml
+src/generated/structs.mojo               # AUTO-GENERATED struct definitions + from_js/to_js converters
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
 scripts/generate-dts.js                  # auto-generate build/index.d.ts from lib.mojo
 scripts/generate-addon.mjs              # auto-generate callback trampolines from src/exports.toml (bindings-aware)
@@ -103,7 +107,7 @@ tests/                                   # Jest tests — TDD outside-in
 
 ### Exported addon functions
 
-110+ exported functions covering the full N-API surface. See `docs/EXPORTS.md` for the complete table.
+140 exported functions covering the full N-API surface. See `docs/EXPORTS.md` for the complete table.
 
 ## Critical Mojo FFI rules
 
@@ -172,6 +176,18 @@ desc.method = UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 **Function creation with closure data**: `JsFunction.create_with_data(env, name, cb_ptr, data_ptr)` passes an arbitrary data pointer to the callback. Retrieve in the callback via `CbArgs.get_data(env, info)`. Heap-allocated data leaks unless manually freed (no destructor hook on plain functions).
 
 **`node_api_symbol_for`**: Uses `node_api_` prefix (not `napi_`). Takes a C string + length, not a napi_value description.
+
+## Code generator (`exports.toml` → `generate-addon.mjs`)
+
+The TOML code generator reduces N-API boilerplate to near-zero for common patterns. Three main features:
+
+**`mojo_fn` auto-trampolines**: Declare a pure Mojo function in TOML with typed args/returns, and the generator creates a full N-API callback with type checking, arg extraction, return wrapping, and error handling. The pure function lives in `src/addon/user_fns.mojo` (no N-API imports). Supported type tokens: `number`, `string`, `boolean`/`bool`, `int32`, `uint32`, `int64`, `object`, `array`, `number[]`, `string[]`, `any`, `any?`, and any declared struct name. All `mojo_fn` functions must be listed in `extra_imports` in `exports.toml`.
+
+**Nullable returns** (`returns = "number?"`): When a `mojo_fn` function returns `Optional[T]`, the generated callback checks for `None` and returns `JsNull`. TypeScript emits `T | null`. Works with all type tokens.
+
+**Struct-to-object mapping** (`[structs.*]`): Define a named JS object shape with typed fields. The generator produces a Mojo struct (`ConfigData`) + `config_from_js()`/`config_to_js()` converters in `src/generated/structs.mojo`. Struct names become valid type tokens for function args/returns. TypeScript emits `interface` declarations. Pure functions that use struct types go in `src/addon/struct_fns.mojo` (imports from `generated.structs`, avoids circular imports with `generated.callbacks`).
+
+**Circular import note**: `callbacks.mojo` imports `user_fns.mojo` and `struct_fns.mojo`. Functions using generated struct types MUST go in `struct_fns.mojo` (not `user_fns.mojo`) because `struct_fns.mojo` imports from `generated.structs` while `callbacks.mojo` imports from `struct_fns.mojo` — no circular dependency. Functions that don't need struct types go in `user_fns.mojo`.
 
 ## Development workflow
 

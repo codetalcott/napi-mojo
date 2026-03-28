@@ -14,7 +14,7 @@
 # Output: src/generated/callbacks.mojo
 
 # --- Extra imports added verbatim to callbacks.mojo when mojo_fn is used ---
-extra_imports = ["from addon.user_fns import square_pure", "from addon.user_fns import clamp_pure", "from addon.user_fns import uppercase_pure", "from addon.user_fns import sum_array_pure"]
+extra_imports = ["from addon.user_fns import square_pure", "from addon.user_fns import clamp_pure", "from addon.user_fns import uppercase_pure", "from addon.user_fns import sum_array_pure", "from addon.user_fns import negate_bool_pure", "from addon.user_fns import add_int32_pure", "from addon.user_fns import describe_pure", "from addon.user_fns import reverse_strings_pure", "from addon.user_fns import safe_divide_pure", "from addon.user_fns import find_name_pure", "from addon.struct_fns import echo_config_pure", "from addon.struct_fns import config_summary_pure"]
 
 # --- Example declarations ---
 # These mirror existing hand-written functions for demonstration.
@@ -218,3 +218,64 @@ if js_typeof(_b, env, arg0) != NAPI_TYPE_OBJECT:
     return JsBoolean.create(_b, env, False).value
 return JsBoolean.create(_b, env, JsObject(arg0).has_property(_b, env, "_x")).value
 """
+
+# --- Phase 1: expanded mojo_fn coverage ---
+
+[functions.negate_bool]
+js_name = "negateBoolPure"
+args = ["bool"]
+returns = "bool"
+mojo_fn = "negate_bool_pure"
+
+[functions.add_int32]
+js_name = "addInt32Pure"
+args = ["int32", "int32"]
+returns = "int32"
+mojo_fn = "add_int32_pure"
+
+[functions.describe]
+js_name = "describePure"
+args = ["string", "number"]
+returns = "string"
+mojo_fn = "describe_pure"
+
+[functions.reverse_strings]
+js_name = "reverseStringsPure"
+args = ["string[]"]
+returns = "string[]"
+mojo_fn = "reverse_strings_pure"
+
+# --- Phase 2: nullable return types ---
+
+[functions.safe_divide]
+js_name = "safeDivide"
+args = ["number", "number"]
+returns = "number?"
+mojo_fn = "safe_divide_pure"
+
+[functions.find_name]
+js_name = "findName"
+args = ["string[]", "number"]
+returns = "string?"
+mojo_fn = "find_name_pure"
+
+# --- Phase 3: struct-to-object mapping ---
+
+[structs.config]
+js_name = "Config"
+[structs.config.fields]
+host = "string"
+port = "number"
+verbose = "boolean"
+
+[functions.echo_config]
+js_name = "echoConfig"
+args = ["config"]
+returns = "config"
+mojo_fn = "echo_config_pure"
+
+[functions.config_summary]
+js_name = "configSummary"
+args = ["config"]
+returns = "string"
+mojo_fn = "config_summary_pure"

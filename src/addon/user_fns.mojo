@@ -4,6 +4,8 @@
 ## The code generator (scripts/generate-addon.mjs) wraps them with
 ## type-checked N-API trampolines based on exports.toml declarations.
 
+from std.collections import Optional
+
 def square_pure(x: Float64) -> Float64:
     return x * x
 
@@ -33,3 +35,36 @@ def sum_array_pure(items: List[Float64]) -> Float64:
     for i in range(len(items)):
         total += items[i]
     return total
+
+## safe_divide_pure — returns None on division by zero
+def safe_divide_pure(a: Float64, b: Float64) -> Optional[Float64]:
+    if b == 0.0:
+        return None
+    return a / b
+
+## find_name_pure — returns None if index out of bounds
+def find_name_pure(items: List[String], idx: Float64) -> Optional[String]:
+    var i = Int(idx)
+    if i < 0 or i >= len(items):
+        return None
+    return items[i]
+
+## negate_bool_pure — boolean negation
+def negate_bool_pure(b: Bool) -> Bool:
+    return not b
+
+## add_int32_pure — Int32 addition
+def add_int32_pure(a: Int32, b: Int32) -> Int32:
+    return a + b
+
+## describe_pure — mixed types: string + number → string
+def describe_pure(name: String, age: Float64) -> String:
+    return name + " is " + String(Int(age))
+
+## reverse_strings_pure — reverse a list of strings
+def reverse_strings_pure(items: List[String]) -> List[String]:
+    var result = List[String]()
+    var n = len(items)
+    for i in range(n):
+        result.append(items[n - 1 - i])
+    return result^

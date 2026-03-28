@@ -22,6 +22,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DECL_PATH = join(__dirname, '..', 'src', 'exports.toml');
 const OUT_DIR = join(__dirname, '..', 'src', 'generated');
 const OUT_PATH = join(OUT_DIR, 'callbacks.mojo');
+const STRUCTS_PATH = join(OUT_DIR, 'structs.mojo');
 
 // --- Simple TOML parser (handles our subset: sections, key=value, multiline strings) ---
 function parseTOML(text) {
@@ -197,6 +198,31 @@ const TYPE_MAP = {
   },
 };
 
+// --- Struct field type info: TOML type → Mojo type + from_js/to_js expressions ---
+const STRUCT_FIELD_MAP = {
+  string:  { mojoType: 'String',  fromJs: (b, e, v) => `JsString.from_napi_value(${b}, ${e}, ${v})`,  toJs: (b, e, v) => `JsString.create(${b}, ${e}, ${v}).value` },
+  number:  { mojoType: 'Float64', fromJs: (b, e, v) => `JsNumber.from_napi_value(${b}, ${e}, ${v})`,  toJs: (b, e, v) => `JsNumber.create(${b}, ${e}, ${v}).value` },
+  boolean: { mojoType: 'Bool',    fromJs: (b, e, v) => `JsBoolean.from_napi_value(${b}, ${e}, ${v})`, toJs: (b, e, v) => `JsBoolean.create(${b}, ${e}, ${v}).value` },
+  bool:    { mojoType: 'Bool',    fromJs: (b, e, v) => `JsBoolean.from_napi_value(${b}, ${e}, ${v})`, toJs: (b, e, v) => `JsBoolean.create(${b}, ${e}, ${v}).value` },
+  int32:   { mojoType: 'Int32',   fromJs: (b, e, v) => `JsInt32.from_napi_value(${b}, ${e}, ${v})`,   toJs: (b, e, v) => `JsInt32.create(${b}, ${e}, ${v}).value` },
+  uint32:  { mojoType: 'UInt32',  fromJs: (b, e, v) => `JsUInt32.from_napi_value(${b}, ${e}, ${v})`,  toJs: (b, e, v) => `JsUInt32.create(${b}, ${e}, ${v}).value` },
+  int64:   { mojoType: 'Int64',   fromJs: (b, e, v) => `JsInt64.from_napi_value(${b}, ${e}, ${v})`,   toJs: (b, e, v) => `JsInt64.create(${b}, ${e}, ${v}).value` },
+};
+
+// --- Register struct types into TYPE_MAP dynamically ---
+function registerStructTypes(structs) {
+  for (const [name, sDecl] of Object.entries(structs)) {
+    const pascalName = snakeToPascal(name);
+    TYPE_MAP[name] = {
+      napi_type: 'NAPI_TYPE_OBJECT',
+      type_name: sDecl.js_name || pascalName,
+      extract: (varName, argExpr) =>
+        `        var ${varName} = ${name}_from_js(_b, env, ${argExpr})`,
+      create: (expr) => `${name}_to_js(_b, env, ${expr})`,
+    };
+  }
+}
+
 // --- Resolve type, handling nullable suffix ('?') ---
 // Returns { typeInfo, nullable } where nullable=true skips the type check.
 function resolveType(rawType) {
@@ -282,8 +308,16 @@ function generateCallback(name, decl) {
     }
     const callArgs = args.map((_, i) => `mojo_arg${i}`).join(', ');
     lines.push(`        var mojo_result = ${mojoFn}(${callArgs})`);
+    const returnsNullable = returns.endsWith('?');
     const { typeInfo: retTypeInfo } = resolveType(returns);
-    lines.push(`        return ${retTypeInfo.create('mojo_result')}`);
+    if (returnsNullable) {
+      // Optional[T] → null check + unwrap
+      lines.push(`        if not mojo_result:`);
+      lines.push(`            return JsNull.create(_b, env).value`);
+      lines.push(`        return ${retTypeInfo.create('mojo_result.value()')}`);
+    } else {
+      lines.push(`        return ${retTypeInfo.create('mojo_result')}`);
+    }
   } else if (body) {
     // Insert body (indented to 8 spaces)
     const bodyLines = body.split('\n');
@@ -672,6 +706,84 @@ function generateClassRegistration(classes) {
   return lines.join('\n');
 }
 
+// --- Struct code generation ---
+// Generates a Mojo struct + from_js/to_js converter functions for each [structs.*] section.
+function generateStruct(name, sDecl) {
+  const fields = sDecl.fields || {};
+  const fieldEntries = Object.entries(fields);
+  const pascalName = snakeToPascal(name);
+  const structName = `${pascalName}Data`;
+  const out = [];
+
+  // --- Struct definition ---
+  out.push(`struct ${structName}(Movable, Copyable):`);
+  for (const [fName, fType] of fieldEntries) {
+    const baseType = fType.replace(/\?$/, '');
+    const info = STRUCT_FIELD_MAP[baseType];
+    if (!info) {
+      console.warn(`[generate-addon] Warning: unknown struct field type "${fType}" for ${name}.${fName}`);
+      continue;
+    }
+    out.push(`    var ${fName}: ${info.mojoType}`);
+  }
+  out.push('');
+
+  // __init__
+  const initParams = fieldEntries.map(([fName, fType]) => {
+    const info = STRUCT_FIELD_MAP[fType.replace(/\?$/, '')];
+    return `${fName}: ${info.mojoType}`;
+  }).join(', ');
+  out.push(`    def __init__(out self, ${initParams}):`);
+  for (const [fName] of fieldEntries) {
+    out.push(`        self.${fName} = ${fName}`);
+  }
+  out.push('');
+
+  // __moveinit__
+  out.push('    def __moveinit__(out self, deinit take: Self):');
+  for (const [fName, fType] of fieldEntries) {
+    const info = STRUCT_FIELD_MAP[fType.replace(/\?$/, '')];
+    // String needs transfer, primitive types don't
+    if (info.mojoType === 'String') {
+      out.push(`        self.${fName} = take.${fName}^`);
+    } else {
+      out.push(`        self.${fName} = take.${fName}`);
+    }
+  }
+  out.push('');
+
+  // copy constructor
+  out.push('    def __init__(out self, *, copy: Self):');
+  for (const [fName] of fieldEntries) {
+    out.push(`        self.${fName} = copy.${fName}`);
+  }
+  out.push('');
+
+  // --- from_js converter ---
+  out.push(`def ${name}_from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> ${structName}:`);
+  out.push('    var obj = JsObject(val)');
+  for (const [fName, fType] of fieldEntries) {
+    const baseType = fType.replace(/\?$/, '');
+    const info = STRUCT_FIELD_MAP[baseType];
+    out.push(`    var ${fName} = ${info.fromJs('b', 'env', `obj.get_named_property(b, env, "${fName}")`)}`);
+  }
+  const ctorArgs = fieldEntries.map(([fName]) => fName).join(', ');
+  out.push(`    return ${structName}(${ctorArgs})`);
+  out.push('');
+
+  // --- to_js converter ---
+  out.push(`def ${name}_to_js(b: Bindings, env: NapiEnv, data: ${structName}) raises -> NapiValue:`);
+  out.push('    var obj = JsObject.create(b, env)');
+  for (const [fName, fType] of fieldEntries) {
+    const baseType = fType.replace(/\?$/, '');
+    const info = STRUCT_FIELD_MAP[baseType];
+    out.push(`    obj.set_property(b, env, "${fName}", ${info.toJs('b', 'env', `data.${fName}`)})`);
+  }
+  out.push('    return obj.value');
+
+  return out.join('\n');
+}
+
 // --- Main ---
 function main() {
   let declText;
@@ -697,11 +809,16 @@ function main() {
   const decl = parseTOML(declText);
   const functions = decl.functions || {};
   const classes = decl.classes || {};
+  const structs = decl.structs || {};
   const funcEntries = Object.entries(functions);
   const classEntries = Object.entries(classes);
+  const structEntries = Object.entries(structs);
 
-  if (funcEntries.length === 0 && classEntries.length === 0) {
-    console.log('No functions or classes declared in exports.toml');
+  // Register struct types as valid TYPE_MAP entries before resolveType is called
+  registerStructTypes(structs);
+
+  if (funcEntries.length === 0 && classEntries.length === 0 && structEntries.length === 0) {
+    console.log('No functions, classes, or structs declared in exports.toml');
     process.exit(0);
   }
 
@@ -721,6 +838,7 @@ function main() {
   const needsF64Array = allTypeTokens.includes('number[]');
   const needsStrArray = allTypeTokens.includes('string[]');
   const needsConvertImport = needsF64Array || needsStrArray;
+  const needsNullReturn = funcEntries.some(([, d]) => (d.returns || '').endsWith('?'));
 
   // Generate output
   const output = [];
@@ -755,6 +873,9 @@ function main() {
   if (hasAsync) {
     output.push('from napi.framework.async_work import AsyncWork, AsyncWorkResult');
   }
+  if (needsNullReturn) {
+    output.push('from napi.framework.js_null import JsNull');
+  }
   // Auto-import convert helpers when number[] / string[] types are used
   if (needsConvertImport) {
     const importNames = [];
@@ -766,6 +887,17 @@ function main() {
   const extraImports = decl.extra_imports || [];
   for (const imp of (Array.isArray(extraImports) ? extraImports : [extraImports])) {
     output.push(imp);
+  }
+  // Import struct types and converters from generated.structs
+  if (structEntries.length > 0) {
+    const structImports = [];
+    for (const [sName] of structEntries) {
+      const pascalName = snakeToPascal(sName);
+      structImports.push(`${pascalName}Data`);
+      structImports.push(`${sName}_from_js`);
+      structImports.push(`${sName}_to_js`);
+    }
+    output.push(`from generated.structs import ${structImports.join(', ')}`);
   }
   output.push('');
 
@@ -826,7 +958,33 @@ function main() {
 
   mkdirSync(OUT_DIR, { recursive: true });
   writeFileSync(OUT_PATH, output.join('\n') + '\n');
-  const total = funcEntries.length + classEntries.length;
+
+  // Generate structs file if any structs are declared
+  if (structEntries.length > 0) {
+    const structOutput = [];
+    structOutput.push('## src/generated/structs.mojo — AUTO-GENERATED by scripts/generate-addon.mjs');
+    structOutput.push('## Do not edit manually. Regenerate with: node scripts/generate-addon.mjs');
+    structOutput.push('');
+    structOutput.push('from napi.types import NapiEnv, NapiValue');
+    structOutput.push('from napi.bindings import Bindings');
+    structOutput.push('from napi.framework.js_string import JsString');
+    structOutput.push('from napi.framework.js_number import JsNumber');
+    structOutput.push('from napi.framework.js_boolean import JsBoolean');
+    structOutput.push('from napi.framework.js_int32 import JsInt32');
+    structOutput.push('from napi.framework.js_uint32 import JsUInt32');
+    structOutput.push('from napi.framework.js_int64 import JsInt64');
+    structOutput.push('from napi.framework.js_object import JsObject');
+    structOutput.push('');
+    for (const [sName, sDecl] of structEntries) {
+      const pascalName = snakeToPascal(sName);
+      structOutput.push(`# ${sDecl.js_name || pascalName} struct`);
+      structOutput.push(generateStruct(sName, sDecl));
+      structOutput.push('');
+    }
+    writeFileSync(STRUCTS_PATH, structOutput.join('\n') + '\n');
+    console.log(`Generated ${STRUCTS_PATH} (${structEntries.length} structs)`);
+  }
+
   console.log(`Generated ${OUT_PATH} (${funcEntries.length} functions, ${classEntries.length} classes)`);
 }
 
