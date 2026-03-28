@@ -10,7 +10,7 @@
 ##         c.value = 99        // setter
 ##         Counter.isCounter(c) // true
 
-from memory import alloc
+from std.memory import alloc
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION
 from napi.error import throw_js_error, throw_js_type_error, check_status
 from napi.raw import raw_wrap
@@ -39,11 +39,11 @@ struct CounterData(Movable):
     var count: Float64
     var initial: Float64
 
-    fn __init__(out self, initial: Float64):
+    def __init__(out self, initial: Float64):
         self.count = initial
         self.initial = initial
 
-    fn __moveinit__(out self, deinit take: Self):
+    def __moveinit__(out self, deinit take: Self):
         self.count = take.count
         self.initial = take.initial
 
@@ -52,7 +52,7 @@ struct CounterData(Movable):
 # Called when the JS object is garbage-collected. Clean up the heap allocation.
 # Signature must match: fn(NapiEnv, void* data, void* hint)
 
-fn counter_finalize(
+def counter_finalize(
     env: NapiEnv,
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
@@ -65,7 +65,7 @@ fn counter_finalize(
 # --- Constructor -------------------------------------------------------------
 # Called when JS does `new Counter(n)`.
 
-fn counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var this_val = CbArgs.get_this(env, info)
         var arg0 = CbArgs.get_one(env, info)
@@ -102,7 +102,7 @@ fn counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # --- Instance methods --------------------------------------------------------
 # Use unwrap_native[T](env, info) to retrieve the native data pointer from `this`.
 
-fn counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var ptr = unwrap_native[CounterData](env, info)
         ptr[].count += 1.0
@@ -114,7 +114,7 @@ fn counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 # --- Getter / Setter ---------------------------------------------------------
 
-fn counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var ptr = unwrap_native[CounterData](env, info)
         return JsNumber.create(env, ptr[].count).value
@@ -122,7 +122,7 @@ fn counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Counter.value getter failed")
         return NapiValue()
 
-fn counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var ptr = unwrap_native[CounterData](env, info)
         var arg0 = CbArgs.get_one(env, info)
@@ -135,7 +135,7 @@ fn counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 # --- Static method -----------------------------------------------------------
 
-fn counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var this_val = CbArgs.get_this(env, info)  # `this` = Counter constructor
         var arg0 = CbArgs.get_one(env, info)
@@ -154,7 +154,7 @@ fn counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # --- Module entry point ------------------------------------------------------
 
 @export("napi_register_module_v1", ABI="C")
-fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
+def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     # All function refs declared before try block (ASAP destruction safety)
     var ctor_ref = counter_constructor_fn
     var inc_ref = counter_increment_fn

@@ -1,0 +1,42 @@
+# exports.toml — Declare functions and structs for code generation
+#
+# The generator reads this file and produces:
+#   generated/callbacks.mojo  — N-API callback trampolines
+#   generated/structs.mojo    — Mojo struct definitions + converters
+#
+# Usage: node ../../scripts/generate-addon.mjs
+#        (called automatically by build.sh)
+
+extra_imports = ["from fns import greet_pure", "from fns import safe_divide_pure", "from fns import config_summary_pure"]
+
+# --- Simple function: string in, string out ---
+
+[functions.greet]
+js_name = "greet"
+args = ["string"]
+returns = "string"
+mojo_fn = "greet_pure"
+
+# --- Nullable return: Optional[Float64] → number | null ---
+
+[functions.safe_divide]
+js_name = "safeDivide"
+args = ["number", "number"]
+returns = "number?"
+mojo_fn = "safe_divide_pure"
+
+# --- Struct: typed JS object shape ---
+
+[structs.server_config]
+js_name = "ServerConfig"
+[structs.server_config.fields]
+host = "string"
+port = "number"
+
+# --- Function using a struct type ---
+
+[functions.config_summary]
+js_name = "configSummary"
+args = ["server_config"]
+returns = "string"
+mojo_fn = "config_summary_pure"

@@ -1,4 +1,5 @@
-// Basic usage: strings, numbers, booleans, type coercion
+// Basic usage: strings, numbers
+// Runs against the full library build (npm run build), not hello-addon.mojo alone.
 const m = require('../build/index.node');
 
 console.log(m.hello());                  // "Hello from Mojo!"

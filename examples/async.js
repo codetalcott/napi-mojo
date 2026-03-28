@@ -1,4 +1,5 @@
 // Async: promises, worker threads, ThreadsafeFunction
+// Runs against the full library build (npm run build), not a standalone addon.
 const m = require('../build/index.node');
 
 async function main() {

@@ -30,13 +30,13 @@ from napi.framework.register import fn_ptr, ModuleBuilder
 # Each callback has the napi_callback signature: fn(NapiEnv, NapiValue) -> NapiValue
 # Wrap the body in try/except — exceptions must never escape into C.
 
-fn hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         return JsString.create_literal(env, "Hello from Mojo!").value
     except:
         return NapiValue()
 
-fn greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var arg0 = CbArgs.get_one(env, info)
         var t = js_typeof(env, arg0)
@@ -48,7 +48,7 @@ fn greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         return NapiValue()
 
-fn add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var args = CbArgs.get_two(env, info)
         var a = JsNumber.from_napi_value(env, args[0])
@@ -62,7 +62,7 @@ fn add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 # Node.js calls this via dlsym("napi_register_module_v1") when loading the .node file.
 
 @export("napi_register_module_v1", ABI="C")
-fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
+def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     # Declare function refs BEFORE the try block — ASAP destruction safety.
     # Each ref must stay alive through all fn_ptr() calls.
     var hello_ref = hello_fn

@@ -15,3 +15,6 @@ skills/
 skills-lock.json
 # Grail domain config
 grail.yaml
+# Generated example build artifacts
+examples/codegen/generated/
+examples/codegen/build/

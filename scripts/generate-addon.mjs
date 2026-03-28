@@ -19,8 +19,8 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DECL_PATH = join(__dirname, '..', 'src', 'exports.toml');
-const OUT_DIR = join(__dirname, '..', 'src', 'generated');
+const DECL_PATH = process.env.NAPI_MOJO_TOML || join(__dirname, '..', 'src', 'exports.toml');
+const OUT_DIR = process.env.NAPI_MOJO_OUT || join(__dirname, '..', 'src', 'generated');
 const OUT_PATH = join(OUT_DIR, 'callbacks.mojo');
 const STRUCTS_PATH = join(OUT_DIR, 'structs.mojo');
 
