@@ -43,8 +43,8 @@
     "node-addon"
   ],
   "optionalDependencies": {
-    "@napi-mojo/darwin-arm64": "0.2.9",
-    "@napi-mojo/linux-x64": "0.2.9"
+    "@napi-mojo/darwin-arm64": "^0.2.10",
+    "@napi-mojo/linux-x64": "^0.2.10"
   },
   "devDependencies": {
     "jest": "^29.0.0"
