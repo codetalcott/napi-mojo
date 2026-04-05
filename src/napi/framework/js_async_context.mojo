@@ -19,6 +19,7 @@ from napi.bindings import Bindings
 from napi.raw import raw_async_init, raw_async_destroy, raw_make_callback
 from napi.error import check_status
 
+
 struct JsAsyncContext:
     var value: NapiAsyncContext
 
@@ -39,8 +40,15 @@ struct JsAsyncContext:
         async_resource_name: NapiValue,
     ) raises -> JsAsyncContext:
         var result = NapiAsyncContext()
-        check_status(raw_async_init(b, env, async_resource, async_resource_name,
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_async_init(
+                b,
+                env,
+                async_resource,
+                async_resource_name,
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return JsAsyncContext(result)
 
     ## destroy — release the async context
@@ -59,9 +67,18 @@ struct JsAsyncContext:
         func: NapiValue,
     ) raises -> NapiValue:
         var result = NapiValue()
-        check_status(raw_make_callback(b, env, self.value, recv, func, 0,
-            OpaquePointer[ImmutAnyOrigin](),
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_make_callback(
+                b,
+                env,
+                self.value,
+                recv,
+                func,
+                0,
+                OpaquePointer[ImmutAnyOrigin](),
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return result
 
     ## make_callback1 — call a JS function with one argument in this context
@@ -74,10 +91,21 @@ struct JsAsyncContext:
         arg0: NapiValue,
     ) raises -> NapiValue:
         var result = NapiValue()
-        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=arg0).bitcast[NoneType]()
-        check_status(raw_make_callback(b, env, self.value, recv, func, 1,
-            argv_ptr,
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
+            to=arg0
+        ).bitcast[NoneType]()
+        check_status(
+            raw_make_callback(
+                b,
+                env,
+                self.value,
+                recv,
+                func,
+                1,
+                argv_ptr,
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return result
 
     ## make_callback2 — call a JS function with two arguments in this context
@@ -94,8 +122,19 @@ struct JsAsyncContext:
         var args = InlineArray[NapiValue, 2](fill=NapiValue())
         args[0] = arg0
         args[1] = arg1
-        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=args[0]).bitcast[NoneType]()
-        check_status(raw_make_callback(b, env, self.value, recv, func, 2,
-            argv_ptr,
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
+            to=args[0]
+        ).bitcast[NoneType]()
+        check_status(
+            raw_make_callback(
+                b,
+                env,
+                self.value,
+                recv,
+                func,
+                2,
+                argv_ptr,
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return result

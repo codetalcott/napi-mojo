@@ -11,7 +11,13 @@
 
 from napi.types import NapiEnv, NapiStatus, NAPI_OK
 from napi.bindings import Bindings
-from napi.raw import raw_throw_error, raw_throw_type_error, raw_throw_range_error, raw_throw_syntax_error
+from napi.raw import (
+    raw_throw_error,
+    raw_throw_type_error,
+    raw_throw_range_error,
+    raw_throw_syntax_error,
+)
+
 
 # ---------------------------------------------------------------------------
 # napi_status_name — human-readable name for a NapiStatus code
@@ -21,31 +27,56 @@ from napi.raw import raw_throw_error, raw_throw_type_error, raw_throw_range_erro
 # up the napi_status enum.
 # ---------------------------------------------------------------------------
 def napi_status_name(status: NapiStatus) -> String:
-    if status == 0:  return "napi_ok"
-    if status == 1:  return "napi_invalid_arg"
-    if status == 2:  return "napi_object_expected"
-    if status == 3:  return "napi_string_expected"
-    if status == 4:  return "napi_name_expected"
-    if status == 5:  return "napi_function_expected"
-    if status == 6:  return "napi_number_expected"
-    if status == 7:  return "napi_boolean_expected"
-    if status == 8:  return "napi_array_expected"
-    if status == 9:  return "napi_generic_failure"
-    if status == 10: return "napi_pending_exception"
-    if status == 11: return "napi_cancelled"
-    if status == 12: return "napi_escape_called_twice"
-    if status == 13: return "napi_handle_scope_mismatch"
-    if status == 14: return "napi_callback_scope_mismatch"
-    if status == 15: return "napi_queue_full"
-    if status == 16: return "napi_closing"
-    if status == 17: return "napi_bigint_expected"
-    if status == 18: return "napi_date_expected"
-    if status == 19: return "napi_arraybuffer_expected"
-    if status == 20: return "napi_detachable_arraybuffer_expected"
-    if status == 21: return "napi_would_deadlock"
-    if status == 22: return "napi_no_external_buffers_allowed"
-    if status == 23: return "napi_cannot_run_js"
+    if status == 0:
+        return "napi_ok"
+    if status == 1:
+        return "napi_invalid_arg"
+    if status == 2:
+        return "napi_object_expected"
+    if status == 3:
+        return "napi_string_expected"
+    if status == 4:
+        return "napi_name_expected"
+    if status == 5:
+        return "napi_function_expected"
+    if status == 6:
+        return "napi_number_expected"
+    if status == 7:
+        return "napi_boolean_expected"
+    if status == 8:
+        return "napi_array_expected"
+    if status == 9:
+        return "napi_generic_failure"
+    if status == 10:
+        return "napi_pending_exception"
+    if status == 11:
+        return "napi_cancelled"
+    if status == 12:
+        return "napi_escape_called_twice"
+    if status == 13:
+        return "napi_handle_scope_mismatch"
+    if status == 14:
+        return "napi_callback_scope_mismatch"
+    if status == 15:
+        return "napi_queue_full"
+    if status == 16:
+        return "napi_closing"
+    if status == 17:
+        return "napi_bigint_expected"
+    if status == 18:
+        return "napi_date_expected"
+    if status == 19:
+        return "napi_arraybuffer_expected"
+    if status == 20:
+        return "napi_detachable_arraybuffer_expected"
+    if status == 21:
+        return "napi_would_deadlock"
+    if status == 22:
+        return "napi_no_external_buffers_allowed"
+    if status == 23:
+        return "napi_cannot_run_js"
     return "napi_status_" + String(status)
+
 
 # ---------------------------------------------------------------------------
 # NapiError — typed wrapper around a failed napi_status code
@@ -63,6 +94,7 @@ struct NapiError:
     def __str__(self) -> String:
         return "NapiError: " + napi_status_name(self.status)
 
+
 # ---------------------------------------------------------------------------
 # check_status — verify every N-API call succeeded
 #
@@ -77,6 +109,7 @@ struct NapiError:
 def check_status(status: NapiStatus) raises:
     if status != NAPI_OK:
         raise Error(napi_status_name(status))
+
 
 # ---------------------------------------------------------------------------
 # throw_js_error — set a pending JavaScript Error exception
@@ -95,12 +128,15 @@ def check_status(status: NapiStatus) raises:
 def throw_js_error(env: NapiEnv, msg: StringLiteral):
     try:
         var null_code = OpaquePointer[ImmutAnyOrigin]()
-        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[
+            NoneType
+        ]()
         _ = raw_throw_error(env, null_code, msg_ptr)
     except:
         # If napi_throw_error itself fails (e.g., another exception is already
         # pending), there is no recoverable action — swallow and return.
         pass
+
 
 # ---------------------------------------------------------------------------
 # throw_js_error_dynamic — set a pending JavaScript Error with a heap String
@@ -118,13 +154,16 @@ def throw_js_error(env: NapiEnv, msg: StringLiteral):
 # ---------------------------------------------------------------------------
 def throw_js_error_dynamic(env: NapiEnv, msg: String):
     try:
-        var msg_copy = msg   # owns the heap String bytes
+        var msg_copy = msg  # owns the heap String bytes
         var null_code = OpaquePointer[ImmutAnyOrigin]()
-        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
+        var msg_ptr: OpaquePointer[
+            ImmutAnyOrigin
+        ] = msg_copy.unsafe_ptr().bitcast[NoneType]()
         _ = raw_throw_error(env, null_code, msg_ptr)
-        _ = msg_copy^        # keep alive past the FFI call
+        _ = msg_copy^  # keep alive past the FFI call
     except:
         pass
+
 
 # ---------------------------------------------------------------------------
 # throw_js_type_error — set a pending JavaScript TypeError exception
@@ -132,20 +171,26 @@ def throw_js_error_dynamic(env: NapiEnv, msg: String):
 def throw_js_type_error(env: NapiEnv, msg: StringLiteral):
     try:
         var null_code = OpaquePointer[ImmutAnyOrigin]()
-        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[
+            NoneType
+        ]()
         _ = raw_throw_type_error(env, null_code, msg_ptr)
     except:
         pass
+
 
 def throw_js_type_error_dynamic(env: NapiEnv, msg: String):
     try:
         var msg_copy = msg
         var null_code = OpaquePointer[ImmutAnyOrigin]()
-        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
+        var msg_ptr: OpaquePointer[
+            ImmutAnyOrigin
+        ] = msg_copy.unsafe_ptr().bitcast[NoneType]()
         _ = raw_throw_type_error(env, null_code, msg_ptr)
         _ = msg_copy^
     except:
         pass
+
 
 # ---------------------------------------------------------------------------
 # throw_js_range_error — set a pending JavaScript RangeError exception
@@ -153,58 +198,83 @@ def throw_js_type_error_dynamic(env: NapiEnv, msg: String):
 def throw_js_range_error(env: NapiEnv, msg: StringLiteral):
     try:
         var null_code = OpaquePointer[ImmutAnyOrigin]()
-        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[
+            NoneType
+        ]()
         _ = raw_throw_range_error(env, null_code, msg_ptr)
     except:
         pass
+
 
 def throw_js_range_error_dynamic(env: NapiEnv, msg: String):
     try:
         var msg_copy = msg
         var null_code = OpaquePointer[ImmutAnyOrigin]()
-        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
+        var msg_ptr: OpaquePointer[
+            ImmutAnyOrigin
+        ] = msg_copy.unsafe_ptr().bitcast[NoneType]()
         _ = raw_throw_range_error(env, null_code, msg_ptr)
         _ = msg_copy^
     except:
         pass
 
+
 # --- Bindings-aware overloads (no OwnedDLHandle, no raises) ---
+
 
 def throw_js_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
     var null_code = OpaquePointer[ImmutAnyOrigin]()
-    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[
+        NoneType
+    ]()
     _ = raw_throw_error(b, env, null_code, msg_ptr)
+
 
 def throw_js_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin]()
-    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[
+        NoneType
+    ]()
     _ = raw_throw_error(b, env, null_code, msg_ptr)
     _ = msg_copy^
 
+
 def throw_js_type_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
     var null_code = OpaquePointer[ImmutAnyOrigin]()
-    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[
+        NoneType
+    ]()
     _ = raw_throw_type_error(b, env, null_code, msg_ptr)
+
 
 def throw_js_type_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin]()
-    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[
+        NoneType
+    ]()
     _ = raw_throw_type_error(b, env, null_code, msg_ptr)
     _ = msg_copy^
 
+
 def throw_js_range_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
     var null_code = OpaquePointer[ImmutAnyOrigin]()
-    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[
+        NoneType
+    ]()
     _ = raw_throw_range_error(b, env, null_code, msg_ptr)
+
 
 def throw_js_range_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin]()
-    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[
+        NoneType
+    ]()
     _ = raw_throw_range_error(b, env, null_code, msg_ptr)
     _ = msg_copy^
+
 
 # ---------------------------------------------------------------------------
 # throw_js_syntax_error — set a pending JavaScript SyntaxError exception
@@ -214,29 +284,40 @@ def throw_js_range_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
 def throw_js_syntax_error(env: NapiEnv, msg: StringLiteral):
     try:
         var null_code = OpaquePointer[ImmutAnyOrigin]()
-        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[
+            NoneType
+        ]()
         _ = raw_throw_syntax_error(env, null_code, msg_ptr)
     except:
         pass
+
 
 def throw_js_syntax_error_dynamic(env: NapiEnv, msg: String):
     try:
         var msg_copy = msg
         var null_code = OpaquePointer[ImmutAnyOrigin]()
-        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
+        var msg_ptr: OpaquePointer[
+            ImmutAnyOrigin
+        ] = msg_copy.unsafe_ptr().bitcast[NoneType]()
         _ = raw_throw_syntax_error(env, null_code, msg_ptr)
         _ = msg_copy^
     except:
         pass
 
+
 def throw_js_syntax_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
     var null_code = OpaquePointer[ImmutAnyOrigin]()
-    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[NoneType]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().bitcast[
+        NoneType
+    ]()
     _ = raw_throw_syntax_error(b, env, null_code, msg_ptr)
+
 
 def throw_js_syntax_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin]()
-    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[NoneType]()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().bitcast[
+        NoneType
+    ]()
     _ = raw_throw_syntax_error(b, env, null_code, msg_ptr)
     _ = msg_copy^

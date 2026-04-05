@@ -18,10 +18,34 @@
 ## management is needed on the caller side.
 
 from std.collections import Optional
-from napi.types import NapiEnv, NapiValue, NAPI_KEY_OWN_ONLY, NAPI_KEY_ENUMERABLE, NAPI_KEY_SKIP_SYMBOLS, NAPI_KEY_NUMBERS_TO_STRINGS
+from napi.types import (
+    NapiEnv,
+    NapiValue,
+    NAPI_KEY_OWN_ONLY,
+    NAPI_KEY_ENUMERABLE,
+    NAPI_KEY_SKIP_SYMBOLS,
+    NAPI_KEY_NUMBERS_TO_STRINGS,
+)
 from napi.bindings import Bindings
-from napi.raw import raw_create_object, raw_set_named_property, raw_get_named_property, raw_has_named_property, raw_get_property, raw_set_property, raw_has_property, raw_get_property_names, raw_get_all_property_names, raw_has_own_property, raw_delete_property, raw_instanceof, raw_object_freeze, raw_object_seal, raw_get_prototype
+from napi.raw import (
+    raw_create_object,
+    raw_set_named_property,
+    raw_get_named_property,
+    raw_has_named_property,
+    raw_get_property,
+    raw_set_property,
+    raw_has_property,
+    raw_get_property_names,
+    raw_get_all_property_names,
+    raw_has_own_property,
+    raw_delete_property,
+    raw_instanceof,
+    raw_object_freeze,
+    raw_object_seal,
+    raw_get_prototype,
+)
 from napi.error import check_status
+
 
 ## JsObject — typed wrapper for a JavaScript object napi_value
 struct JsObject:
@@ -40,7 +64,9 @@ struct JsObject:
     @staticmethod
     def create(env: NapiEnv) raises -> JsObject:
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var status = raw_create_object(env, result_ptr)
         check_status(status)
         return JsObject(result)
@@ -50,8 +76,12 @@ struct JsObject:
     ## Preferred overload for compile-time-known property names. Uses the
     ## literal's static (.rodata) pointer directly — no heap allocation,
     ## no ASAP lifetime concern.
-    def set_property(self, env: NapiEnv, key: StringLiteral, val: NapiValue) raises:
-        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[NoneType]()
+    def set_property(
+        self, env: NapiEnv, key: StringLiteral, val: NapiValue
+    ) raises:
+        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
+            NoneType
+        ]()
         var status = raw_set_named_property(env, self.value, key_ptr, val)
         check_status(status)
 
@@ -60,8 +90,12 @@ struct JsObject:
     ## Use when the property name is computed at runtime. `name` is borrowed —
     ## the caller's String must remain alive for the duration of this call
     ## (use a named `var`).
-    def set_named_property(self, env: NapiEnv, name: String, val: NapiValue) raises:
-        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[NoneType]()
+    def set_named_property(
+        self, env: NapiEnv, name: String, val: NapiValue
+    ) raises:
+        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[
+            NoneType
+        ]()
         var status = raw_set_named_property(env, self.value, name_ptr, val)
         check_status(status)
 
@@ -80,7 +114,9 @@ struct JsObject:
     ## own properties only.
     def has(self, env: NapiEnv, key: NapiValue) raises -> Bool:
         var exists: Bool = False
-        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=exists).bitcast[NoneType]()
+        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=exists
+        ).bitcast[NoneType]()
         var status = raw_has_property(env, self.value, key, exists_ptr)
         check_status(status)
         return exists
@@ -91,7 +127,9 @@ struct JsObject:
     ## Pass the JS key napi_value directly; avoids any string conversion.
     def get(self, env: NapiEnv, key: NapiValue) raises -> NapiValue:
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var status = raw_get_property(env, self.value, key, result_ptr)
         check_status(status)
         return result
@@ -100,11 +138,19 @@ struct JsObject:
     ##
     ## Preferred overload for compile-time-known property names. Returns the
     ## property's napi_value (undefined if the property does not exist).
-    def get_property(self, env: NapiEnv, key: StringLiteral) raises -> NapiValue:
+    def get_property(
+        self, env: NapiEnv, key: StringLiteral
+    ) raises -> NapiValue:
         var result: NapiValue = NapiValue()
-        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[NoneType]()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        var status = raw_get_named_property(env, self.value, key_ptr, result_ptr)
+        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
+            NoneType
+        ]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
+        var status = raw_get_named_property(
+            env, self.value, key_ptr, result_ptr
+        )
         check_status(status)
         return result
 
@@ -112,11 +158,19 @@ struct JsObject:
     ##
     ## Use when the property name is computed at runtime. `name` is borrowed —
     ## the caller's String must remain alive for the duration of this call.
-    def get_named_property(self, env: NapiEnv, name: String) raises -> NapiValue:
-        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[NoneType]()
+    def get_named_property(
+        self, env: NapiEnv, name: String
+    ) raises -> NapiValue:
+        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[
+            NoneType
+        ]()
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        var status = raw_get_named_property(env, self.value, name_ptr, result_ptr)
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
+        var status = raw_get_named_property(
+            env, self.value, name_ptr, result_ptr
+        )
         check_status(status)
         return result
 
@@ -125,9 +179,15 @@ struct JsObject:
     ## Returns true if the property exists on the object, false otherwise.
     def has_property(self, env: NapiEnv, key: StringLiteral) raises -> Bool:
         var exists: Bool = False
-        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[NoneType]()
-        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=exists).bitcast[NoneType]()
-        var status = raw_has_named_property(env, self.value, key_ptr, exists_ptr)
+        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
+            NoneType
+        ]()
+        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=exists
+        ).bitcast[NoneType]()
+        var status = raw_has_named_property(
+            env, self.value, key_ptr, exists_ptr
+        )
         check_status(status)
         return exists
 
@@ -136,7 +196,9 @@ struct JsObject:
     ## Checks existence via napi_has_named_property first. Returns
     ## Optional[NapiValue](value) if present, or None if absent.
     ## Useful when you must distinguish "key missing" from "key=undefined".
-    def get_opt(self, env: NapiEnv, key: StringLiteral) raises -> Optional[NapiValue]:
+    def get_opt(
+        self, env: NapiEnv, key: StringLiteral
+    ) raises -> Optional[NapiValue]:
         if not self.has_property(env, key):
             return None
         return self.get_property(env, key)
@@ -147,9 +209,12 @@ struct JsObject:
     ## Equivalent to Object.keys(obj).
     def keys(self, env: NapiEnv) raises -> NapiValue:
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var status = raw_get_all_property_names(
-            env, self.value,
+            env,
+            self.value,
             NAPI_KEY_OWN_ONLY,
             NAPI_KEY_ENUMERABLE | NAPI_KEY_SKIP_SYMBOLS,
             NAPI_KEY_NUMBERS_TO_STRINGS,
@@ -163,7 +228,9 @@ struct JsObject:
     ## Calls napi_has_own_property. Key must be a napi_value (string or symbol).
     def has_own(self, env: NapiEnv, key: NapiValue) raises -> Bool:
         var exists: Bool = False
-        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=exists).bitcast[NoneType]()
+        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=exists
+        ).bitcast[NoneType]()
         var status = raw_has_own_property(env, self.value, key, exists_ptr)
         check_status(status)
         return exists
@@ -173,7 +240,9 @@ struct JsObject:
     ## Calls napi_delete_property. Returns true if the property was deleted.
     def delete_prop(self, env: NapiEnv, key: NapiValue) raises -> Bool:
         var deleted: Bool = False
-        var deleted_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=deleted).bitcast[NoneType]()
+        var deleted_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=deleted
+        ).bitcast[NoneType]()
         var status = raw_delete_property(env, self.value, key, deleted_ptr)
         check_status(status)
         return deleted
@@ -183,7 +252,9 @@ struct JsObject:
     ## Calls napi_instanceof.
     def instance_of(self, env: NapiEnv, constructor: NapiValue) raises -> Bool:
         var result: Bool = False
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var status = raw_instanceof(env, self.value, constructor, result_ptr)
         check_status(status)
         return result
@@ -207,7 +278,9 @@ struct JsObject:
     ## Calls napi_get_prototype. Returns null for Object.create(null).
     def prototype(self, env: NapiEnv) raises -> NapiValue:
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var status = raw_get_prototype(env, self.value, result_ptr)
         check_status(status)
         return result
@@ -217,73 +290,121 @@ struct JsObject:
     @staticmethod
     def create(b: Bindings, env: NapiEnv) raises -> JsObject:
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var status = raw_create_object(b, env, result_ptr)
         check_status(status)
         return JsObject(result)
 
-    def set_property(self, b: Bindings, env: NapiEnv, key: StringLiteral, val: NapiValue) raises:
-        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[NoneType]()
+    def set_property(
+        self, b: Bindings, env: NapiEnv, key: StringLiteral, val: NapiValue
+    ) raises:
+        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
+            NoneType
+        ]()
         var status = raw_set_named_property(b, env, self.value, key_ptr, val)
         check_status(status)
 
-    def set_named_property(self, b: Bindings, env: NapiEnv, name: String, val: NapiValue) raises:
-        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[NoneType]()
+    def set_named_property(
+        self, b: Bindings, env: NapiEnv, name: String, val: NapiValue
+    ) raises:
+        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[
+            NoneType
+        ]()
         var status = raw_set_named_property(b, env, self.value, name_ptr, val)
         check_status(status)
 
-    def set(self, b: Bindings, env: NapiEnv, key: NapiValue, val: NapiValue) raises:
+    def set(
+        self, b: Bindings, env: NapiEnv, key: NapiValue, val: NapiValue
+    ) raises:
         var status = raw_set_property(b, env, self.value, key, val)
         check_status(status)
 
     def has(self, b: Bindings, env: NapiEnv, key: NapiValue) raises -> Bool:
         var exists: Bool = False
-        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=exists).bitcast[NoneType]()
+        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=exists
+        ).bitcast[NoneType]()
         var status = raw_has_property(b, env, self.value, key, exists_ptr)
         check_status(status)
         return exists
 
-    def get(self, b: Bindings, env: NapiEnv, key: NapiValue) raises -> NapiValue:
+    def get(
+        self, b: Bindings, env: NapiEnv, key: NapiValue
+    ) raises -> NapiValue:
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var status = raw_get_property(b, env, self.value, key, result_ptr)
         check_status(status)
         return result
 
-    def get_property(self, b: Bindings, env: NapiEnv, key: StringLiteral) raises -> NapiValue:
+    def get_property(
+        self, b: Bindings, env: NapiEnv, key: StringLiteral
+    ) raises -> NapiValue:
         var result: NapiValue = NapiValue()
-        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[NoneType]()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        var status = raw_get_named_property(b, env, self.value, key_ptr, result_ptr)
+        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
+            NoneType
+        ]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
+        var status = raw_get_named_property(
+            b, env, self.value, key_ptr, result_ptr
+        )
         check_status(status)
         return result
 
-    def get_named_property(self, b: Bindings, env: NapiEnv, name: String) raises -> NapiValue:
-        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[NoneType]()
+    def get_named_property(
+        self, b: Bindings, env: NapiEnv, name: String
+    ) raises -> NapiValue:
+        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[
+            NoneType
+        ]()
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        var status = raw_get_named_property(b, env, self.value, name_ptr, result_ptr)
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
+        var status = raw_get_named_property(
+            b, env, self.value, name_ptr, result_ptr
+        )
         check_status(status)
         return result
 
-    def has_property(self, b: Bindings, env: NapiEnv, key: StringLiteral) raises -> Bool:
+    def has_property(
+        self, b: Bindings, env: NapiEnv, key: StringLiteral
+    ) raises -> Bool:
         var exists: Bool = False
-        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[NoneType]()
-        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=exists).bitcast[NoneType]()
-        var status = raw_has_named_property(b, env, self.value, key_ptr, exists_ptr)
+        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
+            NoneType
+        ]()
+        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=exists
+        ).bitcast[NoneType]()
+        var status = raw_has_named_property(
+            b, env, self.value, key_ptr, exists_ptr
+        )
         check_status(status)
         return exists
 
-    def get_opt(self, b: Bindings, env: NapiEnv, key: StringLiteral) raises -> Optional[NapiValue]:
+    def get_opt(
+        self, b: Bindings, env: NapiEnv, key: StringLiteral
+    ) raises -> Optional[NapiValue]:
         if not self.has_property(b, env, key):
             return None
         return self.get_property(b, env, key)
 
     def keys(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var status = raw_get_all_property_names(
-            b, env, self.value,
+            b,
+            env,
+            self.value,
             NAPI_KEY_OWN_ONLY,
             NAPI_KEY_ENUMERABLE | NAPI_KEY_SKIP_SYMBOLS,
             NAPI_KEY_NUMBERS_TO_STRINGS,
@@ -293,29 +414,52 @@ struct JsObject:
         return result
 
     ## keys_filtered — full-parameter napi_get_all_property_names exposure
-    def keys_filtered(self, b: Bindings, env: NapiEnv, mode: Int32, filter: Int32, conversion: Int32) raises -> NapiValue:
+    def keys_filtered(
+        self,
+        b: Bindings,
+        env: NapiEnv,
+        mode: Int32,
+        filter: Int32,
+        conversion: Int32,
+    ) raises -> NapiValue:
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        check_status(raw_get_all_property_names(b, env, self.value, mode, filter, conversion, result_ptr))
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
+        check_status(
+            raw_get_all_property_names(
+                b, env, self.value, mode, filter, conversion, result_ptr
+            )
+        )
         return result
 
     def has_own(self, b: Bindings, env: NapiEnv, key: NapiValue) raises -> Bool:
         var exists: Bool = False
-        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=exists).bitcast[NoneType]()
+        var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=exists
+        ).bitcast[NoneType]()
         var status = raw_has_own_property(b, env, self.value, key, exists_ptr)
         check_status(status)
         return exists
 
-    def delete_prop(self, b: Bindings, env: NapiEnv, key: NapiValue) raises -> Bool:
+    def delete_prop(
+        self, b: Bindings, env: NapiEnv, key: NapiValue
+    ) raises -> Bool:
         var deleted: Bool = False
-        var deleted_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=deleted).bitcast[NoneType]()
+        var deleted_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=deleted
+        ).bitcast[NoneType]()
         var status = raw_delete_property(b, env, self.value, key, deleted_ptr)
         check_status(status)
         return deleted
 
-    def instance_of(self, b: Bindings, env: NapiEnv, constructor: NapiValue) raises -> Bool:
+    def instance_of(
+        self, b: Bindings, env: NapiEnv, constructor: NapiValue
+    ) raises -> Bool:
         var result: Bool = False
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var status = raw_instanceof(b, env, self.value, constructor, result_ptr)
         check_status(status)
         return result
@@ -330,7 +474,9 @@ struct JsObject:
 
     def prototype(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var status = raw_get_prototype(b, env, self.value, result_ptr)
         check_status(status)
         return result

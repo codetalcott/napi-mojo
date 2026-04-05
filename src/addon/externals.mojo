@@ -14,6 +14,7 @@ from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof, js_type_name
 from napi.framework.register import fn_ptr, ModuleBuilder
 
+
 struct ExternalData(Movable):
     var x: Float64
     var y: Float64
@@ -26,10 +27,16 @@ struct ExternalData(Movable):
         self.x = take.x
         self.y = take.y
 
-def external_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+
+def external_finalize(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
     var ptr = data.bitcast[ExternalData]()
     ptr.destroy_pointee()
     ptr.free()
+
 
 def create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -40,11 +47,16 @@ def create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var data_ptr = alloc[ExternalData](1)
         data_ptr.init_pointee_move(ExternalData(x, y))
         var fin_ref = external_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-        return JsExternal.create(b, env, data_ptr.bitcast[NoneType](), fin_ptr).value
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
+        return JsExternal.create(
+            b, env, data_ptr.bitcast[NoneType](), fin_ptr
+        ).value
     except:
         throw_js_error(env, "createExternal requires two number arguments")
         return NapiValue()
+
 
 def get_external_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -52,8 +64,11 @@ def get_external_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_EXTERNAL:
-            throw_js_type_error_dynamic(b, env,
-                "getExternalData: expected external, got " + js_type_name(t))
+            throw_js_type_error_dynamic(
+                b,
+                env,
+                "getExternalData: expected external, got " + js_type_name(t),
+            )
             return NapiValue()
         var data = JsExternal.get_data(b, env, arg0)
         var ptr = data.bitcast[ExternalData]()
@@ -65,6 +80,7 @@ def get_external_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getExternalData failed")
         return NapiValue()
 
+
 def is_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -75,6 +91,7 @@ def is_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "isExternal requires one argument")
         return NapiValue()
 
+
 def external_ab_finalize(
     env: NapiEnv,
     data: OpaquePointer[MutAnyOrigin],
@@ -82,6 +99,7 @@ def external_ab_finalize(
 ):
     var ptr = data.bitcast[Byte]()
     ptr.free()
+
 
 def create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -93,15 +111,22 @@ def create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         for i in range(Int(byte_len)):
             data_ptr[i] = Byte(i)
         var fin_ref = external_ab_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
         var result = NapiValue()
         try:
-            check_status(raw_create_external_arraybuffer(b, env,
-                data_ptr.bitcast[NoneType](),
-                byte_len,
-                fin_ptr,
-                OpaquePointer[MutAnyOrigin](),
-                UnsafePointer(to=result).bitcast[NoneType]()))
+            check_status(
+                raw_create_external_arraybuffer(
+                    b,
+                    env,
+                    data_ptr.bitcast[NoneType](),
+                    byte_len,
+                    fin_ptr,
+                    OpaquePointer[MutAnyOrigin](),
+                    UnsafePointer(to=result).bitcast[NoneType](),
+                )
+            )
         except e:
             data_ptr.free()
             raise e^
@@ -109,6 +134,7 @@ def create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "createExternalArrayBuffer failed")
         return NapiValue()
+
 
 def noop_finalize(
     env: NapiEnv,
@@ -118,6 +144,7 @@ def noop_finalize(
     var ptr = data.bitcast[Byte]()
     ptr.free()
 
+
 def attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -125,24 +152,38 @@ def attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var dummy = alloc[Byte](1)
         dummy[0] = Byte(0)
         var fin_ref = noop_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-        check_status(raw_add_finalizer(b, env, arg0,
-            dummy.bitcast[NoneType](),
-            fin_ptr,
-            OpaquePointer[MutAnyOrigin](),
-            OpaquePointer[MutAnyOrigin]()))
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
+        check_status(
+            raw_add_finalizer(
+                b,
+                env,
+                arg0,
+                dummy.bitcast[NoneType](),
+                fin_ptr,
+                OpaquePointer[MutAnyOrigin](),
+                OpaquePointer[MutAnyOrigin](),
+            )
+        )
         return arg0
     except:
         throw_js_error(env, "attachFinalizer failed")
         return NapiValue()
 
+
 ## external_string_finalize — GC callback for createExternalString heap buffers
 ##
 ## Called by Node.js when the externally-backed string is collected or when the
 ## engine was forced to copy the data. Frees the heap-allocated Latin-1 byte buffer.
-def external_string_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+def external_string_finalize(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
     var ptr = data.bitcast[UInt8]()
     ptr.free()
+
 
 ## createExternalString — zero-copy JS string from a Mojo-owned Latin-1 buffer (N-API v10)
 ##
@@ -161,12 +202,17 @@ def create_external_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var buf = latin1.ptr
         var length = latin1.length
         var fin_ref = external_string_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
         var data_ptr: OpaquePointer[ImmutAnyOrigin] = buf.bitcast[NoneType]()
-        return JsString.create_external_latin1(b, env, data_ptr, length, fin_ptr, OpaquePointer[MutAnyOrigin]()).value
+        return JsString.create_external_latin1(
+            b, env, data_ptr, length, fin_ptr, OpaquePointer[MutAnyOrigin]()
+        ).value
     except:
         throw_js_error(env, "createExternalString requires a string argument")
         return NapiValue()
+
 
 def register_externals(mut m: ModuleBuilder) raises:
     var create_external_ref = create_external_fn
@@ -178,6 +224,8 @@ def register_externals(mut m: ModuleBuilder) raises:
     m.method("createExternal", fn_ptr(create_external_ref))
     m.method("getExternalData", fn_ptr(get_external_data_ref))
     m.method("isExternal", fn_ptr(is_external_ref))
-    m.method("createExternalArrayBuffer", fn_ptr(create_external_arraybuffer_ref))
+    m.method(
+        "createExternalArrayBuffer", fn_ptr(create_external_arraybuffer_ref)
+    )
     m.method("attachFinalizer", fn_ptr(attach_finalizer_ref))
     m.method("createExternalString", fn_ptr(create_external_string_ref))

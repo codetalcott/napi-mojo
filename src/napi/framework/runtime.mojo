@@ -33,13 +33,13 @@ def init_async_runtime() raises:
         lib = OwnedDLHandle("libKGENCompilerRTShared.dylib")
     except:
         lib = OwnedDLHandle("libKGENCompilerRTShared.so")
-    var create_rt = lib.get_function[
-        def () -> OpaquePointer[MutAnyOrigin]
-    ]("KGEN_CompilerRT_AsyncRT_GetOrCreateRuntime")
+    var create_rt = lib.get_function[def() -> OpaquePointer[MutAnyOrigin]](
+        "KGEN_CompilerRT_AsyncRT_GetOrCreateRuntime"
+    )
     _ = create_rt()
 
 
-def parallelize_safe[func: def (Int) capturing -> None](n: Int):
+def parallelize_safe[func: def(Int) capturing -> None](n: Int):
     """Run func(i) for i in 0..n-1 in parallel, with runtime auto-init.
 
     Equivalent to parallelize[func](n) but safe to call from a .node addon

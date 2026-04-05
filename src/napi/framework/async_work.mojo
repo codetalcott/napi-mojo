@@ -18,12 +18,26 @@
 ##   ptr.destroy_pointee()
 ##   ptr.free()
 
-from napi.types import NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork
+from napi.types import (
+    NapiEnv,
+    NapiValue,
+    NapiStatus,
+    NapiDeferred,
+    NapiAsyncWork,
+)
 from napi.bindings import Bindings
-from napi.raw import raw_create_async_work, raw_queue_async_work, raw_delete_async_work, raw_resolve_deferred, raw_reject_deferred, raw_create_error
+from napi.raw import (
+    raw_create_async_work,
+    raw_queue_async_work,
+    raw_delete_async_work,
+    raw_resolve_deferred,
+    raw_reject_deferred,
+    raw_create_error,
+)
 from napi.error import check_status
 from napi.framework.js_promise import JsPromise
 from napi.framework.js_string import JsString
+
 
 ## AsyncWorkResult — returned by AsyncWork.queue()
 ##
@@ -34,13 +48,15 @@ struct AsyncWorkResult:
     var deferred: NapiDeferred
     var work: NapiAsyncWork
 
-    def __init__(out self, value: NapiValue, deferred: NapiDeferred, work: NapiAsyncWork):
+    def __init__(
+        out self, value: NapiValue, deferred: NapiDeferred, work: NapiAsyncWork
+    ):
         self.value = value
         self.deferred = deferred
         self.work = work
 
-struct AsyncWork:
 
+struct AsyncWork:
     ## queue — create promise, create async work, queue it
     ##
     ## The caller must:
@@ -61,13 +77,22 @@ struct AsyncWork:
         var resource_name = JsString.create_literal(env, name)
 
         var work = NapiAsyncWork()
-        var work_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=work).bitcast[NoneType]()
+        var work_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=work
+        ).bitcast[NoneType]()
         var null_resource = NapiValue()
 
-        check_status(raw_create_async_work(
-            env, null_resource, resource_name.value,
-            execute_ptr, complete_ptr, data_opaque, work_out,
-        ))
+        check_status(
+            raw_create_async_work(
+                env,
+                null_resource,
+                resource_name.value,
+                execute_ptr,
+                complete_ptr,
+                data_opaque,
+                work_out,
+            )
+        )
 
         check_status(raw_queue_async_work(env, work))
         return AsyncWorkResult(p.value, p.deferred, work)
@@ -85,50 +110,84 @@ struct AsyncWork:
         var resource_name = JsString.create_literal(b, env, name)
 
         var work = NapiAsyncWork()
-        var work_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=work).bitcast[NoneType]()
+        var work_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=work
+        ).bitcast[NoneType]()
         var null_resource = NapiValue()
 
-        check_status(raw_create_async_work(
-            b, env, null_resource, resource_name.value,
-            execute_ptr, complete_ptr, data_opaque, work_out,
-        ))
+        check_status(
+            raw_create_async_work(
+                b,
+                env,
+                null_resource,
+                resource_name.value,
+                execute_ptr,
+                complete_ptr,
+                data_opaque,
+                work_out,
+            )
+        )
 
         check_status(raw_queue_async_work(b, env, work))
         return AsyncWorkResult(p.value, p.deferred, work)
 
     ## resolve — resolve deferred + delete async work
     @staticmethod
-    def resolve(env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
-               result: NapiValue) raises:
+    def resolve(
+        env: NapiEnv,
+        deferred: NapiDeferred,
+        work: NapiAsyncWork,
+        result: NapiValue,
+    ) raises:
         check_status(raw_resolve_deferred(env, deferred, result))
         check_status(raw_delete_async_work(env, work))
 
     @staticmethod
-    def resolve(b: Bindings, env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
-               result: NapiValue) raises:
+    def resolve(
+        b: Bindings,
+        env: NapiEnv,
+        deferred: NapiDeferred,
+        work: NapiAsyncWork,
+        result: NapiValue,
+    ) raises:
         check_status(raw_resolve_deferred(b, env, deferred, result))
         check_status(raw_delete_async_work(b, env, work))
 
     ## reject_with_error — create Error, reject deferred, delete async work
     @staticmethod
-    def reject_with_error(env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
-                         msg: StringLiteral) raises:
+    def reject_with_error(
+        env: NapiEnv,
+        deferred: NapiDeferred,
+        work: NapiAsyncWork,
+        msg: StringLiteral,
+    ) raises:
         var msg_val = JsString.create_literal(env, msg)
         var null_code = NapiValue()
         var error_val = NapiValue()
-        var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()
+        var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=error_val
+        ).bitcast[NoneType]()
         check_status(raw_create_error(env, null_code, msg_val.value, error_ptr))
         check_status(raw_reject_deferred(env, deferred, error_val))
         check_status(raw_delete_async_work(env, work))
 
     @staticmethod
-    def reject_with_error(b: Bindings, env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
-                         msg: StringLiteral) raises:
+    def reject_with_error(
+        b: Bindings,
+        env: NapiEnv,
+        deferred: NapiDeferred,
+        work: NapiAsyncWork,
+        msg: StringLiteral,
+    ) raises:
         var msg_val = JsString.create_literal(b, env, msg)
         var null_code = NapiValue()
         var error_val = NapiValue()
-        var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()
-        check_status(raw_create_error(b, env, null_code, msg_val.value, error_ptr))
+        var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=error_val
+        ).bitcast[NoneType]()
+        check_status(
+            raw_create_error(b, env, null_code, msg_val.value, error_ptr)
+        )
         check_status(raw_reject_deferred(b, env, deferred, error_val))
         check_status(raw_delete_async_work(b, env, work))
 
@@ -139,27 +198,39 @@ struct AsyncWork:
     ## msg_copy owns the bytes; explicit transfer keeps them alive past the
     ## napi_create_string_utf8 call inside JsString.create.
     @staticmethod
-    def reject_with_error_dynamic(env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork,
-                                 msg: String) raises:
+    def reject_with_error_dynamic(
+        env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork, msg: String
+    ) raises:
         var msg_copy = msg
         var msg_val = JsString.create(env, msg_copy)
         _ = msg_copy^
         var null_code = NapiValue()
         var error_val = NapiValue()
-        var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()
+        var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=error_val
+        ).bitcast[NoneType]()
         check_status(raw_create_error(env, null_code, msg_val.value, error_ptr))
         check_status(raw_reject_deferred(env, deferred, error_val))
         check_status(raw_delete_async_work(env, work))
 
     @staticmethod
-    def reject_with_error_dynamic(b: Bindings, env: NapiEnv, deferred: NapiDeferred,
-                                 work: NapiAsyncWork, msg: String) raises:
+    def reject_with_error_dynamic(
+        b: Bindings,
+        env: NapiEnv,
+        deferred: NapiDeferred,
+        work: NapiAsyncWork,
+        msg: String,
+    ) raises:
         var msg_copy = msg
         var msg_val = JsString.create(b, env, msg_copy)
         _ = msg_copy^
         var null_code = NapiValue()
         var error_val = NapiValue()
-        var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=error_val).bitcast[NoneType]()
-        check_status(raw_create_error(b, env, null_code, msg_val.value, error_ptr))
+        var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=error_val
+        ).bitcast[NoneType]()
+        check_status(
+            raw_create_error(b, env, null_code, msg_val.value, error_ptr)
+        )
         check_status(raw_reject_deferred(b, env, deferred, error_val))
         check_status(raw_delete_async_work(b, env, work))

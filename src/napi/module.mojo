@@ -9,6 +9,7 @@ from napi.bindings import Bindings
 from napi.raw import raw_define_properties
 from napi.error import check_status
 
+
 ## define_property — register a single named property on the exports object
 ##
 ## This is the safe way to attach a method or value to the Node.js addon's
@@ -28,9 +29,12 @@ def define_property(
 ) raises:
     # Take the address of the local desc copy. The pointer is valid for the
     # duration of this function call (desc lives in this stack frame).
-    var p: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=desc).bitcast[NoneType]()
+    var p: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=desc).bitcast[
+        NoneType
+    ]()
     var status = raw_define_properties(env, exports, 1, p)
     check_status(status)
+
 
 ## register_method — register a named method on the exports object
 ##
@@ -56,7 +60,9 @@ def register_method(
     desc.attributes = 0
     define_property(env, exports, desc)
 
+
 # --- Bindings-aware overloads ---
+
 
 def define_property(
     b: Bindings,
@@ -64,9 +70,12 @@ def define_property(
     exports: NapiValue,
     desc: NapiPropertyDescriptor,
 ) raises:
-    var p: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=desc).bitcast[NoneType]()
+    var p: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=desc).bitcast[
+        NoneType
+    ]()
     var status = raw_define_properties(b, env, exports, 1, p)
     check_status(status)
+
 
 def register_method(
     b: Bindings,

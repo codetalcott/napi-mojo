@@ -6,7 +6,13 @@
 
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING, NAPI_TYPE_NUMBER
 from napi.bindings import Bindings
-from napi.error import throw_js_error, throw_js_error_dynamic, throw_js_type_error, throw_js_type_error_dynamic, throw_js_range_error
+from napi.error import (
+    throw_js_error,
+    throw_js_error_dynamic,
+    throw_js_type_error,
+    throw_js_type_error_dynamic,
+    throw_js_range_error,
+)
 from napi.framework.js_object import JsObject
 from napi.framework.js_string import JsString
 from napi.framework.js_number import JsNumber
@@ -19,6 +25,7 @@ from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof, js_type_name
 from napi.framework.register import fn_ptr, ModuleBuilder
 
+
 def hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -26,12 +33,14 @@ def hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         return NapiValue()
 
+
 def create_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         return JsObject.create(b, env).value
     except:
         return NapiValue()
+
 
 def make_greeting_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -43,19 +52,23 @@ def make_greeting_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         return NapiValue()
 
+
 def greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_STRING:
-            throw_js_error_dynamic(b, env, "greet: expected string, got " + js_type_name(t))
+            throw_js_error_dynamic(
+                b, env, "greet: expected string, got " + js_type_name(t)
+            )
             return NapiValue()
         var name = JsString.from_napi_value(b, env, arg0)
         return JsString.create(b, env, "Hello, " + name + "!").value
     except:
         throw_js_error(env, "greet requires one string argument")
         return NapiValue()
+
 
 def add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -68,6 +81,7 @@ def add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "add requires two number arguments")
         return NapiValue()
 
+
 def is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -78,6 +92,7 @@ def is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "isPositive requires one number argument")
         return NapiValue()
 
+
 def get_null_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -85,12 +100,14 @@ def get_null_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         return NapiValue()
 
+
 def get_undefined_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         return JsUndefined.create(b, env).value
     except:
         return NapiValue()
+
 
 def add_ints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -108,6 +125,7 @@ def add_ints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "addInts requires two number arguments")
         return NapiValue()
 
+
 def bitwise_or_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -124,6 +142,7 @@ def bitwise_or_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "bitwiseOr requires two number arguments")
         return NapiValue()
 
+
 def throw_type_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -131,6 +150,7 @@ def throw_type_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_type_error(env, "wrong type")
     return NapiValue()
+
 
 def throw_range_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -140,6 +160,7 @@ def throw_range_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_range_error(env, "out of range")
     return NapiValue()
 
+
 def add_ints_strict_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -147,8 +168,14 @@ def add_ints_strict_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var ta = js_typeof(b, env, args[0])
         var tb = js_typeof(b, env, args[1])
         if ta != NAPI_TYPE_NUMBER or tb != NAPI_TYPE_NUMBER:
-            throw_js_type_error_dynamic(b, env,
-                "addIntsStrict: expected two numbers, got " + js_type_name(ta) + " and " + js_type_name(tb))
+            throw_js_type_error_dynamic(
+                b,
+                env,
+                "addIntsStrict: expected two numbers, got "
+                + js_type_name(ta)
+                + " and "
+                + js_type_name(tb),
+            )
             return NapiValue()
         var a = JsInt32.from_napi_value(b, env, args[0])
         var b2 = JsInt32.from_napi_value(b, env, args[1])
@@ -156,6 +183,7 @@ def add_ints_strict_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_type_error(env, "addIntsStrict requires two number arguments")
         return NapiValue()
+
 
 def register_primitives(mut m: ModuleBuilder) raises:
     var hello_ref = hello_fn

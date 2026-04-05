@@ -12,6 +12,7 @@ from napi.framework.escapable_handle_scope import EscapableHandleScope
 from napi.framework.args import CbArgs
 from napi.framework.register import fn_ptr, ModuleBuilder
 
+
 def test_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -25,6 +26,7 @@ def test_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "testRef failed")
         return NapiValue()
 
+
 def test_ref_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -37,6 +39,7 @@ def test_ref_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "testRefObject failed")
         return NapiValue()
+
 
 def test_ref_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -52,12 +55,15 @@ def test_ref_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "testRefString requires one string argument")
         return NapiValue()
 
+
 def build_in_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var esc = EscapableHandleScope.open(b, env)
         var obj = JsObject.create(b, env)
-        obj.set_property(b, env, "created", JsBoolean.create(b, env, True).value)
+        obj.set_property(
+            b, env, "created", JsBoolean.create(b, env, True).value
+        )
         obj.set_property(b, env, "answer", JsNumber.create(b, env, 42.0).value)
         var escaped = esc.escape(b, env, obj.value)
         esc.close(b, env)
@@ -65,6 +71,7 @@ def build_in_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "buildInScope failed")
         return NapiValue()
+
 
 def test_weak_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -77,6 +84,7 @@ def test_weak_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "testWeakRef failed")
         return NapiValue()
+
 
 def register_refs(mut m: ModuleBuilder) raises:
     var test_ref_ref = test_ref_fn

@@ -172,6 +172,7 @@ comptime NAPI_KEY_SKIP_SYMBOLS: Int32 = 16
 comptime NAPI_KEY_KEEP_NUMBERS: Int32 = 0
 comptime NAPI_KEY_NUMBERS_TO_STRINGS: Int32 = 1
 
+
 # ---------------------------------------------------------------------------
 # napi_type_tag struct (N-API v8)
 #
@@ -201,6 +202,7 @@ struct NapiTypeTag(Movable):
         self.lower = take.lower
         self.upper = take.upper
 
+
 # ---------------------------------------------------------------------------
 # napi_node_version struct
 #
@@ -227,7 +229,13 @@ struct NapiNodeVersion:
         self.patch = 0
         self.release = OpaquePointer[ImmutAnyOrigin]()
 
-    def __init__(out self, major: UInt32, minor: UInt32, patch: UInt32, release: OpaquePointer[ImmutAnyOrigin]):
+    def __init__(
+        out self,
+        major: UInt32,
+        minor: UInt32,
+        patch: UInt32,
+        release: OpaquePointer[ImmutAnyOrigin],
+    ):
         self.major = major
         self.minor = minor
         self.patch = patch
@@ -244,6 +252,7 @@ struct NapiNodeVersion:
         self.minor = take.minor
         self.patch = take.patch
         self.release = take.release
+
 
 # ---------------------------------------------------------------------------
 # napi_property_descriptor struct
@@ -268,11 +277,11 @@ struct NapiPropertyDescriptor(Movable):
     # literals (static lifetime) rather than Mojo heap Strings (ASAP-freed).
     var utf8name: OpaquePointer[ImmutAnyOrigin]
     var name: OpaquePointer[MutAnyOrigin]
-    var method: OpaquePointer[MutAnyOrigin]   # napi_callback def pointer
+    var method: OpaquePointer[MutAnyOrigin]  # napi_callback def pointer
     var getter: OpaquePointer[MutAnyOrigin]
     var setter: OpaquePointer[MutAnyOrigin]
     var value: OpaquePointer[MutAnyOrigin]
-    var attributes: UInt32                     # napi_property_attributes; 0 = napi_default
+    var attributes: UInt32  # napi_property_attributes; 0 = napi_default
     var data: OpaquePointer[MutAnyOrigin]
 
     def __init__(out self):

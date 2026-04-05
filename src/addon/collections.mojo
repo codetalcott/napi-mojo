@@ -6,7 +6,13 @@
 ##         getPrototype, setPropertyByKey, hasPropertyByKey
 
 from std.memory import alloc
-from napi.types import NapiEnv, NapiValue, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION, NAPI_TYPE_STRING
+from napi.types import (
+    NapiEnv,
+    NapiValue,
+    NAPI_TYPE_OBJECT,
+    NAPI_TYPE_FUNCTION,
+    NAPI_TYPE_STRING,
+)
 from napi.bindings import Bindings
 from napi.error import throw_js_error, throw_js_error_dynamic
 from napi.framework.js_object import JsObject
@@ -17,8 +23,14 @@ from napi.framework.js_boolean import JsBoolean
 from napi.framework.js_uint32 import JsUInt32
 from napi.framework.handle_scope import HandleScope
 from napi.framework.args import CbArgs
-from napi.framework.js_value import js_typeof, js_type_name, js_is_array, js_strict_equals
+from napi.framework.js_value import (
+    js_typeof,
+    js_type_name,
+    js_is_array,
+    js_strict_equals,
+)
 from napi.framework.register import fn_ptr, ModuleBuilder
+
 
 def sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -26,7 +38,9 @@ def sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         if not js_is_array(b, env, arg0):
             var t = js_typeof(b, env, arg0)
-            throw_js_error_dynamic(b, env, "sumArray: expected array, got " + js_type_name(t))
+            throw_js_error_dynamic(
+                b, env, "sumArray: expected array, got " + js_type_name(t)
+            )
             return NapiValue()
         var arr = JsArray(arg0)
         var len = arr.length(b, env)
@@ -39,17 +53,24 @@ def sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "sumArray requires one array argument")
         return NapiValue()
 
+
 def get_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
         var t0 = js_typeof(b, env, args[0])
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(b, env, "getProperty: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(
+                b, env, "getProperty: expected object, got " + js_type_name(t0)
+            )
             return NapiValue()
         var t1 = js_typeof(b, env, args[1])
         if t1 != NAPI_TYPE_STRING:
-            throw_js_error_dynamic(b, env, "getProperty: key must be a string, got " + js_type_name(t1))
+            throw_js_error_dynamic(
+                b,
+                env,
+                "getProperty: key must be a string, got " + js_type_name(t1),
+            )
             return NapiValue()
         var obj = JsObject(args[0])
         return obj.get(b, env, args[1])
@@ -57,13 +78,18 @@ def get_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getProperty requires (object, string)")
         return NapiValue()
 
+
 def call_function_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
         var t = js_typeof(b, env, args[0])
         if t != NAPI_TYPE_FUNCTION:
-            throw_js_error_dynamic(b, env, "callFunction: expected function, got " + js_type_name(t))
+            throw_js_error_dynamic(
+                b,
+                env,
+                "callFunction: expected function, got " + js_type_name(t),
+            )
             return NapiValue()
         var func = JsFunction(args[0])
         return func.call1(b, env, args[1])
@@ -71,17 +97,22 @@ def call_function_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "callFunction requires (function, arg)")
         return NapiValue()
 
+
 def map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
         if not js_is_array(b, env, args[0]):
             var t = js_typeof(b, env, args[0])
-            throw_js_error_dynamic(b, env, "mapArray: expected array, got " + js_type_name(t))
+            throw_js_error_dynamic(
+                b, env, "mapArray: expected array, got " + js_type_name(t)
+            )
             return NapiValue()
         var t1 = js_typeof(b, env, args[1])
         if t1 != NAPI_TYPE_FUNCTION:
-            throw_js_error_dynamic(b, env, "mapArray: expected function, got " + js_type_name(t1))
+            throw_js_error_dynamic(
+                b, env, "mapArray: expected function, got " + js_type_name(t1)
+            )
             return NapiValue()
         var arr = JsArray(args[0])
         var func = JsFunction(args[1])
@@ -104,13 +135,16 @@ def map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "mapArray requires (array, function)")
         return NapiValue()
 
+
 def get_keys_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         var t0 = js_typeof(b, env, arg0)
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(b, env, "getKeys: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(
+                b, env, "getKeys: expected object, got " + js_type_name(t0)
+            )
             return NapiValue()
         var obj = JsObject(arg0)
         return obj.keys(b, env)
@@ -118,13 +152,16 @@ def get_keys_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getKeys requires one object argument")
         return NapiValue()
 
+
 def has_own_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
         var t0 = js_typeof(b, env, args[0])
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(b, env, "hasOwn: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(
+                b, env, "hasOwn: expected object, got " + js_type_name(t0)
+            )
             return NapiValue()
         var obj = JsObject(args[0])
         var result = obj.has_own(b, env, args[1])
@@ -133,13 +170,18 @@ def has_own_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "hasOwn requires (object, key)")
         return NapiValue()
 
+
 def delete_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
         var t0 = js_typeof(b, env, args[0])
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(b, env, "deleteProperty: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(
+                b,
+                env,
+                "deleteProperty: expected object, got " + js_type_name(t0),
+            )
             return NapiValue()
         var obj = JsObject(args[0])
         _ = obj.delete_prop(b, env, args[1])
@@ -148,12 +190,15 @@ def delete_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "deleteProperty requires (object, key)")
         return NapiValue()
 
+
 def array_has_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
         if not js_is_array(b, env, args[0]):
-            throw_js_error(b, env, "arrayHasElement: first argument must be an array")
+            throw_js_error(
+                b, env, "arrayHasElement: first argument must be an array"
+            )
             return NapiValue()
         var arr = JsArray(args[0])
         var index = JsUInt32.from_napi_value(b, env, args[1])
@@ -163,12 +208,15 @@ def array_has_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "arrayHasElement requires (array, index)")
         return NapiValue()
 
+
 def array_delete_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
         if not js_is_array(b, env, args[0]):
-            throw_js_error(b, env, "arrayDeleteElement: first argument must be an array")
+            throw_js_error(
+                b, env, "arrayDeleteElement: first argument must be an array"
+            )
             return NapiValue()
         var arr = JsArray(args[0])
         var index = JsUInt32.from_napi_value(b, env, args[1])
@@ -178,19 +226,23 @@ def array_delete_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "arrayDeleteElement requires (array, index)")
         return NapiValue()
 
+
 def get_prototype_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         var t0 = js_typeof(b, env, arg0)
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(b, env, "getPrototype: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(
+                b, env, "getPrototype: expected object, got " + js_type_name(t0)
+            )
             return NapiValue()
         var obj = JsObject(arg0)
         return obj.prototype(b, env)
     except:
         throw_js_error(env, "getPrototype requires one object argument")
         return NapiValue()
+
 
 def strict_equals_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -202,13 +254,19 @@ def strict_equals_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "strictEquals requires two arguments")
         return NapiValue()
 
+
 def is_instance_of_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
         var t1 = js_typeof(b, env, args[1])
         if t1 != NAPI_TYPE_FUNCTION:
-            throw_js_error_dynamic(b, env, "isInstanceOf: second arg must be a constructor, got " + js_type_name(t1))
+            throw_js_error_dynamic(
+                b,
+                env,
+                "isInstanceOf: second arg must be a constructor, got "
+                + js_type_name(t1),
+            )
             return NapiValue()
         var obj = JsObject(args[0])
         var result = obj.instance_of(b, env, args[1])
@@ -217,13 +275,16 @@ def is_instance_of_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "isInstanceOf requires (value, constructor)")
         return NapiValue()
 
+
 def freeze_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         var t0 = js_typeof(b, env, arg0)
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(b, env, "freezeObject: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(
+                b, env, "freezeObject: expected object, got " + js_type_name(t0)
+            )
             return NapiValue()
         var obj = JsObject(arg0)
         obj.freeze(b, env)
@@ -232,13 +293,16 @@ def freeze_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "freezeObject requires one object argument")
         return NapiValue()
 
+
 def seal_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         var t0 = js_typeof(b, env, arg0)
         if t0 != NAPI_TYPE_OBJECT:
-            throw_js_error_dynamic(b, env, "sealObject: expected object, got " + js_type_name(t0))
+            throw_js_error_dynamic(
+                b, env, "sealObject: expected object, got " + js_type_name(t0)
+            )
             return NapiValue()
         var obj = JsObject(arg0)
         obj.seal(b, env)
@@ -246,6 +310,7 @@ def seal_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "sealObject requires one object argument")
         return NapiValue()
+
 
 def set_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -263,6 +328,7 @@ def set_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "setPropertyByKey failed")
         return NapiValue()
 
+
 def has_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -272,6 +338,7 @@ def has_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "hasPropertyByKey failed")
         return NapiValue()
+
 
 def register_collections(mut m: ModuleBuilder) raises:
     var sum_array_ref = sum_array_fn

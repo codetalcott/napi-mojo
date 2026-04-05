@@ -13,6 +13,7 @@ from napi.raw import raw_get_undefined
 from napi.error import check_status
 from napi.bindings import Bindings
 
+
 ## JsUndefined — typed wrapper for the JavaScript undefined napi_value
 struct JsUndefined:
     ## The underlying napi_value handle (the undefined singleton).
@@ -28,7 +29,9 @@ struct JsUndefined:
     @staticmethod
     def create(b: Bindings, env: NapiEnv) raises -> JsUndefined:
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var status = raw_get_undefined(b, env, result_ptr)
         check_status(status)
         return JsUndefined(result)

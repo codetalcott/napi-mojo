@@ -12,6 +12,7 @@ from napi.framework.js_async_context import JsAsyncContext
 from napi.framework.callback_scope import CallbackScope
 from napi.framework.register import fn_ptr, ModuleBuilder
 
+
 ## makeCallback(fn, arg) — call fn(arg) via napi_make_callback
 ##
 ## Creates a temporary async context, calls fn(arg) inside it, destroys the
@@ -33,6 +34,7 @@ def make_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "makeCallback failed")
         return NapiValue()
 
+
 ## makeCallback0(fn) — call fn() via napi_make_callback (no arguments)
 def make_callback0_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -48,6 +50,7 @@ def make_callback0_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "makeCallback0 failed")
         return NapiValue()
 
+
 ## makeCallback2(fn, a, b) — call fn(a, b) via napi_make_callback
 def make_callback2_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -59,12 +62,15 @@ def make_callback2_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var global_obj = js_get_global(b, env)
         var name = JsString.create_literal(b, env, "makeCallback2")
         var ctx = JsAsyncContext.create(b, env, global_obj.value, name.value)
-        var result = ctx.make_callback2(b, env, global_obj.value, func, arg0, arg1)
+        var result = ctx.make_callback2(
+            b, env, global_obj.value, func, arg0, arg1
+        )
         ctx.destroy(b, env)
         return result
     except:
         throw_js_error(env, "makeCallback2 failed")
         return NapiValue()
+
 
 ## makeCallbackScope(fn, arg) — open a CallbackScope, call fn(arg), close scope
 def make_callback_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -84,6 +90,7 @@ def make_callback_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "makeCallbackScope failed")
         return NapiValue()
+
 
 def register_async_context(mut m: ModuleBuilder) raises:
     var make_callback_ref = make_callback_fn

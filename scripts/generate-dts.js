@@ -115,9 +115,16 @@ const lines = source.split('\n');
 // --- Pass 1: Extract registered JS function names ---
 const registeredFunctions = [];
 const registerMethodRe = /(?:register_method\(env, exports, |m\.method\()\"(\w+)\"/;
-for (const line of lines) {
-  const m = line.match(registerMethodRe);
-  if (m) registeredFunctions.push(m[1]);
+const multilineMethodRe = /^\s*m\.method\(\s*$/;
+const multilineNameRe = /^\s*\"(\w+)\"/;
+for (let i = 0; i < lines.length; i++) {
+  const m = lines[i].match(registerMethodRe);
+  if (m) { registeredFunctions.push(m[1]); continue; }
+  // Handle mojo format splitting m.method( onto separate line from "name"
+  if (multilineMethodRe.test(lines[i]) && i + 1 < lines.length) {
+    const nameMatch = lines[i + 1].match(multilineNameRe);
+    if (nameMatch) registeredFunctions.push(nameMatch[1]);
+  }
 }
 
 // --- Pass 2: Map JS names to Mojo callback function names ---
@@ -132,18 +139,27 @@ for (const line of lines) {
 // Map JS name -> callback fn name by finding which ref is used
 const jsFnToCallback = {};
 for (let i = 0; i < lines.length; i++) {
+  // Extract JS name from single-line or multiline m.method() call
+  let jsName = null;
+  let searchLines = [lines[i], lines[i + 1] || ''];
   const m = lines[i].match(registerMethodRe);
   if (m) {
-    const jsName = m[1];
-    // Check current line for fn_ptr(xxx_ref) pattern (new style)
-    const fnPtrMatch = lines[i].match(/fn_ptr\((\w+_ref)\)/);
+    jsName = m[1];
+  } else if (multilineMethodRe.test(lines[i]) && i + 1 < lines.length) {
+    const nameMatch = lines[i + 1].match(multilineNameRe);
+    if (nameMatch) jsName = nameMatch[1];
+    searchLines = [lines[i + 1] || '', lines[i + 2] || ''];
+  }
+  if (jsName) {
+    // Check current + next lines for fn_ptr(xxx_ref) pattern
+    const combined = searchLines.join(' ');
+    const fnPtrMatch = combined.match(/fn_ptr\((\w+_ref)\)/);
     if (fnPtrMatch && refToFn[fnPtrMatch[1]]) {
       jsFnToCallback[jsName] = refToFn[fnPtrMatch[1]];
       continue;
     }
-    // Fallback: check next line for UnsafePointer(to=xxx_ref) pattern (old style)
-    const nextLine = lines[i + 1] || '';
-    const refMatch = nextLine.match(/UnsafePointer\(to=(\w+_ref)\)/);
+    // Fallback: check for UnsafePointer(to=xxx_ref) pattern (old style)
+    const refMatch = combined.match(/UnsafePointer\(to=(\w+_ref)\)/);
     if (refMatch && refToFn[refMatch[1]]) {
       jsFnToCallback[jsName] = refToFn[refMatch[1]];
     }

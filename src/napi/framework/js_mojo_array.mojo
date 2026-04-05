@@ -43,6 +43,7 @@ struct MojoFloat64Array(Movable):
     Ownership safety: if to_js() is never called (e.g. exception before it),
     __del__ automatically frees the buffer to prevent leaks.
     """
+
     var ptr: UnsafePointer[Float64, MutAnyOrigin]
     var length: Int
     var _transferred: Bool
@@ -63,32 +64,49 @@ struct MojoFloat64Array(Movable):
 
     ## to_js — transfer ownership to JS as a Float64Array (with cached bindings)
     def to_js(mut self, b: Bindings, env: NapiEnv) raises -> NapiValue:
-        """Wrap buffer as Float64Array (zero-copy). GC finalizer owns memory after this."""
+        """Wrap buffer as Float64Array (zero-copy). GC finalizer owns memory after this.
+        """
         var byte_len = UInt(self.length * 8)  # Float64 = 8 bytes
         var fin_ref = _mojo_float64_finalizer
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
         var ab = NapiValue()
-        check_status(raw_create_external_arraybuffer(b, env,
-            self.ptr.bitcast[NoneType](),
-            byte_len,
-            fin_ptr,
-            OpaquePointer[MutAnyOrigin](),
-            UnsafePointer(to=ab).bitcast[NoneType]()))
+        check_status(
+            raw_create_external_arraybuffer(
+                b,
+                env,
+                self.ptr.bitcast[NoneType](),
+                byte_len,
+                fin_ptr,
+                OpaquePointer[MutAnyOrigin](),
+                UnsafePointer(to=ab).bitcast[NoneType](),
+            )
+        )
         self._transferred = True  # GC finalizer now owns memory
-        return JsTypedArray.create_float64(b, env, ab, 0, UInt(self.length)).value
+        return JsTypedArray.create_float64(
+            b, env, ab, 0, UInt(self.length)
+        ).value
 
     ## to_js — transfer ownership to JS as a Float64Array (env-only overload)
     def to_js(mut self, env: NapiEnv) raises -> NapiValue:
-        """Wrap buffer as Float64Array (zero-copy). GC finalizer owns memory after this."""
+        """Wrap buffer as Float64Array (zero-copy). GC finalizer owns memory after this.
+        """
         var byte_len = UInt(self.length * 8)
         var fin_ref = _mojo_float64_finalizer
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
         var ab = NapiValue()
-        check_status(raw_create_external_arraybuffer(env,
-            self.ptr.bitcast[NoneType](),
-            byte_len,
-            fin_ptr,
-            OpaquePointer[MutAnyOrigin](),
-            UnsafePointer(to=ab).bitcast[NoneType]()))
+        check_status(
+            raw_create_external_arraybuffer(
+                env,
+                self.ptr.bitcast[NoneType](),
+                byte_len,
+                fin_ptr,
+                OpaquePointer[MutAnyOrigin](),
+                UnsafePointer(to=ab).bitcast[NoneType](),
+            )
+        )
         self._transferred = True  # GC finalizer now owns memory
         return JsTypedArray.create_float64(env, ab, 0, UInt(self.length)).value

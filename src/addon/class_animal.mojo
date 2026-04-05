@@ -1,7 +1,13 @@
 ## src/addon/class_animal.mojo — Animal and Dog classes (with inheritance)
 
 from std.memory import alloc
-from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION
+from napi.types import (
+    NapiEnv,
+    NapiValue,
+    NAPI_TYPE_STRING,
+    NAPI_TYPE_OBJECT,
+    NAPI_TYPE_FUNCTION,
+)
 from napi.bindings import Bindings
 from napi.error import throw_js_error, throw_js_type_error, check_status
 from napi.raw import raw_wrap
@@ -13,11 +19,14 @@ from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof
 from napi.framework.register import fn_ptr, ModuleBuilder
 
+
 struct AnimalData(Movable):
     var name_ptr: OpaquePointer[MutAnyOrigin]
     var name_len: UInt
 
-    def __init__(out self, name_ptr: OpaquePointer[MutAnyOrigin], name_len: UInt):
+    def __init__(
+        out self, name_ptr: OpaquePointer[MutAnyOrigin], name_len: UInt
+    ):
         self.name_ptr = name_ptr
         self.name_len = name_len
 
@@ -25,14 +34,20 @@ struct AnimalData(Movable):
         self.name_ptr = take.name_ptr
         self.name_len = take.name_len
 
+
 struct DogData(Movable):
     var name_ptr: OpaquePointer[MutAnyOrigin]
     var name_len: UInt
     var breed_ptr: OpaquePointer[MutAnyOrigin]
     var breed_len: UInt
 
-    def __init__(out self, name_ptr: OpaquePointer[MutAnyOrigin], name_len: UInt,
-                breed_ptr: OpaquePointer[MutAnyOrigin], breed_len: UInt):
+    def __init__(
+        out self,
+        name_ptr: OpaquePointer[MutAnyOrigin],
+        name_len: UInt,
+        breed_ptr: OpaquePointer[MutAnyOrigin],
+        breed_len: UInt,
+    ):
         self.name_ptr = name_ptr
         self.name_len = name_len
         self.breed_ptr = breed_ptr
@@ -44,18 +59,29 @@ struct DogData(Movable):
         self.breed_ptr = take.breed_ptr
         self.breed_len = take.breed_len
 
-def animal_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+
+def animal_finalize(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
     var ptr = data.bitcast[AnimalData]()
     ptr[].name_ptr.bitcast[Byte]().free()
     ptr.destroy_pointee()
     ptr.free()
 
-def dog_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+
+def dog_finalize(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
     var ptr = data.bitcast[DogData]()
     ptr[].name_ptr.bitcast[Byte]().free()
     ptr[].breed_ptr.bitcast[Byte]().free()
     ptr.destroy_pointee()
     ptr.free()
+
 
 def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -64,7 +90,9 @@ def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_STRING:
-            throw_js_type_error(b, env, "Animal constructor requires a string name")
+            throw_js_type_error(
+                b, env, "Animal constructor requires a string name"
+            )
             return NapiValue()
         var name_str = JsString.from_napi_value(b, env, arg0)
         var name_len = UInt(len(name_str))
@@ -72,17 +100,25 @@ def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         for i in range(Int(name_len)):
             name_buf[i] = name_str.as_bytes()[i]
         var data_ptr = alloc[AnimalData](1)
-        data_ptr.init_pointee_move(AnimalData(name_buf.bitcast[NoneType](), name_len))
+        data_ptr.init_pointee_move(
+            AnimalData(name_buf.bitcast[NoneType](), name_len)
+        )
         var fin_ref = animal_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
         try:
-            check_status(raw_wrap(b,
-                env, this_val,
-                data_ptr.bitcast[NoneType](),
-                fin_ptr,
-                OpaquePointer[MutAnyOrigin](),
-                OpaquePointer[MutAnyOrigin](),
-            ))
+            check_status(
+                raw_wrap(
+                    b,
+                    env,
+                    this_val,
+                    data_ptr.bitcast[NoneType](),
+                    fin_ptr,
+                    OpaquePointer[MutAnyOrigin](),
+                    OpaquePointer[MutAnyOrigin](),
+                )
+            )
         except e:
             name_buf.free()
             data_ptr.destroy_pointee()
@@ -92,6 +128,7 @@ def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "Animal constructor failed")
         return NapiValue()
+
 
 def animal_get_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -105,6 +142,7 @@ def animal_get_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Animal.name getter failed")
         return NapiValue()
 
+
 def animal_speak_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
@@ -117,6 +155,7 @@ def animal_speak_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "Animal.speak failed")
         return NapiValue()
+
 
 def animal_is_animal_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -132,6 +171,7 @@ def animal_is_animal_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Animal.isAnimal failed")
         return NapiValue()
 
+
 def dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -140,7 +180,9 @@ def dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var t0 = js_typeof(b, env, args[0])
         var t1 = js_typeof(b, env, args[1])
         if t0 != NAPI_TYPE_STRING or t1 != NAPI_TYPE_STRING:
-            throw_js_type_error(b, env, "Dog constructor requires (name: string, breed: string)")
+            throw_js_type_error(
+                b, env, "Dog constructor requires (name: string, breed: string)"
+            )
             return NapiValue()
         var name_str = JsString.from_napi_value(b, env, args[0])
         var name_len = UInt(len(name_str))
@@ -154,20 +196,30 @@ def dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             for i in range(Int(breed_len)):
                 breed_buf[i] = breed_str.as_bytes()[i]
             var data_ptr = alloc[DogData](1)
-            data_ptr.init_pointee_move(DogData(
-                name_buf.bitcast[NoneType](), name_len,
-                breed_buf.bitcast[NoneType](), breed_len,
-            ))
+            data_ptr.init_pointee_move(
+                DogData(
+                    name_buf.bitcast[NoneType](),
+                    name_len,
+                    breed_buf.bitcast[NoneType](),
+                    breed_len,
+                )
+            )
             var fin_ref = dog_finalize
-            var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+            var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+                OpaquePointer[MutAnyOrigin]
+            ]()[]
             try:
-                check_status(raw_wrap(b,
-                    env, this_val,
-                    data_ptr.bitcast[NoneType](),
-                    fin_ptr,
-                    OpaquePointer[MutAnyOrigin](),
-                    OpaquePointer[MutAnyOrigin](),
-                ))
+                check_status(
+                    raw_wrap(
+                        b,
+                        env,
+                        this_val,
+                        data_ptr.bitcast[NoneType](),
+                        fin_ptr,
+                        OpaquePointer[MutAnyOrigin](),
+                        OpaquePointer[MutAnyOrigin](),
+                    )
+                )
             except e:
                 name_buf.free()
                 breed_buf.free()
@@ -182,6 +234,7 @@ def dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Dog constructor failed")
         return NapiValue()
 
+
 def dog_get_breed_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
@@ -193,6 +246,7 @@ def dog_get_breed_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "Dog.breed getter failed")
         return NapiValue()
+
 
 def register_animal(mut m: ModuleBuilder) raises:
     var animal_constructor_ref = animal_constructor_fn

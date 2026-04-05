@@ -1,9 +1,27 @@
 ## src/addon/binary_ops.mojo — ArrayBuffer, Buffer, TypedArray, DataView callbacks
 
 from std.memory import alloc
-from napi.types import NapiEnv, NapiValue, NAPI_TYPE_NUMBER, NAPI_INT8_ARRAY, NAPI_UINT8_ARRAY, NAPI_UINT8_CLAMPED_ARRAY, NAPI_INT16_ARRAY, NAPI_UINT16_ARRAY, NAPI_INT32_ARRAY, NAPI_UINT32_ARRAY, NAPI_FLOAT32_ARRAY, NAPI_FLOAT64_ARRAY
+from napi.types import (
+    NapiEnv,
+    NapiValue,
+    NAPI_TYPE_NUMBER,
+    NAPI_INT8_ARRAY,
+    NAPI_UINT8_ARRAY,
+    NAPI_UINT8_CLAMPED_ARRAY,
+    NAPI_INT16_ARRAY,
+    NAPI_UINT16_ARRAY,
+    NAPI_INT32_ARRAY,
+    NAPI_UINT32_ARRAY,
+    NAPI_FLOAT32_ARRAY,
+    NAPI_FLOAT64_ARRAY,
+)
 from napi.bindings import Bindings
-from napi.error import throw_js_error, throw_js_type_error, throw_js_error_dynamic, check_status
+from napi.error import (
+    throw_js_error,
+    throw_js_type_error,
+    throw_js_error_dynamic,
+    check_status,
+)
 from napi.framework.js_boolean import JsBoolean
 from napi.framework.js_number import JsNumber
 from napi.framework.js_string import JsString
@@ -16,13 +34,16 @@ from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof
 from napi.framework.register import fn_ptr, ModuleBuilder
 
+
 def create_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         var ta = js_typeof(b, env, arg0)
         if ta != NAPI_TYPE_NUMBER:
-            throw_js_error(b, env, "createArrayBuffer requires a number argument")
+            throw_js_error(
+                b, env, "createArrayBuffer requires a number argument"
+            )
             return NapiValue()
         var size = JsNumber.from_napi_value(b, env, arg0)
         return JsArrayBuffer.create_and_fill(b, env, UInt(Int(size))).value
@@ -30,19 +51,25 @@ def create_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createArrayBuffer requires a number argument")
         return NapiValue()
 
+
 def arraybuffer_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         if not JsArrayBuffer.is_arraybuffer(b, env, arg0):
-            throw_js_error(b, env, "arrayBufferLength requires an ArrayBuffer argument")
+            throw_js_error(
+                b, env, "arrayBufferLength requires an ArrayBuffer argument"
+            )
             return NapiValue()
         var ab = JsArrayBuffer(arg0)
         var length = ab.byte_length(b, env)
         return JsNumber.create(b, env, Float64(length)).value
     except:
-        throw_js_error(env, "arrayBufferLength requires an ArrayBuffer argument")
+        throw_js_error(
+            env, "arrayBufferLength requires an ArrayBuffer argument"
+        )
         return NapiValue()
+
 
 def sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -62,6 +89,7 @@ def sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "sumBuffer requires a Buffer argument")
         return NapiValue()
 
+
 def create_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -76,12 +104,15 @@ def create_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createBuffer requires a number argument")
         return NapiValue()
 
+
 def create_buffer_copy_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         if not JsBuffer.is_buffer(b, env, arg0):
-            throw_js_type_error(b, env, "createBufferCopy requires a Buffer argument")
+            throw_js_type_error(
+                b, env, "createBufferCopy requires a Buffer argument"
+            )
             return NapiValue()
         var src = JsBuffer(arg0)
         return JsBuffer.create_copy(b, env, src).value
@@ -89,12 +120,15 @@ def create_buffer_copy_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "createBufferCopy failed")
         return NapiValue()
 
+
 def double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         if not JsTypedArray.is_typedarray(b, env, arg0):
-            throw_js_error(b, env, "doubleFloat64Array requires a TypedArray argument")
+            throw_js_error(
+                b, env, "doubleFloat64Array requires a TypedArray argument"
+            )
             return NapiValue()
         var ta = JsTypedArray(arg0)
         var len = ta.length(b, env)
@@ -106,6 +140,7 @@ def double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "doubleFloat64Array requires a TypedArray argument")
         return NapiValue()
+
 
 def create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -124,37 +159,60 @@ def create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         argv.free()
         var ta: JsTypedArray
         if type_str == "int8":
-            ta = JsTypedArray.create_int8(b, env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_int8(
+                b, env, ab, UInt(offset), UInt(length)
+            )
         elif type_str == "uint8":
-            ta = JsTypedArray.create_uint8(b, env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_uint8(
+                b, env, ab, UInt(offset), UInt(length)
+            )
         elif type_str == "uint8clamped":
-            ta = JsTypedArray.create_uint8_clamped(b, env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_uint8_clamped(
+                b, env, ab, UInt(offset), UInt(length)
+            )
         elif type_str == "int16":
-            ta = JsTypedArray.create_int16(b, env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_int16(
+                b, env, ab, UInt(offset), UInt(length)
+            )
         elif type_str == "uint16":
-            ta = JsTypedArray.create_uint16(b, env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_uint16(
+                b, env, ab, UInt(offset), UInt(length)
+            )
         elif type_str == "int32":
-            ta = JsTypedArray.create_int32(b, env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_int32(
+                b, env, ab, UInt(offset), UInt(length)
+            )
         elif type_str == "uint32":
-            ta = JsTypedArray.create_uint32(b, env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_uint32(
+                b, env, ab, UInt(offset), UInt(length)
+            )
         elif type_str == "float32":
-            ta = JsTypedArray.create_float32(b, env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_float32(
+                b, env, ab, UInt(offset), UInt(length)
+            )
         elif type_str == "float64":
-            ta = JsTypedArray.create_float64(b, env, ab, UInt(offset), UInt(length))
+            ta = JsTypedArray.create_float64(
+                b, env, ab, UInt(offset), UInt(length)
+            )
         else:
-            throw_js_error_dynamic(b, env, "createTypedArrayView: unknown type '" + type_str + "'")
+            throw_js_error_dynamic(
+                b, env, "createTypedArrayView: unknown type '" + type_str + "'"
+            )
             return NapiValue()
         return ta.value
     except:
         throw_js_error(env, "createTypedArrayView failed")
         return NapiValue()
 
+
 def get_typed_array_type_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         if not JsTypedArray.is_typedarray(b, env, arg0):
-            throw_js_type_error(b, env, "getTypedArrayType: expected TypedArray")
+            throw_js_type_error(
+                b, env, "getTypedArrayType: expected TypedArray"
+            )
             return NapiValue()
         var ta = JsTypedArray(arg0)
         var t = ta.array_type(b, env)
@@ -163,12 +221,15 @@ def get_typed_array_type_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getTypedArrayType failed")
         return NapiValue()
 
+
 def get_typed_array_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         if not JsTypedArray.is_typedarray(b, env, arg0):
-            throw_js_type_error(b, env, "getTypedArrayLength: expected TypedArray")
+            throw_js_type_error(
+                b, env, "getTypedArrayLength: expected TypedArray"
+            )
             return NapiValue()
         var ta = JsTypedArray(arg0)
         var len = ta.length(b, env)
@@ -176,6 +237,7 @@ def get_typed_array_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "getTypedArrayLength failed")
         return NapiValue()
+
 
 def create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -190,11 +252,14 @@ def create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var byte_offset = JsNumber.from_napi_value(b, env, argv_ptr[1])
         var byte_length = JsNumber.from_napi_value(b, env, argv_ptr[2])
         argv_ptr.free()
-        var dv = JsDataView.create(b, env, UInt(Int(byte_length)), ab, UInt(Int(byte_offset)))
+        var dv = JsDataView.create(
+            b, env, UInt(Int(byte_length)), ab, UInt(Int(byte_offset))
+        )
         return dv.value
     except:
         throw_js_error(env, "createDataView failed")
         return NapiValue()
+
 
 def get_dataview_info_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -204,12 +269,17 @@ def get_dataview_info_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var bl = dv.byte_length(b, env)
         var bo = dv.byte_offset(b, env)
         var obj = JsObject.create(b, env)
-        obj.set_property(b, env, "byteLength", JsNumber.create_int(b, env, Int(bl)).value)
-        obj.set_property(b, env, "byteOffset", JsNumber.create_int(b, env, Int(bo)).value)
+        obj.set_property(
+            b, env, "byteLength", JsNumber.create_int(b, env, Int(bl)).value
+        )
+        obj.set_property(
+            b, env, "byteOffset", JsNumber.create_int(b, env, Int(bo)).value
+        )
         return obj.value
     except:
         throw_js_error(env, "getDataViewInfo failed")
         return NapiValue()
+
 
 def is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -220,6 +290,7 @@ def is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "isDataView failed")
         return NapiValue()
+
 
 ## bufferFromArrayBuffer — zero-copy Buffer view into an ArrayBuffer slice (N-API v10)
 ##
@@ -233,10 +304,19 @@ def buffer_from_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var ab = JsArrayBuffer(args[0])
         var byte_offset = UInt(Int(JsNumber.from_napi_value(b, env, args[1])))
         var byte_length = UInt(Int(JsNumber.from_napi_value(b, env, args[2])))
-        return JsBuffer.from_arraybuffer(b, env, ab, byte_offset, byte_length).value
+        return JsBuffer.from_arraybuffer(
+            b, env, ab, byte_offset, byte_length
+        ).value
     except:
-        throw_js_error(env, "bufferFromArrayBuffer requires (arraybuffer, byteOffset, byteLength)")
+        throw_js_error(
+            env,
+            (
+                "bufferFromArrayBuffer requires (arraybuffer, byteOffset,"
+                " byteLength)"
+            ),
+        )
         return NapiValue()
+
 
 def register_binary(mut m: ModuleBuilder) raises:
     var create_arraybuffer_ref = create_arraybuffer_fn

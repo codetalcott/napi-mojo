@@ -18,6 +18,7 @@ from napi.raw import raw_open_handle_scope, raw_close_handle_scope
 from napi.error import check_status
 from napi.bindings import Bindings
 
+
 ## HandleScope — typed wrapper for napi_handle_scope
 struct HandleScope:
     var scope: NapiHandleScope
@@ -29,14 +30,18 @@ struct HandleScope:
     @staticmethod
     def open(env: NapiEnv) raises -> HandleScope:
         var scope: NapiHandleScope = NapiHandleScope()
-        var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=scope).bitcast[NoneType]()
+        var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=scope
+        ).bitcast[NoneType]()
         check_status(raw_open_handle_scope(env, scope_ptr))
         return HandleScope(scope)
 
     @staticmethod
     def open(b: Bindings, env: NapiEnv) raises -> HandleScope:
         var scope: NapiHandleScope = NapiHandleScope()
-        var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=scope).bitcast[NoneType]()
+        var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=scope
+        ).bitcast[NoneType]()
         check_status(raw_open_handle_scope(b, env, scope_ptr))
         return HandleScope(scope)
 

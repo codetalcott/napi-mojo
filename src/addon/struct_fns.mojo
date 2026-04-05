@@ -6,9 +6,11 @@
 
 from generated.structs import ConfigData
 
+
 ## echo_config_pure — pass a struct through unchanged (round-trip test)
 def echo_config_pure(c: ConfigData) -> ConfigData:
     return ConfigData(copy=c)
+
 
 ## config_summary_pure — extract fields and return a computed string
 def config_summary_pure(c: ConfigData) -> String:

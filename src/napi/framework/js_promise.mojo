@@ -15,12 +15,17 @@
 
 from napi.types import NapiEnv, NapiValue, NapiDeferred
 from napi.bindings import Bindings
-from napi.raw import raw_create_promise, raw_resolve_deferred, raw_reject_deferred
+from napi.raw import (
+    raw_create_promise,
+    raw_resolve_deferred,
+    raw_reject_deferred,
+)
 from napi.error import check_status
 
+
 struct JsPromise:
-    var value: NapiValue       # the promise — return this to JavaScript
-    var deferred: NapiDeferred # used once to resolve or reject
+    var value: NapiValue  # the promise — return this to JavaScript
+    var deferred: NapiDeferred  # used once to resolve or reject
 
     def __init__(out self, value: NapiValue, deferred: NapiDeferred):
         self.value = value
@@ -37,8 +42,12 @@ struct JsPromise:
     def create(env: NapiEnv) raises -> JsPromise:
         var deferred = NapiDeferred()
         var promise = NapiValue()
-        var deferred_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=deferred).bitcast[NoneType]()
-        var promise_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=promise).bitcast[NoneType]()
+        var deferred_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=deferred
+        ).bitcast[NoneType]()
+        var promise_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=promise
+        ).bitcast[NoneType]()
         var status = raw_create_promise(env, deferred_ptr, promise_ptr)
         check_status(status)
         return JsPromise(promise, deferred)
@@ -64,8 +73,12 @@ struct JsPromise:
     def create(b: Bindings, env: NapiEnv) raises -> JsPromise:
         var deferred = NapiDeferred()
         var promise = NapiValue()
-        var deferred_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=deferred).bitcast[NoneType]()
-        var promise_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=promise).bitcast[NoneType]()
+        var deferred_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=deferred
+        ).bitcast[NoneType]()
+        var promise_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=promise
+        ).bitcast[NoneType]()
         var status = raw_create_promise(b, env, deferred_ptr, promise_ptr)
         check_status(status)
         return JsPromise(promise, deferred)

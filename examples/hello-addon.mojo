@@ -30,11 +30,13 @@ from napi.framework.register import fn_ptr, ModuleBuilder
 # Each callback has the napi_callback signature: fn(NapiEnv, NapiValue) -> NapiValue
 # Wrap the body in try/except — exceptions must never escape into C.
 
+
 def hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         return JsString.create_literal(env, "Hello from Mojo!").value
     except:
         return NapiValue()
+
 
 def greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -48,6 +50,7 @@ def greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         return NapiValue()
 
+
 def add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var args = CbArgs.get_two(env, info)
@@ -60,6 +63,7 @@ def add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 # --- Module entry point ------------------------------------------------------
 # Node.js calls this via dlsym("napi_register_module_v1") when loading the .node file.
+
 
 @export("napi_register_module_v1", ABI="C")
 def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:

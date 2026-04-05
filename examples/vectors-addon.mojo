@@ -46,8 +46,13 @@ def _vectorized_dot(
     a: UnsafePointer[Float64], b: UnsafePointer[Float64], start: Int, end: Int
 ) -> Float64:
     var result: Float64 = 0.0
+
     def compute[width: Int](offset: Int) unified {mut}:
-        result += (a.load[width=width](start + offset) * b.load[width=width](start + offset)).reduce_add()
+        result += (
+            a.load[width=width](start + offset)
+            * b.load[width=width](start + offset)
+        ).reduce_add()
+
     vectorize[simd_width_of[DType.float64]()](end - start, compute)
     return result
 
@@ -56,9 +61,13 @@ def _vectorized_euclid(
     a: UnsafePointer[Float64], b: UnsafePointer[Float64], start: Int, end: Int
 ) -> Float64:
     var sum_sq: Float64 = 0.0
+
     def compute[width: Int](offset: Int) unified {mut}:
-        var diff = a.load[width=width](start + offset) - b.load[width=width](start + offset)
+        var diff = a.load[width=width](start + offset) - b.load[width=width](
+            start + offset
+        )
         sum_sq += (diff * diff).reduce_add()
+
     vectorize[simd_width_of[DType.float64]()](end - start, compute)
     return sum_sq
 
@@ -70,10 +79,12 @@ def dot_product(
         return _vectorized_dot(a, b, 0, size)
     var chunk_size = size // NUM_WORKERS
     var partials = alloc[Float64](NUM_WORKERS)
+
     def worker(wid: Int) capturing:
         var s = wid * chunk_size
         var e = s + chunk_size if wid < NUM_WORKERS - 1 else size
         partials[wid] = _vectorized_dot(a, b, s, e)
+
     parallelize[worker](NUM_WORKERS)
     var result: Float64 = 0.0
     for i in range(NUM_WORKERS):
@@ -89,12 +100,14 @@ def cosine_similarity(
         var dot: Float64 = 0.0
         var norm_a: Float64 = 0.0
         var norm_b: Float64 = 0.0
+
         def compute_st[width: Int](offset: Int) unified {mut}:
             var ca = a.load[width=width](offset)
             var cb = b.load[width=width](offset)
             dot += (ca * cb).reduce_add()
             norm_a += (ca * ca).reduce_add()
             norm_b += (cb * cb).reduce_add()
+
         vectorize[simd_width_of[DType.float64]()](size, compute_st)
         var denom = sqrt(norm_a) * sqrt(norm_b)
         if denom > 0.0:
@@ -106,22 +119,26 @@ def cosine_similarity(
     var dots = alloc[Float64](NUM_WORKERS)
     var norms_a = alloc[Float64](NUM_WORKERS)
     var norms_b = alloc[Float64](NUM_WORKERS)
+
     def worker(wid: Int) capturing:
         var s = wid * chunk_size
         var e = s + chunk_size if wid < NUM_WORKERS - 1 else size
         var local_dot: Float64 = 0.0
         var local_na: Float64 = 0.0
         var local_nb: Float64 = 0.0
+
         def compute[width: Int](offset: Int) unified {mut}:
             var ca = a.load[width=width](s + offset)
             var cb = b.load[width=width](s + offset)
             local_dot += (ca * cb).reduce_add()
             local_na += (ca * ca).reduce_add()
             local_nb += (cb * cb).reduce_add()
+
         vectorize[simd_width_of[DType.float64]()](e - s, compute)
         dots[wid] = local_dot
         norms_a[wid] = local_na
         norms_b[wid] = local_nb
+
     parallelize[worker](NUM_WORKERS)
 
     var dot: Float64 = 0.0
@@ -147,10 +164,12 @@ def euclidean_distance(
         return sqrt(_vectorized_euclid(a, b, 0, size))
     var chunk_size = size // NUM_WORKERS
     var partials = alloc[Float64](NUM_WORKERS)
+
     def worker(wid: Int) capturing:
         var s = wid * chunk_size
         var e = s + chunk_size if wid < NUM_WORKERS - 1 else size
         partials[wid] = _vectorized_euclid(a, b, s, e)
+
     parallelize[worker](NUM_WORKERS)
     var sum_sq: Float64 = 0.0
     for i in range(NUM_WORKERS):
@@ -161,10 +180,13 @@ def euclidean_distance(
 
 # --- N-API callbacks ----------------------------------------------------------
 
+
 def dot_product_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var args = CbArgs.get_two(env, info)
-        if not JsTypedArray.is_typedarray(env, args[0]) or not JsTypedArray.is_typedarray(env, args[1]):
+        if not JsTypedArray.is_typedarray(
+            env, args[0]
+        ) or not JsTypedArray.is_typedarray(env, args[1]):
             throw_js_error(env, "dotProduct requires two TypedArray arguments")
             return NapiValue()
         var ta_a = JsTypedArray(args[0])
@@ -185,8 +207,12 @@ def dot_product_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 def cosine_similarity_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var args = CbArgs.get_two(env, info)
-        if not JsTypedArray.is_typedarray(env, args[0]) or not JsTypedArray.is_typedarray(env, args[1]):
-            throw_js_error(env, "cosineSimilarity requires two TypedArray arguments")
+        if not JsTypedArray.is_typedarray(
+            env, args[0]
+        ) or not JsTypedArray.is_typedarray(env, args[1]):
+            throw_js_error(
+                env, "cosineSimilarity requires two TypedArray arguments"
+            )
             return NapiValue()
         var ta_a = JsTypedArray(args[0])
         var ta_b = JsTypedArray(args[1])
@@ -197,7 +223,9 @@ def cosine_similarity_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             return NapiValue()
         var ptr_a = ta_a.data_ptr_float64(env)
         var ptr_b = ta_b.data_ptr_float64(env)
-        return JsNumber.create(env, cosine_similarity(ptr_a, ptr_b, len_a)).value
+        return JsNumber.create(
+            env, cosine_similarity(ptr_a, ptr_b, len_a)
+        ).value
     except:
         throw_js_error(env, "cosineSimilarity failed")
         return NapiValue()
@@ -206,8 +234,12 @@ def cosine_similarity_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 def euclidean_distance_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var args = CbArgs.get_two(env, info)
-        if not JsTypedArray.is_typedarray(env, args[0]) or not JsTypedArray.is_typedarray(env, args[1]):
-            throw_js_error(env, "euclideanDistance requires two TypedArray arguments")
+        if not JsTypedArray.is_typedarray(
+            env, args[0]
+        ) or not JsTypedArray.is_typedarray(env, args[1]):
+            throw_js_error(
+                env, "euclideanDistance requires two TypedArray arguments"
+            )
             return NapiValue()
         var ta_a = JsTypedArray(args[0])
         var ta_b = JsTypedArray(args[1])
@@ -218,7 +250,9 @@ def euclidean_distance_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             return NapiValue()
         var ptr_a = ta_a.data_ptr_float64(env)
         var ptr_b = ta_b.data_ptr_float64(env)
-        return JsNumber.create(env, euclidean_distance(ptr_a, ptr_b, len_a)).value
+        return JsNumber.create(
+            env, euclidean_distance(ptr_a, ptr_b, len_a)
+        ).value
     except:
         throw_js_error(env, "euclideanDistance failed")
         return NapiValue()
@@ -230,16 +264,22 @@ def normalize_vector_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var arg0 = CbArgs.get_one(env, info)
         if not JsTypedArray.is_typedarray(env, arg0):
-            throw_js_error(env, "normalizeVector requires a Float64Array argument")
+            throw_js_error(
+                env, "normalizeVector requires a Float64Array argument"
+            )
             return NapiValue()
         var ta = JsTypedArray(arg0)
         var n = Int(ta.length(env))
-        var v_ptr = ta.data_ptr_float64(env)  # validates Float64Array + gets ptr in one call
+        var v_ptr = ta.data_ptr_float64(
+            env
+        )  # validates Float64Array + gets ptr in one call
         # Compute L2 norm via SIMD vectorize
         var norm_sq: Float64 = 0.0
+
         def compute_norm[width: Int](offset: Int) unified {mut}:
             var x = v_ptr.load[width=width](offset)
             norm_sq += (x * x).reduce_add()
+
         vectorize[simd_width_of[DType.float64]()](n, compute_norm)
         var norm = sqrt(norm_sq)
         if norm == 0.0:
@@ -256,6 +296,7 @@ def normalize_vector_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 
 # --- Module entry point -------------------------------------------------------
+
 
 @export("napi_register_module_v1", ABI="C")
 def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:

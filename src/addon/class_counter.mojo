@@ -1,7 +1,13 @@
 ## src/addon/class_counter.mojo — Counter class (constructor + methods + ClassRegistry)
 
 from std.memory import alloc
-from napi.types import NapiEnv, NapiValue, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION
+from napi.types import (
+    NapiEnv,
+    NapiValue,
+    NAPI_TYPE_NUMBER,
+    NAPI_TYPE_OBJECT,
+    NAPI_TYPE_FUNCTION,
+)
 from napi.bindings import NapiBindings, Bindings
 from napi.error import throw_js_error, throw_js_type_error, check_status
 from napi.raw import raw_wrap, raw_new_instance
@@ -13,6 +19,7 @@ from napi.framework.js_class import unwrap_native, unwrap_native_from_this
 from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof
 from napi.framework.register import fn_ptr, ModuleBuilder, ClassRegistry
+
 
 struct CounterData(Movable):
     var count: Float64
@@ -26,10 +33,16 @@ struct CounterData(Movable):
         self.count = take.count
         self.initial = take.initial
 
-def counter_finalize(env: NapiEnv, data: OpaquePointer[MutAnyOrigin], hint: OpaquePointer[MutAnyOrigin]):
+
+def counter_finalize(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
     var ptr = data.bitcast[CounterData]()
     ptr.destroy_pointee()
     ptr.free()
+
 
 def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -38,25 +51,33 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_NUMBER:
-            throw_js_type_error(b, env, "Counter constructor requires a number argument")
+            throw_js_type_error(
+                b, env, "Counter constructor requires a number argument"
+            )
             return NapiValue()
         var initial = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[CounterData](1)
         data_ptr.init_pointee_move(CounterData(initial))
         var fin_ref = counter_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
-        check_status(raw_wrap(b,
-            env,
-            this_val,
-            data_ptr.bitcast[NoneType](),
-            fin_ptr,
-            OpaquePointer[MutAnyOrigin](),
-            OpaquePointer[MutAnyOrigin](),
-        ))
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
+        check_status(
+            raw_wrap(
+                b,
+                env,
+                this_val,
+                data_ptr.bitcast[NoneType](),
+                fin_ptr,
+                OpaquePointer[MutAnyOrigin](),
+                OpaquePointer[MutAnyOrigin](),
+            )
+        )
         return this_val
     except:
         throw_js_error(env, "Counter constructor failed")
         return NapiValue()
+
 
 def counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -67,12 +88,15 @@ def counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Counter.value getter failed")
         return NapiValue()
 
+
 def counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_this_and_one(env, info)
         var t = js_typeof(a.b, env, a.arg0)
         if t != NAPI_TYPE_NUMBER:
-            throw_js_type_error(a.b, env, "Counter.value setter requires a number")
+            throw_js_type_error(
+                a.b, env, "Counter.value setter requires a number"
+            )
             return NapiValue()
         var new_val = JsNumber.from_napi_value(a.b, env, a.arg0)
         var ptr = unwrap_native_from_this[CounterData](a.b, env, a.this_val)
@@ -81,6 +105,7 @@ def counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "Counter.value setter failed")
         return NapiValue()
+
 
 def counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -92,6 +117,7 @@ def counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Counter.increment failed")
         return NapiValue()
 
+
 def counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
@@ -101,6 +127,7 @@ def counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "Counter.reset failed")
         return NapiValue()
+
 
 def counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -116,6 +143,7 @@ def counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "Counter.isCounter failed")
         return NapiValue()
 
+
 def counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -123,21 +151,29 @@ def counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         var t = js_typeof(b, env, arg0)
         if t != NAPI_TYPE_NUMBER:
-            throw_js_type_error(b, env, "Counter.fromValue requires a number argument")
+            throw_js_type_error(
+                b, env, "Counter.fromValue requires a number argument"
+            )
             return NapiValue()
         var result = NapiValue()
-        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=arg0).bitcast[NoneType]()
-        check_status(raw_new_instance(b,
-            env,
-            this_val,
-            1,
-            argv_ptr,
-            UnsafePointer(to=result).bitcast[NoneType](),
-        ))
+        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
+            to=arg0
+        ).bitcast[NoneType]()
+        check_status(
+            raw_new_instance(
+                b,
+                env,
+                this_val,
+                1,
+                argv_ptr,
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return result
     except:
         throw_js_error(env, "Counter.fromValue failed")
         return NapiValue()
+
 
 def register_counter(mut m: ModuleBuilder, b: Bindings) raises:
     var counter_constructor_ref = counter_constructor_fn
@@ -150,7 +186,9 @@ def register_counter(mut m: ModuleBuilder, b: Bindings) raises:
     var counter = m.class_def("Counter", fn_ptr(counter_constructor_ref))
     counter.instance_method("increment", fn_ptr(counter_increment_ref))
     counter.instance_method("reset", fn_ptr(counter_reset_ref))
-    counter.getter_setter("value", fn_ptr(counter_get_value_ref), fn_ptr(counter_set_value_ref))
+    counter.getter_setter(
+        "value", fn_ptr(counter_get_value_ref), fn_ptr(counter_set_value_ref)
+    )
     counter.static_method("isCounter", fn_ptr(counter_is_counter_ref))
     counter.static_method("fromValue", fn_ptr(counter_from_value_ref))
     # Set up ClassRegistry so new_instance("Counter", ...) works

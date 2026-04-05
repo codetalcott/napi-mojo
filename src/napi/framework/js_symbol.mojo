@@ -11,6 +11,7 @@ from napi.bindings import Bindings
 from napi.raw import raw_create_symbol, raw_symbol_for
 from napi.error import check_status
 
+
 struct JsSymbol:
     var value: NapiValue
 
@@ -21,34 +22,56 @@ struct JsSymbol:
     @staticmethod
     def create(env: NapiEnv, description: NapiValue) raises -> JsSymbol:
         var result = NapiValue()
-        check_status(raw_create_symbol(env, description,
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_create_symbol(
+                env, description, UnsafePointer(to=result).bitcast[NoneType]()
+            )
+        )
         return JsSymbol(result)
 
     ## create_for — return the global Symbol for the given key (Symbol.for())
     @staticmethod
     def create_for(env: NapiEnv, key: StringLiteral) raises -> JsSymbol:
         var result = NapiValue()
-        check_status(raw_symbol_for(env,
-            key.unsafe_ptr().bitcast[NoneType](),
-            UInt(len(key)),
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_symbol_for(
+                env,
+                key.unsafe_ptr().bitcast[NoneType](),
+                UInt(len(key)),
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return JsSymbol(result)
 
     # --- Bindings-aware overloads ---
 
     @staticmethod
-    def create(b: Bindings, env: NapiEnv, description: NapiValue) raises -> JsSymbol:
+    def create(
+        b: Bindings, env: NapiEnv, description: NapiValue
+    ) raises -> JsSymbol:
         var result = NapiValue()
-        check_status(raw_create_symbol(b, env, description,
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_create_symbol(
+                b,
+                env,
+                description,
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return JsSymbol(result)
 
     @staticmethod
-    def create_for(b: Bindings, env: NapiEnv, key: StringLiteral) raises -> JsSymbol:
+    def create_for(
+        b: Bindings, env: NapiEnv, key: StringLiteral
+    ) raises -> JsSymbol:
         var result = NapiValue()
-        check_status(raw_symbol_for(b, env,
-            key.unsafe_ptr().bitcast[NoneType](),
-            UInt(len(key)),
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_symbol_for(
+                b,
+                env,
+                key.unsafe_ptr().bitcast[NoneType](),
+                UInt(len(key)),
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return JsSymbol(result)

@@ -9,10 +9,24 @@
 ##   # when done (on main thread):
 ##   tsfn.release()
 
-from napi.types import NapiEnv, NapiValue, NapiThreadsafeFunction, NAPI_TSFN_BLOCKING, NAPI_TSFN_NONBLOCKING, NAPI_TSFN_RELEASE, NAPI_TSFN_ABORT
+from napi.types import (
+    NapiEnv,
+    NapiValue,
+    NapiThreadsafeFunction,
+    NAPI_TSFN_BLOCKING,
+    NAPI_TSFN_NONBLOCKING,
+    NAPI_TSFN_RELEASE,
+    NAPI_TSFN_ABORT,
+)
 from napi.bindings import Bindings
-from napi.raw import raw_create_threadsafe_function, raw_call_threadsafe_function, raw_acquire_threadsafe_function, raw_release_threadsafe_function
+from napi.raw import (
+    raw_create_threadsafe_function,
+    raw_call_threadsafe_function,
+    raw_acquire_threadsafe_function,
+    raw_release_threadsafe_function,
+)
 from napi.error import check_status
+
 
 struct ThreadsafeFunction:
     var tsfn: NapiThreadsafeFunction
@@ -41,19 +55,21 @@ struct ThreadsafeFunction:
         var tsfn = NapiThreadsafeFunction()
         var null_resource = NapiValue()
         var null_ptr = OpaquePointer[MutAnyOrigin]()
-        check_status(raw_create_threadsafe_function(
-            env,
-            func,
-            null_resource,          # async_resource (NULL)
-            resource_name_val,
-            max_queue_size,
-            UInt(1),                # initial_thread_count
-            finalize_data,
-            finalize_cb,
-            null_ptr,               # context
-            call_js_cb,
-            UnsafePointer(to=tsfn).bitcast[NoneType](),
-        ))
+        check_status(
+            raw_create_threadsafe_function(
+                env,
+                func,
+                null_resource,  # async_resource (NULL)
+                resource_name_val,
+                max_queue_size,
+                UInt(1),  # initial_thread_count
+                finalize_data,
+                finalize_cb,
+                null_ptr,  # context
+                call_js_cb,
+                UnsafePointer(to=tsfn).bitcast[NoneType](),
+            )
+        )
         return ThreadsafeFunction(tsfn)
 
     @staticmethod
@@ -70,45 +86,69 @@ struct ThreadsafeFunction:
         var tsfn = NapiThreadsafeFunction()
         var null_resource = NapiValue()
         var null_ptr = OpaquePointer[MutAnyOrigin]()
-        check_status(raw_create_threadsafe_function(
-            b,
-            env,
-            func,
-            null_resource,          # async_resource (NULL)
-            resource_name_val,
-            max_queue_size,
-            UInt(1),                # initial_thread_count
-            finalize_data,
-            finalize_cb,
-            null_ptr,               # context
-            call_js_cb,
-            UnsafePointer(to=tsfn).bitcast[NoneType](),
-        ))
+        check_status(
+            raw_create_threadsafe_function(
+                b,
+                env,
+                func,
+                null_resource,  # async_resource (NULL)
+                resource_name_val,
+                max_queue_size,
+                UInt(1),  # initial_thread_count
+                finalize_data,
+                finalize_cb,
+                null_ptr,  # context
+                call_js_cb,
+                UnsafePointer(to=tsfn).bitcast[NoneType](),
+            )
+        )
         return ThreadsafeFunction(tsfn)
 
     ## call_blocking — queue data, block if queue is full
     ##
     ## Can be called from ANY thread. The data pointer is passed to call_js_cb.
     def call_blocking(self, data: OpaquePointer[MutAnyOrigin]) raises:
-        check_status(raw_call_threadsafe_function(
-            self.tsfn, data, NAPI_TSFN_BLOCKING,
-        ))
+        check_status(
+            raw_call_threadsafe_function(
+                self.tsfn,
+                data,
+                NAPI_TSFN_BLOCKING,
+            )
+        )
 
-    def call_blocking(self, b: Bindings, data: OpaquePointer[MutAnyOrigin]) raises:
-        check_status(raw_call_threadsafe_function(
-            b, self.tsfn, data, NAPI_TSFN_BLOCKING,
-        ))
+    def call_blocking(
+        self, b: Bindings, data: OpaquePointer[MutAnyOrigin]
+    ) raises:
+        check_status(
+            raw_call_threadsafe_function(
+                b,
+                self.tsfn,
+                data,
+                NAPI_TSFN_BLOCKING,
+            )
+        )
 
     ## call_nonblocking — queue data, return napi_queue_full if queue is full
     def call_nonblocking(self, data: OpaquePointer[MutAnyOrigin]) raises:
-        check_status(raw_call_threadsafe_function(
-            self.tsfn, data, NAPI_TSFN_NONBLOCKING,
-        ))
+        check_status(
+            raw_call_threadsafe_function(
+                self.tsfn,
+                data,
+                NAPI_TSFN_NONBLOCKING,
+            )
+        )
 
-    def call_nonblocking(self, b: Bindings, data: OpaquePointer[MutAnyOrigin]) raises:
-        check_status(raw_call_threadsafe_function(
-            b, self.tsfn, data, NAPI_TSFN_NONBLOCKING,
-        ))
+    def call_nonblocking(
+        self, b: Bindings, data: OpaquePointer[MutAnyOrigin]
+    ) raises:
+        check_status(
+            raw_call_threadsafe_function(
+                b,
+                self.tsfn,
+                data,
+                NAPI_TSFN_NONBLOCKING,
+            )
+        )
 
     ## acquire — increment the TSFN thread reference count
     def acquire(self) raises:
@@ -121,14 +161,22 @@ struct ThreadsafeFunction:
     ##
     ## When the count reaches 0, the TSFN is destroyed.
     def release(self) raises:
-        check_status(raw_release_threadsafe_function(self.tsfn, NAPI_TSFN_RELEASE))
+        check_status(
+            raw_release_threadsafe_function(self.tsfn, NAPI_TSFN_RELEASE)
+        )
 
     def release(self, b: Bindings) raises:
-        check_status(raw_release_threadsafe_function(b, self.tsfn, NAPI_TSFN_RELEASE))
+        check_status(
+            raw_release_threadsafe_function(b, self.tsfn, NAPI_TSFN_RELEASE)
+        )
 
     ## abort — immediately close the TSFN, discard pending items
     def abort(self) raises:
-        check_status(raw_release_threadsafe_function(self.tsfn, NAPI_TSFN_ABORT))
+        check_status(
+            raw_release_threadsafe_function(self.tsfn, NAPI_TSFN_ABORT)
+        )
 
     def abort(self, b: Bindings) raises:
-        check_status(raw_release_threadsafe_function(b, self.tsfn, NAPI_TSFN_ABORT))
+        check_status(
+            raw_release_threadsafe_function(b, self.tsfn, NAPI_TSFN_ABORT)
+        )

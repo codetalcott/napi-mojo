@@ -25,12 +25,19 @@
 
 from std.memory import alloc
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_STRING
-from napi.raw import raw_create_string_utf8, raw_get_value_string_utf8, raw_get_value_string_latin1, raw_create_property_key_utf8, raw_create_external_string_latin1
+from napi.raw import (
+    raw_create_string_utf8,
+    raw_get_value_string_utf8,
+    raw_get_value_string_latin1,
+    raw_create_property_key_utf8,
+    raw_create_external_string_latin1,
+)
 from napi.error import check_status
 from napi.bindings import Bindings
 from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof
 from napi.framework.js_coerce import js_coerce_to_string
+
 
 ## Latin1Buf — heap-allocated Latin-1 byte buffer returned by JsString.read_latin1
 ##
@@ -39,13 +46,16 @@ struct Latin1Buf(Movable):
     var ptr: UnsafePointer[UInt8, MutAnyOrigin]
     var length: UInt
 
-    def __init__(out self, ptr: UnsafePointer[UInt8, MutAnyOrigin], length: UInt):
+    def __init__(
+        out self, ptr: UnsafePointer[UInt8, MutAnyOrigin], length: UInt
+    ):
         self.ptr = ptr
         self.length = length
 
     def __moveinit__(out self, deinit take: Self):
         self.ptr = take.ptr
         self.length = take.length
+
 
 ## JsString — typed wrapper for a JavaScript string napi_value
 struct JsString:
@@ -65,18 +75,30 @@ struct JsString:
     @staticmethod
     def create(env: NapiEnv, s: String) raises -> JsString:
         var result: NapiValue = NapiValue()
-        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        var status = raw_create_string_utf8(env, str_ptr, UInt(len(s)), result_ptr)
+        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
+            NoneType
+        ]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
+        var status = raw_create_string_utf8(
+            env, str_ptr, UInt(len(s)), result_ptr
+        )
         check_status(status)
         return JsString(result)
 
     @staticmethod
     def create(b: Bindings, env: NapiEnv, s: String) raises -> JsString:
         var result: NapiValue = NapiValue()
-        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        var status = raw_create_string_utf8(b, env, str_ptr, UInt(len(s)), result_ptr)
+        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
+            NoneType
+        ]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
+        var status = raw_create_string_utf8(
+            b, env, str_ptr, UInt(len(s)), result_ptr
+        )
         check_status(status)
         return JsString(result)
 
@@ -87,18 +109,32 @@ struct JsString:
     @staticmethod
     def create_literal(env: NapiEnv, s: StringLiteral) raises -> JsString:
         var result: NapiValue = NapiValue()
-        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        var status = raw_create_string_utf8(env, str_ptr, UInt(s.byte_length()), result_ptr)
+        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
+            NoneType
+        ]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
+        var status = raw_create_string_utf8(
+            env, str_ptr, UInt(s.byte_length()), result_ptr
+        )
         check_status(status)
         return JsString(result)
 
     @staticmethod
-    def create_literal(b: Bindings, env: NapiEnv, s: StringLiteral) raises -> JsString:
+    def create_literal(
+        b: Bindings, env: NapiEnv, s: StringLiteral
+    ) raises -> JsString:
         var result: NapiValue = NapiValue()
-        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        var status = raw_create_string_utf8(b, env, str_ptr, UInt(s.byte_length()), result_ptr)
+        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
+            NoneType
+        ]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
+        var status = raw_create_string_utf8(
+            b, env, str_ptr, UInt(s.byte_length()), result_ptr
+        )
         check_status(status)
         return JsString(result)
 
@@ -116,34 +152,62 @@ struct JsString:
         # If actual < 255, the full string fit — return immediately.
         var buf = InlineArray[UInt8, 256](fill=0)
         var actual: UInt = 0
-        var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf[0]).bitcast[NoneType]()
-        var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
-        check_status(raw_get_value_string_utf8(env, val, buf_ptr, 256, actual_ptr))
+        var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=buf[0]
+        ).bitcast[NoneType]()
+        var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=actual
+        ).bitcast[NoneType]()
+        check_status(
+            raw_get_value_string_utf8(env, val, buf_ptr, 256, actual_ptr)
+        )
         if actual < 255:
-            var span = Span[Byte](ptr=UnsafePointer(to=buf[0]), length=Int(actual))
+            var span = Span[Byte](
+                ptr=UnsafePointer(to=buf[0]), length=Int(actual)
+            )
             return String(from_utf8=span)
 
         # Fallback: string >= 255 bytes. Two-pass with size query + read.
         var null = OpaquePointer[MutAnyOrigin]()
         var needed: UInt = 0
-        var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=needed).bitcast[NoneType]()
+        var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=needed
+        ).bitcast[NoneType]()
         check_status(raw_get_value_string_utf8(env, val, null, 0, needed_ptr))
 
         if needed < 4096:
             var buf2 = InlineArray[UInt8, 4096](fill=0)
             var actual2: UInt = 0
-            var buf2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf2[0]).bitcast[NoneType]()
-            var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual2).bitcast[NoneType]()
-            check_status(raw_get_value_string_utf8(env, val, buf2_ptr, needed + 1, actual2_ptr))
-            var span = Span[Byte](ptr=UnsafePointer(to=buf2[0]), length=Int(actual2))
+            var buf2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+                to=buf2[0]
+            ).bitcast[NoneType]()
+            var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+                to=actual2
+            ).bitcast[NoneType]()
+            check_status(
+                raw_get_value_string_utf8(
+                    env, val, buf2_ptr, needed + 1, actual2_ptr
+                )
+            )
+            var span = Span[Byte](
+                ptr=UnsafePointer(to=buf2[0]), length=Int(actual2)
+            )
             return String(from_utf8=span)
         else:
             var heap_buf = alloc[UInt8](Int(needed + 1))
             try:
                 var actual2: UInt = 0
-                var heap_ptr: OpaquePointer[MutAnyOrigin] = heap_buf.bitcast[NoneType]()
-                var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual2).bitcast[NoneType]()
-                check_status(raw_get_value_string_utf8(env, val, heap_ptr, needed + 1, actual2_ptr))
+                var heap_ptr: OpaquePointer[MutAnyOrigin] = heap_buf.bitcast[
+                    NoneType
+                ]()
+                var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+                    to=actual2
+                ).bitcast[NoneType]()
+                check_status(
+                    raw_get_value_string_utf8(
+                        env, val, heap_ptr, needed + 1, actual2_ptr
+                    )
+                )
                 var span = Span[Byte](ptr=heap_buf, length=Int(actual2))
                 var result = String(from_utf8=span)
                 heap_buf.free()
@@ -153,38 +217,70 @@ struct JsString:
                 raise e^
 
     @staticmethod
-    def from_napi_value(b: Bindings, env: NapiEnv, val: NapiValue) raises -> String:
+    def from_napi_value(
+        b: Bindings, env: NapiEnv, val: NapiValue
+    ) raises -> String:
         # Optimistic single-pass: read into a 256-byte stack buffer.
         var buf = InlineArray[UInt8, 256](fill=0)
         var actual: UInt = 0
-        var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf[0]).bitcast[NoneType]()
-        var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
-        check_status(raw_get_value_string_utf8(b, env, val, buf_ptr, 256, actual_ptr))
+        var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=buf[0]
+        ).bitcast[NoneType]()
+        var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=actual
+        ).bitcast[NoneType]()
+        check_status(
+            raw_get_value_string_utf8(b, env, val, buf_ptr, 256, actual_ptr)
+        )
         if actual < 255:
-            var span = Span[Byte](ptr=UnsafePointer(to=buf[0]), length=Int(actual))
+            var span = Span[Byte](
+                ptr=UnsafePointer(to=buf[0]), length=Int(actual)
+            )
             return String(from_utf8=span)
 
         # Fallback: string >= 255 bytes. Two-pass with size query + read.
         var null = OpaquePointer[MutAnyOrigin]()
         var needed: UInt = 0
-        var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=needed).bitcast[NoneType]()
-        check_status(raw_get_value_string_utf8(b, env, val, null, 0, needed_ptr))
+        var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=needed
+        ).bitcast[NoneType]()
+        check_status(
+            raw_get_value_string_utf8(b, env, val, null, 0, needed_ptr)
+        )
 
         if needed < 4096:
             var buf2 = InlineArray[UInt8, 4096](fill=0)
             var actual2: UInt = 0
-            var buf2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=buf2[0]).bitcast[NoneType]()
-            var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual2).bitcast[NoneType]()
-            check_status(raw_get_value_string_utf8(b, env, val, buf2_ptr, needed + 1, actual2_ptr))
-            var span = Span[Byte](ptr=UnsafePointer(to=buf2[0]), length=Int(actual2))
+            var buf2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+                to=buf2[0]
+            ).bitcast[NoneType]()
+            var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+                to=actual2
+            ).bitcast[NoneType]()
+            check_status(
+                raw_get_value_string_utf8(
+                    b, env, val, buf2_ptr, needed + 1, actual2_ptr
+                )
+            )
+            var span = Span[Byte](
+                ptr=UnsafePointer(to=buf2[0]), length=Int(actual2)
+            )
             return String(from_utf8=span)
         else:
             var heap_buf = alloc[UInt8](Int(needed + 1))
             try:
                 var actual2: UInt = 0
-                var heap_ptr: OpaquePointer[MutAnyOrigin] = heap_buf.bitcast[NoneType]()
-                var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual2).bitcast[NoneType]()
-                check_status(raw_get_value_string_utf8(b, env, val, heap_ptr, needed + 1, actual2_ptr))
+                var heap_ptr: OpaquePointer[MutAnyOrigin] = heap_buf.bitcast[
+                    NoneType
+                ]()
+                var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+                    to=actual2
+                ).bitcast[NoneType]()
+                check_status(
+                    raw_get_value_string_utf8(
+                        b, env, val, heap_ptr, needed + 1, actual2_ptr
+                    )
+                )
                 var span = Span[Byte](ptr=heap_buf, length=Int(actual2))
                 var result = String(from_utf8=span)
                 heap_buf.free()
@@ -217,18 +313,30 @@ struct JsString:
     ## This is the correct way to obtain data for node_api_create_external_string_latin1,
     ## which expects Latin-1 bytes — NOT UTF-8 bytes.
     @staticmethod
-    def read_latin1(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Latin1Buf:
+    def read_latin1(
+        b: Bindings, env: NapiEnv, val: NapiValue
+    ) raises -> Latin1Buf:
         # Size query: null buf + 0 bufsize → writes required byte count
         var needed: UInt = 0
-        var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=needed).bitcast[NoneType]()
-        check_status(raw_get_value_string_latin1(b, env, val,
-            OpaquePointer[MutAnyOrigin](), 0, needed_ptr))
+        var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=needed
+        ).bitcast[NoneType]()
+        check_status(
+            raw_get_value_string_latin1(
+                b, env, val, OpaquePointer[MutAnyOrigin](), 0, needed_ptr
+            )
+        )
         # Allocate buffer (+ 1 for null terminator that napi writes)
         var buf = alloc[UInt8](Int(needed + 1))
         var actual: UInt = 0
-        var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=actual).bitcast[NoneType]()
-        check_status(raw_get_value_string_latin1(b, env, val,
-            buf.bitcast[NoneType](), needed + 1, actual_ptr))
+        var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=actual
+        ).bitcast[NoneType]()
+        check_status(
+            raw_get_value_string_latin1(
+                b, env, val, buf.bitcast[NoneType](), needed + 1, actual_ptr
+            )
+        )
         return Latin1Buf(buf, actual)
 
     ## create_property_key — create an engine-internalized string for property access (N-API v10)
@@ -237,11 +345,21 @@ struct JsString:
     ## calls with the same key faster than using regular strings. The returned value
     ## behaves exactly like a regular JS string (typeof === 'string').
     @staticmethod
-    def create_property_key(b: Bindings, env: NapiEnv, s: String) raises -> JsString:
+    def create_property_key(
+        b: Bindings, env: NapiEnv, s: String
+    ) raises -> JsString:
         var result: NapiValue = NapiValue()
-        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        check_status(raw_create_property_key_utf8(b, env, str_ptr, UInt(len(s)), result_ptr))
+        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
+            NoneType
+        ]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
+        check_status(
+            raw_create_property_key_utf8(
+                b, env, str_ptr, UInt(len(s)), result_ptr
+            )
+        )
         return JsString(result)
 
     ## create_property_key_literal — create an internalized property key from a StringLiteral (N-API v10)
@@ -249,11 +367,21 @@ struct JsString:
     ## Uses the literal's static pointer — no heap allocation. Preferred when the key
     ## is a compile-time constant (e.g., object field names in hot loops).
     @staticmethod
-    def create_property_key_literal(b: Bindings, env: NapiEnv, s: StringLiteral) raises -> JsString:
+    def create_property_key_literal(
+        b: Bindings, env: NapiEnv, s: StringLiteral
+    ) raises -> JsString:
         var result: NapiValue = NapiValue()
-        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[NoneType]()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
-        check_status(raw_create_property_key_utf8(b, env, str_ptr, UInt(s.byte_length()), result_ptr))
+        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
+            NoneType
+        ]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
+        check_status(
+            raw_create_property_key_utf8(
+                b, env, str_ptr, UInt(s.byte_length()), result_ptr
+            )
+        )
         return JsString(result)
 
     ## create_external_latin1 — zero-copy JS string from a native Latin-1 buffer (N-API v10)
@@ -275,11 +403,27 @@ struct JsString:
         finalize_hint: OpaquePointer[MutAnyOrigin],
     ) raises -> JsString:
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var copied: Bool = False
-        var copied_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=copied).bitcast[NoneType]()
-        check_status(raw_create_external_string_latin1(b, env, data, length, finalize_cb, finalize_hint, result_ptr, copied_ptr))
+        var copied_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=copied
+        ).bitcast[NoneType]()
+        check_status(
+            raw_create_external_string_latin1(
+                b,
+                env,
+                data,
+                length,
+                finalize_cb,
+                finalize_hint,
+                result_ptr,
+                copied_ptr,
+            )
+        )
         return JsString(result)
+
 
 ## js_to_string — convert any JavaScript value to a Mojo String
 ##
@@ -291,6 +435,7 @@ def js_to_string(env: NapiEnv, val: NapiValue) raises -> String:
         return JsString.from_napi_value(env, val)
     var coerced = js_coerce_to_string(env, val)
     return JsString.from_napi_value(env, coerced)
+
 
 def js_to_string(b: Bindings, env: NapiEnv, val: NapiValue) raises -> String:
     if js_typeof(b, env, val) == NAPI_TYPE_STRING:

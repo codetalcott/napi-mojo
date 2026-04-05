@@ -11,7 +11,13 @@
 ##         Counter.isCounter(c) // true
 
 from std.memory import alloc
-from napi.types import NapiEnv, NapiValue, NAPI_TYPE_NUMBER, NAPI_TYPE_OBJECT, NAPI_TYPE_FUNCTION
+from napi.types import (
+    NapiEnv,
+    NapiValue,
+    NAPI_TYPE_NUMBER,
+    NAPI_TYPE_OBJECT,
+    NAPI_TYPE_FUNCTION,
+)
 from napi.error import throw_js_error, throw_js_type_error, check_status
 from napi.raw import raw_wrap
 from napi.framework.js_number import JsNumber
@@ -35,6 +41,7 @@ from napi.framework.register import fn_ptr, ModuleBuilder
 # Heap-allocated and wrapped onto the JS object via napi_wrap.
 # Must implement Movable so alloc[T] + init_pointee_move works.
 
+
 struct CounterData(Movable):
     var count: Float64
     var initial: Float64
@@ -52,6 +59,7 @@ struct CounterData(Movable):
 # Called when the JS object is garbage-collected. Clean up the heap allocation.
 # Signature must match: fn(NapiEnv, void* data, void* hint)
 
+
 def counter_finalize(
     env: NapiEnv,
     data: OpaquePointer[MutAnyOrigin],
@@ -64,6 +72,7 @@ def counter_finalize(
 
 # --- Constructor -------------------------------------------------------------
 # Called when JS does `new Counter(n)`.
+
 
 def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -82,16 +91,20 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         data_ptr.init_pointee_move(CounterData(initial))
 
         var fin_ref = counter_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
 
-        check_status(raw_wrap(
-            env,
-            this_val,
-            data_ptr.bitcast[NoneType](),          # native_object
-            fin_ptr,                                # finalize_cb
-            OpaquePointer[MutAnyOrigin](),          # finalize_hint (NULL)
-            OpaquePointer[MutAnyOrigin](),          # result ref (NULL)
-        ))
+        check_status(
+            raw_wrap(
+                env,
+                this_val,
+                data_ptr.bitcast[NoneType](),  # native_object
+                fin_ptr,  # finalize_cb
+                OpaquePointer[MutAnyOrigin](),  # finalize_hint (NULL)
+                OpaquePointer[MutAnyOrigin](),  # result ref (NULL)
+            )
+        )
 
         return this_val
     except:
@@ -101,6 +114,7 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 # --- Instance methods --------------------------------------------------------
 # Use unwrap_native[T](env, info) to retrieve the native data pointer from `this`.
+
 
 def counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -114,6 +128,7 @@ def counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 # --- Getter / Setter ---------------------------------------------------------
 
+
 def counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var ptr = unwrap_native[CounterData](env, info)
@@ -121,6 +136,7 @@ def counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "Counter.value getter failed")
         return NapiValue()
+
 
 def counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -135,9 +151,12 @@ def counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 # --- Static method -----------------------------------------------------------
 
+
 def counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var this_val = CbArgs.get_this(env, info)  # `this` = Counter constructor
+        var this_val = CbArgs.get_this(
+            env, info
+        )  # `this` = Counter constructor
         var arg0 = CbArgs.get_one(env, info)
 
         var t = js_typeof(env, arg0)
@@ -152,6 +171,7 @@ def counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 
 # --- Module entry point ------------------------------------------------------
+
 
 @export("napi_register_module_v1", ABI="C")
 def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:

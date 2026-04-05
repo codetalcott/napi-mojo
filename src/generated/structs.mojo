@@ -11,8 +11,9 @@ from napi.framework.js_uint32 import JsUInt32
 from napi.framework.js_int64 import JsInt64
 from napi.framework.js_object import JsObject
 
+
 # Config struct
-struct ConfigData(Movable, Copyable):
+struct ConfigData(Copyable, Movable):
     var host: String
     var port: Float64
     var verbose: Bool
@@ -32,17 +33,30 @@ struct ConfigData(Movable, Copyable):
         self.port = copy.port
         self.verbose = copy.verbose
 
-def config_from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> ConfigData:
+
+def config_from_js(
+    b: Bindings, env: NapiEnv, val: NapiValue
+) raises -> ConfigData:
     var obj = JsObject(val)
-    var host = JsString.from_napi_value(b, env, obj.get_named_property(b, env, "host"))
-    var port = JsNumber.from_napi_value(b, env, obj.get_named_property(b, env, "port"))
-    var verbose = JsBoolean.from_napi_value(b, env, obj.get_named_property(b, env, "verbose"))
+    var host = JsString.from_napi_value(
+        b, env, obj.get_named_property(b, env, "host")
+    )
+    var port = JsNumber.from_napi_value(
+        b, env, obj.get_named_property(b, env, "port")
+    )
+    var verbose = JsBoolean.from_napi_value(
+        b, env, obj.get_named_property(b, env, "verbose")
+    )
     return ConfigData(host, port, verbose)
 
-def config_to_js(b: Bindings, env: NapiEnv, data: ConfigData) raises -> NapiValue:
+
+def config_to_js(
+    b: Bindings, env: NapiEnv, data: ConfigData
+) raises -> NapiValue:
     var obj = JsObject.create(b, env)
     obj.set_property(b, env, "host", JsString.create(b, env, data.host).value)
     obj.set_property(b, env, "port", JsNumber.create(b, env, data.port).value)
-    obj.set_property(b, env, "verbose", JsBoolean.create(b, env, data.verbose).value)
+    obj.set_property(
+        b, env, "verbose", JsBoolean.create(b, env, data.verbose).value
+    )
     return obj.value
-

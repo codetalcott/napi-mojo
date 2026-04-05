@@ -13,9 +13,15 @@
 ## JavaScript's single numeric type.
 
 from napi.types import NapiEnv, NapiValue
-from napi.raw import raw_create_double, raw_get_value_double, raw_create_int64, raw_get_value_int64
+from napi.raw import (
+    raw_create_double,
+    raw_get_value_double,
+    raw_create_int64,
+    raw_get_value_int64,
+)
 from napi.error import check_status
 from napi.bindings import Bindings
+
 
 ## JsNumber — typed wrapper for a JavaScript number napi_value
 struct JsNumber:
@@ -35,7 +41,9 @@ struct JsNumber:
     @staticmethod
     def create(env: NapiEnv, n: Float64) raises -> JsNumber:
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var status = raw_create_double(env, n, result_ptr)
         check_status(status)
         return JsNumber(result)
@@ -43,7 +51,9 @@ struct JsNumber:
     @staticmethod
     def create(b: Bindings, env: NapiEnv, n: Float64) raises -> JsNumber:
         var result: NapiValue = NapiValue()
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=result).bitcast[NoneType]()
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]()
         var status = raw_create_double(b, env, n, result_ptr)
         check_status(status)
         return JsNumber(result)
@@ -55,15 +65,21 @@ struct JsNumber:
     @staticmethod
     def from_napi_value(env: NapiEnv, val: NapiValue) raises -> Float64:
         var n: Float64 = 0.0
-        var n_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=n).bitcast[NoneType]()
+        var n_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=n).bitcast[
+            NoneType
+        ]()
         var status = raw_get_value_double(env, val, n_ptr)
         check_status(status)
         return n
 
     @staticmethod
-    def from_napi_value(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Float64:
+    def from_napi_value(
+        b: Bindings, env: NapiEnv, val: NapiValue
+    ) raises -> Float64:
         var n: Float64 = 0.0
-        var n_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=n).bitcast[NoneType]()
+        var n_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=n).bitcast[
+            NoneType
+        ]()
         var status = raw_get_value_double(b, env, val, n_ptr)
         check_status(status)
         return n
@@ -72,24 +88,40 @@ struct JsNumber:
     @staticmethod
     def create_int(env: NapiEnv, n: Int) raises -> JsNumber:
         var result = NapiValue()
-        check_status(raw_create_int64(env, Int64(n), UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_create_int64(
+                env, Int64(n), UnsafePointer(to=result).bitcast[NoneType]()
+            )
+        )
         return JsNumber(result)
 
     @staticmethod
     def create_int(b: Bindings, env: NapiEnv, n: Int) raises -> JsNumber:
         var result = NapiValue()
-        check_status(raw_create_int64(b, env, Int64(n), UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_create_int64(
+                b, env, Int64(n), UnsafePointer(to=result).bitcast[NoneType]()
+            )
+        )
         return JsNumber(result)
 
     ## to_int — read a NapiValue as a Mojo Int via napi_get_value_int64
     @staticmethod
     def to_int(env: NapiEnv, val: NapiValue) raises -> Int:
         var n: Int64 = 0
-        check_status(raw_get_value_int64(env, val, UnsafePointer(to=n).bitcast[NoneType]()))
+        check_status(
+            raw_get_value_int64(
+                env, val, UnsafePointer(to=n).bitcast[NoneType]()
+            )
+        )
         return Int(n)
 
     @staticmethod
     def to_int(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Int:
         var n: Int64 = 0
-        check_status(raw_get_value_int64(b, env, val, UnsafePointer(to=n).bitcast[NoneType]()))
+        check_status(
+            raw_get_value_int64(
+                b, env, val, UnsafePointer(to=n).bitcast[NoneType]()
+            )
+        )
         return Int(n)

@@ -20,6 +20,7 @@ from napi.raw import (
 from napi.error import check_status
 from napi.bindings import Bindings
 
+
 struct EscapableHandleScope:
     var scope: NapiEscapableHandleScope
 
@@ -29,27 +30,48 @@ struct EscapableHandleScope:
     @staticmethod
     def open(env: NapiEnv) raises -> EscapableHandleScope:
         var scope = NapiEscapableHandleScope()
-        check_status(raw_open_escapable_handle_scope(env,
-            UnsafePointer(to=scope).bitcast[NoneType]()))
+        check_status(
+            raw_open_escapable_handle_scope(
+                env, UnsafePointer(to=scope).bitcast[NoneType]()
+            )
+        )
         return EscapableHandleScope(scope)
 
     @staticmethod
     def open(b: Bindings, env: NapiEnv) raises -> EscapableHandleScope:
         var scope = NapiEscapableHandleScope()
-        check_status(raw_open_escapable_handle_scope(b, env,
-            UnsafePointer(to=scope).bitcast[NoneType]()))
+        check_status(
+            raw_open_escapable_handle_scope(
+                b, env, UnsafePointer(to=scope).bitcast[NoneType]()
+            )
+        )
         return EscapableHandleScope(scope)
 
     def escape(self, env: NapiEnv, value: NapiValue) raises -> NapiValue:
         var result = NapiValue()
-        check_status(raw_escape_handle(env, self.scope, value,
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_escape_handle(
+                env,
+                self.scope,
+                value,
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return result
 
-    def escape(self, b: Bindings, env: NapiEnv, value: NapiValue) raises -> NapiValue:
+    def escape(
+        self, b: Bindings, env: NapiEnv, value: NapiValue
+    ) raises -> NapiValue:
         var result = NapiValue()
-        check_status(raw_escape_handle(b, env, self.scope, value,
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_escape_handle(
+                b,
+                env,
+                self.scope,
+                value,
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return result
 
     def close(self, env: NapiEnv) raises:

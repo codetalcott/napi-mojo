@@ -11,11 +11,14 @@
 from napi.types import NapiEnv, NapiValue, NapiRef
 from napi.bindings import Bindings
 from napi.raw import (
-    raw_create_reference, raw_delete_reference,
-    raw_reference_ref, raw_reference_unref,
+    raw_create_reference,
+    raw_delete_reference,
+    raw_reference_ref,
+    raw_reference_unref,
     raw_get_reference_value,
 )
 from napi.error import check_status
+
 
 struct JsRef:
     var handle: NapiRef
@@ -24,10 +27,18 @@ struct JsRef:
         self.handle = handle
 
     @staticmethod
-    def create(env: NapiEnv, value: NapiValue, initial_refcount: UInt32) raises -> JsRef:
+    def create(
+        env: NapiEnv, value: NapiValue, initial_refcount: UInt32
+    ) raises -> JsRef:
         var result = NapiRef()
-        check_status(raw_create_reference(env, value, initial_refcount,
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_create_reference(
+                env,
+                value,
+                initial_refcount,
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return JsRef(result)
 
     def delete(self, env: NapiEnv) raises:
@@ -35,20 +46,29 @@ struct JsRef:
 
     def inc(self, env: NapiEnv) raises -> UInt32:
         var count: UInt32 = 0
-        check_status(raw_reference_ref(env, self.handle,
-            UnsafePointer(to=count).bitcast[NoneType]()))
+        check_status(
+            raw_reference_ref(
+                env, self.handle, UnsafePointer(to=count).bitcast[NoneType]()
+            )
+        )
         return count
 
     def dec(self, env: NapiEnv) raises -> UInt32:
         var count: UInt32 = 0
-        check_status(raw_reference_unref(env, self.handle,
-            UnsafePointer(to=count).bitcast[NoneType]()))
+        check_status(
+            raw_reference_unref(
+                env, self.handle, UnsafePointer(to=count).bitcast[NoneType]()
+            )
+        )
         return count
 
     def get(self, env: NapiEnv) raises -> NapiValue:
         var result = NapiValue()
-        check_status(raw_get_reference_value(env, self.handle,
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_get_reference_value(
+                env, self.handle, UnsafePointer(to=result).bitcast[NoneType]()
+            )
+        )
         return result
 
     # --- Bindings-aware overloads ---
@@ -60,10 +80,19 @@ struct JsRef:
     # --- Bindings-aware overloads ---
 
     @staticmethod
-    def create(b: Bindings, env: NapiEnv, value: NapiValue, initial_refcount: UInt32) raises -> JsRef:
+    def create(
+        b: Bindings, env: NapiEnv, value: NapiValue, initial_refcount: UInt32
+    ) raises -> JsRef:
         var result = NapiRef()
-        check_status(raw_create_reference(b, env, value, initial_refcount,
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_create_reference(
+                b,
+                env,
+                value,
+                initial_refcount,
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return JsRef(result)
 
     def delete(self, b: Bindings, env: NapiEnv) raises:
@@ -71,22 +100,36 @@ struct JsRef:
 
     def inc(self, b: Bindings, env: NapiEnv) raises -> UInt32:
         var count: UInt32 = 0
-        check_status(raw_reference_ref(b, env, self.handle,
-            UnsafePointer(to=count).bitcast[NoneType]()))
+        check_status(
+            raw_reference_ref(
+                b, env, self.handle, UnsafePointer(to=count).bitcast[NoneType]()
+            )
+        )
         return count
 
     def dec(self, b: Bindings, env: NapiEnv) raises -> UInt32:
         var count: UInt32 = 0
-        check_status(raw_reference_unref(b, env, self.handle,
-            UnsafePointer(to=count).bitcast[NoneType]()))
+        check_status(
+            raw_reference_unref(
+                b, env, self.handle, UnsafePointer(to=count).bitcast[NoneType]()
+            )
+        )
         return count
 
     def get(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         var result = NapiValue()
-        check_status(raw_get_reference_value(b, env, self.handle,
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_get_reference_value(
+                b,
+                env,
+                self.handle,
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return result
 
     @staticmethod
-    def create_weak(b: Bindings, env: NapiEnv, value: NapiValue) raises -> JsRef:
+    def create_weak(
+        b: Bindings, env: NapiEnv, value: NapiValue
+    ) raises -> JsRef:
         return JsRef.create(b, env, value, 0)

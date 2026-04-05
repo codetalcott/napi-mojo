@@ -13,10 +13,20 @@ from napi.framework.js_string import JsString, js_to_string
 from napi.framework.js_null import JsNull
 from napi.framework.js_arraybuffer import JsArrayBuffer
 from napi.framework.args import CbArgs
-from napi.framework.js_value import js_is_error, js_adjust_external_memory, js_run_script
-from napi.framework.js_exception import js_throw, js_get_and_clear_last_exception, js_get_error_message, js_get_error_stack
+from napi.framework.js_value import (
+    js_is_error,
+    js_adjust_external_memory,
+    js_run_script,
+)
+from napi.framework.js_exception import (
+    js_throw,
+    js_get_and_clear_last_exception,
+    js_get_error_message,
+    js_get_error_stack,
+)
 from napi.framework.js_version import get_napi_version, get_node_version_ptr
 from napi.framework.register import fn_ptr, ModuleBuilder
+
 
 def throw_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -26,6 +36,7 @@ def throw_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         pass
     return NapiValue()
+
 
 def catch_and_return_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -37,6 +48,7 @@ def catch_and_return_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         return NapiValue()
 
+
 def get_napi_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -46,18 +58,26 @@ def get_napi_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getNapiVersion failed")
         return NapiValue()
 
+
 def get_node_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var ver = get_node_version_ptr(b, env)
         var obj = JsObject.create(b, env)
-        obj.set_property(b, env, "major", JsNumber.create_int(b, env, Int(ver[0])).value)
-        obj.set_property(b, env, "minor", JsNumber.create_int(b, env, Int(ver[1])).value)
-        obj.set_property(b, env, "patch", JsNumber.create_int(b, env, Int(ver[2])).value)
+        obj.set_property(
+            b, env, "major", JsNumber.create_int(b, env, Int(ver[0])).value
+        )
+        obj.set_property(
+            b, env, "minor", JsNumber.create_int(b, env, Int(ver[1])).value
+        )
+        obj.set_property(
+            b, env, "patch", JsNumber.create_int(b, env, Int(ver[2])).value
+        )
         return obj.value
     except:
         throw_js_error(env, "getNodeVersion failed")
         return NapiValue()
+
 
 def is_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -67,6 +87,7 @@ def is_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "isError requires one argument")
         return NapiValue()
+
 
 def adjust_external_memory_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -79,6 +100,7 @@ def adjust_external_memory_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "adjustExternalMemory failed")
         return NapiValue()
 
+
 def run_script_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -88,6 +110,7 @@ def run_script_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "runScript failed")
         return NapiValue()
 
+
 def throw_syntax_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -96,14 +119,18 @@ def throw_syntax_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "throwSyntaxError failed")
     return NapiValue()
 
+
 def is_detached_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
-        return JsBoolean.create(b, env, JsArrayBuffer.is_detached(b, env, arg0)).value
+        return JsBoolean.create(
+            b, env, JsArrayBuffer.is_detached(b, env, arg0)
+        ).value
     except:
         throw_js_error(env, "isDetachedArrayBuffer failed")
         return NapiValue()
+
 
 def detach_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -116,6 +143,7 @@ def detach_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "detachArrayBuffer failed")
         return NapiValue()
 
+
 def type_tag_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -127,12 +155,15 @@ def type_tag_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var upper = UInt64(Int(JsNumber.from_napi_value(b, env, argv[2])))
         argv.free()
         var tag = NapiTypeTag(lower, upper)
-        var tag_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=tag).bitcast[NoneType]()
+        var tag_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
+            to=tag
+        ).bitcast[NoneType]()
         check_status(raw_type_tag_object(b, env, obj, tag_ptr))
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "typeTagObject failed")
         return NapiValue()
+
 
 def check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -145,14 +176,24 @@ def check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var upper = UInt64(Int(JsNumber.from_napi_value(b, env, argv[2])))
         argv.free()
         var tag = NapiTypeTag(lower, upper)
-        var tag_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=tag).bitcast[NoneType]()
+        var tag_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
+            to=tag
+        ).bitcast[NoneType]()
         var result: Bool = False
-        check_status(raw_check_object_type_tag(b, env, obj, tag_ptr,
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_check_object_type_tag(
+                b,
+                env,
+                obj,
+                tag_ptr,
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "checkObjectTypeTag failed")
         return NapiValue()
+
 
 def get_all_property_names_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -165,11 +206,14 @@ def get_all_property_names_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var filter = Int32(Int(JsNumber.from_napi_value(b, env, argv[2])))
         var conversion = Int32(Int(JsNumber.from_napi_value(b, env, argv[3])))
         argv.free()
-        var result = JsObject(obj).keys_filtered(b, env, mode, filter, conversion)
+        var result = JsObject(obj).keys_filtered(
+            b, env, mode, filter, conversion
+        )
         return result
     except:
         throw_js_error(env, "getAllPropertyNames failed")
         return NapiValue()
+
 
 def get_error_message_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -181,6 +225,7 @@ def get_error_message_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getErrorMessage failed")
         return NapiValue()
 
+
 def get_error_stack_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -190,6 +235,7 @@ def get_error_stack_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "getErrorStack failed")
         return NapiValue()
+
 
 def get_opt_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -203,6 +249,7 @@ def get_opt_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "getOptValue failed")
         return NapiValue()
 
+
 def to_js_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -212,6 +259,7 @@ def to_js_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "toJsString failed")
         return NapiValue()
+
 
 ## createPropertyKey — create an engine-internalized property key string (N-API v10)
 ##
@@ -228,6 +276,7 @@ def create_property_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "createPropertyKey requires a string argument")
         return NapiValue()
+
 
 def register_misc(mut m: ModuleBuilder) raises:
     var throw_value_ref = throw_value_fn

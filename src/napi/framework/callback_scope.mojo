@@ -16,6 +16,7 @@ from napi.bindings import Bindings
 from napi.raw import raw_open_callback_scope, raw_close_callback_scope
 from napi.error import check_status
 
+
 struct CallbackScope:
     var value: NapiCallbackScope
 
@@ -34,8 +35,15 @@ struct CallbackScope:
         context: NapiAsyncContext,
     ) raises -> CallbackScope:
         var result = NapiCallbackScope()
-        check_status(raw_open_callback_scope(b, env, resource_object, context,
-            UnsafePointer(to=result).bitcast[NoneType]()))
+        check_status(
+            raw_open_callback_scope(
+                b,
+                env,
+                resource_object,
+                context,
+                UnsafePointer(to=result).bitcast[NoneType](),
+            )
+        )
         return CallbackScope(result)
 
     ## close — close this callback scope

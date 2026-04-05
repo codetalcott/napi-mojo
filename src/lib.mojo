@@ -25,6 +25,7 @@ from addon.misc_ops import register_misc
 from addon.async_context_ops import register_async_context
 from addon.convert_ops import register_convert
 
+
 @export("napi_register_module_v1", ABI="C")
 def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     # Allocate and initialize NapiBindings — resolves all N-API symbols
@@ -61,9 +62,13 @@ def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     except:
         try:
             var null_code = NapiValue()
-            var err_msg = JsString.create_literal(env, "napi-mojo: register_module failed")
+            var err_msg = JsString.create_literal(
+                env, "napi-mojo: register_module failed"
+            )
             var err_val = NapiValue()
-            var err_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=err_val).bitcast[NoneType]()
+            var err_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+                to=err_val
+            ).bitcast[NoneType]()
             _ = raw_create_error(env, null_code, err_msg.value, err_ptr)
             _ = raw_fatal_exception(env, err_val)
         except:
