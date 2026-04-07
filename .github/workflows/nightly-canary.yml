@@ -49,6 +49,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          gh label create canary-failure --color D93F0B --description "Nightly canary build failure" 2>/dev/null || true
           gh issue create \
             --title "Nightly canary failed — Mojo ${{ steps.mojo-version.outputs.version }}" \
             --label "canary-failure" \
