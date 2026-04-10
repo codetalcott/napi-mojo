@@ -23,9 +23,10 @@ classes, 605 tests). Expect breaking changes as the project matures.
   complete, ergonomic framework for building Node.js native addons in Mojo.
   We're not there yet; reaching that bar requires exhaustive real-world testing,
   community feedback, and a stable Mojo language release.
-- **Mojo compatibility:** Tracks Mojo nightly (currently dev2026032105). As Mojo
-  approaches v1.0, this project aims to stay current with each nightly release.
-  Expect occasional build breakage during Mojo language transitions.
+- **Mojo compatibility:** Tracks the latest Mojo nightly (pinned in
+  [`pixi.toml`](pixi.toml)). As Mojo approaches v1.0, this project aims to stay
+  current with each nightly release. Expect occasional build breakage during
+  Mojo language transitions.
 - **What works:** Core N-API bindings, type wrappers, async work, classes, error
   handling, TypeScript definition generation, and a TOML-driven code generator
   with `mojo_fn` auto-trampolines, nullable returns, and struct-to-object
@@ -83,8 +84,9 @@ npm run build    # compiles Mojo → build/index.node + generates TypeScript def
 npm test         # 605 tests
 ```
 
-**Prerequisites:** [Mojo nightly](https://docs.modular.com/magic/) (dev2026032105) via
-[pixi](https://pixi.sh), Node.js 22.12+ (N-API v10)
+**Prerequisites:** [Mojo nightly](https://docs.modular.com/magic/) via
+[pixi](https://pixi.sh) (exact version pinned in [`pixi.toml`](pixi.toml)),
+Node.js 22.12+ (N-API v10)
 
 See [`examples/`](examples/) for runnable scripts.
 
