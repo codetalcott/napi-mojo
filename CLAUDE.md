@@ -119,6 +119,10 @@ tests/                                   # Jest tests — TDD outside-in
 
 **Imports** (2026 nightly, 0.26.3+): All stdlib imports require `std.` prefix: `from std.ffi import OwnedDLHandle`, `from std.memory import alloc`, `from std.collections import Optional`, `from std.algorithm import parallelize`. The old bare paths (`from ffi import`, `from memory import`, etc.) are deprecated.
 
+**C-ABI function types require `abi("C")`** (dev2026040905+): `std.ffi.OwnedDLHandle.get_function[...]` and typed `bitcast[def(...) -> X]` now constrain their type parameter to a C-ABI function pointer. Every FFI function type must be written as `def(args...) abi("C") -> ReturnType`. Applies to all 415+ sites in `src/napi/raw.mojo` and `src/napi/bindings.mojo`. The one-off rewrite was done by `scripts/fix-abi-c.mjs` — re-run it after generator changes or if new raw wrappers are added manually. Parametric generics like `parallelize_safe[func: def(Int) capturing -> None]` are NOT C-ABI and must stay unannotated.
+
+**`String.__len__()` is discouraged** (dev2026040905+): Use `s.byte_length()` to get the UTF-8 byte count for N-API calls (`napi_create_string_utf8` expects bytes), or `s.count_codepoints()` for logical character count. The old `len(s)` still compiles but emits a warning.
+
 **Build flag**: `mojo build --emit shared-lib` — not `-shared`.
 
 **ASAP destruction + string lifetimes**: Mojo's ASAP (eager) destruction frees a value at its last tracked use. Raw pointer derivations (`unsafe_ptr()`) are NOT tracked uses. For FFI string arguments:

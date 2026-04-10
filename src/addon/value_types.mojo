@@ -82,7 +82,7 @@ def symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
             NoneType
         ]()
-        var key_len = UInt(len(key))
+        var key_len = UInt(key.byte_length())
         var result = NapiValue()
         check_status(
             raw_symbol_for(

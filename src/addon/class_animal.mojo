@@ -95,7 +95,7 @@ def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             )
             return NapiValue()
         var name_str = JsString.from_napi_value(b, env, arg0)
-        var name_len = UInt(len(name_str))
+        var name_len = UInt(name_str.byte_length())
         var name_buf = alloc[Byte](Int(name_len))
         for i in range(Int(name_len)):
             name_buf[i] = name_str.as_bytes()[i]
@@ -185,13 +185,13 @@ def dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             )
             return NapiValue()
         var name_str = JsString.from_napi_value(b, env, args[0])
-        var name_len = UInt(len(name_str))
+        var name_len = UInt(name_str.byte_length())
         var name_buf = alloc[Byte](Int(name_len))
         for i in range(Int(name_len)):
             name_buf[i] = name_str.as_bytes()[i]
         try:
             var breed_str = JsString.from_napi_value(b, env, args[1])
-            var breed_len = UInt(len(breed_str))
+            var breed_len = UInt(breed_str.byte_length())
             var breed_buf = alloc[Byte](Int(breed_len))
             for i in range(Int(breed_len)):
                 breed_buf[i] = breed_str.as_bytes()[i]

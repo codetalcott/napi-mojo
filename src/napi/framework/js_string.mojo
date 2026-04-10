@@ -82,7 +82,7 @@ struct JsString:
             to=result
         ).bitcast[NoneType]()
         var status = raw_create_string_utf8(
-            env, str_ptr, UInt(len(s)), result_ptr
+            env, str_ptr, UInt(s.byte_length()), result_ptr
         )
         check_status(status)
         return JsString(result)
@@ -97,7 +97,7 @@ struct JsString:
             to=result
         ).bitcast[NoneType]()
         var status = raw_create_string_utf8(
-            b, env, str_ptr, UInt(len(s)), result_ptr
+            b, env, str_ptr, UInt(s.byte_length()), result_ptr
         )
         check_status(status)
         return JsString(result)
@@ -357,7 +357,7 @@ struct JsString:
         ).bitcast[NoneType]()
         check_status(
             raw_create_property_key_utf8(
-                b, env, str_ptr, UInt(len(s)), result_ptr
+                b, env, str_ptr, UInt(s.byte_length()), result_ptr
             )
         )
         return JsString(result)

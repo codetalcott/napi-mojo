@@ -33,7 +33,7 @@ def init_async_runtime() raises:
         lib = OwnedDLHandle("libKGENCompilerRTShared.dylib")
     except:
         lib = OwnedDLHandle("libKGENCompilerRTShared.so")
-    var create_rt = lib.get_function[def() -> OpaquePointer[MutAnyOrigin]](
+    var create_rt = lib.get_function[def() abi("C") -> OpaquePointer[MutAnyOrigin]](
         "KGEN_CompilerRT_AsyncRT_GetOrCreateRuntime"
     )
     _ = create_rt()
