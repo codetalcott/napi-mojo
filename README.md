@@ -53,6 +53,10 @@ classes, 605 tests). Expect breaking changes as the project matures.
   propagation
 - References, handle scopes, escapable handle scopes, GC finalizers
 - Type coercion, strict equality, instanceof, external data with GC cleanup
+- **Typed wrappers**: `JsExternal.create_typed[T]` / `get_typed[T]` and
+  `set_instance_data[T]` / `get_instance_data[T]` — stash typed Mojo structs
+  behind N-API handles or per-env singletons without hand-writing
+  alloc/init/finalize/bitcast plumbing
 - Auto-generated TypeScript definitions
 - **TOML code generator** (`npm run generate:addon` + `src/exports.toml`):
   - `mojo_fn` auto-trampolines — write a pure Mojo function, declare it in

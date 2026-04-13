@@ -4,10 +4,12 @@
 ## Creates a JavaScript value that holds an opaque native pointer with
 ## an optional GC finalize callback.
 
-from napi.types import NapiEnv, NapiValue
+from std.memory import alloc
+from napi.types import NapiEnv, NapiValue, NAPI_TYPE_EXTERNAL
 from napi.bindings import Bindings
 from napi.raw import raw_create_external, raw_get_value_external
-from napi.error import check_status
+from napi.error import check_status, throw_js_type_error_dynamic
+from napi.framework.js_value import js_typeof, js_type_name
 
 
 struct JsExternal:
@@ -124,3 +126,55 @@ struct JsExternal:
             )
         )
         return result
+
+    @staticmethod
+    def create_typed[T: Movable & ImplicitlyDestructible](
+        b: Bindings, env: NapiEnv, var value: T
+    ) raises -> JsExternal:
+        """Heap-allocate `value`, wrap in an External with a GC finalizer.
+
+        The finalizer destroys the pointee and frees the heap slot. Consumers
+        avoid writing per-type alloc/init/finalize plumbing.
+        """
+        var data_ptr = alloc[T](1)
+        data_ptr.init_pointee_move(value^)
+        var fin_ref = _typed_external_finalize[T]
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
+        return JsExternal.create(
+            b, env, data_ptr.bitcast[NoneType](), fin_ptr
+        )
+
+    @staticmethod
+    def get_typed[T: AnyType](
+        b: Bindings, env: NapiEnv, val: NapiValue, context: String
+    ) raises -> UnsafePointer[T, MutAnyOrigin]:
+        """Type-check + get_data + bitcast[T] in one call.
+
+        Raises a TypeError whose message begins with `context` when `val` is
+        not a JS External handle.
+        """
+        var t = js_typeof(b, env, val)
+        if t != NAPI_TYPE_EXTERNAL:
+            throw_js_type_error_dynamic(
+                b, env, context + ": expected external, got " + js_type_name(t)
+            )
+            raise Error("not an external")
+        var data = JsExternal.get_data(b, env, val)
+        return data.bitcast[T]()
+
+
+## Generic finalizer for JsExternal.create_typed
+##
+## Monomorphized per T; its address is taken via the standard fn-ptr bitcast.
+## Not declared `abi("C")` — matches the convention used by every other
+## finalizer in src/addon/ (external_finalize, progress_finalize_cb, etc.).
+def _typed_external_finalize[T: Movable & ImplicitlyDestructible](
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
+    var ptr = data.bitcast[T]()
+    ptr.destroy_pointee()
+    ptr.free()
