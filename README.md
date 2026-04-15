@@ -74,6 +74,11 @@ classes, 605 tests). Expect breaking changes as the project matures.
   helper, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue`
   conversion traits, `AsyncWork` helpers, `MojoFloat64Array` for zero-copy
   TypedArray output, and `parallelize_safe()` for SIMD parallel computation
+- **GPU primitives (v0.4.0+, experimental):** `loadMatrixGpu`, `matmulHandle`,
+  `searchHandle`, `releaseMatrixGpu` — cached device buffers + `linalg.matmul`
+  (tensor cores on H100, Metal on Apple Silicon) + fused host top-k. Shipped
+  as a separate `build/gpu.node` so the CPU binary doesn't link GPU runtime
+  on hosts without it. See [GPU support](#gpu-support-experimental-v040) below.
 
 ## Installation
 
@@ -275,6 +280,36 @@ build, works in any TypeScript-aware IDE.
 | GC & lifecycle | `createExternal` `attachFinalizer` `setInstanceData` `getInstanceData` `addCleanupHook` `removeCleanupHook` |
 | Runtime introspection | `getGlobal` `getNapiVersion` `getNodeVersion` `runScript` `adjustExternalMemory` |
 | Code-generated | `square` `clamp` `uppercase` `sumArrayPure` `negateBoolPure` `addInt32Pure` `describePure` `reverseStringsPure` `safeDivide` `findName` `echoConfig` `configSummary` `exampleAdd` `exampleGreet` `exampleIsPositive` `exampleClamp` `asyncSum` `ExamplePoint` |
+
+## GPU support (experimental, v0.4.0+)
+
+Four functions for GPU-resident matrix workloads — a cached matmul with persistent device buffers and a fused matmul + host-side top-k suitable for exact-retrieval RAG:
+
+```js
+const { loadMatrixGpu, matmulHandle, searchHandle, releaseMatrixGpu } = require('napi-mojo');
+
+// Upload corpus once ([d, N] column-major; one column per document).
+const hCorpus = loadMatrixGpu(corpusF32, d, N);
+
+// For each query (row-major [B, d]), score against corpus and take top-k.
+const hQuery = loadMatrixGpu(queryF32, B, d);
+const idx = new Uint32Array(B * k);
+const scores = new Float32Array(B * k);
+searchHandle(hQuery, hCorpus, idx, scores);  // idx/scores filled, descending
+releaseMatrixGpu(hQuery);
+// ... loop, reusing hCorpus ...
+releaseMatrixGpu(hCorpus);
+```
+
+At `[1, 384] × [384, 10k]` on H100 the `searchHandle` path is **0.06 ms/op** with recall = 1.0 by construction. Full benchmarks and a worked RAG demo live in [codetalcott/mojo-addon-examples](https://github.com/codetalcott/mojo-addon-examples).
+
+The GPU addon ships as a **separate `build/gpu.node`** so hosts without a GPU toolchain still get the full CPU API — `require('napi-mojo')` works either way, and `loadMatrixGpu` is simply `undefined` on CPU-only builds. Requirements:
+
+- Mojo nightly with `std.gpu.host` (pinned in [`pixi.toml`](pixi.toml))
+- Apple Silicon (`metal:4` target) or NVIDIA CUDA 12+ (`sm_90` target for H100; override via `NAPI_MOJO_GPU_ACCEL="--target-accelerator sm_80"` etc.)
+- Build from source for now: `pixi run bash build.sh`. Prebuilt GPU binaries are not yet in the `@napi-mojo/*` platform packages.
+
+Reference example: [examples/gpu-matmul.js](examples/gpu-matmul.js) (smoke test) and the 431-line source in [src/addon/gpu_linalg.mojo](src/addon/gpu_linalg.mojo) showing the `JsExternal.create_typed[CachedMatrix]` handle pattern plus a hand-written min-heap top-k.
 
 ## Architecture
 
