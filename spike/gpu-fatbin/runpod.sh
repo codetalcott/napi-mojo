@@ -32,12 +32,20 @@ if ! command -v pixi >/dev/null 2>&1; then
 fi
 pixi --version
 
-banner "2. Install Node.js 20 (if missing)"
-if ! command -v node >/dev/null 2>&1 || [ "$(node -v | cut -c2-3)" -lt 18 ]; then
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+banner "2. Install Node.js 22.12+ (N-API v10 required — node_api_create_buffer_from_arraybuffer etc.)"
+NODE_MAJOR=0
+if command -v node >/dev/null 2>&1; then
+  NODE_MAJOR=$(node -v | sed 's/^v\([0-9]*\).*/\1/')
+fi
+# Need >= 22.12 for N-API v10; 22.x stream gets 22.12 via apt upgrades, 24 is also fine.
+if [ "$NODE_MAJOR" -lt 22 ]; then
+  apt-get remove -y nodejs libnode-dev 2>/dev/null || true
+  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
   apt-get install -y nodejs
 fi
 node --version
+# Hard-fail if N-API v10 symbol is still missing — avoid wasting GPU time on a failed test
+node -e "const m=process.versions; if (+m.node.split('.')[0] < 22) { console.error('Need Node >= 22.12 for N-API v10'); process.exit(1); }"
 
 banner "3. Clone / update repo"
 if [ -d "$WORKDIR/.git" ]; then
