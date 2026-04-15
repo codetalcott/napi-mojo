@@ -25,12 +25,12 @@ jobs:
         with:
           pixi-version: latest
 
-      - name: Unpin Mojo version (use latest nightly)
-        run: sed -i '' 's/mojo = "==.*/mojo = ">=0.26"/' pixi.toml
+      - name: Unpin Mojo/MAX version (use latest nightly)
+        run: sed -i '' 's/^max = ".*/max = "*"/' pixi.toml
 
       - name: Install dependencies
         run: |
-          pixi install
+          pixi update
           npm ci
 
       - name: Build Mojo addon
