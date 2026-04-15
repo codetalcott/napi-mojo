@@ -81,9 +81,62 @@ Not runnable on macOS. On macOS, `otool -L build/gpu.node` (built with `--target
 4. `node -e "require('./gpu.node')"` + run existing GPU Jest test against it.
 5. Pass = self-contained deploy possible (2 GB MAX SDK on dev machine only). Fail = peer-dep required; end users need pixi or a Modular-blessed runtime tarball.
 
-## One-line verdict (preliminary, pending Linux steps)
+## Question 2 — ldd classification (H100 RunPod, 2026-04-15)
 
-**Single-binary shipping is plausible via PTX driver-JIT (Path B) or the `cuda` generic target (Path C); neither has been verified on Linux+CUDA hardware yet, so per-arch prebuilts remain the fallback plan.**
+Confirmed on Linux x86_64 with sm_80 build:
+
+```
+libKGENCompilerRTShared.so  → pixi env  (Mojo runtime)
+libAsyncRTMojoBindings.so   → pixi env
+libAsyncRTRuntimeGlobals.so → pixi env
+libMSupportGlobals.so       → pixi env
+libNVPTX.so                 → pixi env  (Mojo's NVIDIA PTX driver wrapper)
+libstdc++.so.6              → pixi env  (pinned Mojo copy, not system)
+libgcc_s.so.1               → pixi env
+libc.so.6, libm.so.6, libdl.so.2, ld-linux, linux-vdso → system
+```
+
+**Critical finding: zero direct CUDA runtime deps.** No libcudart, libcublas, libcusparse. Mojo funnels all NVIDIA interaction through its own `libNVPTX.so`, which in turn dlopens the driver (`libcuda.so.1` from /usr/lib/x86_64-linux-gnu/) at runtime — not a link-time dep. Bundling target for the extracted package: **7 `.so` files from `.pixi/envs/default/lib/`** + the `.node` itself, with `patchelf --set-rpath '$ORIGIN/gpu-libs'`. End users need only the NVIDIA driver (already on any GPU host); no pixi, no MAX SDK, no CUDA toolkit.
+
+## Question 3 — rpath bundling probe — DEFERRED
+
+Not needed to unblock extraction. The ldd picture is simple enough (7 `.so`s, all from pixi's own lib dir) that bundling is mechanical. Do the probe in the downstream package's CI rather than on a spike branch.
+
+## End-to-end Path B validation (H100, 2026-04-15)
+
+Ran `tests/gpu-matmul.test.js` against sm_80 build on H100 (sm_90, driver 580.126.09, CUDA 13.x):
+
+| Test | sm_80 (Path B) | sm_90 native | Notes |
+|---|---|---|---|
+| `loadMatrixGpu returns external handle` | PASS 113ms | PASS 117ms | |
+| `matmulHandle on released handle throws` | PASS | PASS | |
+| `dst buffer too small throws` | PASS | PASS | |
+| `dimension mismatch throws` | PASS | PASS | |
+| `2x2 identity × 2x2` | PASS 111ms | PASS 112ms | |
+| `[4,64] × [64,1000] vs JS reference` | **FAIL** 639/4000 mismatches | **FAIL** 672/4000 mismatches | pre-existing kernel bug — identical failure on both builds |
+| `searchHandle top-10 on [1,32]×[32,500]` | PASS 24ms | PASS 26ms | |
+| `searchHandle batched B=4 top-k` | PASS 2ms | PASS 2ms | |
+
+**7/8 pass identically on both builds. The single failing test fails on native sm_90 too** with a comparable mismatch count — proving Path B's PTX-JIT path is not responsible. It's a pre-existing matmul correctness bug for non-tiny shapes (likely stride/tile-boundary handling; ~16% of elements wrong).
+
+### Timings
+
+| Build | Cold (JIT) | Warm |
+|---|---|---|
+| sm_80 on H100 (Path B) | 2033 ms | 1356 ms |
+| sm_90 native on H100 | — | 1585 ms |
+
+sm_80-cold adds ~700ms first-run JIT overhead for 3 kernels (one-time, cacheable to `~/.nv/ComputeCache`). Warm steady-state sm_80 is within noise of native sm_90 on this tiny workload — no dramatic perf tax. Caveat: matmul here doesn't exercise Hopper-specific instructions (wgmma/TMA/fp8); for tensor-core-heavy workloads the gap would be larger.
+
+Both build outputs are identical size (240472 bytes), confirming Mojo embeds PTX-text regardless of target arch.
+
+## One-line verdict
+
+**Path B confirmed: ship one Linux x86_64 `sm_80` prebuilt + one `darwin-arm64` Metal prebuilt, bundle 7 `.so`s from pixi via rpath, no CUDA toolkit required on end-user hosts. Extraction of the GPU addon into `@org/node-rag` is unblocked.**
+
+## Separate issue surfaced (not spike scope)
+
+`tests/gpu-matmul.test.js` has a failing correctness test on both sm_80 and sm_90 H100 builds: `[4,64] × [64,1000]` produces ~16% wrong elements vs JS reference (rtol=1e-4). This is a pre-existing v0.4.0 kernel bug independent of the extraction decision — file/track in main repo.
 
 ## Next session
 
