@@ -138,6 +138,35 @@ banner "8. Summary"
   fi
 } | tee "$RESULTS/SUMMARY.txt"
 
+banner "9. Consolidate all text artifacts into ~/gpu-fatbin.txt"
+{
+  echo "################################################################"
+  echo "# Path B spike results — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "################################################################"
+  for f in SUMMARY.txt gpu-info.txt ptx-inspection-sm80.txt ldd-sm80.txt timings.txt path-c-targets.txt path-c-build.log; do
+    if [ -f "$RESULTS/$f" ]; then
+      echo
+      echo "===== $f ====="
+      cat "$RESULTS/$f"
+    fi
+  done
+  echo
+  echo "===== test-sm80-cold.log (last 80 lines) ====="
+  tail -80 "$RESULTS/test-sm80-cold.log" 2>/dev/null || echo "(missing)"
+  if [ -f "$RESULTS/test-sm90-warm.log" ]; then
+    echo
+    echo "===== test-sm90-warm.log (last 40 lines) ====="
+    tail -40 "$RESULTS/test-sm90-warm.log"
+  fi
+  if [ -f "$RESULTS/test-cuda.log" ]; then
+    echo
+    echo "===== test-cuda.log (last 40 lines) ====="
+    tail -40 "$RESULTS/test-cuda.log"
+  fi
+} > ~/gpu-fatbin.txt
+
 echo
-echo "All artifacts in $RESULTS — copy them out before destroying the pod:"
+echo "Artifacts in $RESULTS:"
 ls -la "$RESULTS"
+echo
+echo "Consolidated report at ~/gpu-fatbin.txt ($(wc -l < ~/gpu-fatbin.txt) lines)"
