@@ -114,19 +114,6 @@ else
   echo "skipped — GPU is sm_${GPU_CC}, not sm_90+"
 fi
 
-banner "7b. Build generic cuda target (Path C probe) — may be slow"
-rm -f build/gpu.node
-timeout 900 bash -c 'NAPI_MOJO_GPU_ACCEL="--target-accelerator cuda" pixi run bash build.sh' 2>&1 | tail -10 | tee "$RESULTS/path-c-build.log"
-if [ -f build/gpu.node ]; then
-  cp build/gpu.node "$RESULTS/gpu.cuda.node"
-  strings build/gpu.node | grep -cE '^\.target sm_' | tee "$RESULTS/path-c-targets.txt"
-  strings build/gpu.node | grep -E '^\.target sm_' | sort -u | tee -a "$RESULTS/path-c-targets.txt"
-  npm test -- tests/gpu-matmul.test.js 2>&1 | tee "$RESULTS/test-cuda.log" >/dev/null
-  echo "cuda generic test exit=${PIPESTATUS[0]}" | tee -a "$RESULTS/timings.txt"
-else
-  echo "Path C build did not complete within 15 min — skipping test" | tee -a "$RESULTS/timings.txt"
-fi
-
 banner "8. Summary"
 {
   echo "=== Path B validation summary ==="
@@ -151,7 +138,7 @@ banner "9. Consolidate all text artifacts into ~/gpu-fatbin.txt"
   echo "################################################################"
   echo "# Path B spike results — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "################################################################"
-  for f in SUMMARY.txt gpu-info.txt ptx-inspection-sm80.txt ldd-sm80.txt timings.txt path-c-targets.txt path-c-build.log; do
+  for f in SUMMARY.txt gpu-info.txt ptx-inspection-sm80.txt ldd-sm80.txt timings.txt; do
     if [ -f "$RESULTS/$f" ]; then
       echo
       echo "===== $f ====="
@@ -165,11 +152,6 @@ banner "9. Consolidate all text artifacts into ~/gpu-fatbin.txt"
     echo
     echo "===== test-sm90-warm.log (last 40 lines) ====="
     tail -40 "$RESULTS/test-sm90-warm.log"
-  fi
-  if [ -f "$RESULTS/test-cuda.log" ]; then
-    echo
-    echo "===== test-cuda.log (last 40 lines) ====="
-    tail -40 "$RESULTS/test-cuda.log"
   fi
 } > ~/gpu-fatbin.txt
 
