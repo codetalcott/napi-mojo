@@ -120,7 +120,18 @@ tests/                                   # Jest tests — TDD outside-in
 
 **Imports** (2026 nightly, 0.26.3+): All stdlib imports require `std.` prefix: `from std.ffi import OwnedDLHandle`, `from std.memory import alloc`, `from std.collections import Optional`, `from std.algorithm import parallelize`. The old bare paths (`from ffi import`, `from memory import`, etc.) are deprecated.
 
-**C-ABI function types require `abi("C")`** (dev2026040905+): `std.ffi.OwnedDLHandle.get_function[...]` and typed `bitcast[def(...) -> X]` now constrain their type parameter to a C-ABI function pointer. Every FFI function type must be written as `def(args...) abi("C") -> ReturnType`. Applies to all 415+ sites in `src/napi/raw.mojo` and `src/napi/bindings.mojo`. The one-off rewrite was done by `scripts/fix-abi-c.mjs` — re-run it after generator changes or if new raw wrappers are added manually. Parametric generics like `parallelize_safe[func: def(Int) capturing -> None]` are NOT C-ABI and must stay unannotated.
+**C-ABI function types require `thin abi("C")`** (dev2026043006 / Mojo 1.0.0b1): `std.ffi.OwnedDLHandle.get_function[...]` and typed `bitcast[def(...) -> X]` constrain their type parameter to `TrivialRegisterPassable`. As of Mojo 1.0.0b1, a bare `def(args...) -> X` resolves to `AnyTrait[def(...) -> X]` (a callable trait, not a thin function pointer) and fails the constraint. The fix is to add the `thin` effect alongside `abi("C")`: `def(args...) thin abi("C") -> ReturnType`. Applies to all 416 sites across `src/napi/raw.mojo` (272), `src/napi/bindings.mojo` (143), and `src/napi/framework/runtime.mojo` (1). Parametric generics like `parallelize_safe[func: def(Int) capturing -> None]` are not C-ABI and stay unannotated. (Older `dev2026040905+` rule that introduced `abi("C")` is superseded — the `thin` effect is now also required.)
+
+**`def` no longer auto-raises** (Mojo 1.0.0b1): `def` and `fn` now have identical semantics — non-raising by default. Functions that raise must be annotated `def name(...) raises:` explicitly. Existing `def f() raises:` declarations are unaffected.
+
+**`UnsafePointer()` non-null** (Mojo 1.0.0b1): The bare default constructor `UnsafePointer[T, O]()` (and aliases like `OpaquePointer[MutAnyOrigin]()`, `NapiValue()`) now produces a non-null sentinel; the language no longer guarantees null. Migration patterns:
+
+- For delayed init / write-target slots that N-API immediately overwrites: use `UnsafePointer.unsafe_dangling()` (or `OpaquePointer[MutAnyOrigin].unsafe_dangling()` / `NapiValue.unsafe_dangling()`).
+- For slots where N-API may write null and you need to detect it: use `Optional[UnsafePointer[...]]` and check with `is None` / `value()`. The Optional uses niche layout so it's bit-compatible with raw `void*` for N-API write-through.
+- For "null code" passthrough (e.g. `napi_create_error(env, /*code=NULL*/, msg, &result)`): `OpaquePointer[MutAnyOrigin]()` still produces address 0 *at runtime* on current nightlies, so existing code works — but the warning indicates this may change. Long-term fix: change wrapper signatures to take `Optional[NapiValue]`.
+- `Bool(ptr)` / `if not ptr:` no longer detects null since pointers are non-null by design (compiler may elide the check). Use `Int(ptr) == 0` for parameters whose type is fixed by C-ABI callback signatures, or `Optional[...] + is None` for locals.
+
+**`unsafe_ptr().value()` removed** (Mojo 1.0.0b1): `DeviceBuffer.unsafe_ptr()` (and similar from MAX `gpu` package) now returns the typed `UnsafePointer` directly, no `.value()` wrapper. Drop the call: `buf.unsafe_ptr().bitcast[Byte]()` instead of `buf.unsafe_ptr().value().bitcast[Byte]()`.
 
 **`String.__len__()` is discouraged** (dev2026040905+): Use `s.byte_length()` to get the UTF-8 byte count for N-API calls (`napi_create_string_utf8` expects bytes), or `s.count_codepoints()` for logical character count. The old `len(s)` still compiles but emits a warning.
 
