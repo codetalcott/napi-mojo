@@ -45,15 +45,15 @@ def get_instance_data[T: AnyType](
     b: Bindings, env: NapiEnv
 ) raises -> UnsafePointer[T, MutAnyOrigin]:
     """Retrieve the typed instance-data pointer. Raises if unset (NULL)."""
-    var raw = OpaquePointer[MutAnyOrigin]()
+    var raw: Optional[OpaquePointer[MutAnyOrigin]] = None
     check_status(
         raw_get_instance_data(
             b, env, UnsafePointer(to=raw).bitcast[NoneType]()
         )
     )
-    if not raw:
+    if raw is None:
         raise Error("instance data not set")
-    return raw.bitcast[T]()
+    return raw.value().bitcast[T]()
 
 
 def _typed_instance_data_finalize[T: Movable & ImplicitlyDestructible](

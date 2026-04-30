@@ -422,13 +422,13 @@ def unwrap_native[
     T: AnyType
 ](env: NapiEnv, info: NapiValue) raises -> UnsafePointer[T, MutAnyOrigin]:
     var this_val = CbArgs.get_this(env, info)
-    var data = OpaquePointer[MutAnyOrigin]()
+    var data: Optional[OpaquePointer[MutAnyOrigin]] = None
     check_status(
         raw_unwrap(env, this_val, UnsafePointer(to=data).bitcast[NoneType]())
     )
-    if not data:
+    if data is None:
         raise Error("unwrap failed: NULL native pointer")
-    return data.bitcast[T]()
+    return data.value().bitcast[T]()
 
 
 def unwrap_native[
@@ -437,13 +437,13 @@ def unwrap_native[
     T, MutAnyOrigin
 ]:
     var this_val = CbArgs.get_this(env, info)
-    var data = OpaquePointer[MutAnyOrigin]()
+    var data: Optional[OpaquePointer[MutAnyOrigin]] = None
     check_status(
         raw_unwrap(b, env, this_val, UnsafePointer(to=data).bitcast[NoneType]())
     )
-    if not data:
+    if data is None:
         raise Error("unwrap failed: NULL native pointer")
-    return data.bitcast[T]()
+    return data.value().bitcast[T]()
 
 
 ## unwrap_native_from_this — unwrap using a pre-extracted this_val
@@ -456,10 +456,10 @@ def unwrap_native_from_this[
 ](b: Bindings, env: NapiEnv, this_val: NapiValue) raises -> UnsafePointer[
     T, MutAnyOrigin
 ]:
-    var data = OpaquePointer[MutAnyOrigin]()
+    var data: Optional[OpaquePointer[MutAnyOrigin]] = None
     check_status(
         raw_unwrap(b, env, this_val, UnsafePointer(to=data).bitcast[NoneType]())
     )
-    if not data:
+    if data is None:
         raise Error("unwrap failed: NULL native pointer")
-    return data.bitcast[T]()
+    return data.value().bitcast[T]()
