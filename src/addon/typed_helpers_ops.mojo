@@ -35,7 +35,7 @@ struct TypedPayload(Movable):
         self.counter = take.counter
 
     def __del__(deinit self):
-        if self.counter:
+        if Int(self.counter) != 0:
             self.counter[] = self.counter[] + 1
 
 

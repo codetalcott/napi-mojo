@@ -259,9 +259,9 @@ def progress_call_js_cb(
     var value = val_ptr[]
     val_ptr.destroy_pointee()
     val_ptr.free()
-    if not env:
+    if Int(env) == 0:
         return
-    if not js_callback:
+    if Int(js_callback) == 0:
         return
     try:
         var js_val = JsNumber.create(env, value)
@@ -276,7 +276,7 @@ def progress_finalize_cb(
     finalize_hint: OpaquePointer[MutAnyOrigin],
 ):
     var ptr = finalize_data.bitcast[AsyncProgressData]()
-    if env:
+    if Int(env) != 0:
         try:
             if ptr[].status == NAPI_OK:
                 var result_val = JsNumber.create(env, Float64(ptr[].count))
