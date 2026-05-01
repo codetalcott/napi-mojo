@@ -10,6 +10,7 @@ from napi.raw import (
     raw_get_instance_data,
     raw_add_env_cleanup_hook,
     raw_remove_env_cleanup_hook,
+    raw_remove_async_cleanup_hook,
 )
 from napi.framework.js_number import JsNumber
 from napi.framework.js_boolean import JsBoolean
@@ -135,10 +136,21 @@ def remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 
+## async_cleanup_hook_noop — env-exit cleanup callback that immediately releases
+##
+## N-API contract: async cleanup hooks MUST call napi_remove_async_cleanup_hook
+## with the supplied handle, otherwise the env teardown blocks indefinitely
+## waiting for the cleanup to complete (Node will eventually force-kill the
+## process). Without this call, jest workers hang on exit and get killed with
+## SIGSEGV/SIGTRAP/SIGABRT depending on what state libuv is in when SIGKILL
+## arrives. Synchronous removal is fine — the hook does no real async work.
 def async_cleanup_hook_noop(
     handle: OpaquePointer[MutAnyOrigin], arg: OpaquePointer[MutAnyOrigin]
 ):
-    pass
+    try:
+        _ = raw_remove_async_cleanup_hook(handle)
+    except:
+        pass
 
 
 def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
