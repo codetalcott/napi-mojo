@@ -10,7 +10,6 @@ from napi.raw import (
     raw_get_instance_data,
     raw_add_env_cleanup_hook,
     raw_remove_env_cleanup_hook,
-    raw_remove_async_cleanup_hook,
 )
 from napi.framework.js_number import JsNumber
 from napi.framework.js_boolean import JsBoolean
@@ -32,14 +31,11 @@ from napi.framework.js_version import (
 from napi.framework.register import fn_ptr, ModuleBuilder
 
 
-def instance_data_finalize(
-    env: NapiEnv,
-    data: OpaquePointer[MutAnyOrigin],
-    hint: OpaquePointer[MutAnyOrigin],
-):
-    var ptr = data.bitcast[Float64]()
-    ptr.destroy_pointee()
-    ptr.free()
+## NOTE: the actual instance_data_finalize body lives in src/lib.mojo as
+## @export("napi_mojo_instance_data_finalize_impl", ABI="C"). The C
+## trampoline in src/napi_callbacks.c has its address; we read the
+## pointer from b[].instance_data_finalize_ptr instead of using the
+## (broken-on-1.0.0b1) `var f = fn; UnsafePointer(to=f)...` extraction.
 
 
 def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -49,16 +45,12 @@ def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[Float64](1)
         data_ptr.init_pointee_move(n)
-        var fin_ref = instance_data_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
         check_status(
             raw_set_instance_data(
                 b,
                 env,
                 data_ptr.bitcast[NoneType](),
-                fin_ptr,
+                b[].instance_data_finalize_ptr,
                 OpaquePointer[MutAnyOrigin](),
             )
         )
@@ -86,22 +78,27 @@ def get_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 
-def cleanup_hook_noop(arg: OpaquePointer[MutAnyOrigin]):
-    pass
+## NOTE: cleanup_hook_noop and async_cleanup_hook_noop bodies live in
+## src/lib.mojo as @export(ABI="C") symbols; the C trampolines in
+## src/napi_callbacks.c hold their addresses and we read those via
+## b[].cleanup_hook_ptr / b[].async_cleanup_hook_ptr.
+##
+## For async_cleanup_hook, we pass `b` itself as the `arg` so the Mojo
+## impl can recover the bindings pointer at teardown without doing an
+## env-teardown dlsym (which can intermittently fail on Linux).
 
 
 def add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
-        var hook_ref = cleanup_hook_noop
-        var hook_ptr = UnsafePointer(to=hook_ref).bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
         var arg_ptr = alloc[Byte](1)
         arg_ptr[0] = Byte(0)
         check_status(
             raw_add_env_cleanup_hook(
-                b, env, hook_ptr, arg_ptr.bitcast[NoneType]()
+                b,
+                env,
+                b[].cleanup_hook_ptr,
+                arg_ptr.bitcast[NoneType](),
             )
         )
         return JsBoolean.create(b, env, True).value
@@ -113,20 +110,22 @@ def add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 def remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
-        var hook_ref = cleanup_hook_noop
-        var hook_ptr = UnsafePointer(to=hook_ref).bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
         var arg_ptr = alloc[Byte](1)
         arg_ptr[0] = Byte(0)
         check_status(
             raw_add_env_cleanup_hook(
-                b, env, hook_ptr, arg_ptr.bitcast[NoneType]()
+                b,
+                env,
+                b[].cleanup_hook_ptr,
+                arg_ptr.bitcast[NoneType](),
             )
         )
         check_status(
             raw_remove_env_cleanup_hook(
-                b, env, hook_ptr, arg_ptr.bitcast[NoneType]()
+                b,
+                env,
+                b[].cleanup_hook_ptr,
+                arg_ptr.bitcast[NoneType](),
             )
         )
         arg_ptr.free()
@@ -136,33 +135,12 @@ def remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 
-## async_cleanup_hook_noop — env-exit cleanup callback that immediately releases
-##
-## N-API contract: async cleanup hooks MUST call napi_remove_async_cleanup_hook
-## with the supplied handle, otherwise env teardown blocks indefinitely
-## (Node force-kills the process; jest workers manifest as SIGSEGV / SIGTRAP /
-## SIGABRT / "force exited" depending on libuv state at kill time).
-##
-## The release MUST go through the bindings-aware overload — the env-only path
-## opens OwnedDLHandle() and dlsym's the symbol, which can intermittently fail
-## during Linux's tail-end teardown. The `arg` parameter carries our pre-resolved
-## bindings pointer (set by the registering callback below) so we never dlsym
-## here.
-def async_cleanup_hook_noop(
-    handle: OpaquePointer[MutAnyOrigin], arg: OpaquePointer[MutAnyOrigin]
-):
-    var b = arg.bitcast[NapiBindings]()
-    _ = raw_remove_async_cleanup_hook(b, handle)
-
-
 def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
-        var hook_ref = async_cleanup_hook_noop
-        var hook_ptr = UnsafePointer(to=hook_ref).bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
-        _ = add_async_cleanup_hook(b, env, hook_ptr, b.bitcast[NoneType]())
+        _ = add_async_cleanup_hook(
+            b, env, b[].async_cleanup_hook_ptr, b.bitcast[NoneType]()
+        )
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "addAsyncCleanupHook failed")
@@ -172,12 +150,8 @@ def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
-        var hook_ref = async_cleanup_hook_noop
-        var hook_ptr = UnsafePointer(to=hook_ref).bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
         var handle = add_async_cleanup_hook(
-            b, env, hook_ptr, b.bitcast[NoneType]()
+            b, env, b[].async_cleanup_hook_ptr, b.bitcast[NoneType]()
         )
         remove_async_cleanup_hook(b, handle)
         return JsBoolean.create(b, env, True).value

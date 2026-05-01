@@ -34,14 +34,9 @@ struct CounterData(Movable):
         self.initial = take.initial
 
 
-def counter_finalize(
-    env: NapiEnv,
-    data: OpaquePointer[MutAnyOrigin],
-    hint: OpaquePointer[MutAnyOrigin],
-):
-    var ptr = data.bitcast[CounterData]()
-    ptr.destroy_pointee()
-    ptr.free()
+## counter_finalize body lives in src/lib.mojo (@export'd as
+## "napi_mojo_counter_finalize_impl"); the C trampoline's address is
+## stored in b[].counter_finalize_ptr.
 
 
 def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -58,17 +53,13 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var initial = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[CounterData](1)
         data_ptr.init_pointee_move(CounterData(initial))
-        var fin_ref = counter_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
         check_status(
             raw_wrap(
                 b,
                 env,
                 this_val,
                 data_ptr.bitcast[NoneType](),
-                fin_ptr,
+                b[].counter_finalize_ptr,
                 OpaquePointer[MutAnyOrigin](),
                 OpaquePointer[MutAnyOrigin](),
             )
