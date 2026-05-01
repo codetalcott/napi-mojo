@@ -25,6 +25,23 @@ from addon.misc_ops import register_misc
 from addon.async_context_ops import register_async_context
 from addon.convert_ops import register_convert
 from addon.typed_helpers_ops import register_typed_helpers
+from addon.env_ops import instance_data_finalize_impl
+
+
+## C-ABI finalizer trampolines — see addon/env_ops.mojo for why these live
+## in lib.mojo. Mojo only honors @export(ABI="C") for the top-level compilation
+## unit; functions tagged in addon packages get dead-code-eliminated.
+##
+## These wrappers exist solely so the runtime has a stable C symbol that
+## dlsym can resolve into a thin C-ABI fn pointer (the only Mojo idiom that
+## reliably produces a code address callable from C in 1.0.0b1).
+@export("napi_mojo_instance_data_finalize", ABI="C")
+def napi_mojo_instance_data_finalize(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
+    instance_data_finalize_impl(env, data, hint)
 
 
 @export("napi_register_module_v1", ABI="C")
