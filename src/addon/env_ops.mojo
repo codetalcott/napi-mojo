@@ -2,6 +2,7 @@
 ##                           coerce ops
 
 from std.memory import alloc
+from std.ffi import OwnedDLHandle
 from napi.types import NapiEnv, NapiValue
 from napi.bindings import Bindings, NapiBindings
 from napi.error import throw_js_error, check_status
@@ -32,7 +33,20 @@ from napi.framework.js_version import (
 from napi.framework.register import fn_ptr, ModuleBuilder
 
 
-def instance_data_finalize(
+## instance_data_finalize_impl — frees the heap-allocated Float64 instance data
+##
+## Called via the @export wrapper in lib.mojo, which is the only place
+## @export(ABI="C") emits a real symbol (functions in addon packages get
+## DCE'd by Mojo's compilation pipeline). The wrapper is dlsym'd back into
+## a thin C-ABI fn pointer in `_instance_data_finalize_ptr` below.
+##
+## Why we can't use the address-of-local-var pattern: bare `def` resolves to
+## `AnyTrait[def(...)]` in 1.0.0b1 — a callable wrapper, not a thin function
+## pointer. Extracting its first 8 bytes gives a sentinel/discriminant, not
+## a code address. When N-API calls that "pointer" at env teardown, on Linux
+## it lands on unmapped memory and SIGSEGVs (macOS apparently lands somewhere
+## benign more often, hence the platform-specific flake).
+def instance_data_finalize_impl(
     env: NapiEnv,
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
@@ -42,6 +56,18 @@ def instance_data_finalize(
     ptr.free()
 
 
+def _instance_data_finalize_ptr() raises -> OpaquePointer[MutAnyOrigin]:
+    var h = OwnedDLHandle()
+    var f = h.get_function[
+        def(
+            NapiEnv,
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+        ) thin abi("C") -> None
+    ]("napi_mojo_instance_data_finalize")
+    return UnsafePointer(to=f).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+
+
 def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -49,10 +75,7 @@ def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[Float64](1)
         data_ptr.init_pointee_move(n)
-        var fin_ref = instance_data_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
+        var fin_ptr = _instance_data_finalize_ptr()
         check_status(
             raw_set_instance_data(
                 b,
