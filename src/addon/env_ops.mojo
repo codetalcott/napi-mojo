@@ -3,7 +3,7 @@
 
 from std.memory import alloc
 from napi.types import NapiEnv, NapiValue
-from napi.bindings import Bindings, NapiBindings
+from napi.bindings import Bindings
 from napi.error import throw_js_error, check_status
 from napi.raw import (
     raw_set_instance_data,
@@ -32,11 +32,14 @@ from napi.framework.js_version import (
 from napi.framework.register import fn_ptr, ModuleBuilder
 
 
-## NOTE: the actual instance_data_finalize body lives in src/lib.mojo as
-## @export("napi_mojo_instance_data_finalize_impl", ABI="C"). The C
-## trampoline in src/napi_callbacks.c has its address; we read the
-## pointer from b[].instance_data_finalize_ptr instead of using the
-## (broken-on-1.0.0b1) `var f = fn; UnsafePointer(to=f)...` extraction.
+def instance_data_finalize(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
+    var ptr = data.bitcast[Float64]()
+    ptr.destroy_pointee()
+    ptr.free()
 
 
 def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -44,16 +47,27 @@ def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     NULL as the finalize_cb (N-API spec-optional) and let the OS reclaim
     the 8-byte allocation at process exit.
 
-    Why not register our C trampoline finalizer here: on Linux,
-    napi_set_instance_data's finalizer fires at env teardown in a
-    context where calling back into Mojo via the C trampoline reliably
-    SIGSEGVs (the same path works for napi_wrap-attached finalizers
-    elsewhere in this addon — e.g. Counter, External — but those only
-    fire when V8 GCs the wrapped JS object, which usually doesn't
-    happen before exit, so the path is rarely exercised). We don't
-    have a working Mojo+Linux idiom for an env-teardown C callback
-    that calls into Mojo today; once Modular ships one this path
-    should be revisited and the leak removed. macOS works either way.
+    Why we don't pass `instance_data_finalize` (defined just above):
+    Mojo 1.0.0b1's `var f = my_def_fn` resolves to AnyTrait[def(...)]
+    (a callable wrapper), not a thin function pointer. The
+    address-of-local-var trick
+
+        var fin_ref = instance_data_finalize
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer]()[]
+
+    extracts the wrapper's first 8 bytes (a sentinel/discriminant), not
+    the function's code address. When N-API later calls that "pointer"
+    at env teardown on Linux, it lands on unmapped memory and SIGSEGVs
+    — and unlike napi_wrap finalizers (which only fire if V8 GCs the
+    wrapped JS object before exit), instance_data finalizers ALWAYS
+    fire, so this path is reliably exercised. macOS happens to land on
+    benign garbage and survives.
+
+    Skipping the finalizer leaks 8 bytes per setInstanceData call but
+    only at process exit, so the OS reclaims it. The kept-alive
+    `instance_data_finalize` def above is unused right now; once Mojo
+    gains a way to take the address of a `def` for use as a C callback,
+    this should be revisited and the leak removed.
     """
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -147,15 +161,18 @@ def remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 ## async_cleanup_hook_noop — env-exit cleanup callback that immediately releases
 ##
 ## N-API contract: async cleanup hooks MUST call napi_remove_async_cleanup_hook
-## with the supplied handle, otherwise env teardown blocks indefinitely.
-## We pass our own NapiBindings pointer as `arg` (set by the registering
-## callback below) so we can use the bindings-aware overload and avoid
-## an env-teardown dlsym (which intermittently fails on Linux).
+## with the supplied handle, otherwise the env teardown blocks indefinitely
+## waiting for the cleanup to complete (Node will eventually force-kill the
+## process). Without this call, jest workers hang on exit and get killed with
+## SIGSEGV/SIGTRAP/SIGABRT depending on what state libuv is in when SIGKILL
+## arrives. Synchronous removal is fine — the hook does no real async work.
 def async_cleanup_hook_noop(
     handle: OpaquePointer[MutAnyOrigin], arg: OpaquePointer[MutAnyOrigin]
 ):
-    var b = arg.bitcast[NapiBindings]()
-    _ = raw_remove_async_cleanup_hook(b, handle)
+    try:
+        _ = raw_remove_async_cleanup_hook(handle)
+    except:
+        pass
 
 
 def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -165,7 +182,9 @@ def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var hook_ptr = UnsafePointer(to=hook_ref).bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
-        _ = add_async_cleanup_hook(b, env, hook_ptr, b.bitcast[NoneType]())
+        _ = add_async_cleanup_hook(
+            b, env, hook_ptr, OpaquePointer[MutAnyOrigin]()
+        )
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "addAsyncCleanupHook failed")
@@ -180,7 +199,7 @@ def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             OpaquePointer[MutAnyOrigin]
         ]()[]
         var handle = add_async_cleanup_hook(
-            b, env, hook_ptr, b.bitcast[NoneType]()
+            b, env, hook_ptr, OpaquePointer[MutAnyOrigin]()
         )
         remove_async_cleanup_hook(b, handle)
         return JsBoolean.create(b, env, True).value
