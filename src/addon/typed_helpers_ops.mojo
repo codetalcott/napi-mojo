@@ -57,10 +57,7 @@ def create_typed_payload_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var ab = JsArrayBuffer(args[1])
         var counter_ptr = ab.data_ptr(b, env).bitcast[Int64]()
         return JsExternal.create_typed(
-            b,
-            env,
-            TypedPayload(v, counter_ptr),
-            b[].typed_payload_finalize_ptr,
+            b, env, TypedPayload(v, counter_ptr)
         ).value
     except:
         throw_js_error(
@@ -86,12 +83,7 @@ def set_typed_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         var v = JsNumber.from_napi_value(b, env, arg0)
-        set_instance_data(
-            b,
-            env,
-            InstancePayload(Int64(Int(v))),
-            b[].typed_instance_data_finalize_ptr,
-        )
+        set_instance_data(b, env, InstancePayload(Int64(Int(v))))
         return NapiValue()
     except:
         throw_js_error(env, "setTypedInstanceData failed")

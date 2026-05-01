@@ -60,10 +60,27 @@ struct DogData(Movable):
         self.breed_len = take.breed_len
 
 
-## animal_finalize / dog_finalize bodies live in src/lib.mojo
-## (@export'd as "napi_mojo_animal_finalize_impl" /
-## "napi_mojo_dog_finalize_impl"); the C trampoline addresses are
-## stored in b[].animal_finalize_ptr / b[].dog_finalize_ptr.
+def animal_finalize(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
+    var ptr = data.bitcast[AnimalData]()
+    ptr[].name_ptr.bitcast[Byte]().free()
+    ptr.destroy_pointee()
+    ptr.free()
+
+
+def dog_finalize(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
+    var ptr = data.bitcast[DogData]()
+    ptr[].name_ptr.bitcast[Byte]().free()
+    ptr[].breed_ptr.bitcast[Byte]().free()
+    ptr.destroy_pointee()
+    ptr.free()
 
 
 def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -86,6 +103,10 @@ def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         data_ptr.init_pointee_move(
             AnimalData(name_buf.bitcast[NoneType](), name_len)
         )
+        var fin_ref = animal_finalize
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
         try:
             check_status(
                 raw_wrap(
@@ -93,7 +114,7 @@ def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                     env,
                     this_val,
                     data_ptr.bitcast[NoneType](),
-                    b[].animal_finalize_ptr,
+                    fin_ptr,
                     OpaquePointer[MutAnyOrigin](),
                     OpaquePointer[MutAnyOrigin](),
                 )
@@ -183,6 +204,10 @@ def dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                     breed_len,
                 )
             )
+            var fin_ref = dog_finalize
+            var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+                OpaquePointer[MutAnyOrigin]
+            ]()[]
             try:
                 check_status(
                     raw_wrap(
@@ -190,7 +215,7 @@ def dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                         env,
                         this_val,
                         data_ptr.bitcast[NoneType](),
-                        b[].dog_finalize_ptr,
+                        fin_ptr,
                         OpaquePointer[MutAnyOrigin](),
                         OpaquePointer[MutAnyOrigin](),
                     )

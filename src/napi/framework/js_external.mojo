@@ -129,20 +129,19 @@ struct JsExternal:
 
     @staticmethod
     def create_typed[T: Movable & ImplicitlyDestructible](
-        b: Bindings,
-        env: NapiEnv,
-        var value: T,
-        fin_ptr: OpaquePointer[MutAnyOrigin],
+        b: Bindings, env: NapiEnv, var value: T
     ) raises -> JsExternal:
         """Heap-allocate `value`, wrap in an External with a GC finalizer.
 
-        `fin_ptr` is a C-callable finalizer with the signature
-        `void(*)(napi_env, void*, void*)` that destroys the heap pointee
-        and frees the slot. See `napi/framework/instance_data.mojo` for why
-        the caller supplies this rather than the helper deriving it from T.
+        The finalizer destroys the pointee and frees the heap slot. Consumers
+        avoid writing per-type alloc/init/finalize plumbing.
         """
         var data_ptr = alloc[T](1)
         data_ptr.init_pointee_move(value^)
+        var fin_ref = _typed_external_finalize[T]
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
         return JsExternal.create(
             b, env, data_ptr.bitcast[NoneType](), fin_ptr
         )
@@ -166,7 +165,16 @@ struct JsExternal:
         return data.bitcast[T]()
 
 
-## See create_typed's docstring — caller supplies the finalizer pointer.
-## (The old `_typed_external_finalize[T]` helper was removed because the
-## Mojo address-of pattern doesn't yield a callable C-ABI fn pointer in
-## 1.0.0b1.)
+## Generic finalizer for JsExternal.create_typed
+##
+## Monomorphized per T; its address is taken via the standard fn-ptr bitcast.
+## Not declared `abi("C")` — matches the convention used by every other
+## finalizer in src/addon/ (external_finalize, progress_finalize_cb, etc.).
+def _typed_external_finalize[T: Movable & ImplicitlyDestructible](
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
+    var ptr = data.bitcast[T]()
+    ptr.destroy_pointee()
+    ptr.free()
