@@ -3,7 +3,7 @@
 
 from std.memory import alloc
 from napi.types import NapiEnv, NapiValue
-from napi.bindings import Bindings
+from napi.bindings import Bindings, NapiBindings
 from napi.error import throw_js_error, check_status
 from napi.raw import (
     raw_set_instance_data,
@@ -139,18 +139,20 @@ def remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 ## async_cleanup_hook_noop — env-exit cleanup callback that immediately releases
 ##
 ## N-API contract: async cleanup hooks MUST call napi_remove_async_cleanup_hook
-## with the supplied handle, otherwise the env teardown blocks indefinitely
-## waiting for the cleanup to complete (Node will eventually force-kill the
-## process). Without this call, jest workers hang on exit and get killed with
-## SIGSEGV/SIGTRAP/SIGABRT depending on what state libuv is in when SIGKILL
-## arrives. Synchronous removal is fine — the hook does no real async work.
+## with the supplied handle, otherwise env teardown blocks indefinitely
+## (Node force-kills the process; jest workers manifest as SIGSEGV / SIGTRAP /
+## SIGABRT / "force exited" depending on libuv state at kill time).
+##
+## The release MUST go through the bindings-aware overload — the env-only path
+## opens OwnedDLHandle() and dlsym's the symbol, which can intermittently fail
+## during Linux's tail-end teardown. The `arg` parameter carries our pre-resolved
+## bindings pointer (set by the registering callback below) so we never dlsym
+## here.
 def async_cleanup_hook_noop(
     handle: OpaquePointer[MutAnyOrigin], arg: OpaquePointer[MutAnyOrigin]
 ):
-    try:
-        _ = raw_remove_async_cleanup_hook(handle)
-    except:
-        pass
+    var b = arg.bitcast[NapiBindings]()
+    _ = raw_remove_async_cleanup_hook(b, handle)
 
 
 def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -160,9 +162,7 @@ def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var hook_ptr = UnsafePointer(to=hook_ref).bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
-        _ = add_async_cleanup_hook(
-            b, env, hook_ptr, OpaquePointer[MutAnyOrigin]()
-        )
+        _ = add_async_cleanup_hook(b, env, hook_ptr, b.bitcast[NoneType]())
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "addAsyncCleanupHook failed")
@@ -177,7 +177,7 @@ def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             OpaquePointer[MutAnyOrigin]
         ]()[]
         var handle = add_async_cleanup_hook(
-            b, env, hook_ptr, OpaquePointer[MutAnyOrigin]()
+            b, env, hook_ptr, b.bitcast[NoneType]()
         )
         remove_async_cleanup_hook(b, handle)
         return JsBoolean.create(b, env, True).value
