@@ -46,12 +46,15 @@ def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[Float64](1)
         data_ptr.init_pointee_move(n)
+        # DIAGNOSTIC: pass NULL finalize_cb instead of our trampoline, to
+        # isolate whether the Linux SIGSEGV in instance_data.test.js is
+        # specifically about the finalizer firing at env teardown.
         check_status(
             raw_set_instance_data(
                 b,
                 env,
                 data_ptr.bitcast[NoneType](),
-                b[].instance_data_finalize_ptr,
+                OpaquePointer[MutAnyOrigin](),  # NULL finalize_cb
                 OpaquePointer[MutAnyOrigin](),
             )
         )
