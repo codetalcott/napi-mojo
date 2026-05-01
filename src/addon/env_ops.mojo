@@ -43,22 +43,44 @@ def instance_data_finalize(
 
 
 def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    """setInstanceData stores a single Float64 on the env. We register
+    NULL as the finalize_cb (N-API spec-optional) and let the OS reclaim
+    the 8-byte allocation at process exit.
+
+    Why we don't pass `instance_data_finalize` (defined just above):
+    Mojo 1.0.0b1's `var f = my_def_fn` resolves to AnyTrait[def(...)]
+    (a callable wrapper), not a thin function pointer. The
+    address-of-local-var trick
+
+        var fin_ref = instance_data_finalize
+        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer]()[]
+
+    extracts the wrapper's first 8 bytes (a sentinel/discriminant), not
+    the function's code address. When N-API later calls that "pointer"
+    at env teardown on Linux, it lands on unmapped memory and SIGSEGVs
+    — and unlike napi_wrap finalizers (which only fire if V8 GCs the
+    wrapped JS object before exit), instance_data finalizers ALWAYS
+    fire, so this path is reliably exercised. macOS happens to land on
+    benign garbage and survives.
+
+    Skipping the finalizer leaks 8 bytes per setInstanceData call but
+    only at process exit, so the OS reclaims it. The kept-alive
+    `instance_data_finalize` def above is unused right now; once Mojo
+    gains a way to take the address of a `def` for use as a C callback,
+    this should be revisited and the leak removed.
+    """
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[Float64](1)
         data_ptr.init_pointee_move(n)
-        var fin_ref = instance_data_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
         check_status(
             raw_set_instance_data(
                 b,
                 env,
                 data_ptr.bitcast[NoneType](),
-                fin_ptr,
+                OpaquePointer[MutAnyOrigin](),  # finalize_cb = NULL
                 OpaquePointer[MutAnyOrigin](),
             )
         )
