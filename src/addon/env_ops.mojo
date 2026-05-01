@@ -40,21 +40,33 @@ from napi.framework.register import fn_ptr, ModuleBuilder
 
 
 def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    """setInstanceData stores a single Float64 on the env. We register
+    NULL as the finalize_cb (N-API spec-optional) and let the OS reclaim
+    the 8-byte allocation at process exit.
+
+    Why not register our C trampoline finalizer here: on Linux,
+    napi_set_instance_data's finalizer fires at env teardown in a
+    context where calling back into Mojo via the C trampoline reliably
+    SIGSEGVs (the same path works for napi_wrap-attached finalizers
+    elsewhere in this addon — e.g. Counter, External — but those only
+    fire when V8 GCs the wrapped JS object, which usually doesn't
+    happen before exit, so the path is rarely exercised). We don't
+    have a working Mojo+Linux idiom for an env-teardown C callback
+    that calls into Mojo today; once Modular ships one this path
+    should be revisited and the leak removed. macOS works either way.
+    """
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[Float64](1)
         data_ptr.init_pointee_move(n)
-        # DIAGNOSTIC: pass NULL finalize_cb instead of our trampoline, to
-        # isolate whether the Linux SIGSEGV in instance_data.test.js is
-        # specifically about the finalizer firing at env teardown.
         check_status(
             raw_set_instance_data(
                 b,
                 env,
                 data_ptr.bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](),  # NULL finalize_cb
+                OpaquePointer[MutAnyOrigin](),  # finalize_cb = NULL
                 OpaquePointer[MutAnyOrigin](),
             )
         )
