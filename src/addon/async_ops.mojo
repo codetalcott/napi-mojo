@@ -270,33 +270,9 @@ def progress_call_js_cb(
         pass
 
 
-def progress_finalize_cb(
-    env: NapiEnv,
-    finalize_data: OpaquePointer[MutAnyOrigin],
-    finalize_hint: OpaquePointer[MutAnyOrigin],
-):
-    var ptr = finalize_data.bitcast[AsyncProgressData]()
-    if Int(env) != 0:
-        try:
-            if ptr[].status == NAPI_OK:
-                var result_val = JsNumber.create(env, Float64(ptr[].count))
-                _ = raw_resolve_deferred(env, ptr[].deferred, result_val.value)
-            else:
-                var msg = JsString.create_literal(
-                    env, "async progress work failed"
-                )
-                var null_code = NapiValue()
-                var error_val = NapiValue()
-                var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
-                    to=error_val
-                ).bitcast[NoneType]()
-                _ = raw_create_error(env, null_code, msg.value, error_ptr)
-                _ = raw_reject_deferred(env, ptr[].deferred, error_val)
-            _ = raw_delete_async_work(env, ptr[].work)
-        except:
-            pass
-    ptr.destroy_pointee()
-    ptr.free()
+## progress_finalize body lives in src/lib.mojo as
+## @export("napi_mojo_progress_finalize_impl"); the C trampoline
+## address is in b[].progress_finalize_ptr.
 
 
 def async_progress_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
@@ -339,10 +315,7 @@ def async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var call_js_ptr = UnsafePointer(to=call_js_ref).bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
-        var finalize_ref = progress_finalize_cb
-        var finalize_ptr = UnsafePointer(to=finalize_ref).bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
+        var finalize_ptr = b[].progress_finalize_ptr
         var data_ptr = alloc[AsyncProgressData](1)
         data_ptr.init_pointee_move(
             AsyncProgressData(

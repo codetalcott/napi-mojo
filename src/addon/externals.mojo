@@ -28,14 +28,10 @@ struct ExternalData(Movable):
         self.y = take.y
 
 
-def external_finalize(
-    env: NapiEnv,
-    data: OpaquePointer[MutAnyOrigin],
-    hint: OpaquePointer[MutAnyOrigin],
-):
-    var ptr = data.bitcast[ExternalData]()
-    ptr.destroy_pointee()
-    ptr.free()
+## external_finalize / external_ab_finalize / noop_finalize /
+## external_string_finalize bodies live in src/lib.mojo as
+## @export("napi_mojo_*_finalize_impl", ABI="C"); the C trampoline
+## addresses are stored in b[].*_finalize_ptr.
 
 
 def create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -46,12 +42,8 @@ def create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var y = JsNumber.from_napi_value(b, env, args[1])
         var data_ptr = alloc[ExternalData](1)
         data_ptr.init_pointee_move(ExternalData(x, y))
-        var fin_ref = external_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
         return JsExternal.create(
-            b, env, data_ptr.bitcast[NoneType](), fin_ptr
+            b, env, data_ptr.bitcast[NoneType](), b[].external_finalize_ptr
         ).value
     except:
         throw_js_error(env, "createExternal requires two number arguments")
@@ -92,15 +84,6 @@ def is_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 
-def external_ab_finalize(
-    env: NapiEnv,
-    data: OpaquePointer[MutAnyOrigin],
-    hint: OpaquePointer[MutAnyOrigin],
-):
-    var ptr = data.bitcast[Byte]()
-    ptr.free()
-
-
 def create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -110,10 +93,6 @@ def create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var data_ptr = alloc[Byte](Int(byte_len))
         for i in range(Int(byte_len)):
             data_ptr[i] = Byte(i)
-        var fin_ref = external_ab_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
         var result = NapiValue()
         try:
             check_status(
@@ -122,7 +101,7 @@ def create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                     env,
                     data_ptr.bitcast[NoneType](),
                     byte_len,
-                    fin_ptr,
+                    b[].external_ab_finalize_ptr,
                     OpaquePointer[MutAnyOrigin](),
                     UnsafePointer(to=result).bitcast[NoneType](),
                 )
@@ -136,32 +115,19 @@ def create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue()
 
 
-def noop_finalize(
-    env: NapiEnv,
-    data: OpaquePointer[MutAnyOrigin],
-    hint: OpaquePointer[MutAnyOrigin],
-):
-    var ptr = data.bitcast[Byte]()
-    ptr.free()
-
-
 def attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         var dummy = alloc[Byte](1)
         dummy[0] = Byte(0)
-        var fin_ref = noop_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
         check_status(
             raw_add_finalizer(
                 b,
                 env,
                 arg0,
                 dummy.bitcast[NoneType](),
-                fin_ptr,
+                b[].noop_finalize_ptr,
                 OpaquePointer[MutAnyOrigin](),
                 OpaquePointer[MutAnyOrigin](),
             )
@@ -170,19 +136,6 @@ def attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         throw_js_error(env, "attachFinalizer failed")
         return NapiValue()
-
-
-## external_string_finalize — GC callback for createExternalString heap buffers
-##
-## Called by Node.js when the externally-backed string is collected or when the
-## engine was forced to copy the data. Frees the heap-allocated Latin-1 byte buffer.
-def external_string_finalize(
-    env: NapiEnv,
-    data: OpaquePointer[MutAnyOrigin],
-    hint: OpaquePointer[MutAnyOrigin],
-):
-    var ptr = data.bitcast[UInt8]()
-    ptr.free()
 
 
 ## createExternalString — zero-copy JS string from a Mojo-owned Latin-1 buffer (N-API v10)
@@ -201,13 +154,14 @@ def create_external_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var latin1 = JsString.read_latin1(b, env, arg0)
         var buf = latin1.ptr
         var length = latin1.length
-        var fin_ref = external_string_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
         var data_ptr: OpaquePointer[ImmutAnyOrigin] = buf.bitcast[NoneType]()
         return JsString.create_external_latin1(
-            b, env, data_ptr, length, fin_ptr, OpaquePointer[MutAnyOrigin]()
+            b,
+            env,
+            data_ptr,
+            length,
+            b[].external_string_finalize_ptr,
+            OpaquePointer[MutAnyOrigin](),
         ).value
     except:
         throw_js_error(env, "createExternalString requires a string argument")

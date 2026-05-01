@@ -170,6 +170,25 @@ struct NapiBindings(Movable):
     var get_value_string_latin1: OpaquePointer[MutAnyOrigin]  # 142
     # Non-function-pointer slot: ClassRegistry pointer (set after module init)
     var registry: OpaquePointer[MutAnyOrigin]
+    # ----- C trampoline pointers (NapiMojoCallbackTable) -----
+    # Populated by napi_mojo_register_module from the cb_table that
+    # src/napi_callbacks.c hands us. Each is a thin C-ABI fn pointer
+    # callable directly from N-API. We can't extract these from Mojo
+    # `def`s (Mojo 1.0.0b1 doesn't expose function-address syntax for
+    # C callbacks); the C file owns the addresses, we just relay them.
+    var instance_data_finalize_ptr: OpaquePointer[MutAnyOrigin]
+    var counter_finalize_ptr: OpaquePointer[MutAnyOrigin]
+    var animal_finalize_ptr: OpaquePointer[MutAnyOrigin]
+    var dog_finalize_ptr: OpaquePointer[MutAnyOrigin]
+    var external_finalize_ptr: OpaquePointer[MutAnyOrigin]
+    var external_ab_finalize_ptr: OpaquePointer[MutAnyOrigin]
+    var noop_finalize_ptr: OpaquePointer[MutAnyOrigin]
+    var external_string_finalize_ptr: OpaquePointer[MutAnyOrigin]
+    var progress_finalize_ptr: OpaquePointer[MutAnyOrigin]
+    var typed_payload_finalize_ptr: OpaquePointer[MutAnyOrigin]
+    var typed_instance_data_finalize_ptr: OpaquePointer[MutAnyOrigin]
+    var cleanup_hook_ptr: OpaquePointer[MutAnyOrigin]
+    var async_cleanup_hook_ptr: OpaquePointer[MutAnyOrigin]
 
     def __init__(out self):
         self.create_string_utf8 = OpaquePointer[MutAnyOrigin].unsafe_dangling()
@@ -315,6 +334,22 @@ struct NapiBindings(Movable):
         self.create_buffer_from_arraybuffer = OpaquePointer[MutAnyOrigin].unsafe_dangling()
         self.get_value_string_latin1 = OpaquePointer[MutAnyOrigin].unsafe_dangling()
         self.registry = OpaquePointer[MutAnyOrigin].unsafe_dangling()
+        # C trampoline pointers — populated by napi_mojo_register_module
+        # from cb_table; sentinels here so the struct is well-formed before
+        # the entry-point copy.
+        self.instance_data_finalize_ptr = OpaquePointer[MutAnyOrigin].unsafe_dangling()
+        self.counter_finalize_ptr = OpaquePointer[MutAnyOrigin].unsafe_dangling()
+        self.animal_finalize_ptr = OpaquePointer[MutAnyOrigin].unsafe_dangling()
+        self.dog_finalize_ptr = OpaquePointer[MutAnyOrigin].unsafe_dangling()
+        self.external_finalize_ptr = OpaquePointer[MutAnyOrigin].unsafe_dangling()
+        self.external_ab_finalize_ptr = OpaquePointer[MutAnyOrigin].unsafe_dangling()
+        self.noop_finalize_ptr = OpaquePointer[MutAnyOrigin].unsafe_dangling()
+        self.external_string_finalize_ptr = OpaquePointer[MutAnyOrigin].unsafe_dangling()
+        self.progress_finalize_ptr = OpaquePointer[MutAnyOrigin].unsafe_dangling()
+        self.typed_payload_finalize_ptr = OpaquePointer[MutAnyOrigin].unsafe_dangling()
+        self.typed_instance_data_finalize_ptr = OpaquePointer[MutAnyOrigin].unsafe_dangling()
+        self.cleanup_hook_ptr = OpaquePointer[MutAnyOrigin].unsafe_dangling()
+        self.async_cleanup_hook_ptr = OpaquePointer[MutAnyOrigin].unsafe_dangling()
 
     def __moveinit__(out self, deinit take: Self):
         self.create_string_utf8 = take.create_string_utf8
@@ -462,6 +497,43 @@ struct NapiBindings(Movable):
         )
         self.get_value_string_latin1 = take.get_value_string_latin1
         self.registry = take.registry
+        self.instance_data_finalize_ptr = take.instance_data_finalize_ptr
+        self.counter_finalize_ptr = take.counter_finalize_ptr
+        self.animal_finalize_ptr = take.animal_finalize_ptr
+        self.dog_finalize_ptr = take.dog_finalize_ptr
+        self.external_finalize_ptr = take.external_finalize_ptr
+        self.external_ab_finalize_ptr = take.external_ab_finalize_ptr
+        self.noop_finalize_ptr = take.noop_finalize_ptr
+        self.external_string_finalize_ptr = take.external_string_finalize_ptr
+        self.progress_finalize_ptr = take.progress_finalize_ptr
+        self.typed_payload_finalize_ptr = take.typed_payload_finalize_ptr
+        self.typed_instance_data_finalize_ptr = (
+            take.typed_instance_data_finalize_ptr
+        )
+        self.cleanup_hook_ptr = take.cleanup_hook_ptr
+        self.async_cleanup_hook_ptr = take.async_cleanup_hook_ptr
+
+
+# C cb_table struct mirroring src/napi_callbacks.c's NapiMojoCallbackTable.
+# Order MUST match the C struct exactly — Mojo reads fields by offset.
+# All fields are thin C-ABI fn pointers stored as opaque pointers because
+# their concrete types vary (finalize, cleanup_hook, async_cleanup_hook
+# all have different signatures); each callsite bitcasts back to the
+# right type before calling.
+struct NapiMojoCallbackTable:
+    var instance_data_finalize: OpaquePointer[MutAnyOrigin]
+    var counter_finalize: OpaquePointer[MutAnyOrigin]
+    var animal_finalize: OpaquePointer[MutAnyOrigin]
+    var dog_finalize: OpaquePointer[MutAnyOrigin]
+    var external_finalize: OpaquePointer[MutAnyOrigin]
+    var external_ab_finalize: OpaquePointer[MutAnyOrigin]
+    var noop_finalize: OpaquePointer[MutAnyOrigin]
+    var external_string_finalize: OpaquePointer[MutAnyOrigin]
+    var progress_finalize: OpaquePointer[MutAnyOrigin]
+    var typed_payload_finalize: OpaquePointer[MutAnyOrigin]
+    var typed_instance_data_finalize: OpaquePointer[MutAnyOrigin]
+    var cleanup_hook: OpaquePointer[MutAnyOrigin]
+    var async_cleanup_hook: OpaquePointer[MutAnyOrigin]
 
 
 comptime Bindings = UnsafePointer[NapiBindings, MutAnyOrigin]
