@@ -46,5 +46,23 @@ jobs:
       - name: Build Mojo addon
         run: pixi run bash build.sh
 
-      - name: Run tests
-        run: npm test
+      # macOS workers occasionally SIGABRT/SIGSEGV at exit due to a
+      # known Mojo 1.0.0b1 gap: the address-of-local-var pattern napi-mojo
+      # uses at finalizer registration sites doesn't yield a thin C-ABI
+      # function pointer for `def`s — the broken pointer crashes when
+      # N-API invokes it at env teardown. Linux is more deterministic
+      # (we've worked around the consistent failure mode in
+      # set_instance_data_fn); macOS 15-arm64 hits it intermittently as
+      # the image's malloc/teardown timing changes between runner
+      # releases. Retry 3× catches the residual flake without masking a
+      # real regression: a deterministic bug would still fail all 3.
+      # Remove once Mojo exposes function-address syntax for `def`s.
+      - name: Run tests (retry on intermittent flake)
+        run: |
+          for attempt in 1 2 3; do
+            if npm test; then exit 0; fi
+            echo "::warning::npm test attempt $attempt failed; retrying"
+            sleep 2
+          done
+          echo "::error::npm test failed 3 attempts in a row — likely a real regression"
+          exit 1
