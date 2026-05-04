@@ -17,7 +17,7 @@ addon.greet("world"); // "Hello, world!"
 
 **Alpha** — napi-mojo is under active development and not yet proven in
 production. The API covers the full N-API v10 surface (140 exported functions, 3
-classes, 605 tests). Expect breaking changes as the project matures.
+classes, 624 tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
   complete, ergonomic framework for building Node.js native addons in Mojo.
@@ -32,8 +32,15 @@ classes, 605 tests). Expect breaking changes as the project matures.
   with `mojo_fn` auto-trampolines, nullable returns, and struct-to-object
   mapping — all validated by the test suite.
 - **What's missing:** Production hardening, cross-platform prebuild
-  distribution, performance benchmarking against napi-rs, and documentation
-  beyond this README and the generated `.d.ts`.
+  distribution (currently darwin-arm64 + linux-x64 only), performance
+  benchmarking against napi-rs, and documentation beyond this README and the
+  generated `.d.ts`.
+- **Known issue (macOS):** A Mojo 1.0.0b1 gap — the language doesn't yet
+  expose a thin C-ABI function-pointer syntax for `def`s — causes
+  intermittent SIGABRT/SIGSEGV at Node env teardown on macOS-arm64 when
+  finalizers are invoked. CI works around it with a 3× retry; users
+  exercising instance-data finalizers heavily may occasionally see the
+  same exit-time crash. Will resolve when Mojo lands the missing syntax.
 
 ## Features
 
@@ -77,22 +84,29 @@ classes, 605 tests). Expect breaking changes as the project matures.
 
 ## Installation
 
-> **Note:** Prebuilt binaries are not yet available. Currently you must build
-> from source.
+```bash
+npm install napi-mojo
+```
+
+Prebuilt binaries ship for **darwin-arm64** and **linux-x64** (Node.js
+22.12+ / N-API v10). On other platforms install falls back to building from
+source — see [Building from source](#building-from-source) below.
+
+See [`examples/`](examples/) for runnable scripts.
+
+### Building from source
 
 ```bash
 git clone https://github.com/codetalcott/napi-mojo.git
 cd napi-mojo
 npm install
 npm run build    # compiles Mojo → build/index.node + generates TypeScript defs
-npm test         # 605 tests
+npm test         # 624 tests, 80 suites
 ```
 
 **Prerequisites:** [Mojo nightly](https://docs.modular.com/magic/) via
 [pixi](https://pixi.sh) (exact version pinned in [`pixi.toml`](pixi.toml)),
 Node.js 22.12+ (N-API v10)
-
-See [`examples/`](examples/) for runnable scripts.
 
 ## Usage Examples
 
@@ -292,7 +306,7 @@ build, works in any TypeScript-aware IDE.
 
 ```bash
 npm run build        # compile + generate TypeScript defs
-npm test             # run Jest test suite (605 tests)
+npm test             # run Jest test suite (624 tests)
 npm run generate:addon  # regenerate src/generated/ from src/exports.toml
 npx jest tests/basic.test.js   # run a single test file
 npm run generate:docs  # generate HTML API docs → docs/api/ (requires: npm i -D typedoc)

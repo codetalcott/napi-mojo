@@ -27,3 +27,9 @@ npm/
 .git/
 node_modules/
 package-lock.json
+
+# Generated example build artifacts
+examples/codegen/build
+examples/codegen/build/**
+examples/codegen/generated
+examples/codegen/generated/**

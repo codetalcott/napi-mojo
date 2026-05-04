@@ -18,3 +18,5 @@ grail.yaml
 # Generated example build artifacts
 examples/codegen/generated/
 examples/codegen/build/
+# Personal pinned-nightly note
+.last-good-nightly
