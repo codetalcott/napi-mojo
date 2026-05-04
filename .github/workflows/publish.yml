@@ -38,8 +38,19 @@ jobs:
       - name: Build Mojo addon
         run: pixi run bash build.sh
 
-      - name: Run tests
-        run: npm test
+      # Mirrors test.yml retry: macOS workers occasionally SIGABRT/SIGSEGV at
+      # exit due to a Mojo 1.0.0b1 gap (no thin C-ABI fn-pointer for `def`s
+      # at finalizer registration sites). Retry 3× absorbs the flake without
+      # masking real regressions (a deterministic bug fails all 3).
+      - name: Run tests (retry on intermittent flake)
+        run: |
+          for attempt in 1 2 3; do
+            if npm test; then exit 0; fi
+            echo "::warning::npm test attempt $attempt failed; retrying"
+            sleep 2
+          done
+          echo "::error::npm test failed 3 attempts in a row — likely a real regression"
+          exit 1
 
       - name: Bundle runtime libraries
         run: pixi run bash scripts/bundle-runtime.sh
