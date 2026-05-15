@@ -31,7 +31,7 @@ def hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         return JsString.create_literal(b, env, "Hello from Mojo!").value
     except:
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def create_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -39,7 +39,7 @@ def create_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         return JsObject.create(b, env).value
     except:
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def make_greeting_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -50,7 +50,7 @@ def make_greeting_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         obj.set_property(b, env, "message", msg.value)
         return obj.value
     except:
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -62,12 +62,12 @@ def greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error_dynamic(
                 b, env, "greet: expected string, got " + js_type_name(t)
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var name = JsString.from_napi_value(b, env, arg0)
         return JsString.create(b, env, "Hello, " + name + "!").value
     except:
         throw_js_error(env, "greet requires one string argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -79,7 +79,7 @@ def add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(b, env, a + b2).value
     except:
         throw_js_error(env, "add requires two number arguments")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -90,7 +90,7 @@ def is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsBoolean.create(b, env, n > 0).value
     except:
         throw_js_error(env, "isPositive requires one number argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_null_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -98,7 +98,7 @@ def get_null_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         return JsNull.create(b, env).value
     except:
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_undefined_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -106,7 +106,7 @@ def get_undefined_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         return JsUndefined.create(b, env).value
     except:
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def add_ints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -117,13 +117,13 @@ def add_ints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var tb = js_typeof(b, env, args[1])
         if ta != NAPI_TYPE_NUMBER or tb != NAPI_TYPE_NUMBER:
             throw_js_error(b, env, "addInts requires two number arguments")
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var a = JsInt32.from_napi_value(b, env, args[0])
         var b2 = JsInt32.from_napi_value(b, env, args[1])
         return JsInt32.create(b, env, a + b2).value
     except:
         throw_js_error(env, "addInts requires two number arguments")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def bitwise_or_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -134,13 +134,13 @@ def bitwise_or_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var tb = js_typeof(b, env, args[1])
         if ta != NAPI_TYPE_NUMBER or tb != NAPI_TYPE_NUMBER:
             throw_js_error(b, env, "bitwiseOr requires two number arguments")
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var a = JsUInt32.from_napi_value(b, env, args[0])
         var b2 = JsUInt32.from_napi_value(b, env, args[1])
         return JsUInt32.create(b, env, a | b2).value
     except:
         throw_js_error(env, "bitwiseOr requires two number arguments")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def throw_type_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -149,7 +149,7 @@ def throw_type_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_type_error(b, env, "wrong type")
     except:
         throw_js_type_error(env, "wrong type")
-    return NapiValue()
+    return NapiValue(unsafe_from_address=0)
 
 
 def throw_range_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -158,7 +158,7 @@ def throw_range_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_range_error(b, env, "out of range")
     except:
         throw_js_range_error(env, "out of range")
-    return NapiValue()
+    return NapiValue(unsafe_from_address=0)
 
 
 def add_ints_strict_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -176,13 +176,13 @@ def add_ints_strict_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 + " and "
                 + js_type_name(tb),
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var a = JsInt32.from_napi_value(b, env, args[0])
         var b2 = JsInt32.from_napi_value(b, env, args[1])
         return JsInt32.create(b, env, a + b2).value
     except:
         throw_js_type_error(env, "addIntsStrict requires two number arguments")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def register_primitives(mut m: ModuleBuilder) raises:

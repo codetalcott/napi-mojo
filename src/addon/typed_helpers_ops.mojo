@@ -63,7 +63,7 @@ def create_typed_payload_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(
             env, "createTypedPayload requires (number, ArrayBuffer(8))"
         )
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def read_typed_payload_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -75,7 +75,7 @@ def read_typed_payload_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         )
         return JsNumber.create(b, env, ptr[].value).value
     except:
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def set_typed_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -84,10 +84,10 @@ def set_typed_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         var v = JsNumber.from_napi_value(b, env, arg0)
         set_instance_data(b, env, InstancePayload(Int64(Int(v))))
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
     except:
         throw_js_error(env, "setTypedInstanceData failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_typed_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -97,7 +97,7 @@ def get_typed_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(b, env, Float64(ptr[].tag)).value
     except:
         throw_js_error(env, "getTypedInstanceData: no instance data set")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def register_typed_helpers(mut m: ModuleBuilder) raises:

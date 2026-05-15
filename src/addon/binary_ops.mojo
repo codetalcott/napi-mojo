@@ -44,12 +44,12 @@ def create_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error(
                 b, env, "createArrayBuffer requires a number argument"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var size = JsNumber.from_napi_value(b, env, arg0)
         return JsArrayBuffer.create_and_fill(b, env, UInt(Int(size))).value
     except:
         throw_js_error(env, "createArrayBuffer requires a number argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def arraybuffer_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -60,7 +60,7 @@ def arraybuffer_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error(
                 b, env, "arrayBufferLength requires an ArrayBuffer argument"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var ab = JsArrayBuffer(arg0)
         var length = ab.byte_length(b, env)
         return JsNumber.create(b, env, Float64(length)).value
@@ -68,7 +68,7 @@ def arraybuffer_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(
             env, "arrayBufferLength requires an ArrayBuffer argument"
         )
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -77,7 +77,7 @@ def sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         if not JsBuffer.is_buffer(b, env, arg0):
             throw_js_error(b, env, "sumBuffer requires a Buffer argument")
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var buf = JsBuffer(arg0)
         var ptr = buf.data_ptr(b, env)
         var len = buf.length(b, env)
@@ -87,7 +87,7 @@ def sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(b, env, total).value
     except:
         throw_js_error(env, "sumBuffer requires a Buffer argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def create_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -97,12 +97,12 @@ def create_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var ta = js_typeof(b, env, arg0)
         if ta != NAPI_TYPE_NUMBER:
             throw_js_error(b, env, "createBuffer requires a number argument")
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var size = JsNumber.from_napi_value(b, env, arg0)
         return JsBuffer.create_and_fill(b, env, UInt(Int(size))).value
     except:
         throw_js_error(env, "createBuffer requires a number argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def create_buffer_copy_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -113,12 +113,12 @@ def create_buffer_copy_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_type_error(
                 b, env, "createBufferCopy requires a Buffer argument"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var src = JsBuffer(arg0)
         return JsBuffer.create_copy(b, env, src).value
     except:
         throw_js_error(env, "createBufferCopy failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -129,7 +129,7 @@ def double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error(
                 b, env, "doubleFloat64Array requires a TypedArray argument"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var ta = JsTypedArray(arg0)
         var len = ta.length(b, env)
         var byte_ptr = ta.data_ptr(b, env)
@@ -139,7 +139,7 @@ def double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return arg0
     except:
         throw_js_error(env, "doubleFloat64Array requires a TypedArray argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -151,7 +151,7 @@ def create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         if argc < 4:
             throw_js_error(b, env, "createTypedArrayView requires 4 arguments")
             argv.free()
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var type_str = JsString.from_napi_value(b, env, argv[0])
         var ab = argv[1]
         var offset = Int(JsNumber.from_napi_value(b, env, argv[2]))
@@ -198,11 +198,11 @@ def create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error_dynamic(
                 b, env, "createTypedArrayView: unknown type '" + type_str + "'"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         return ta.value
     except:
         throw_js_error(env, "createTypedArrayView failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_typed_array_type_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -213,13 +213,13 @@ def get_typed_array_type_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_type_error(
                 b, env, "getTypedArrayType: expected TypedArray"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var ta = JsTypedArray(arg0)
         var t = ta.array_type(b, env)
         return JsNumber.create_int(b, env, Int(t)).value
     except:
         throw_js_error(env, "getTypedArrayType failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_typed_array_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -230,13 +230,13 @@ def get_typed_array_length_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_type_error(
                 b, env, "getTypedArrayLength: expected TypedArray"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var ta = JsTypedArray(arg0)
         var len = ta.length(b, env)
         return JsNumber.create_int(b, env, Int(len)).value
     except:
         throw_js_error(env, "getTypedArrayLength failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -245,7 +245,7 @@ def create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var argc = CbArgs.argc(b, env, info)
         if argc < 3:
             throw_js_type_error(b, env, "createDataView requires 3 arguments")
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var argv_ptr = alloc[NapiValue](Int(argc))
         CbArgs.get_argv(b, env, info, argc, argv_ptr)
         var ab = argv_ptr[0]
@@ -258,7 +258,7 @@ def create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return dv.value
     except:
         throw_js_error(env, "createDataView failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_dataview_info_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -278,7 +278,7 @@ def get_dataview_info_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return obj.value
     except:
         throw_js_error(env, "getDataViewInfo failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -289,7 +289,7 @@ def is_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "isDataView failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 ## bufferFromArrayBuffer — zero-copy Buffer view into an ArrayBuffer slice (N-API v10)
@@ -315,7 +315,7 @@ def buffer_from_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 " byteLength)"
             ),
         )
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def register_binary(mut m: ModuleBuilder) raises:

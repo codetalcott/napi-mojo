@@ -32,7 +32,7 @@ def make_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return result
     except:
         throw_js_error(env, "makeCallback failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 ## makeCallback0(fn) — call fn() via napi_make_callback (no arguments)
@@ -48,7 +48,7 @@ def make_callback0_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return result
     except:
         throw_js_error(env, "makeCallback0 failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 ## makeCallback2(fn, a, b) — call fn(a, b) via napi_make_callback
@@ -69,7 +69,7 @@ def make_callback2_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return result
     except:
         throw_js_error(env, "makeCallback2 failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 ## makeCallbackScope(fn, arg) — open a CallbackScope, call fn(arg), close scope
@@ -89,7 +89,7 @@ def make_callback_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return result
     except:
         throw_js_error(env, "makeCallbackScope failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def register_async_context(mut m: ModuleBuilder) raises:

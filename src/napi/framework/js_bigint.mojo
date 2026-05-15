@@ -28,7 +28,7 @@ struct JsBigInt:
 
     @staticmethod
     def from_int64(env: NapiEnv, n: Int64) raises -> JsBigInt:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_bigint_int64(
                 env, n, UnsafePointer(to=result).bitcast[NoneType]()
@@ -38,7 +38,7 @@ struct JsBigInt:
 
     @staticmethod
     def from_int64(b: Bindings, env: NapiEnv, n: Int64) raises -> JsBigInt:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_bigint_int64(
                 b, env, n, UnsafePointer(to=result).bitcast[NoneType]()
@@ -48,7 +48,7 @@ struct JsBigInt:
 
     @staticmethod
     def from_uint64(env: NapiEnv, n: UInt64) raises -> JsBigInt:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_bigint_uint64(
                 env, n, UnsafePointer(to=result).bitcast[NoneType]()
@@ -58,7 +58,7 @@ struct JsBigInt:
 
     @staticmethod
     def from_uint64(b: Bindings, env: NapiEnv, n: UInt64) raises -> JsBigInt:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_bigint_uint64(
                 b, env, n, UnsafePointer(to=result).bitcast[NoneType]()
@@ -140,7 +140,7 @@ struct JsBigInt:
         words_ptr: OpaquePointer[MutAnyOrigin],
         word_count: UInt,
     ) raises -> JsBigInt:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_bigint_words(
                 env,
@@ -160,7 +160,7 @@ struct JsBigInt:
         words_ptr: OpaquePointer[MutAnyOrigin],
         word_count: UInt,
     ) raises -> JsBigInt:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_bigint_words(
                 b,
@@ -184,7 +184,7 @@ struct JsBigInt:
                 val,
                 UnsafePointer(to=sign).bitcast[NoneType](),
                 UnsafePointer(to=count).bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
             )
         )
         return count
@@ -200,7 +200,7 @@ struct JsBigInt:
                 val,
                 UnsafePointer(to=sign).bitcast[NoneType](),
                 UnsafePointer(to=count).bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
             )
         )
         return count

@@ -34,7 +34,7 @@ struct CallbackScope:
         resource_object: NapiValue,
         context: NapiAsyncContext,
     ) raises -> CallbackScope:
-        var result = NapiCallbackScope()
+        var result = NapiCallbackScope(unsafe_from_address=0)
         check_status(
             raw_open_callback_scope(
                 b,

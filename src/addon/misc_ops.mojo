@@ -35,7 +35,7 @@ def throw_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         js_throw(b, env, arg0)
     except:
         pass
-    return NapiValue()
+    return NapiValue(unsafe_from_address=0)
 
 
 def catch_and_return_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -46,7 +46,7 @@ def catch_and_return_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var caught = js_get_and_clear_last_exception(b, env)
         return caught
     except:
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_napi_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -56,7 +56,7 @@ def get_napi_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create_int(b, env, Int(ver)).value
     except:
         throw_js_error(env, "getNapiVersion failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_node_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -76,7 +76,7 @@ def get_node_version_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return obj.value
     except:
         throw_js_error(env, "getNodeVersion failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def is_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -86,7 +86,7 @@ def is_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsBoolean.create(b, env, js_is_error(b, env, arg0)).value
     except:
         throw_js_error(env, "isError requires one argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def adjust_external_memory_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -98,7 +98,7 @@ def adjust_external_memory_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(b, env, Float64(Int(result))).value
     except:
         throw_js_error(env, "adjustExternalMemory failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def run_script_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -108,7 +108,7 @@ def run_script_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return js_run_script(b, env, arg0)
     except:
         throw_js_error(env, "runScript failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def throw_syntax_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -117,7 +117,7 @@ def throw_syntax_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_syntax_error(b, env, "test syntax error")
     except:
         throw_js_error(env, "throwSyntaxError failed")
-    return NapiValue()
+    return NapiValue(unsafe_from_address=0)
 
 
 def is_detached_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -129,7 +129,7 @@ def is_detached_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         ).value
     except:
         throw_js_error(env, "isDetachedArrayBuffer failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def detach_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -141,7 +141,7 @@ def detach_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "detachArrayBuffer failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def type_tag_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -162,7 +162,7 @@ def type_tag_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "typeTagObject failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -192,7 +192,7 @@ def check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "checkObjectTypeTag failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_all_property_names_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -212,7 +212,7 @@ def get_all_property_names_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return result
     except:
         throw_js_error(env, "getAllPropertyNames failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_error_message_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -223,7 +223,7 @@ def get_error_message_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsString.create(b, env, msg).value
     except:
         throw_js_error(env, "getErrorMessage failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_error_stack_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -234,7 +234,7 @@ def get_error_stack_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsString.create(b, env, stack).value
     except:
         throw_js_error(env, "getErrorStack failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_opt_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -247,7 +247,7 @@ def get_opt_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return maybe.value()
     except:
         throw_js_error(env, "getOptValue failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def to_js_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -258,7 +258,7 @@ def to_js_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsString.create(b, env, s).value
     except:
         throw_js_error(env, "toJsString failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 ## createPropertyKey — create an engine-internalized property key string (N-API v10)
@@ -275,7 +275,7 @@ def create_property_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsString.create_property_key(b, env, s).value
     except:
         throw_js_error(env, "createPropertyKey requires a string argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def register_misc(mut m: ModuleBuilder) raises:

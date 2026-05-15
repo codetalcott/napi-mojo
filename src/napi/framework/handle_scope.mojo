@@ -29,7 +29,7 @@ struct HandleScope:
     ## open — create a new handle scope
     @staticmethod
     def open(env: NapiEnv) raises -> HandleScope:
-        var scope: NapiHandleScope = NapiHandleScope()
+        var scope: NapiHandleScope = NapiHandleScope(unsafe_from_address=0)
         var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=scope
         ).bitcast[NoneType]()
@@ -38,7 +38,7 @@ struct HandleScope:
 
     @staticmethod
     def open(b: Bindings, env: NapiEnv) raises -> HandleScope:
-        var scope: NapiHandleScope = NapiHandleScope()
+        var scope: NapiHandleScope = NapiHandleScope(unsafe_from_address=0)
         var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=scope
         ).bitcast[NoneType]()

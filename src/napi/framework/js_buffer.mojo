@@ -29,8 +29,8 @@ struct JsBuffer:
     ## where NapiBindings is unavailable. Use create(b, env, length) in hot paths.
     @staticmethod
     def create(env: NapiEnv, length: UInt) raises -> JsBuffer:
-        var data = OpaquePointer[MutAnyOrigin]()
-        var result = NapiValue()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_buffer(
                 env,
@@ -43,8 +43,8 @@ struct JsBuffer:
 
     @staticmethod
     def create(b: Bindings, env: NapiEnv, length: UInt) raises -> JsBuffer:
-        var data = OpaquePointer[MutAnyOrigin]()
-        var result = NapiValue()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_buffer(
                 b,
@@ -59,8 +59,8 @@ struct JsBuffer:
     ## create_and_fill — allocate and fill with incrementing byte values
     @staticmethod
     def create_and_fill(env: NapiEnv, length: UInt) raises -> JsBuffer:
-        var data = OpaquePointer[MutAnyOrigin]()
-        var result = NapiValue()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_buffer(
                 env,
@@ -78,8 +78,8 @@ struct JsBuffer:
     def create_and_fill(
         b: Bindings, env: NapiEnv, length: UInt
     ) raises -> JsBuffer:
-        var data = OpaquePointer[MutAnyOrigin]()
-        var result = NapiValue()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_buffer(
                 b,
@@ -102,13 +102,13 @@ struct JsBuffer:
     ) raises -> UnsafePointer[Byte, MutAnyOrigin]:
         if not JsBuffer.is_buffer(env, self.value):
             raise Error("expected a Buffer")
-        var data = OpaquePointer[MutAnyOrigin]()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_buffer_info(
                 env,
                 self.value,
                 UnsafePointer(to=data).bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
             )
         )
         return data.bitcast[Byte]()
@@ -118,14 +118,14 @@ struct JsBuffer:
     ) raises -> UnsafePointer[Byte, MutAnyOrigin]:
         if not JsBuffer.is_buffer(b, env, self.value):
             raise Error("expected a Buffer")
-        var data = OpaquePointer[MutAnyOrigin]()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_buffer_info(
                 b,
                 env,
                 self.value,
                 UnsafePointer(to=data).bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
             )
         )
         return data.bitcast[Byte]()
@@ -141,7 +141,7 @@ struct JsBuffer:
             raw_get_buffer_info(
                 env,
                 self.value,
-                OpaquePointer[MutAnyOrigin](),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
                 UnsafePointer(to=len).bitcast[NoneType](),
             )
         )
@@ -156,7 +156,7 @@ struct JsBuffer:
                 b,
                 env,
                 self.value,
-                OpaquePointer[MutAnyOrigin](),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
                 UnsafePointer(to=len).bitcast[NoneType](),
             )
         )
@@ -172,8 +172,8 @@ struct JsBuffer:
         var src_data: OpaquePointer[ImmutAnyOrigin] = src_ptr.bitcast[
             NoneType
         ]()
-        var copy_data = OpaquePointer[MutAnyOrigin]()
-        var result = NapiValue()
+        var copy_data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_buffer_copy(
                 b,
@@ -200,7 +200,7 @@ struct JsBuffer:
         byte_offset: UInt,
         byte_length: UInt,
     ) raises -> JsBuffer:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_buffer_from_arraybuffer(
                 b,

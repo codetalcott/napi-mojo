@@ -21,7 +21,7 @@ struct JsInt32:
 
     @staticmethod
     def create(b: Bindings, env: NapiEnv, n: Int32) raises -> JsInt32:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_int32(
                 b, env, n, UnsafePointer(to=result).bitcast[NoneType]()

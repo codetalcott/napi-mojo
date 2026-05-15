@@ -40,8 +40,8 @@ struct JsPromise:
     ## napi_value (to return to JS) and the deferred handle (to settle it).
     @staticmethod
     def create(env: NapiEnv) raises -> JsPromise:
-        var deferred = NapiDeferred()
-        var promise = NapiValue()
+        var deferred = NapiDeferred(unsafe_from_address=0)
+        var promise = NapiValue(unsafe_from_address=0)
         var deferred_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=deferred
         ).bitcast[NoneType]()
@@ -71,8 +71,8 @@ struct JsPromise:
 
     @staticmethod
     def create(b: Bindings, env: NapiEnv) raises -> JsPromise:
-        var deferred = NapiDeferred()
-        var promise = NapiValue()
+        var deferred = NapiDeferred(unsafe_from_address=0)
+        var promise = NapiValue(unsafe_from_address=0)
         var deferred_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=deferred
         ).bitcast[NoneType]()

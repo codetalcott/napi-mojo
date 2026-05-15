@@ -250,13 +250,13 @@ function emitTypeCheck(lines, jsName, rawType, argExpr, argDesc) {
   if (typeInfo.napi_type === '__IS_ARRAY__') {
     lines.push(`        if not js_is_array(_b, env, ${argExpr}):`);
     lines.push(`            throw_js_type_error_dynamic(_b, env, "${jsName}: expected array${argDesc ? ' for ' + argDesc : ''}")`);
-    lines.push(`            return NapiValue()`);
+    lines.push(`            return NapiValue(unsafe_from_address=0)`);
   } else {
     const tVar = `_t_${argExpr.replace(/[^a-z0-9]/gi, '_')}`;
     lines.push(`        var ${tVar} = js_typeof(_b, env, ${argExpr})`);
     lines.push(`        if ${tVar} != ${typeInfo.napi_type}:`);
     lines.push(`            throw_js_type_error_dynamic(_b, env, "${jsName}: expected ${typeInfo.type_name}${argDesc ? ' for ' + argDesc : ''}, got " + js_type_name(${tVar}))`);
-    lines.push(`            return NapiValue()`);
+    lines.push(`            return NapiValue(unsafe_from_address=0)`);
   }
 }
 
@@ -328,7 +328,7 @@ function generateCallback(name, decl) {
 
   lines.push(`    except:`);
   lines.push(`        throw_js_error(env, "${jsName} failed")`);
-  lines.push(`        return NapiValue()`);
+  lines.push(`        return NapiValue(unsafe_from_address=0)`);
 
   return lines.join('\n');
 }
@@ -384,8 +384,8 @@ function generateAsyncFunction(name, decl) {
   out.push('');
   const initParams = argMojoTypes.map((t, i) => `input${i}: ${t.mojoType}`).join(', ');
   out.push(`    def __init__(out self${initParams ? ', ' + initParams : ''}):`);
-  out.push(`        self.deferred = NapiDeferred()`);
-  out.push(`        self.work = NapiAsyncWork()`);
+  out.push(`        self.deferred = NapiDeferred(unsafe_from_address=0)`);
+  out.push(`        self.work = NapiAsyncWork(unsafe_from_address=0)`);
   for (let i = 0; i < args.length; i++) {
     out.push(`        self.input${i} = input${i}`);
   }
@@ -457,7 +457,7 @@ function generateAsyncFunction(name, decl) {
   out.push(`        return aw.value`);
   out.push(`    except:`);
   out.push(`        throw_js_error(env, "${jsName} failed")`);
-  out.push(`        return NapiValue()`);
+  out.push(`        return NapiValue(unsafe_from_address=0)`);
 
   return out.join('\n');
 }
@@ -520,7 +520,7 @@ function generateClassConstructor(className, decl) {
   lines.push(`        return this_val`);
   lines.push(`    except:`);
   lines.push(`        throw_js_error(env, "${jsName} constructor failed")`);
-  lines.push(`        return NapiValue()`);
+  lines.push(`        return NapiValue(unsafe_from_address=0)`);
 
   return lines.join('\n');
 }
@@ -560,7 +560,7 @@ function generateClassMethod(className, methodName, decl) {
 
   lines.push(`    except:`);
   lines.push(`        throw_js_error(env, "${jsName} failed")`);
-  lines.push(`        return NapiValue()`);
+  lines.push(`        return NapiValue(unsafe_from_address=0)`);
 
   return lines.join('\n');
 }
@@ -604,7 +604,7 @@ function generateClassStaticMethod(className, methodName, decl) {
 
   lines.push(`    except:`);
   lines.push(`        throw_js_error(env, "${jsName} failed")`);
-  lines.push(`        return NapiValue()`);
+  lines.push(`        return NapiValue(unsafe_from_address=0)`);
 
   return lines.join('\n');
 }
@@ -628,7 +628,7 @@ function generateClassSetter(className, propName, decl) {
 
   lines.push(`    except:`);
   lines.push(`        throw_js_error(env, "${propName} setter failed")`);
-  lines.push(`        return NapiValue()`);
+  lines.push(`        return NapiValue(unsafe_from_address=0)`);
 
   return lines.join('\n');
 }
@@ -651,7 +651,7 @@ function generateClassGetter(className, getterName, decl) {
 
   lines.push(`    except:`);
   lines.push(`        throw_js_error(env, "${getterName} getter failed")`);
-  lines.push(`        return NapiValue()`);
+  lines.push(`        return NapiValue(unsafe_from_address=0)`);
 
   return lines.join('\n');
 }

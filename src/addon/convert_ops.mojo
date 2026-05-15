@@ -37,7 +37,7 @@ def sum_js_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(b, env, total).value
     except:
         throw_js_type_error(env, "sumJsArray: expected array of numbers")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 ## doubleArray — accepts a JS number array, returns new array with each element doubled
@@ -52,7 +52,7 @@ def double_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return to_js_array_f64(b, env, doubled)
     except:
         throw_js_type_error(env, "doubleArray: expected array of numbers")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 ## joinStrings — accepts a JS string array and separator, returns joined string
@@ -72,7 +72,7 @@ def join_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsString.create(b, env, result).value
     except:
         throw_js_type_error(env, "joinStrings: expected (string[], string)")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 ## reverseStrings — accepts a JS string array, returns new array reversed
@@ -88,7 +88,7 @@ def reverse_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return to_js_array_str(b, env, reversed)
     except:
         throw_js_type_error(env, "reverseStrings: expected array of strings")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 ## genericDoubleArray — doubles each element using parametric to_js_array[JsF64]/from_js_array[JsF64]
@@ -104,7 +104,7 @@ def generic_double_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_type_error(
             env, "genericDoubleArray: expected array of numbers"
         )
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 ## genericReverseStrings — reverses a string array using parametric helpers
@@ -121,7 +121,7 @@ def generic_reverse_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_type_error(
             env, "genericReverseStrings: expected array of strings"
         )
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 ## objectFromArrays — builds a JS object from parallel key/value arrays
@@ -136,7 +136,7 @@ def object_from_arrays_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 env,
                 "objectFromArrays: keys and values must have equal length",
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var obj = JsObject.create(ba.b, env)
         for i in range(len(keys)):
             var key_js = JsString.create(ba.b, env, keys[i]).value
@@ -148,7 +148,7 @@ def object_from_arrays_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_type_error(
             env, "objectFromArrays: expected (string[], number[])"
         )
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 ## objectToArrays — extracts {keys, values} from a plain JS object
@@ -176,7 +176,7 @@ def object_to_arrays_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return result.value
     except:
         throw_js_type_error(env, "objectToArrays: expected a plain object")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def register_convert(mut m: ModuleBuilder) raises:

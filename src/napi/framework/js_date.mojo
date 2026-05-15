@@ -21,7 +21,7 @@ struct JsDate:
 
     @staticmethod
     def create(env: NapiEnv, timestamp_ms: Float64) raises -> JsDate:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_date(
                 env, timestamp_ms, UnsafePointer(to=result).bitcast[NoneType]()
@@ -52,7 +52,7 @@ struct JsDate:
     def create(
         b: Bindings, env: NapiEnv, timestamp_ms: Float64
     ) raises -> JsDate:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_date(
                 b,

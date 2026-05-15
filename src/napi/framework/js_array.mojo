@@ -44,7 +44,7 @@ struct JsArray:
     ## undefined until set).
     @staticmethod
     def create_with_length(env: NapiEnv, len: UInt) raises -> JsArray:
-        var result: NapiValue = NapiValue()
+        var result: NapiValue = NapiValue(unsafe_from_address=0)
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -63,7 +63,7 @@ struct JsArray:
     ##
     ## Calls napi_get_element and checks the status.
     def get(self, env: NapiEnv, index: UInt32) raises -> NapiValue:
-        var result: NapiValue = NapiValue()
+        var result: NapiValue = NapiValue(unsafe_from_address=0)
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -113,7 +113,7 @@ struct JsArray:
     def create_with_length(
         b: Bindings, env: NapiEnv, len: UInt
     ) raises -> JsArray:
-        var result: NapiValue = NapiValue()
+        var result: NapiValue = NapiValue(unsafe_from_address=0)
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -128,7 +128,7 @@ struct JsArray:
         check_status(status)
 
     def get(self, b: Bindings, env: NapiEnv, index: UInt32) raises -> NapiValue:
-        var result: NapiValue = NapiValue()
+        var result: NapiValue = NapiValue(unsafe_from_address=0)
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()

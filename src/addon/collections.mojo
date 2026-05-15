@@ -41,7 +41,7 @@ def sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error_dynamic(
                 b, env, "sumArray: expected array, got " + js_type_name(t)
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var arr = JsArray(arg0)
         var len = arr.length(b, env)
         var total: Float64 = 0.0
@@ -51,7 +51,7 @@ def sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(b, env, total).value
     except:
         throw_js_error(env, "sumArray requires one array argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -63,7 +63,7 @@ def get_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error_dynamic(
                 b, env, "getProperty: expected object, got " + js_type_name(t0)
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var t1 = js_typeof(b, env, args[1])
         if t1 != NAPI_TYPE_STRING:
             throw_js_error_dynamic(
@@ -71,12 +71,12 @@ def get_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 env,
                 "getProperty: key must be a string, got " + js_type_name(t1),
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var obj = JsObject(args[0])
         return obj.get(b, env, args[1])
     except:
         throw_js_error(env, "getProperty requires (object, string)")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def call_function_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -90,12 +90,12 @@ def call_function_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 env,
                 "callFunction: expected function, got " + js_type_name(t),
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var func = JsFunction(args[0])
         return func.call1(b, env, args[1])
     except:
         throw_js_error(env, "callFunction requires (function, arg)")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -107,13 +107,13 @@ def map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error_dynamic(
                 b, env, "mapArray: expected array, got " + js_type_name(t)
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var t1 = js_typeof(b, env, args[1])
         if t1 != NAPI_TYPE_FUNCTION:
             throw_js_error_dynamic(
                 b, env, "mapArray: expected function, got " + js_type_name(t1)
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var arr = JsArray(args[0])
         var func = JsFunction(args[1])
         var len = arr.length(b, env)
@@ -133,7 +133,7 @@ def map_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return result.value
     except:
         throw_js_error(env, "mapArray requires (array, function)")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_keys_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -145,12 +145,12 @@ def get_keys_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error_dynamic(
                 b, env, "getKeys: expected object, got " + js_type_name(t0)
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var obj = JsObject(arg0)
         return obj.keys(b, env)
     except:
         throw_js_error(env, "getKeys requires one object argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def has_own_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -162,13 +162,13 @@ def has_own_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error_dynamic(
                 b, env, "hasOwn: expected object, got " + js_type_name(t0)
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var obj = JsObject(args[0])
         var result = obj.has_own(b, env, args[1])
         return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "hasOwn requires (object, key)")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def delete_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -182,13 +182,13 @@ def delete_property_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 env,
                 "deleteProperty: expected object, got " + js_type_name(t0),
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var obj = JsObject(args[0])
         _ = obj.delete_prop(b, env, args[1])
         return obj.value
     except:
         throw_js_error(env, "deleteProperty requires (object, key)")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def array_has_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -199,14 +199,14 @@ def array_has_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error(
                 b, env, "arrayHasElement: first argument must be an array"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var arr = JsArray(args[0])
         var index = JsUInt32.from_napi_value(b, env, args[1])
         var result = arr.has(b, env, index)
         return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "arrayHasElement requires (array, index)")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def array_delete_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -217,14 +217,14 @@ def array_delete_element_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error(
                 b, env, "arrayDeleteElement: first argument must be an array"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var arr = JsArray(args[0])
         var index = JsUInt32.from_napi_value(b, env, args[1])
         _ = arr.delete_element(b, env, index)
         return arr.value
     except:
         throw_js_error(env, "arrayDeleteElement requires (array, index)")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_prototype_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -236,12 +236,12 @@ def get_prototype_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error_dynamic(
                 b, env, "getPrototype: expected object, got " + js_type_name(t0)
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var obj = JsObject(arg0)
         return obj.prototype(b, env)
     except:
         throw_js_error(env, "getPrototype requires one object argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def strict_equals_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -252,7 +252,7 @@ def strict_equals_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsBoolean.create(b, env, eq).value
     except:
         throw_js_error(env, "strictEquals requires two arguments")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def is_instance_of_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -267,13 +267,13 @@ def is_instance_of_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 "isInstanceOf: second arg must be a constructor, got "
                 + js_type_name(t1),
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var obj = JsObject(args[0])
         var result = obj.instance_of(b, env, args[1])
         return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "isInstanceOf requires (value, constructor)")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def freeze_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -285,13 +285,13 @@ def freeze_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error_dynamic(
                 b, env, "freezeObject: expected object, got " + js_type_name(t0)
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var obj = JsObject(arg0)
         obj.freeze(b, env)
         return obj.value
     except:
         throw_js_error(env, "freezeObject requires one object argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def seal_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -303,13 +303,13 @@ def seal_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error_dynamic(
                 b, env, "sealObject: expected object, got " + js_type_name(t0)
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var obj = JsObject(arg0)
         obj.seal(b, env)
         return obj.value
     except:
         throw_js_error(env, "sealObject requires one object argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def set_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -326,7 +326,7 @@ def set_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return obj
     except:
         throw_js_error(env, "setPropertyByKey failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def has_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -337,7 +337,7 @@ def has_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "hasPropertyByKey failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def register_collections(mut m: ModuleBuilder) raises:

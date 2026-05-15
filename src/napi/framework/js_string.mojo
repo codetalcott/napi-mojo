@@ -74,7 +74,7 @@ struct JsString:
     ## must remain alive for the duration of this call (it is borrowed, not copied).
     @staticmethod
     def create(env: NapiEnv, s: String) raises -> JsString:
-        var result: NapiValue = NapiValue()
+        var result: NapiValue = NapiValue(unsafe_from_address=0)
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
             NoneType
         ]()
@@ -89,7 +89,7 @@ struct JsString:
 
     @staticmethod
     def create(b: Bindings, env: NapiEnv, s: String) raises -> JsString:
-        var result: NapiValue = NapiValue()
+        var result: NapiValue = NapiValue(unsafe_from_address=0)
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
             NoneType
         ]()
@@ -108,7 +108,7 @@ struct JsString:
     ## Preferred over create() when the string content is known at compile time.
     @staticmethod
     def create_literal(env: NapiEnv, s: StringLiteral) raises -> JsString:
-        var result: NapiValue = NapiValue()
+        var result: NapiValue = NapiValue(unsafe_from_address=0)
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
             NoneType
         ]()
@@ -125,7 +125,7 @@ struct JsString:
     def create_literal(
         b: Bindings, env: NapiEnv, s: StringLiteral
     ) raises -> JsString:
-        var result: NapiValue = NapiValue()
+        var result: NapiValue = NapiValue(unsafe_from_address=0)
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
             NoneType
         ]()
@@ -168,7 +168,7 @@ struct JsString:
             return String(from_utf8=span)
 
         # Fallback: string >= 255 bytes. Two-pass with size query + read.
-        var null = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         var needed: UInt = 0
         var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=needed
@@ -239,7 +239,7 @@ struct JsString:
             return String(from_utf8=span)
 
         # Fallback: string >= 255 bytes. Two-pass with size query + read.
-        var null = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         var needed: UInt = 0
         var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=needed
@@ -323,7 +323,7 @@ struct JsString:
         ).bitcast[NoneType]()
         check_status(
             raw_get_value_string_latin1(
-                b, env, val, OpaquePointer[MutAnyOrigin](), 0, needed_ptr
+                b, env, val, OpaquePointer[MutAnyOrigin](unsafe_from_address=0), 0, needed_ptr
             )
         )
         # Allocate buffer (+ 1 for null terminator that napi writes)
@@ -348,7 +348,7 @@ struct JsString:
     def create_property_key(
         b: Bindings, env: NapiEnv, s: String
     ) raises -> JsString:
-        var result: NapiValue = NapiValue()
+        var result: NapiValue = NapiValue(unsafe_from_address=0)
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
             NoneType
         ]()
@@ -370,7 +370,7 @@ struct JsString:
     def create_property_key_literal(
         b: Bindings, env: NapiEnv, s: StringLiteral
     ) raises -> JsString:
-        var result: NapiValue = NapiValue()
+        var result: NapiValue = NapiValue(unsafe_from_address=0)
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
             NoneType
         ]()
@@ -402,7 +402,7 @@ struct JsString:
         finalize_cb: OpaquePointer[MutAnyOrigin],
         finalize_hint: OpaquePointer[MutAnyOrigin],
     ) raises -> JsString:
-        var result: NapiValue = NapiValue()
+        var result: NapiValue = NapiValue(unsafe_from_address=0)
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()

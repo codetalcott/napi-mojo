@@ -38,7 +38,7 @@ struct JsTypedArray:
     def create_float64(
         env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 env,
@@ -59,7 +59,7 @@ struct JsTypedArray:
         offset: UInt,
         length: UInt,
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 b,
@@ -77,7 +77,7 @@ struct JsTypedArray:
     def create_uint8(
         env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 env,
@@ -98,7 +98,7 @@ struct JsTypedArray:
         offset: UInt,
         length: UInt,
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 b,
@@ -116,7 +116,7 @@ struct JsTypedArray:
     def create_int32(
         env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 env,
@@ -137,7 +137,7 @@ struct JsTypedArray:
         offset: UInt,
         length: UInt,
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 b,
@@ -155,7 +155,7 @@ struct JsTypedArray:
     def create_int8(
         env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 env,
@@ -176,7 +176,7 @@ struct JsTypedArray:
         offset: UInt,
         length: UInt,
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 b,
@@ -194,7 +194,7 @@ struct JsTypedArray:
     def create_uint8_clamped(
         env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 env,
@@ -215,7 +215,7 @@ struct JsTypedArray:
         offset: UInt,
         length: UInt,
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 b,
@@ -233,7 +233,7 @@ struct JsTypedArray:
     def create_int16(
         env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 env,
@@ -254,7 +254,7 @@ struct JsTypedArray:
         offset: UInt,
         length: UInt,
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 b,
@@ -272,7 +272,7 @@ struct JsTypedArray:
     def create_uint16(
         env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 env,
@@ -293,7 +293,7 @@ struct JsTypedArray:
         offset: UInt,
         length: UInt,
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 b,
@@ -311,7 +311,7 @@ struct JsTypedArray:
     def create_uint32(
         env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 env,
@@ -332,7 +332,7 @@ struct JsTypedArray:
         offset: UInt,
         length: UInt,
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 b,
@@ -350,7 +350,7 @@ struct JsTypedArray:
     def create_float32(
         env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 env,
@@ -371,7 +371,7 @@ struct JsTypedArray:
         offset: UInt,
         length: UInt,
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 b,
@@ -389,7 +389,7 @@ struct JsTypedArray:
     def create_bigint64(
         env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 env,
@@ -410,7 +410,7 @@ struct JsTypedArray:
         offset: UInt,
         length: UInt,
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 b,
@@ -428,7 +428,7 @@ struct JsTypedArray:
     def create_biguint64(
         env: NapiEnv, arraybuffer: NapiValue, offset: UInt, length: UInt
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 env,
@@ -449,7 +449,7 @@ struct JsTypedArray:
         offset: UInt,
         length: UInt,
     ) raises -> JsTypedArray:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_typedarray(
                 b,
@@ -466,7 +466,7 @@ struct JsTypedArray:
     ## array_type — returns the NAPI_*_ARRAY constant
     def array_type(self, env: NapiEnv) raises -> Int32:
         var t: Int32 = 0
-        var null = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 env,
@@ -482,7 +482,7 @@ struct JsTypedArray:
 
     def array_type(self, b: Bindings, env: NapiEnv) raises -> Int32:
         var t: Int32 = 0
-        var null = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 b,
@@ -500,7 +500,7 @@ struct JsTypedArray:
     ## length — element count (not bytes)
     def length(self, env: NapiEnv) raises -> UInt:
         var len: UInt = 0
-        var null = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 env,
@@ -516,7 +516,7 @@ struct JsTypedArray:
 
     def length(self, b: Bindings, env: NapiEnv) raises -> UInt:
         var len: UInt = 0
-        var null = OpaquePointer[MutAnyOrigin]()
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 b,
@@ -535,8 +535,8 @@ struct JsTypedArray:
     def data_ptr(
         self, env: NapiEnv
     ) raises -> UnsafePointer[Byte, MutAnyOrigin]:
-        var data = OpaquePointer[MutAnyOrigin]()
-        var null = OpaquePointer[MutAnyOrigin]()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 env,
@@ -553,8 +553,8 @@ struct JsTypedArray:
     def data_ptr(
         self, b: Bindings, env: NapiEnv
     ) raises -> UnsafePointer[Byte, MutAnyOrigin]:
-        var data = OpaquePointer[MutAnyOrigin]()
-        var null = OpaquePointer[MutAnyOrigin]()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 b,
@@ -571,8 +571,8 @@ struct JsTypedArray:
 
     ## arraybuffer — get the underlying ArrayBuffer napi_value
     def arraybuffer(self, env: NapiEnv) raises -> NapiValue:
-        var ab = NapiValue()
-        var null = OpaquePointer[MutAnyOrigin]()
+        var ab = NapiValue(unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 env,
@@ -587,8 +587,8 @@ struct JsTypedArray:
         return ab
 
     def arraybuffer(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
-        var ab = NapiValue()
-        var null = OpaquePointer[MutAnyOrigin]()
+        var ab = NapiValue(unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 b,
@@ -609,8 +609,8 @@ struct JsTypedArray:
         self, env: NapiEnv
     ) raises -> UnsafePointer[Float64, MutAnyOrigin]:
         var t: Int32 = 0
-        var data = OpaquePointer[MutAnyOrigin]()
-        var null = OpaquePointer[MutAnyOrigin]()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 env,
@@ -630,8 +630,8 @@ struct JsTypedArray:
         self, b: Bindings, env: NapiEnv
     ) raises -> UnsafePointer[Float64, MutAnyOrigin]:
         var t: Int32 = 0
-        var data = OpaquePointer[MutAnyOrigin]()
-        var null = OpaquePointer[MutAnyOrigin]()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 b,
@@ -653,8 +653,8 @@ struct JsTypedArray:
         self, env: NapiEnv
     ) raises -> UnsafePointer[Float32, MutAnyOrigin]:
         var t: Int32 = 0
-        var data = OpaquePointer[MutAnyOrigin]()
-        var null = OpaquePointer[MutAnyOrigin]()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 env,
@@ -674,8 +674,8 @@ struct JsTypedArray:
         self, b: Bindings, env: NapiEnv
     ) raises -> UnsafePointer[Float32, MutAnyOrigin]:
         var t: Int32 = 0
-        var data = OpaquePointer[MutAnyOrigin]()
-        var null = OpaquePointer[MutAnyOrigin]()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 b,
@@ -697,8 +697,8 @@ struct JsTypedArray:
         self, env: NapiEnv
     ) raises -> UnsafePointer[Int32, MutAnyOrigin]:
         var t: Int32 = 0
-        var data = OpaquePointer[MutAnyOrigin]()
-        var null = OpaquePointer[MutAnyOrigin]()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 env,
@@ -718,8 +718,8 @@ struct JsTypedArray:
         self, b: Bindings, env: NapiEnv
     ) raises -> UnsafePointer[Int32, MutAnyOrigin]:
         var t: Int32 = 0
-        var data = OpaquePointer[MutAnyOrigin]()
-        var null = OpaquePointer[MutAnyOrigin]()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 b,
@@ -741,8 +741,8 @@ struct JsTypedArray:
         self, env: NapiEnv
     ) raises -> UnsafePointer[UInt8, MutAnyOrigin]:
         var t: Int32 = 0
-        var data = OpaquePointer[MutAnyOrigin]()
-        var null = OpaquePointer[MutAnyOrigin]()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 env,
@@ -762,8 +762,8 @@ struct JsTypedArray:
         self, b: Bindings, env: NapiEnv
     ) raises -> UnsafePointer[UInt8, MutAnyOrigin]:
         var t: Int32 = 0
-        var data = OpaquePointer[MutAnyOrigin]()
-        var null = OpaquePointer[MutAnyOrigin]()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_typedarray_info(
                 b,

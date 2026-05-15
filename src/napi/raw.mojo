@@ -319,10 +319,10 @@ def raw_create_double(
 ## raw_throw_error — wraps napi_throw_error
 ##
 ## Sets a pending JavaScript Error exception in the current environment.
-## `code`: optional error code string (pass OpaquePointer[ImmutAnyOrigin]() for none)
+## `code`: optional error code string (pass OpaquePointer[ImmutAnyOrigin](unsafe_from_address=0) for none)
 ## `msg`:  UTF-8 error message (must remain alive until this returns)
 ##
-## After calling this, the callback must return immediately with NapiValue().
+## After calling this, the callback must return immediately with NapiValue(unsafe_from_address=0).
 ## Node.js will propagate the pending exception when the callback returns.
 def raw_throw_error(
     env: NapiEnv,
@@ -976,7 +976,7 @@ def raw_reject_deferred(
 ## Creates a new JavaScript Error object (without throwing it). Use when you
 ## need an Error value (e.g., for promise rejection) rather than setting a
 ## pending exception.
-## `code`:   error code napi_value (pass NapiValue() for no code)
+## `code`:   error code napi_value (pass NapiValue(unsafe_from_address=0) for no code)
 ## `msg`:    error message napi_value (must be a JS string)
 ## `result`: out-pointer; receives the created Error napi_value
 def raw_create_error(
@@ -1015,7 +1015,7 @@ def raw_create_error(
 ## (MUST NOT call N-API functions). The complete callback runs on the main
 ## thread after execute finishes.
 ##
-## `async_resource`:      pass NapiValue() (NULL) for default
+## `async_resource`:      pass NapiValue(unsafe_from_address=0) (NULL) for default
 ## `async_resource_name`: a napi_value string identifying this work (for diagnostics)
 ## `execute`:             worker thread callback: fn(NapiEnv, void*) -> void
 ## `complete`:            main thread callback: fn(NapiEnv, NapiStatus, void*) -> void

@@ -9,7 +9,7 @@
 ## Usage:
 ##   # Re-throw an arbitrary JS value:
 ##   js_throw(env, some_value)
-##   return NapiValue()
+##   return NapiValue(unsafe_from_address=0)
 ##
 ##   # Check + catch a pending exception:
 ##   if js_is_exception_pending(env):
@@ -33,7 +33,7 @@ from napi.framework.js_string import JsString
 ## Unlike throw_js_error (which creates a new Error from a string message),
 ## this throws the value directly. Can throw strings, numbers, objects,
 ## Error instances, null, undefined, etc.
-## The callback MUST return NapiValue() immediately after calling this.
+## The callback MUST return NapiValue(unsafe_from_address=0) immediately after calling this.
 def js_throw(env: NapiEnv, error: NapiValue) raises:
     check_status(raw_throw(env, error))
 
@@ -57,7 +57,7 @@ def js_is_exception_pending(env: NapiEnv) raises -> Bool:
 ## allowing the callback to continue executing N-API calls normally.
 ## Must only be called when an exception IS pending.
 def js_get_and_clear_last_exception(env: NapiEnv) raises -> NapiValue:
-    var result = NapiValue()
+    var result = NapiValue(unsafe_from_address=0)
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
     ).bitcast[NoneType]()
@@ -84,7 +84,7 @@ def js_is_exception_pending(b: Bindings, env: NapiEnv) raises -> Bool:
 def js_get_and_clear_last_exception(
     b: Bindings, env: NapiEnv
 ) raises -> NapiValue:
-    var result = NapiValue()
+    var result = NapiValue(unsafe_from_address=0)
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
     ).bitcast[NoneType]()

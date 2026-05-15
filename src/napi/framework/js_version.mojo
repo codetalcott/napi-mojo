@@ -37,7 +37,7 @@ def get_node_version_ptr(
     env: NapiEnv,
 ) raises -> UnsafePointer[UInt32, MutAnyOrigin]:
     # The API writes a pointer-to-struct into our out variable
-    var ptr_val = OpaquePointer[MutAnyOrigin]()
+    var ptr_val = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
     var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=ptr_val
     ).bitcast[NoneType]()
@@ -62,7 +62,7 @@ def get_napi_version(b: Bindings, env: NapiEnv) raises -> UInt32:
 def get_node_version_ptr(
     b: Bindings, env: NapiEnv
 ) raises -> UnsafePointer[UInt32, MutAnyOrigin]:
-    var ptr_val = OpaquePointer[MutAnyOrigin]()
+    var ptr_val = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
     var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=ptr_val
     ).bitcast[NoneType]()
@@ -81,7 +81,7 @@ def add_async_cleanup_hook(
     hook_cb: OpaquePointer[MutAnyOrigin],
     arg: OpaquePointer[MutAnyOrigin],
 ) raises -> OpaquePointer[MutAnyOrigin]:
-    var handle = OpaquePointer[MutAnyOrigin]()
+    var handle = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
     var handle_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=handle
     ).bitcast[NoneType]()
@@ -107,7 +107,7 @@ def get_uv_event_loop(
     b: Bindings,
     env: NapiEnv,
 ) raises -> OpaquePointer[MutAnyOrigin]:
-    var loop_ptr = OpaquePointer[MutAnyOrigin]()
+    var loop_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
     var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=loop_ptr
     ).bitcast[NoneType]()

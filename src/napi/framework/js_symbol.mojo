@@ -21,7 +21,7 @@ struct JsSymbol:
     ## create — create a new unique Symbol with the given description
     @staticmethod
     def create(env: NapiEnv, description: NapiValue) raises -> JsSymbol:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_symbol(
                 env, description, UnsafePointer(to=result).bitcast[NoneType]()
@@ -32,7 +32,7 @@ struct JsSymbol:
     ## create_for — return the global Symbol for the given key (Symbol.for())
     @staticmethod
     def create_for(env: NapiEnv, key: StringLiteral) raises -> JsSymbol:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_symbol_for(
                 env,
@@ -49,7 +49,7 @@ struct JsSymbol:
     def create(
         b: Bindings, env: NapiEnv, description: NapiValue
     ) raises -> JsSymbol:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_symbol(
                 b,
@@ -64,7 +64,7 @@ struct JsSymbol:
     def create_for(
         b: Bindings, env: NapiEnv, key: StringLiteral
     ) raises -> JsSymbol:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_symbol_for(
                 b,

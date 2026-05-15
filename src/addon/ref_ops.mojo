@@ -24,7 +24,7 @@ def test_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return retrieved.get_named_property(b, env, "value")
     except:
         throw_js_error(env, "testRef failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def test_ref_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -38,7 +38,7 @@ def test_ref_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return val
     except:
         throw_js_error(env, "testRefObject failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def test_ref_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -53,7 +53,7 @@ def test_ref_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return retrieved.get_named_property(b, env, "value")
     except:
         throw_js_error(env, "testRefString requires one string argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def build_in_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -70,7 +70,7 @@ def build_in_scope_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return escaped
     except:
         throw_js_error(env, "buildInScope failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def test_weak_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -83,7 +83,7 @@ def test_weak_ref_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return retrieved
     except:
         throw_js_error(env, "testWeakRef failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def register_refs(mut m: ModuleBuilder) raises:

@@ -22,7 +22,7 @@ from napi.framework.js_function import JsFunction
 
 ## _get_prototype — get constructor.prototype as a napi_value
 def _get_prototype(env: NapiEnv, constructor: NapiValue) raises -> NapiValue:
-    var proto = NapiValue()
+    var proto = NapiValue(unsafe_from_address=0)
     check_status(
         raw_get_named_property(
             env,
@@ -37,7 +37,7 @@ def _get_prototype(env: NapiEnv, constructor: NapiValue) raises -> NapiValue:
 def _get_prototype(
     b: Bindings, env: NapiEnv, constructor: NapiValue
 ) raises -> NapiValue:
-    var proto = NapiValue()
+    var proto = NapiValue(unsafe_from_address=0)
     check_status(
         raw_get_named_property(
             b,
@@ -59,7 +59,7 @@ def define_class(
     name: StringLiteral,
     constructor_ptr: OpaquePointer[MutAnyOrigin],
 ) raises -> NapiValue:
-    var result = NapiValue()
+    var result = NapiValue(unsafe_from_address=0)
     # NAPI_AUTO_LENGTH = SIZE_MAX tells N-API to use strlen on the name
     var auto_length: UInt = ~UInt(0)
     check_status(
@@ -68,9 +68,9 @@ def define_class(
             name.unsafe_ptr().bitcast[NoneType](),
             auto_length,
             constructor_ptr,
-            OpaquePointer[MutAnyOrigin](),  # data = NULL
+            OpaquePointer[MutAnyOrigin](unsafe_from_address=0),  # data = NULL
             0,  # property_count = 0
-            OpaquePointer[ImmutAnyOrigin](),  # properties = NULL
+            OpaquePointer[ImmutAnyOrigin](unsafe_from_address=0),  # properties = NULL
             UnsafePointer(to=result).bitcast[NoneType](),
         )
     )
@@ -84,7 +84,7 @@ def define_class(
     constructor_ptr: OpaquePointer[MutAnyOrigin],
     data_ptr: OpaquePointer[MutAnyOrigin],
 ) raises -> NapiValue:
-    var result = NapiValue()
+    var result = NapiValue(unsafe_from_address=0)
     var auto_length: UInt = ~UInt(0)
     check_status(
         raw_define_class(
@@ -94,7 +94,7 @@ def define_class(
             constructor_ptr,
             data_ptr,
             0,
-            OpaquePointer[ImmutAnyOrigin](),
+            OpaquePointer[ImmutAnyOrigin](unsafe_from_address=0),
             UnsafePointer(to=result).bitcast[NoneType](),
         )
     )
@@ -107,7 +107,7 @@ def define_class(
     name: StringLiteral,
     constructor_ptr: OpaquePointer[MutAnyOrigin],
 ) raises -> NapiValue:
-    var result = NapiValue()
+    var result = NapiValue(unsafe_from_address=0)
     var auto_length: UInt = ~UInt(0)
     check_status(
         raw_define_class(
@@ -116,9 +116,9 @@ def define_class(
             name.unsafe_ptr().bitcast[NoneType](),
             auto_length,
             constructor_ptr,
-            OpaquePointer[MutAnyOrigin](),  # data = NULL
+            OpaquePointer[MutAnyOrigin](unsafe_from_address=0),  # data = NULL
             0,  # property_count = 0
-            OpaquePointer[ImmutAnyOrigin](),  # properties = NULL
+            OpaquePointer[ImmutAnyOrigin](unsafe_from_address=0),  # properties = NULL
             UnsafePointer(to=result).bitcast[NoneType](),
         )
     )
@@ -132,7 +132,7 @@ def define_class(
     constructor_ptr: OpaquePointer[MutAnyOrigin],
     data_ptr: OpaquePointer[MutAnyOrigin],
 ) raises -> NapiValue:
-    var result = NapiValue()
+    var result = NapiValue(unsafe_from_address=0)
     var auto_length: UInt = ~UInt(0)
     check_status(
         raw_define_class(
@@ -143,7 +143,7 @@ def define_class(
             constructor_ptr,
             data_ptr,
             0,
-            OpaquePointer[ImmutAnyOrigin](),
+            OpaquePointer[ImmutAnyOrigin](unsafe_from_address=0),
             UnsafePointer(to=result).bitcast[NoneType](),
         )
     )
@@ -318,7 +318,7 @@ def set_class_prototype(
 
     # Get Object.setPrototypeOf from the global object
     var global_obj = js_get_global(env)
-    var object_key = NapiValue()
+    var object_key = NapiValue(unsafe_from_address=0)
     check_status(
         raw_get_named_property(
             env,
@@ -327,7 +327,7 @@ def set_class_prototype(
             UnsafePointer(to=object_key).bitcast[NoneType](),
         )
     )
-    var set_proto_of = NapiValue()
+    var set_proto_of = NapiValue(unsafe_from_address=0)
     check_status(
         raw_get_named_property(
             env,
@@ -351,7 +351,7 @@ def set_class_prototype(
     var parent_proto = _get_prototype(b, env, parent_ctor)
 
     var global_obj = js_get_global(b, env)
-    var object_key = NapiValue()
+    var object_key = NapiValue(unsafe_from_address=0)
     check_status(
         raw_get_named_property(
             b,
@@ -361,7 +361,7 @@ def set_class_prototype(
             UnsafePointer(to=object_key).bitcast[NoneType](),
         )
     )
-    var set_proto_of = NapiValue()
+    var set_proto_of = NapiValue(unsafe_from_address=0)
     check_status(
         raw_get_named_property(
             b,
@@ -411,7 +411,7 @@ def register_static_getter_setter(
 ##
 ## Replaces the 4-line unwrap dance in every class method callback:
 ##   var this_val = CbArgs.get_this(env, info)
-##   var data = OpaquePointer[MutAnyOrigin]()
+##   var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
 ##   check_status(raw_unwrap(env, this_val, ...))
 ##   var ptr = data.bitcast[T]()
 ##

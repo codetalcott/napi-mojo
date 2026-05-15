@@ -32,13 +32,13 @@ def add_bigints_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 + " and "
                 + js_type_name(tb),
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var a = JsBigInt.to_int64(b, env, args[0])
         var b2 = JsBigInt.to_int64(b, env, args[1])
         return JsBigInt.from_int64(b, env, a + b2).value
     except:
         throw_js_error(env, "addBigInts requires two bigint arguments")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def create_date_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -49,7 +49,7 @@ def create_date_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsDate.create(b, env, ts).value
     except:
         throw_js_error(env, "createDate requires one number argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_date_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -61,7 +61,7 @@ def get_date_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(b, env, ts).value
     except:
         throw_js_error(env, "getDateValue requires one Date argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def create_symbol_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -71,7 +71,7 @@ def create_symbol_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsSymbol.create(b, env, arg0).value
     except:
         throw_js_error(env, "createSymbol requires one string argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -83,7 +83,7 @@ def symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             NoneType
         ]()
         var key_len = UInt(key.byte_length())
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_symbol_for(
                 b,
@@ -97,7 +97,7 @@ def symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return result
     except:
         throw_js_error(env, "symbolFor requires one string argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def bigint_from_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -120,7 +120,7 @@ def bigint_from_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return result.value
     except:
         throw_js_error(env, "bigIntFromWords failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def bigint_to_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -153,7 +153,7 @@ def bigint_to_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return obj.value
     except:
         throw_js_error(env, "bigIntToWords failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def register_value_types(mut m: ModuleBuilder) raises:

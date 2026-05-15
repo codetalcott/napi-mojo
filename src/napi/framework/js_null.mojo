@@ -28,7 +28,7 @@ struct JsNull:
 
     @staticmethod
     def create(b: Bindings, env: NapiEnv) raises -> JsNull:
-        var result: NapiValue = NapiValue()
+        var result: NapiValue = NapiValue(unsafe_from_address=0)
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()

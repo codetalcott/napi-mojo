@@ -63,11 +63,11 @@ def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         m.flush()
     except:
         try:
-            var null_code = NapiValue()
+            var null_code = NapiValue(unsafe_from_address=0)
             var err_msg = JsString.create_literal(
                 env, "napi-mojo: register_module failed"
             )
-            var err_val = NapiValue()
+            var err_val = NapiValue(unsafe_from_address=0)
             var err_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
                 to=err_val
             ).bitcast[NoneType]()

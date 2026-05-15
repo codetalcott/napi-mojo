@@ -7,7 +7,7 @@
 ##   var t = js_typeof(env, val)
 ##   if t != NAPI_TYPE_STRING:
 ##       throw_js_error(env, "expected a string argument")
-##       return NapiValue()
+##       return NapiValue(unsafe_from_address=0)
 ##   var s = JsString.from_napi_value(env, val)
 ##
 ##   # Human-readable type name for error messages:
@@ -118,7 +118,7 @@ def js_strict_equals(
 
 ## js_get_global — return the global object (globalThis)
 def js_get_global(env: NapiEnv) raises -> JsObject:
-    var result = NapiValue()
+    var result = NapiValue(unsafe_from_address=0)
     check_status(
         raw_get_global(env, UnsafePointer(to=result).bitcast[NoneType]())
     )
@@ -160,7 +160,7 @@ def js_strict_equals(
 
 
 def js_get_global(b: Bindings, env: NapiEnv) raises -> JsObject:
-    var result = NapiValue()
+    var result = NapiValue(unsafe_from_address=0)
     check_status(
         raw_get_global(b, env, UnsafePointer(to=result).bitcast[NoneType]())
     )
@@ -217,7 +217,7 @@ def js_adjust_external_memory(
 ##
 ## Takes a napi_value containing the script string, returns the result.
 def js_run_script(env: NapiEnv, script: NapiValue) raises -> NapiValue:
-    var result = NapiValue()
+    var result = NapiValue(unsafe_from_address=0)
     check_status(
         raw_run_script(
             env, script, UnsafePointer(to=result).bitcast[NoneType]()
@@ -229,7 +229,7 @@ def js_run_script(env: NapiEnv, script: NapiValue) raises -> NapiValue:
 def js_run_script(
     b: Bindings, env: NapiEnv, script: NapiValue
 ) raises -> NapiValue:
-    var result = NapiValue()
+    var result = NapiValue(unsafe_from_address=0)
     check_status(
         raw_run_script(
             b, env, script, UnsafePointer(to=result).bitcast[NoneType]()

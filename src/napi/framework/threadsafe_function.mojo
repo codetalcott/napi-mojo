@@ -52,9 +52,9 @@ struct ThreadsafeFunction:
         finalize_data: OpaquePointer[MutAnyOrigin],
         finalize_cb: OpaquePointer[MutAnyOrigin],
     ) raises -> ThreadsafeFunction:
-        var tsfn = NapiThreadsafeFunction()
-        var null_resource = NapiValue()
-        var null_ptr = OpaquePointer[MutAnyOrigin]()
+        var tsfn = NapiThreadsafeFunction(unsafe_from_address=0)
+        var null_resource = NapiValue(unsafe_from_address=0)
+        var null_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_create_threadsafe_function(
                 env,
@@ -83,9 +83,9 @@ struct ThreadsafeFunction:
         finalize_data: OpaquePointer[MutAnyOrigin],
         finalize_cb: OpaquePointer[MutAnyOrigin],
     ) raises -> ThreadsafeFunction:
-        var tsfn = NapiThreadsafeFunction()
-        var null_resource = NapiValue()
-        var null_ptr = OpaquePointer[MutAnyOrigin]()
+        var tsfn = NapiThreadsafeFunction(unsafe_from_address=0)
+        var null_resource = NapiValue(unsafe_from_address=0)
+        var null_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_create_threadsafe_function(
                 b,

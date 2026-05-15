@@ -71,7 +71,7 @@ struct MojoFloat64Array(Movable):
         var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
-        var ab = NapiValue()
+        var ab = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_external_arraybuffer(
                 b,
@@ -79,7 +79,7 @@ struct MojoFloat64Array(Movable):
                 self.ptr.bitcast[NoneType](),
                 byte_len,
                 fin_ptr,
-                OpaquePointer[MutAnyOrigin](),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
                 UnsafePointer(to=ab).bitcast[NoneType](),
             )
         )
@@ -97,14 +97,14 @@ struct MojoFloat64Array(Movable):
         var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
-        var ab = NapiValue()
+        var ab = NapiValue(unsafe_from_address=0)
         check_status(
             raw_create_external_arraybuffer(
                 env,
                 self.ptr.bitcast[NoneType](),
                 byte_len,
                 fin_ptr,
-                OpaquePointer[MutAnyOrigin](),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
                 UnsafePointer(to=ab).bitcast[NoneType](),
             )
         )

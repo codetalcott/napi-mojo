@@ -30,7 +30,7 @@ struct JsRef:
     def create(
         env: NapiEnv, value: NapiValue, initial_refcount: UInt32
     ) raises -> JsRef:
-        var result = NapiRef()
+        var result = NapiRef(unsafe_from_address=0)
         check_status(
             raw_create_reference(
                 env,
@@ -63,7 +63,7 @@ struct JsRef:
         return count
 
     def get(self, env: NapiEnv) raises -> NapiValue:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_get_reference_value(
                 env, self.handle, UnsafePointer(to=result).bitcast[NoneType]()
@@ -83,7 +83,7 @@ struct JsRef:
     def create(
         b: Bindings, env: NapiEnv, value: NapiValue, initial_refcount: UInt32
     ) raises -> JsRef:
-        var result = NapiRef()
+        var result = NapiRef(unsafe_from_address=0)
         check_status(
             raw_create_reference(
                 b,
@@ -117,7 +117,7 @@ struct JsRef:
         return count
 
     def get(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
-        var result = NapiValue()
+        var result = NapiValue(unsafe_from_address=0)
         check_status(
             raw_get_reference_value(
                 b,

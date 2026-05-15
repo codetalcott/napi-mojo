@@ -36,7 +36,7 @@ def set_instance_data[T: Movable & ImplicitlyDestructible](
             env,
             data_ptr.bitcast[NoneType](),
             fin_ptr,
-            OpaquePointer[MutAnyOrigin](),
+            OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
         )
     )
 

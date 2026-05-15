@@ -80,20 +80,20 @@ def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 b,
                 env,
                 data_ptr.bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](),  # finalize_cb = NULL
-                OpaquePointer[MutAnyOrigin](),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),  # finalize_cb = NULL
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
             )
         )
         return JsUndefined.create(b, env).value
     except:
         throw_js_error(env, "setInstanceData failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
-        var data = OpaquePointer[MutAnyOrigin]()
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         check_status(
             raw_get_instance_data(
                 b, env, UnsafePointer(to=data).bitcast[NoneType]()
@@ -105,7 +105,7 @@ def get_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(b, env, ptr[]).value
     except:
         throw_js_error(env, "getInstanceData failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def cleanup_hook_noop(arg: OpaquePointer[MutAnyOrigin]):
@@ -129,7 +129,7 @@ def add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "addCleanupHook failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -155,7 +155,7 @@ def remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "removeCleanupHook failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 ## async_cleanup_hook_noop — env-exit cleanup callback that immediately releases
@@ -183,12 +183,12 @@ def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             OpaquePointer[MutAnyOrigin]
         ]()[]
         _ = add_async_cleanup_hook(
-            b, env, hook_ptr, OpaquePointer[MutAnyOrigin]()
+            b, env, hook_ptr, OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         )
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "addAsyncCleanupHook failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -199,13 +199,13 @@ def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             OpaquePointer[MutAnyOrigin]
         ]()[]
         var handle = add_async_cleanup_hook(
-            b, env, hook_ptr, OpaquePointer[MutAnyOrigin]()
+            b, env, hook_ptr, OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         )
         remove_async_cleanup_hook(b, handle)
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "removeAsyncCleanupHook failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def get_uv_event_loop_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -217,7 +217,7 @@ def get_uv_event_loop_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         ).value
     except:
         throw_js_error(env, "getUvEventLoop failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def coerce_to_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -227,7 +227,7 @@ def coerce_to_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return js_coerce_to_bool(b, env, arg0)
     except:
         throw_js_error(env, "coerceToBool requires one argument")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def coerce_to_number_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -236,7 +236,7 @@ def coerce_to_number_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         return js_coerce_to_number(b, env, arg0)
     except:
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def coerce_to_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -245,7 +245,7 @@ def coerce_to_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         return js_coerce_to_string(b, env, arg0)
     except:
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def coerce_to_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -254,7 +254,7 @@ def coerce_to_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         return js_coerce_to_object(b, env, arg0)
     except:
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def register_env(mut m: ModuleBuilder) raises:

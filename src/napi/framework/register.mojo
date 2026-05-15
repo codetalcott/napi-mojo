@@ -75,7 +75,7 @@ struct ModuleBuilder(Movable):
     def __init__(out self, env: NapiEnv, exports: NapiValue):
         self.env = env
         self.exports = exports
-        self.data = OpaquePointer[MutAnyOrigin]()
+        self.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
         self._descs = alloc[NapiPropertyDescriptor](MAX_DESCRIPTORS)
         self._count = 0
         self._capacity = MAX_DESCRIPTORS
@@ -173,7 +173,7 @@ struct ClassBuilder:
     def __init__(out self, env: NapiEnv, ctor: NapiValue):
         self.env = env
         self.ctor = ctor
-        self.data = OpaquePointer[MutAnyOrigin]()
+        self.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
 
     def __init__(
         out self,
@@ -368,9 +368,9 @@ struct ClassEntry(Movable):
     var ctor_ref: NapiRef
 
     def __init__(out self):
-        self.name_ptr = OpaquePointer[ImmutAnyOrigin]()
+        self.name_ptr = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=0)
         self.name_len = 0
-        self.ctor_ref = NapiRef()
+        self.ctor_ref = NapiRef(unsafe_from_address=0)
 
     def __moveinit__(out self, deinit take: Self):
         self.name_ptr = take.name_ptr
@@ -440,7 +440,7 @@ struct ClassRegistry(Movable):
                 ep[].name_ptr, target_ptr.bitcast[NoneType](), target_len
             ):
                 var ctor_val = JsRef(ep[].ctor_ref).get(b, env)
-                var result = NapiValue()
+                var result = NapiValue(unsafe_from_address=0)
                 check_status(
                     raw_new_instance(
                         b,

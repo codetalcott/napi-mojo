@@ -54,7 +54,7 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_type_error(
                 b, env, "Counter constructor requires a number argument"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var initial = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[CounterData](1)
         data_ptr.init_pointee_move(CounterData(initial))
@@ -69,14 +69,14 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 this_val,
                 data_ptr.bitcast[NoneType](),
                 fin_ptr,
-                OpaquePointer[MutAnyOrigin](),
-                OpaquePointer[MutAnyOrigin](),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
             )
         )
         return this_val
     except:
         throw_js_error(env, "Counter constructor failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -86,7 +86,7 @@ def counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(a.b, env, ptr[].count).value
     except:
         throw_js_error(env, "Counter.value getter failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -97,14 +97,14 @@ def counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_type_error(
                 a.b, env, "Counter.value setter requires a number"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=0)
         var new_val = JsNumber.from_napi_value(a.b, env, a.arg0)
         var ptr = unwrap_native_from_this[CounterData](a.b, env, a.this_val)
         ptr[].count = new_val
         return JsUndefined.create(a.b, env).value
     except:
         throw_js_error(env, "Counter.value setter failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -115,7 +115,7 @@ def counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsUndefined.create(a.b, env).value
     except:
         throw_js_error(env, "Counter.increment failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -126,7 +126,7 @@ def counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsUndefined.create(a.b, env).value
     except:
         throw_js_error(env, "Counter.reset failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -141,7 +141,7 @@ def counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "Counter.isCounter failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -154,8 +154,8 @@ def counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_type_error(
                 b, env, "Counter.fromValue requires a number argument"
             )
-            return NapiValue()
-        var result = NapiValue()
+            return NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=0)
         var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
             to=arg0
         ).bitcast[NoneType]()
@@ -172,7 +172,7 @@ def counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return result
     except:
         throw_js_error(env, "Counter.fromValue failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=0)
 
 
 def register_counter(mut m: ModuleBuilder, b: Bindings) raises:
