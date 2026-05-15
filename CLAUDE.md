@@ -112,6 +112,8 @@ tests/                                   # Jest tests — TDD outside-in
 
 ## Critical Mojo FFI rules
 
+> **Mojo nightly changelog:** <https://mojolang.org/releases/nightly/> — consult this when a build breaks after a nightly bump, before reverse-engineering the diagnostic. Each rule below is dated to the nightly that introduced it; cross-reference there for the upstream rationale.
+
 **`def` replaces `fn`** (dev2026032105+): `fn` keyword is no longer supported. All function/method declarations must use `def`. Example: `def my_func(arg: Int) -> Int:`. The code generator (`generate-addon.mjs`) and DTS generator (`generate-dts.js`) have been updated accordingly.
 
 **`@value` removed** (dev2026032105+): The `@value` decorator is no longer recognized. Structs must provide explicit `__init__`, `__moveinit__`, and copy constructors. Simple single-field wrapper structs (like `JsI32`, `JsBool`, `JsRaw`) now have explicit `__init__` methods.

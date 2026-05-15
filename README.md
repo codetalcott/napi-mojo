@@ -104,9 +104,10 @@ npm run build    # compiles Mojo → build/index.node + generates TypeScript def
 npm test         # 624 tests, 80 suites
 ```
 
-**Prerequisites:** [Mojo nightly](https://docs.modular.com/magic/) via
-[pixi](https://pixi.sh) (exact version pinned in [`pixi.toml`](pixi.toml)),
-Node.js 22.12+ (N-API v10)
+**Prerequisites:** [Mojo nightly](https://mojolang.org/install/) via
+[pixi](https://pixi.sh) (exact version pinned in [`pixi.toml`](pixi.toml);
+`npm run build` provisions it from the `max-nightly` conda channel
+automatically), Node.js 22.12+ (N-API v10)
 
 ## Usage Examples
 
