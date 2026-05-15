@@ -66,3 +66,18 @@ jobs:
           done
           echo "::error::npm test failed 3 attempts in a row — likely a real regression"
           exit 1
+
+      # GC finalizer suite is gated on --expose-gc, so `npm test` skips
+      # all 6 tests by design. Run them explicitly so finalizer
+      # regressions can't slip through CI. Same 3× retry as above
+      # because these tests exercise the finalizer registration sites
+      # that trigger the macOS exit-time flake described above.
+      - name: Run GC finalizer tests (retry on intermittent flake)
+        run: |
+          for attempt in 1 2 3; do
+            if npm run test:gc; then exit 0; fi
+            echo "::warning::npm run test:gc attempt $attempt failed; retrying"
+            sleep 2
+          done
+          echo "::error::npm run test:gc failed 3 attempts in a row — likely a real regression"
+          exit 1
