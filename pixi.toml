@@ -9,4 +9,4 @@ version = "0.1.0"
 nightly-update = { cmd = "bash ../mojo-nightly-updater/bump-nightly.sh --project .", description = "Update to latest Mojo/MAX nightly" }
 
 [dependencies]
-max = ">=26.4.0.dev2026051501"
+max = ">=26.4.0.dev2026051506"
