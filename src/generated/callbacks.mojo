@@ -43,17 +43,17 @@ def example_add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_args_0_ = js_typeof(_b, env, args[0])
         if _t_args_0_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "exampleAdd: expected number for arg 1, got " + js_type_name(_t_args_0_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var _t_args_1_ = js_typeof(_b, env, args[1])
         if _t_args_1_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "exampleAdd: expected number for arg 2, got " + js_type_name(_t_args_1_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var a = JsNumber.from_napi_value(_b, env, args[0])
         var b = JsNumber.from_napi_value(_b, env, args[1])
         return JsNumber.create(_b, env, a + b).value
     except:
         throw_js_error(env, "exampleAdd failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # exampleGreet
 def example_greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -63,12 +63,12 @@ def example_greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_arg0 = js_typeof(_b, env, arg0)
         if _t_arg0 != NAPI_TYPE_STRING:
             throw_js_type_error_dynamic(_b, env, "exampleGreet: expected string, got " + js_type_name(_t_arg0))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var name = JsString.from_napi_value(_b, env, arg0)
         return JsString.create(_b, env, "Hello, " + name + "!").value
     except:
         throw_js_error(env, "exampleGreet failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # exampleIsPositive
 def example_is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -78,12 +78,12 @@ def example_is_positive_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_arg0 = js_typeof(_b, env, arg0)
         if _t_arg0 != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "exampleIsPositive: expected number, got " + js_type_name(_t_arg0))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var n = JsNumber.from_napi_value(_b, env, arg0)
         return JsBoolean.create(_b, env, n > 0.0).value
     except:
         throw_js_error(env, "exampleIsPositive failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # exampleAddUInt32
 def example_add_uint32_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -93,17 +93,17 @@ def example_add_uint32_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_args_0_ = js_typeof(_b, env, args[0])
         if _t_args_0_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "exampleAddUInt32: expected number for arg 1, got " + js_type_name(_t_args_0_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var _t_args_1_ = js_typeof(_b, env, args[1])
         if _t_args_1_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "exampleAddUInt32: expected number for arg 2, got " + js_type_name(_t_args_1_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var a = JsUInt32.from_napi_value(_b, env, args[0])
         var b = JsUInt32.from_napi_value(_b, env, args[1])
         return JsUInt32.create(_b, env, a + b).value
     except:
         throw_js_error(env, "exampleAddUInt32 failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # exampleDoubleInt64
 def example_double_int64_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -113,12 +113,12 @@ def example_double_int64_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_arg0 = js_typeof(_b, env, arg0)
         if _t_arg0 != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "exampleDoubleInt64: expected number, got " + js_type_name(_t_arg0))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var n = JsInt64.from_napi_value(_b, env, arg0)
         return JsInt64.create(_b, env, n * 2).value
     except:
         throw_js_error(env, "exampleDoubleInt64 failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # exampleNegateBool
 def example_negate_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -128,12 +128,12 @@ def example_negate_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_arg0 = js_typeof(_b, env, arg0)
         if _t_arg0 != NAPI_TYPE_BOOLEAN:
             throw_js_type_error_dynamic(_b, env, "exampleNegateBool: expected boolean, got " + js_type_name(_t_arg0))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var b = JsBoolean.from_napi_value(_b, env, arg0)
         return JsBoolean.create(_b, env, not b).value
     except:
         throw_js_error(env, "exampleNegateBool failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # exampleHasKey
 def example_has_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -143,15 +143,15 @@ def example_has_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_args_0_ = js_typeof(_b, env, args[0])
         if _t_args_0_ != NAPI_TYPE_OBJECT:
             throw_js_type_error_dynamic(_b, env, "exampleHasKey: expected object for arg 1, got " + js_type_name(_t_args_0_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var _t_args_1_ = js_typeof(_b, env, args[1])
         if _t_args_1_ != NAPI_TYPE_STRING:
             throw_js_type_error_dynamic(_b, env, "exampleHasKey: expected string for arg 2, got " + js_type_name(_t_args_1_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         return JsBoolean.create(_b, env, JsObject(args[0]).has(_b, env, args[1])).value
     except:
         throw_js_error(env, "exampleHasKey failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # exampleArrayLen
 def example_array_len_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -160,11 +160,11 @@ def example_array_len_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(_b, env, info)
         if not js_is_array(_b, env, arg0):
             throw_js_type_error_dynamic(_b, env, "exampleArrayLen: expected array")
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         return JsNumber.create_int(_b, env, Int(JsArray(arg0).length(_b, env))).value
     except:
         throw_js_error(env, "exampleArrayLen failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # exampleNullableEcho
 def example_nullable_echo_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -174,7 +174,7 @@ def example_nullable_echo_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return arg0
     except:
         throw_js_error(env, "exampleNullableEcho failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # square
 def square_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -184,13 +184,13 @@ def square_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_arg0 = js_typeof(_b, env, arg0)
         if _t_arg0 != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "square: expected number, got " + js_type_name(_t_arg0))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var mojo_arg0 = JsNumber.from_napi_value(_b, env, arg0)
         var mojo_result = square_pure(mojo_arg0)
         return JsNumber.create(_b, env, mojo_result).value
     except:
         throw_js_error(env, "square failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # clamp
 def clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -200,15 +200,15 @@ def clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_args_0_ = js_typeof(_b, env, args[0])
         if _t_args_0_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "clamp: expected number for arg 1, got " + js_type_name(_t_args_0_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var _t_args_1_ = js_typeof(_b, env, args[1])
         if _t_args_1_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "clamp: expected number for arg 2, got " + js_type_name(_t_args_1_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var _t_args_2_ = js_typeof(_b, env, args[2])
         if _t_args_2_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "clamp: expected number for arg 3, got " + js_type_name(_t_args_2_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var mojo_arg0 = JsNumber.from_napi_value(_b, env, args[0])
         var mojo_arg1 = JsNumber.from_napi_value(_b, env, args[1])
         var mojo_arg2 = JsNumber.from_napi_value(_b, env, args[2])
@@ -216,7 +216,7 @@ def clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(_b, env, mojo_result).value
     except:
         throw_js_error(env, "clamp failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # uppercase
 def uppercase_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -226,13 +226,13 @@ def uppercase_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_arg0 = js_typeof(_b, env, arg0)
         if _t_arg0 != NAPI_TYPE_STRING:
             throw_js_type_error_dynamic(_b, env, "uppercase: expected string, got " + js_type_name(_t_arg0))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var mojo_arg0 = JsString.from_napi_value(_b, env, arg0)
         var mojo_result = uppercase_pure(mojo_arg0)
         return JsString.create(_b, env, mojo_result).value
     except:
         throw_js_error(env, "uppercase failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # sumArrayPure
 def sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -241,13 +241,13 @@ def sum_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(_b, env, info)
         if not js_is_array(_b, env, arg0):
             throw_js_type_error_dynamic(_b, env, "sumArrayPure: expected array")
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var mojo_arg0 = from_js_array_f64(_b, env, arg0)
         var mojo_result = sum_array_pure(mojo_arg0)
         return JsNumber.create(_b, env, mojo_result).value
     except:
         throw_js_error(env, "sumArrayPure failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # exampleClamp
 def example_clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -257,15 +257,15 @@ def example_clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_args_0_ = js_typeof(_b, env, args[0])
         if _t_args_0_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "exampleClamp: expected number for arg 1, got " + js_type_name(_t_args_0_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var _t_args_1_ = js_typeof(_b, env, args[1])
         if _t_args_1_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "exampleClamp: expected number for arg 2, got " + js_type_name(_t_args_1_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var _t_args_2_ = js_typeof(_b, env, args[2])
         if _t_args_2_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "exampleClamp: expected number for arg 3, got " + js_type_name(_t_args_2_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var val = JsNumber.from_napi_value(_b, env, args[0])
         var lo  = JsNumber.from_napi_value(_b, env, args[1])
         var hi  = JsNumber.from_napi_value(_b, env, args[2])
@@ -277,7 +277,7 @@ def example_clamp_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(_b, env, result).value
     except:
         throw_js_error(env, "exampleClamp failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # negateBoolPure
 def negate_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -287,13 +287,13 @@ def negate_bool_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_arg0 = js_typeof(_b, env, arg0)
         if _t_arg0 != NAPI_TYPE_BOOLEAN:
             throw_js_type_error_dynamic(_b, env, "negateBoolPure: expected boolean, got " + js_type_name(_t_arg0))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var mojo_arg0 = JsBoolean.from_napi_value(_b, env, arg0)
         var mojo_result = negate_bool_pure(mojo_arg0)
         return JsBoolean.create(_b, env, mojo_result).value
     except:
         throw_js_error(env, "negateBoolPure failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # addInt32Pure
 def add_int32_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -303,18 +303,18 @@ def add_int32_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_args_0_ = js_typeof(_b, env, args[0])
         if _t_args_0_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "addInt32Pure: expected number for arg 1, got " + js_type_name(_t_args_0_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var _t_args_1_ = js_typeof(_b, env, args[1])
         if _t_args_1_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "addInt32Pure: expected number for arg 2, got " + js_type_name(_t_args_1_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var mojo_arg0 = JsInt32.from_napi_value(_b, env, args[0])
         var mojo_arg1 = JsInt32.from_napi_value(_b, env, args[1])
         var mojo_result = add_int32_pure(mojo_arg0, mojo_arg1)
         return JsInt32.create(_b, env, mojo_result).value
     except:
         throw_js_error(env, "addInt32Pure failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # describePure
 def describe_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -324,18 +324,18 @@ def describe_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_args_0_ = js_typeof(_b, env, args[0])
         if _t_args_0_ != NAPI_TYPE_STRING:
             throw_js_type_error_dynamic(_b, env, "describePure: expected string for arg 1, got " + js_type_name(_t_args_0_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var _t_args_1_ = js_typeof(_b, env, args[1])
         if _t_args_1_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "describePure: expected number for arg 2, got " + js_type_name(_t_args_1_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var mojo_arg0 = JsString.from_napi_value(_b, env, args[0])
         var mojo_arg1 = JsNumber.from_napi_value(_b, env, args[1])
         var mojo_result = describe_pure(mojo_arg0, mojo_arg1)
         return JsString.create(_b, env, mojo_result).value
     except:
         throw_js_error(env, "describePure failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # reverseStringsPure
 def reverse_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -344,13 +344,13 @@ def reverse_strings_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(_b, env, info)
         if not js_is_array(_b, env, arg0):
             throw_js_type_error_dynamic(_b, env, "reverseStringsPure: expected array")
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var mojo_arg0 = from_js_array_str(_b, env, arg0)
         var mojo_result = reverse_strings_pure(mojo_arg0)
         return to_js_array_str(_b, env, mojo_result)
     except:
         throw_js_error(env, "reverseStringsPure failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # safeDivide
 def safe_divide_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -360,11 +360,11 @@ def safe_divide_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_args_0_ = js_typeof(_b, env, args[0])
         if _t_args_0_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "safeDivide: expected number for arg 1, got " + js_type_name(_t_args_0_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var _t_args_1_ = js_typeof(_b, env, args[1])
         if _t_args_1_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "safeDivide: expected number for arg 2, got " + js_type_name(_t_args_1_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var mojo_arg0 = JsNumber.from_napi_value(_b, env, args[0])
         var mojo_arg1 = JsNumber.from_napi_value(_b, env, args[1])
         var mojo_result = safe_divide_pure(mojo_arg0, mojo_arg1)
@@ -373,7 +373,7 @@ def safe_divide_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(_b, env, mojo_result.value()).value
     except:
         throw_js_error(env, "safeDivide failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # findName
 def find_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -382,11 +382,11 @@ def find_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var args = CbArgs.get_two(_b, env, info)
         if not js_is_array(_b, env, args[0]):
             throw_js_type_error_dynamic(_b, env, "findName: expected array for arg 1")
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var _t_args_1_ = js_typeof(_b, env, args[1])
         if _t_args_1_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "findName: expected number for arg 2, got " + js_type_name(_t_args_1_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var mojo_arg0 = from_js_array_str(_b, env, args[0])
         var mojo_arg1 = JsNumber.from_napi_value(_b, env, args[1])
         var mojo_result = find_name_pure(mojo_arg0, mojo_arg1)
@@ -395,7 +395,7 @@ def find_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsString.create(_b, env, mojo_result.value()).value
     except:
         throw_js_error(env, "findName failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # echoConfig
 def echo_config_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -405,13 +405,13 @@ def echo_config_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_arg0 = js_typeof(_b, env, arg0)
         if _t_arg0 != NAPI_TYPE_OBJECT:
             throw_js_type_error_dynamic(_b, env, "echoConfig: expected Config, got " + js_type_name(_t_arg0))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var mojo_arg0 = config_from_js(_b, env, arg0)
         var mojo_result = echo_config_pure(mojo_arg0)
         return config_to_js(_b, env, mojo_result)
     except:
         throw_js_error(env, "echoConfig failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # configSummary
 def config_summary_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -421,13 +421,13 @@ def config_summary_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_arg0 = js_typeof(_b, env, arg0)
         if _t_arg0 != NAPI_TYPE_OBJECT:
             throw_js_type_error_dynamic(_b, env, "configSummary: expected Config, got " + js_type_name(_t_arg0))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var mojo_arg0 = config_from_js(_b, env, arg0)
         var mojo_result = config_summary_pure(mojo_arg0)
         return JsString.create(_b, env, mojo_result).value
     except:
         throw_js_error(env, "configSummary failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # asyncSum (async)
 struct AsyncSumData(Movable):
@@ -438,8 +438,8 @@ struct AsyncSumData(Movable):
     var result: Float64
 
     def __init__(out self, input0: Float64, input1: Float64):
-        self.deferred = NapiDeferred(unsafe_from_address=0)
-        self.work = NapiAsyncWork(unsafe_from_address=0)
+        self.deferred = NapiDeferred(unsafe_from_address=Int(0))
+        self.work = NapiAsyncWork(unsafe_from_address=Int(0))
         self.input0 = input0
         self.input1 = input1
         self.result = 0.0
@@ -475,11 +475,11 @@ def async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_args_0_ = js_typeof(_b, env, args[0])
         if _t_args_0_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "asyncSum: expected number for arg 1, got " + js_type_name(_t_args_0_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var _t_args_1_ = js_typeof(_b, env, args[1])
         if _t_args_1_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "asyncSum: expected number for arg 2, got " + js_type_name(_t_args_1_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var input0 = JsNumber.from_napi_value(_b, env, args[0])
         var input1 = JsNumber.from_napi_value(_b, env, args[1])
         var data_ptr = alloc[AsyncSumData](1)
@@ -492,7 +492,7 @@ def async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return aw.value
     except:
         throw_js_error(env, "asyncSum failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # ExamplePoint class — constructor
 def example_point_ctor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -503,17 +503,17 @@ def example_point_ctor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var _t_args_0_ = js_typeof(_b, env, args[0])
         if _t_args_0_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "ExamplePoint: expected number for arg 1, got " + js_type_name(_t_args_0_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         var _t_args_1_ = js_typeof(_b, env, args[1])
         if _t_args_1_ != NAPI_TYPE_NUMBER:
             throw_js_type_error_dynamic(_b, env, "ExamplePoint: expected number for arg 2, got " + js_type_name(_t_args_1_))
-            return NapiValue(unsafe_from_address=0)
+            return NapiValue(unsafe_from_address=Int(0))
         JsObject(this_val).set_named_property(_b, env, "_x", args[0])
         JsObject(this_val).set_named_property(_b, env, "_y", args[1])
         return this_val
     except:
         throw_js_error(env, "ExamplePoint constructor failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # ExamplePoint.sum (instance method)
 def example_point_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -525,7 +525,7 @@ def example_point_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(_b, env, xv + yv).value
     except:
         throw_js_error(env, "sum failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # ExamplePoint.x (getter)
 def example_point_get_x_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -535,7 +535,7 @@ def example_point_get_x_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsObject(this_val).get_named_property(_b, env, "_x")
     except:
         throw_js_error(env, "x getter failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # ExamplePoint.y (getter)
 def example_point_get_y_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -545,7 +545,7 @@ def example_point_get_y_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsObject(this_val).get_named_property(_b, env, "_y")
     except:
         throw_js_error(env, "y getter failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # ExamplePoint.x (setter)
 def example_point_set_x_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -557,7 +557,7 @@ def example_point_set_x_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return val
     except:
         throw_js_error(env, "x setter failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # ExamplePoint.y (setter)
 def example_point_set_y_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -569,7 +569,7 @@ def example_point_set_y_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return val
     except:
         throw_js_error(env, "y setter failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 # ExamplePoint.isPoint (static method)
 def example_point_static_is_point_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -581,7 +581,7 @@ def example_point_static_is_point_fn(env: NapiEnv, info: NapiValue) -> NapiValue
         return JsBoolean.create(_b, env, JsObject(arg0).has_property(_b, env, "_x")).value
     except:
         throw_js_error(env, "isPoint failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 ## register_generated — register all generated functions and classes

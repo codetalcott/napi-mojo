@@ -305,7 +305,7 @@ def to_js_array[
 ## Raises TypeError if val is not an array. Array get/length use cached Bindings;
 ## element conversion uses the env-only trait method.
 def from_js_array[
-    T: FromJsValue & Copyable
+    T: FromJsValue & Copyable & ImplicitlyDestructible
 ](b: Bindings, env: NapiEnv, val: NapiValue) raises -> List[T]:
     if not js_is_array(b, env, val):
         throw_js_type_error_dynamic(env, "from_js_array: expected array")
