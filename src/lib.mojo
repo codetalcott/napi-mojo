@@ -27,8 +27,8 @@ from addon.convert_ops import register_convert
 from addon.typed_helpers_ops import register_typed_helpers
 
 
-@export("napi_register_module_v1", ABI="C")
-def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
+@export("napi_register_module_v1")
+def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
     # Allocate and initialize NapiBindings — resolves all N-API symbols
     # once via a single OwnedDLHandle. The pointer is passed as callback
     # data to every registered function so callbacks can retrieve it cheaply.
@@ -63,11 +63,11 @@ def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         m.flush()
     except:
         try:
-            var null_code = NapiValue(unsafe_from_address=0)
+            var null_code = NapiValue(unsafe_from_address=Int(0))
             var err_msg = JsString.create_literal(
                 env, "napi-mojo: register_module failed"
             )
-            var err_val = NapiValue(unsafe_from_address=0)
+            var err_val = NapiValue(unsafe_from_address=Int(0))
             var err_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
                 to=err_val
             ).bitcast[NoneType]()

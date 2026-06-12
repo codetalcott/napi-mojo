@@ -227,7 +227,7 @@ struct NapiNodeVersion:
         self.major = 0
         self.minor = 0
         self.patch = 0
-        self.release = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=0)
+        self.release = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
 
     def __init__(
         out self,
@@ -285,14 +285,14 @@ struct NapiPropertyDescriptor(Movable):
     var data: OpaquePointer[MutAnyOrigin]
 
     def __init__(out self):
-        self.utf8name = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=0)
-        self.name = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        self.method = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        self.getter = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        self.setter = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        self.value = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        self.utf8name = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
+        self.name = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        self.method = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        self.getter = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        self.setter = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        self.value = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         self.attributes = 0
-        self.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        self.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
 
     def __moveinit__(out self, deinit take: Self):
         self.utf8name = take.utf8name
