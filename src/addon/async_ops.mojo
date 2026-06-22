@@ -78,7 +78,9 @@ def reject_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 
 struct AsyncDoubleData(Movable):
+    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred
+    @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
     var input: Float64
     var result: Float64
@@ -150,7 +152,9 @@ def async_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 
 struct AsyncTripleData(Movable):
+    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred
+    @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
     var input: Float64
     var result: Float64
@@ -222,8 +226,11 @@ def async_triple_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 
 struct AsyncProgressData(Movable):
+    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred
+    @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
+    @__allow_legacy_any_origin_fields
     var tsfn: NapiThreadsafeFunction
     var count: Int
     var status: NapiStatus
@@ -405,7 +412,9 @@ def async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 
 struct CancelAsyncData(Movable):
+    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred
+    @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
 
     def __init__(out self, deferred: NapiDeferred):

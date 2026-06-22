@@ -21,6 +21,7 @@ from napi.bindings import Bindings
 
 ## HandleScope — typed wrapper for napi_handle_scope
 struct HandleScope:
+    @__allow_legacy_any_origin_fields
     var scope: NapiHandleScope
 
     def __init__(out self, scope: NapiHandleScope):

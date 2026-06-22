@@ -32,6 +32,7 @@ from napi.error import check_status
 ## JsArray — typed wrapper for a JavaScript array napi_value
 struct JsArray:
     ## The underlying napi_value handle. Valid within the current handle scope.
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):

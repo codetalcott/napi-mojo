@@ -23,7 +23,9 @@ from napi.bindings import NapiBindings, Bindings
 
 ## BindingsAndOne — bindings pointer + one argument (single napi_get_cb_info call)
 struct BindingsAndOne:
+    @__allow_legacy_any_origin_fields
     var b: Bindings
+    @__allow_legacy_any_origin_fields
     var arg0: NapiValue
 
     def __init__(out self, b: Bindings, arg0: NapiValue):
@@ -33,8 +35,11 @@ struct BindingsAndOne:
 
 ## BindingsAndTwo — bindings pointer + two arguments (single napi_get_cb_info call)
 struct BindingsAndTwo:
+    @__allow_legacy_any_origin_fields
     var b: Bindings
+    @__allow_legacy_any_origin_fields
     var arg0: NapiValue
+    @__allow_legacy_any_origin_fields
     var arg1: NapiValue
 
     def __init__(out self, b: Bindings, arg0: NapiValue, arg1: NapiValue):
@@ -64,7 +69,9 @@ struct BindingsAndThree:
 ## Used by zero-argument class method/getter callbacks. Pass this_val directly
 ## to unwrap_native_from_this[T](b, env, this_val) to skip a second get_cb_info.
 struct BindingsAndThis:
+    @__allow_legacy_any_origin_fields
     var b: Bindings
+    @__allow_legacy_any_origin_fields
     var this_val: NapiValue
 
     def __init__(out self, b: Bindings, this_val: NapiValue):
@@ -77,8 +84,11 @@ struct BindingsAndThis:
 ## Used by one-argument class method/setter callbacks. Replaces the triple call:
 ##   get_bindings + get_one(b,...) + get_this inside unwrap_native.
 struct BindingsThisAndOne:
+    @__allow_legacy_any_origin_fields
     var b: Bindings
+    @__allow_legacy_any_origin_fields
     var this_val: NapiValue
+    @__allow_legacy_any_origin_fields
     var arg0: NapiValue
 
     def __init__(out self, b: Bindings, this_val: NapiValue, arg0: NapiValue):

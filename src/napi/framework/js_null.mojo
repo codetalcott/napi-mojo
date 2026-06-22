@@ -17,6 +17,7 @@ from napi.bindings import Bindings
 ## JsNull — typed wrapper for the JavaScript null napi_value
 struct JsNull:
     ## The underlying napi_value handle (the null singleton).
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):

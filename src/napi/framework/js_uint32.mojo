@@ -14,6 +14,7 @@ from napi.bindings import Bindings
 
 
 struct JsUInt32:
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):

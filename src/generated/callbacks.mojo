@@ -431,7 +431,9 @@ def config_summary_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 # asyncSum (async)
 struct AsyncSumData(Movable):
+    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred
+    @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
     var input0: Float64
     var input1: Float64

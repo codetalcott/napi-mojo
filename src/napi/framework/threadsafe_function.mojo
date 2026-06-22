@@ -29,6 +29,7 @@ from napi.error import check_status
 
 
 struct ThreadsafeFunction:
+    @__allow_legacy_any_origin_fields
     var tsfn: NapiThreadsafeFunction
 
     def __init__(out self, tsfn: NapiThreadsafeFunction):

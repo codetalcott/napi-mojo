@@ -24,7 +24,9 @@ from napi.error import check_status
 
 
 struct JsPromise:
+    @__allow_legacy_any_origin_fields
     var value: NapiValue  # the promise — return this to JavaScript
+    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred  # used once to resolve or reject
 
     def __init__(out self, value: NapiValue, deferred: NapiDeferred):

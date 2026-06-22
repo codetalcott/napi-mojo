@@ -18,6 +18,7 @@ from napi.error import check_status
 
 
 struct CallbackScope:
+    @__allow_legacy_any_origin_fields
     var value: NapiCallbackScope
 
     def __init__(out self, value: NapiCallbackScope):

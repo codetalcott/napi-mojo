@@ -21,6 +21,7 @@ from napi.bindings import Bindings
 ## JsBoolean — typed wrapper for a JavaScript boolean napi_value
 struct JsBoolean:
     ## The underlying napi_value handle. Valid within the current handle scope.
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):

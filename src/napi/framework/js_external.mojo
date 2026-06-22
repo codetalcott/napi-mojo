@@ -13,6 +13,7 @@ from napi.framework.js_value import js_typeof, js_type_name
 
 
 struct JsExternal:
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):

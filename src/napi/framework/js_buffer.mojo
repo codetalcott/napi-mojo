@@ -18,6 +18,7 @@ from napi.error import check_status
 
 
 struct JsBuffer:
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):

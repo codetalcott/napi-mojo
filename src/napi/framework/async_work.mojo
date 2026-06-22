@@ -44,8 +44,11 @@ from napi.framework.js_string import JsString
 ## Contains the promise value (to return to JS), the deferred handle
 ## (to store in user's data struct), and the work handle (same).
 struct AsyncWorkResult:
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
+    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred
+    @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
 
     def __init__(

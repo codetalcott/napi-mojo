@@ -15,6 +15,7 @@ from napi.framework.register import fn_ptr, ModuleBuilder, ClassRegistry
 ## AdderCapture — closure data for inner_adder_fn (captured n + bindings)
 struct AdderCapture(Movable):
     var n: Float64
+    @__allow_legacy_any_origin_fields
     var b_raw: OpaquePointer[MutAnyOrigin]
 
     def __init__(out self, n: Float64, b: Bindings):

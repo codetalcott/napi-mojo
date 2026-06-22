@@ -275,13 +275,20 @@ struct NapiPropertyDescriptor(Movable):
     # utf8name is const char* in C — immutable pointer to a null-terminated UTF-8
     # string. Must remain alive until napi_define_properties returns. Use string
     # literals (static lifetime) rather than Mojo heap Strings (ASAP-freed).
+    @__allow_legacy_any_origin_fields
     var utf8name: OpaquePointer[ImmutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var name: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var method: OpaquePointer[MutAnyOrigin]  # napi_callback def pointer
+    @__allow_legacy_any_origin_fields
     var getter: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var setter: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var value: OpaquePointer[MutAnyOrigin]
     var attributes: UInt32  # napi_property_attributes; 0 = napi_default
+    @__allow_legacy_any_origin_fields
     var data: OpaquePointer[MutAnyOrigin]
 
     def __init__(out self):

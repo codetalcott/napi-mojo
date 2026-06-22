@@ -22,6 +22,7 @@ from napi.framework.register import fn_ptr, ModuleBuilder
 
 struct TypedPayload(Movable):
     var value: Float64
+    @__allow_legacy_any_origin_fields
     var counter: UnsafePointer[Int64, MutAnyOrigin]
 
     def __init__(

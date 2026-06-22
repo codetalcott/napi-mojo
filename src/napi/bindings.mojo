@@ -21,154 +21,297 @@ from napi.types import (
 
 struct NapiBindings(Movable):
     # --- 142 fields, one per raw_* function ---
+    @__allow_legacy_any_origin_fields
     var create_string_utf8: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_object: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var set_named_property: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_cb_info: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_value_string_utf8: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var define_properties: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_value_double: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_double: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var throw_error: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_boolean: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_value_bool: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var typeof_: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_null: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_undefined: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_array_with_length: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var set_element: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_element: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_array_length: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_property: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var is_array: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_named_property: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var has_named_property: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var call_function: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var open_handle_scope: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var close_handle_scope: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_promise: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var resolve_deferred: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var reject_deferred: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_error: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_async_work: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var queue_async_work: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var delete_async_work: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_int32: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_value_int32: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_uint32: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_value_uint32: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_int64: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_value_int64: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var throw_type_error: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var throw_range_error: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_type_error: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_range_error: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_arraybuffer: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_arraybuffer_info: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var is_arraybuffer: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var detach_arraybuffer: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_buffer: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_buffer_copy: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_buffer_info: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var is_buffer: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_typedarray: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_typedarray_info: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var is_typedarray: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var define_class: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var wrap: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var unwrap: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var remove_wrap: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var new_instance: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_function: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_new_target: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_global: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_reference: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var delete_reference: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var reference_ref: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var reference_unref: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_reference_value: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var open_escapable_handle_scope: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var close_escapable_handle_scope: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var escape_handle: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_bigint_int64: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_bigint_uint64: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_value_bigint_int64: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_value_bigint_uint64: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_date: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_date_value: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var is_date: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_symbol: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var symbol_for: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_property_names: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_all_property_names: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var has_own_property: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var delete_property: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var strict_equals: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var instanceof_: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var object_freeze: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var object_seal: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var has_element: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var delete_element: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_prototype: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_threadsafe_function: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var call_threadsafe_function: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var acquire_threadsafe_function: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var release_threadsafe_function: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_external: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_value_external: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_version: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_node_version: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var set_property: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var has_property: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var throw_: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var is_exception_pending: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_and_clear_last_exception: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var coerce_to_bool: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var coerce_to_number: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var coerce_to_string: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var coerce_to_object: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_dataview: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_dataview_info: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var is_dataview: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_bigint_words: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_value_bigint_words: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var add_finalizer: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_external_arraybuffer: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var set_instance_data: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_instance_data: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var add_env_cleanup_hook: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var remove_env_cleanup_hook: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var cancel_async_work: OpaquePointer[MutAnyOrigin]
     # Phase 21-22 additions (119-127)
+    @__allow_legacy_any_origin_fields
     var is_error: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var adjust_external_memory: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var run_script: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var throw_syntax_error: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_syntax_error: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var is_detached_arraybuffer: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var fatal_exception: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var type_tag_object: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var check_object_type_tag: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var add_async_cleanup_hook: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var remove_async_cleanup_hook: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var get_uv_event_loop: OpaquePointer[MutAnyOrigin]
     # Phase C2 additions (131-133): async context + make_callback
+    @__allow_legacy_any_origin_fields
     var async_init: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var async_destroy: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var make_callback: OpaquePointer[MutAnyOrigin]
     # Phase C3 additions (134-135): callback scope
+    @__allow_legacy_any_origin_fields
     var open_callback_scope: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var close_callback_scope: OpaquePointer[MutAnyOrigin]
     # N-API v10 additions (136-141)
+    @__allow_legacy_any_origin_fields
     var create_external_string_latin1: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_external_string_utf16: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_property_key_utf8: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_property_key_latin1: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_property_key_utf16: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var create_buffer_from_arraybuffer: OpaquePointer[MutAnyOrigin]
     # Missing N-API v1 function (needed for external string Latin-1 path)
+    @__allow_legacy_any_origin_fields
     var get_value_string_latin1: OpaquePointer[MutAnyOrigin]  # 142
     # Non-function-pointer slot: ClassRegistry pointer (set after module init)
+    @__allow_legacy_any_origin_fields
     var registry: OpaquePointer[MutAnyOrigin]
 
     def __init__(out self):

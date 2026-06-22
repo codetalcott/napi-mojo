@@ -17,6 +17,7 @@ from napi.bindings import Bindings
 ## JsUndefined — typed wrapper for the JavaScript undefined napi_value
 struct JsUndefined:
     ## The underlying napi_value handle (the undefined singleton).
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):
