@@ -1,7 +1,7 @@
 {
   "name": "napi-mojo",
   "version": "0.3.3",
-  "description": "Build Node.js native addons in Mojo — the Mojo equivalent of napi-rs",
+  "description": "Build Node.js native addons in Mojo \u2014 the Mojo equivalent of napi-rs",
   "main": "index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -28,6 +28,12 @@
     "test": "jest",
     "test:gc": "NODE_OPTIONS='--expose-gc' npx jest tests/finalizer_gc.test.js",
     "version": "node scripts/sync-versions.mjs"
+  },
+  "jest": {
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/gpu/"
+    ]
   },
   "engines": {
     "node": ">=18.0.0"

@@ -34,6 +34,15 @@ def init_async_runtime() raises:
         lib = OwnedDLHandle("libKGENCompilerRTShared.dylib")
     except:
         lib = OwnedDLHandle("libKGENCompilerRTShared.so")
+    # NOTE (dev2026072306): this symbol no longer exists. The library now
+    # exports `KGEN_CompilerRT_AsyncRT_GetOrCreateCPUDevice` instead, whose
+    # C++ counterpart is
+    #   getOrCreateCPUDevice(CPUDeviceSource, const CPUDeviceOptions&, bool)
+    # — i.e. it takes arguments, unlike the old zero-arg entry point. Calling
+    # it blind would be guessing at an undocumented internal ABI, so the
+    # lookup below simply fails and parallelize_safe() falls back to running
+    # sequentially (correct results, no thread dispatch). Verify the real
+    # signature before wiring the fast path back up.
     var create_rt = _sym[def() thin abi("C") -> OpaquePointer[MutAnyOrigin]](
         lib, "KGEN_CompilerRT_AsyncRT_GetOrCreateRuntime"
     )
@@ -51,9 +60,17 @@ def parallelize_safe[func: def(Int) capturing -> None](n: Int):
     """Run func(i) for i in 0..n-1 in parallel, with runtime auto-init.
 
     Equivalent to parallelize[func](n) but safe to call from a .node addon
-    without a prior explicit init_async_runtime() call. The runtime init is
-    attempted silently; if it fails the loop still runs (sequentially via
-    parallelize fallback behavior).
+    without a prior explicit init_async_runtime() call.
+
+    If the async runtime cannot be initialized, this runs the work
+    SEQUENTIALLY rather than calling parallelize(). That is not a cosmetic
+    choice: parallelize() on an uninitialized runtime dereferences it and
+    SIGSEGVs the host Node process. The earlier docstring claimed parallelize()
+    fell back on its own — it does not, and examples/vectors-addon.mojo crashed
+    at exactly its PARALLEL_THRESHOLD because of it.
+
+    Sequential fallback is semantically identical, just without thread
+    dispatch: func(i) is invoked for every i either way.
 
     Crossover point: ~200 ns thread-dispatch overhead means this is only
     faster than scalar for n >= ~64 Float64 elements. For small arrays
@@ -62,5 +79,7 @@ def parallelize_safe[func: def(Int) capturing -> None](n: Int):
     try:
         init_async_runtime()
     except:
-        pass
+        for i in range(n):
+            func(i)
+        return
     parallelize[func](n)

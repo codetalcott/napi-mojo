@@ -27,6 +27,17 @@ struct JsUndefined:
     ##
     ## Calls napi_get_undefined and checks the status.
 
+    ## env-only: required by callbacks that have no NapiBindings pointer —
+    ## e.g. addons built with ModuleBuilder(env, exports). Not deprecated.
+    @staticmethod
+    def create(env: NapiEnv) raises -> JsUndefined:
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            to=result
+        ).bitcast[NoneType]().as_unsafe_any_origin()
+        check_status(raw_get_undefined(env, result_ptr))
+        return JsUndefined(result)
+
     @staticmethod
     def create(b: Bindings, env: NapiEnv) raises -> JsUndefined:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))

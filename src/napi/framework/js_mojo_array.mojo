@@ -44,12 +44,13 @@ struct MojoFloat64Array(Movable):
     __del__ automatically frees the buffer to prevent leaks.
     """
 
+    @__allow_legacy_any_origin_fields
     var ptr: UnsafePointer[Float64, MutAnyOrigin]
     var length: Int
     var _transferred: Bool
 
     def __init__(out self, length: Int):
-        self.ptr = alloc[Float64](length)
+        self.ptr = alloc[Float64](length).as_unsafe_any_origin()
         self.length = length
         self._transferred = False
 
@@ -76,11 +77,11 @@ struct MojoFloat64Array(Movable):
             raw_create_external_arraybuffer(
                 b,
                 env,
-                self.ptr.bitcast[NoneType](),
+                self.ptr.bitcast[NoneType]().as_unsafe_any_origin(),
                 byte_len,
                 fin_ptr,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=ab).bitcast[NoneType](),
+                UnsafePointer(to=ab).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         self._transferred = True  # GC finalizer now owns memory
@@ -101,11 +102,11 @@ struct MojoFloat64Array(Movable):
         check_status(
             raw_create_external_arraybuffer(
                 env,
-                self.ptr.bitcast[NoneType](),
+                self.ptr.bitcast[NoneType]().as_unsafe_any_origin(),
                 byte_len,
                 fin_ptr,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=ab).bitcast[NoneType](),
+                UnsafePointer(to=ab).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         self._transferred = True  # GC finalizer now owns memory

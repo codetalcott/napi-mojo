@@ -55,6 +55,19 @@ jobs:
       - name: Build Mojo addon
         run: pixi run bash build.sh
 
+      # examples/ is not reachable from src/lib.mojo, so build.sh never
+      # type-checks it — which is exactly why all three examples had rotted
+      # into non-compiling states across several nightlies. They also reach
+      # framework code nothing else does (runtime.mojo, js_mojo_array.mojo,
+      # the env-only Js* overloads), so this is real coverage, not tidiness.
+      - name: Build examples
+        run: |
+          for ex in examples/*-addon.mojo; do
+            echo "::group::$ex"
+            pixi run mojo build --emit shared-lib -I src "$ex" -o "/tmp/$(basename "$ex" .mojo).so"
+            echo "::endgroup::"
+          done
+
       # macOS workers occasionally SIGABRT/SIGSEGV at exit due to a
       # known Mojo 1.0.0b1 gap: the address-of-local-var pattern napi-mojo
       # uses at finalizer registration sites doesn't yield a thin C-ABI
