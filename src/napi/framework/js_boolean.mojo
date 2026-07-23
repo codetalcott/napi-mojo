@@ -37,7 +37,7 @@ struct JsBoolean:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_boolean(b, env, bval, result_ptr)
         check_status(status)
         return JsBoolean(result)
@@ -54,7 +54,7 @@ struct JsBoolean:
         var bval: Bool = False
         var b_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=bval).bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var status = raw_get_value_bool(b, env, val, b_ptr)
         check_status(status)
         return bval

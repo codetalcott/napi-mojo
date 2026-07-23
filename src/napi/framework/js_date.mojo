@@ -25,7 +25,7 @@ struct JsDate:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_date(
-                env, timestamp_ms, UnsafePointer(to=result).bitcast[NoneType]()
+                env, timestamp_ms, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsDate(result)
@@ -34,7 +34,7 @@ struct JsDate:
         var result: Float64 = 0.0
         check_status(
             raw_get_date_value(
-                env, self.value, UnsafePointer(to=result).bitcast[NoneType]()
+                env, self.value, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result
@@ -59,7 +59,7 @@ struct JsDate:
                 b,
                 env,
                 timestamp_ms,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsDate(result)
@@ -68,7 +68,7 @@ struct JsDate:
         var result: Float64 = 0.0
         check_status(
             raw_get_date_value(
-                b, env, self.value, UnsafePointer(to=result).bitcast[NoneType]()
+                b, env, self.value, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result

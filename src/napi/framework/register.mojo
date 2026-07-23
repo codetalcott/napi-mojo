@@ -80,7 +80,7 @@ struct ModuleBuilder(Movable):
         self.env = env
         self.exports = exports
         self.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self._descs = alloc[NapiPropertyDescriptor](MAX_DESCRIPTORS)
+        self._descs = alloc[NapiPropertyDescriptor](MAX_DESCRIPTORS).as_unsafe_any_origin()
         self._count = 0
         self._capacity = MAX_DESCRIPTORS
 
@@ -93,7 +93,7 @@ struct ModuleBuilder(Movable):
         self.env = env
         self.exports = exports
         self.data = data
-        self._descs = alloc[NapiPropertyDescriptor](MAX_DESCRIPTORS)
+        self._descs = alloc[NapiPropertyDescriptor](MAX_DESCRIPTORS).as_unsafe_any_origin()
         self._count = 0
         self._capacity = MAX_DESCRIPTORS
 
@@ -118,11 +118,11 @@ struct ModuleBuilder(Movable):
                 + ")"
             )
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         desc.method = ptr
         desc.data = self.data
         desc.attributes = 0
-        (self._descs + self._count).init_pointee_move(desc^)
+        (self._descs + self._count).unsafe_write(desc^)
         self._count += 1
 
     ## flush — register all accumulated method descriptors in one N-API call
@@ -198,7 +198,7 @@ struct ClassBuilder:
     ) raises:
         var proto = _get_prototype(self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         desc.method = ptr
         desc.data = self.data
         desc.attributes = 0
@@ -209,7 +209,7 @@ struct ClassBuilder:
     ) raises:
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         desc.method = ptr
         desc.data = self.data
         desc.attributes = 0
@@ -221,7 +221,7 @@ struct ClassBuilder:
     ) raises:
         var proto = _get_prototype(self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         desc.getter = ptr
         desc.data = self.data
         desc.attributes = 0
@@ -232,7 +232,7 @@ struct ClassBuilder:
     ) raises:
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         desc.getter = ptr
         desc.data = self.data
         desc.attributes = 0
@@ -247,7 +247,7 @@ struct ClassBuilder:
     ) raises:
         var proto = _get_prototype(self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         desc.getter = get_ptr
         desc.setter = set_ptr
         desc.data = self.data
@@ -263,7 +263,7 @@ struct ClassBuilder:
     ) raises:
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         desc.getter = get_ptr
         desc.setter = set_ptr
         desc.data = self.data
@@ -275,7 +275,7 @@ struct ClassBuilder:
         self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
     ) raises:
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         desc.method = ptr
         desc.data = self.data
         desc.attributes = 0
@@ -285,7 +285,7 @@ struct ClassBuilder:
         self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
     ) raises:
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         desc.method = ptr
         desc.data = self.data
         desc.attributes = 0
@@ -406,7 +406,7 @@ struct ClassRegistry(Movable):
     var _count: Int
 
     def __init__(out self):
-        self._entries = alloc[ClassEntry](16)
+        self._entries = alloc[ClassEntry](16).as_unsafe_any_origin()
         self._count = 0
 
     def __moveinit__(out self, deinit take: Self):
@@ -424,10 +424,10 @@ struct ClassRegistry(Movable):
         if self._count >= 16:
             raise Error("ClassRegistry: capacity exceeded (max 16 classes)")
         var entry = ClassEntry()
-        entry.name_ptr = name.unsafe_ptr().bitcast[NoneType]()
+        entry.name_ptr = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         entry.name_len = name.byte_length()
         entry.ctor_ref = JsRef.create(b, env, ctor, 1).handle
-        (self._entries + self._count).init_pointee_move(entry^)
+        (self._entries + self._count).unsafe_write(entry^)
         self._count += 1
 
     ## new_instance — call `new ClassName(args)` from Mojo code
@@ -447,7 +447,7 @@ struct ClassRegistry(Movable):
         for i in range(self._count):
             var ep = self._entries + i
             if ep[].name_len == target_len and _bytes_equal(
-                ep[].name_ptr, target_ptr.bitcast[NoneType](), target_len
+                ep[].name_ptr, target_ptr.bitcast[NoneType]().as_unsafe_any_origin(), target_len
             ):
                 var ctor_val = JsRef(ep[].ctor_ref).get(b, env)
                 var result = NapiValue(unsafe_from_address=Int(0))
@@ -458,7 +458,7 @@ struct ClassRegistry(Movable):
                         ctor_val,
                         argc,
                         argv,
-                        UnsafePointer(to=result).bitcast[NoneType](),
+                        UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
                     )
                 )
                 return result

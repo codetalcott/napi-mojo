@@ -54,7 +54,7 @@ def js_typeof(env: NapiEnv, val: NapiValue) raises -> NapiValueType:
     var t: NapiValueType = 0
     var t_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=t).bitcast[
         NoneType
-    ]()
+    ]().as_unsafe_any_origin()
     check_status(raw_typeof(env, val, t_ptr))
     return t
 
@@ -97,7 +97,7 @@ def js_is_array(env: NapiEnv, val: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_is_array(env, val, result_ptr))
     return result
 
@@ -111,7 +111,7 @@ def js_strict_equals(
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_strict_equals(env, lhs, rhs, result_ptr))
     return result
 
@@ -120,7 +120,7 @@ def js_strict_equals(
 def js_get_global(env: NapiEnv) raises -> JsObject:
     var result = NapiValue(unsafe_from_address=Int(0))
     check_status(
-        raw_get_global(env, UnsafePointer(to=result).bitcast[NoneType]())
+        raw_get_global(env, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin())
     )
     return JsObject(result)
 
@@ -134,7 +134,7 @@ def js_typeof(
     var t: NapiValueType = 0
     var t_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=t).bitcast[
         NoneType
-    ]()
+    ]().as_unsafe_any_origin()
     check_status(raw_typeof(b, env, val, t_ptr))
     return t
 
@@ -143,7 +143,7 @@ def js_is_array(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_is_array(b, env, val, result_ptr))
     return result
 
@@ -154,7 +154,7 @@ def js_strict_equals(
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_strict_equals(b, env, lhs, rhs, result_ptr))
     return result
 
@@ -162,7 +162,7 @@ def js_strict_equals(
 def js_get_global(b: Bindings, env: NapiEnv) raises -> JsObject:
     var result = NapiValue(unsafe_from_address=Int(0))
     check_status(
-        raw_get_global(b, env, UnsafePointer(to=result).bitcast[NoneType]())
+        raw_get_global(b, env, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin())
     )
     return JsObject(result)
 
@@ -172,7 +172,7 @@ def js_is_error(env: NapiEnv, val: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_is_error(env, val, result_ptr))
     return result
 
@@ -181,7 +181,7 @@ def js_is_error(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_is_error(b, env, val, result_ptr))
     return result
 
@@ -195,7 +195,7 @@ def js_adjust_external_memory(
     var result: Int64 = 0
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_adjust_external_memory(env, change_in_bytes, result_ptr))
     return result
 
@@ -206,7 +206,7 @@ def js_adjust_external_memory(
     var result: Int64 = 0
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(
         raw_adjust_external_memory(b, env, change_in_bytes, result_ptr)
     )
@@ -220,7 +220,7 @@ def js_run_script(env: NapiEnv, script: NapiValue) raises -> NapiValue:
     var result = NapiValue(unsafe_from_address=Int(0))
     check_status(
         raw_run_script(
-            env, script, UnsafePointer(to=result).bitcast[NoneType]()
+            env, script, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
         )
     )
     return result
@@ -232,7 +232,7 @@ def js_run_script(
     var result = NapiValue(unsafe_from_address=Int(0))
     check_status(
         raw_run_script(
-            b, env, script, UnsafePointer(to=result).bitcast[NoneType]()
+            b, env, script, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
         )
     )
     return result

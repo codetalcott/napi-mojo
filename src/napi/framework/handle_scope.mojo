@@ -33,7 +33,7 @@ struct HandleScope:
         var scope: NapiHandleScope = NapiHandleScope(unsafe_from_address=Int(0))
         var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=scope
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_open_handle_scope(env, scope_ptr))
         return HandleScope(scope)
 
@@ -42,7 +42,7 @@ struct HandleScope:
         var scope: NapiHandleScope = NapiHandleScope(unsafe_from_address=Int(0))
         var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=scope
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_open_handle_scope(b, env, scope_ptr))
         return HandleScope(scope)
 

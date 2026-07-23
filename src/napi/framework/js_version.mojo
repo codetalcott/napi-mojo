@@ -24,7 +24,7 @@ def get_napi_version(env: NapiEnv) raises -> UInt32:
     var result: UInt32 = 0
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_version(env, result_ptr))
     return result
 
@@ -40,7 +40,7 @@ def get_node_version_ptr(
     var ptr_val = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
     var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=ptr_val
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_node_version(env, out_ptr))
     # The struct starts with three UInt32 fields (major, minor, patch)
     # Cast to UInt32* for direct field access
@@ -54,7 +54,7 @@ def get_napi_version(b: Bindings, env: NapiEnv) raises -> UInt32:
     var result: UInt32 = 0
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_version(b, env, result_ptr))
     return result
 
@@ -65,7 +65,7 @@ def get_node_version_ptr(
     var ptr_val = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
     var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=ptr_val
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_node_version(b, env, out_ptr))
     return ptr_val.bitcast[UInt32]()
 
@@ -84,7 +84,7 @@ def add_async_cleanup_hook(
     var handle = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
     var handle_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=handle
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_add_async_cleanup_hook(b, env, hook_cb, arg, handle_out))
     return handle
 
@@ -110,6 +110,6 @@ def get_uv_event_loop(
     var loop_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
     var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=loop_ptr
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_uv_event_loop(b, env, out_ptr))
     return loop_ptr

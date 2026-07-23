@@ -68,7 +68,7 @@ struct ThreadsafeFunction:
                 finalize_cb,
                 null_ptr,  # context
                 call_js_cb,
-                UnsafePointer(to=tsfn).bitcast[NoneType](),
+                UnsafePointer(to=tsfn).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return ThreadsafeFunction(tsfn)
@@ -100,7 +100,7 @@ struct ThreadsafeFunction:
                 finalize_cb,
                 null_ptr,  # context
                 call_js_cb,
-                UnsafePointer(to=tsfn).bitcast[NoneType](),
+                UnsafePointer(to=tsfn).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return ThreadsafeFunction(tsfn)

@@ -31,7 +31,7 @@ def define_property(
     # duration of this function call (desc lives in this stack frame).
     var p: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=desc).bitcast[
         NoneType
-    ]()
+    ]().as_unsafe_any_origin()
     var status = raw_define_properties(env, exports, 1, p)
     check_status(status)
 
@@ -72,7 +72,7 @@ def define_property(
 ) raises:
     var p: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=desc).bitcast[
         NoneType
-    ]()
+    ]().as_unsafe_any_origin()
     var status = raw_define_properties(b, env, exports, 1, p)
     check_status(status)
 

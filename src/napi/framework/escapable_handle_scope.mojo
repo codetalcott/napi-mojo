@@ -33,7 +33,7 @@ struct EscapableHandleScope:
         var scope = NapiEscapableHandleScope(unsafe_from_address=Int(0))
         check_status(
             raw_open_escapable_handle_scope(
-                env, UnsafePointer(to=scope).bitcast[NoneType]()
+                env, UnsafePointer(to=scope).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return EscapableHandleScope(scope)
@@ -43,7 +43,7 @@ struct EscapableHandleScope:
         var scope = NapiEscapableHandleScope(unsafe_from_address=Int(0))
         check_status(
             raw_open_escapable_handle_scope(
-                b, env, UnsafePointer(to=scope).bitcast[NoneType]()
+                b, env, UnsafePointer(to=scope).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return EscapableHandleScope(scope)
@@ -55,7 +55,7 @@ struct EscapableHandleScope:
                 env,
                 self.scope,
                 value,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result
@@ -70,7 +70,7 @@ struct EscapableHandleScope:
                 env,
                 self.scope,
                 value,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result

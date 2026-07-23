@@ -42,7 +42,7 @@ struct CallbackScope:
                 env,
                 resource_object,
                 context,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return CallbackScope(result)

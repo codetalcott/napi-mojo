@@ -250,13 +250,13 @@ function emitTypeCheck(lines, jsName, rawType, argExpr, argDesc) {
   if (typeInfo.napi_type === '__IS_ARRAY__') {
     lines.push(`        if not js_is_array(_b, env, ${argExpr}):`);
     lines.push(`            throw_js_type_error_dynamic(_b, env, "${jsName}: expected array${argDesc ? ' for ' + argDesc : ''}")`);
-    lines.push(`            return NapiValue(unsafe_from_address=0)`);
+    lines.push(`            return NapiValue(unsafe_from_address=Int(0))`);
   } else {
     const tVar = `_t_${argExpr.replace(/[^a-z0-9]/gi, '_')}`;
     lines.push(`        var ${tVar} = js_typeof(_b, env, ${argExpr})`);
     lines.push(`        if ${tVar} != ${typeInfo.napi_type}:`);
     lines.push(`            throw_js_type_error_dynamic(_b, env, "${jsName}: expected ${typeInfo.type_name}${argDesc ? ' for ' + argDesc : ''}, got " + js_type_name(${tVar}))`);
-    lines.push(`            return NapiValue(unsafe_from_address=0)`);
+    lines.push(`            return NapiValue(unsafe_from_address=Int(0))`);
   }
 }
 
@@ -328,7 +328,7 @@ function generateCallback(name, decl) {
 
   lines.push(`    except:`);
   lines.push(`        throw_js_error(env, "${jsName} failed")`);
-  lines.push(`        return NapiValue(unsafe_from_address=0)`);
+  lines.push(`        return NapiValue(unsafe_from_address=Int(0))`);
 
   return lines.join('\n');
 }
@@ -375,7 +375,12 @@ function generateAsyncFunction(name, decl) {
 
   // 1. Data struct (Movable — no destructors, safe to pass across threads)
   out.push(`struct ${structName}(Movable):`);
+  // NapiDeferred/NapiAsyncWork hide AnyOrigin, which dev2026062206 rejects in
+  // struct fields. Decorator is the changelog-sanctioned stopgap — see the
+  // AnyOrigin rule in CLAUDE.md.
+  out.push(`    @__allow_legacy_any_origin_fields`);
   out.push(`    var deferred: NapiDeferred`);
+  out.push(`    @__allow_legacy_any_origin_fields`);
   out.push(`    var work: NapiAsyncWork`);
   for (let i = 0; i < args.length; i++) {
     out.push(`    var input${i}: ${argMojoTypes[i].mojoType}`);
@@ -384,8 +389,8 @@ function generateAsyncFunction(name, decl) {
   out.push('');
   const initParams = argMojoTypes.map((t, i) => `input${i}: ${t.mojoType}`).join(', ');
   out.push(`    def __init__(out self${initParams ? ', ' + initParams : ''}):`);
-  out.push(`        self.deferred = NapiDeferred(unsafe_from_address=0)`);
-  out.push(`        self.work = NapiAsyncWork(unsafe_from_address=0)`);
+  out.push(`        self.deferred = NapiDeferred(unsafe_from_address=Int(0))`);
+  out.push(`        self.work = NapiAsyncWork(unsafe_from_address=Int(0))`);
   for (let i = 0; i < args.length; i++) {
     out.push(`        self.input${i} = input${i}`);
   }
@@ -419,7 +424,7 @@ function generateAsyncFunction(name, decl) {
   out.push(`            AsyncWork.reject_with_error(env, ptr[].deferred, ptr[].work, "${jsName} failed")`);
   out.push(`    except:`);
   out.push(`        pass`);
-  out.push(`    ptr.destroy_pointee()`);
+  out.push(`    ptr.unsafe_deinit_pointee()`);
   out.push(`    ptr.free()`);
 
   // 4. Entry-point callback (standard N-API: type-check, alloc, queue, return promise)
@@ -448,16 +453,18 @@ function generateAsyncFunction(name, decl) {
   }
   const inputArgs = argMojoTypes.map((_, i) => `input${i}`).join(', ');
   out.push(`        var data_ptr = alloc[${structName}](1)`);
-  out.push(`        data_ptr.init_pointee_move(${structName}(${inputArgs}))`);
+  out.push(`        data_ptr.unsafe_write(${structName}(${inputArgs}))`);
   out.push(`        var exec_ref = ${name}_execute`);
   out.push(`        var comp_ref = ${name}_complete`);
-  out.push(`        var aw = AsyncWork.queue(_b, env, "${jsName}", data_ptr.bitcast[NoneType](), fn_ptr(exec_ref), fn_ptr(comp_ref))`);
+  // .as_unsafe_any_origin() is required as of dev2026072306: the implicit
+  // UnsafePointer -> MutAnyOrigin conversion at C-FFI signatures was removed.
+  out.push(`        var aw = AsyncWork.queue(_b, env, "${jsName}", data_ptr.bitcast[NoneType]().as_unsafe_any_origin(), fn_ptr(exec_ref), fn_ptr(comp_ref))`);
   out.push(`        data_ptr[].deferred = aw.deferred`);
   out.push(`        data_ptr[].work = aw.work`);
   out.push(`        return aw.value`);
   out.push(`    except:`);
   out.push(`        throw_js_error(env, "${jsName} failed")`);
-  out.push(`        return NapiValue(unsafe_from_address=0)`);
+  out.push(`        return NapiValue(unsafe_from_address=Int(0))`);
 
   return out.join('\n');
 }
@@ -520,7 +527,7 @@ function generateClassConstructor(className, decl) {
   lines.push(`        return this_val`);
   lines.push(`    except:`);
   lines.push(`        throw_js_error(env, "${jsName} constructor failed")`);
-  lines.push(`        return NapiValue(unsafe_from_address=0)`);
+  lines.push(`        return NapiValue(unsafe_from_address=Int(0))`);
 
   return lines.join('\n');
 }
@@ -560,7 +567,7 @@ function generateClassMethod(className, methodName, decl) {
 
   lines.push(`    except:`);
   lines.push(`        throw_js_error(env, "${jsName} failed")`);
-  lines.push(`        return NapiValue(unsafe_from_address=0)`);
+  lines.push(`        return NapiValue(unsafe_from_address=Int(0))`);
 
   return lines.join('\n');
 }
@@ -604,7 +611,7 @@ function generateClassStaticMethod(className, methodName, decl) {
 
   lines.push(`    except:`);
   lines.push(`        throw_js_error(env, "${jsName} failed")`);
-  lines.push(`        return NapiValue(unsafe_from_address=0)`);
+  lines.push(`        return NapiValue(unsafe_from_address=Int(0))`);
 
   return lines.join('\n');
 }
@@ -628,7 +635,7 @@ function generateClassSetter(className, propName, decl) {
 
   lines.push(`    except:`);
   lines.push(`        throw_js_error(env, "${propName} setter failed")`);
-  lines.push(`        return NapiValue(unsafe_from_address=0)`);
+  lines.push(`        return NapiValue(unsafe_from_address=Int(0))`);
 
   return lines.join('\n');
 }
@@ -651,7 +658,7 @@ function generateClassGetter(className, getterName, decl) {
 
   lines.push(`    except:`);
   lines.push(`        throw_js_error(env, "${getterName} getter failed")`);
-  lines.push(`        return NapiValue(unsafe_from_address=0)`);
+  lines.push(`        return NapiValue(unsafe_from_address=Int(0))`);
 
   return lines.join('\n');
 }

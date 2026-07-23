@@ -4,15 +4,30 @@ on:
   schedule:
     - cron: '0 22 * * 2'  # Tuesday 10pm UTC
     - cron: '0 22 * * 5'  # Friday 10pm UTC
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      max_version:
+        description: 'Pin a specific max version (e.g. 26.5.0.dev2026072306). Leave blank for latest nightly.'
+        required: false
+        default: ''
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Scheduled runs get a restricted GITHUB_TOKEN by default, which is why the
+# failure-issue step silently did nothing for weeks. Grant issues:write.
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   canary:
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
@@ -21,40 +36,86 @@ jobs:
         with:
           node-version: '22'
 
+      # MUST run before setup-pixi. setup-pixi's default `pixi install --locked`
+      # would otherwise fail on the (deliberately) stale lock, before we ever
+      # get to unpin. sed -i.bak is portable across BSD (macOS) and GNU (Linux).
+      - name: Repoint Mojo/MAX version
+        run: |
+          if [ -n "${{ inputs.max_version }}" ]; then
+            SPEC='max = "==${{ inputs.max_version }}"'
+          else
+            SPEC='max = "*"'
+          fi
+          sed -i.bak "s/^max = \".*/${SPEC}/" pixi.toml && rm pixi.toml.bak
+          grep '^max = ' pixi.toml
+
+      # run-install:false + cache:false — the pin we just wrote is intentionally
+      # out of sync with pixi.lock, so neither a locked install nor a restored
+      # cache can be allowed to resolve the version for us.
       - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: latest
-
-      - name: Unpin Mojo/MAX version (use latest nightly)
-        run: sed -i '' 's/^max = ".*/max = "*"/' pixi.toml
+          run-install: false
+          cache: false
 
       - name: Install dependencies
         run: |
           pixi update
           npm ci
 
+      - name: Resolve Mojo version
+        id: mojo-version
+        run: echo "version=$(pixi run mojo --version 2>/dev/null || echo 'unknown')" >> "$GITHUB_OUTPUT"
+
       - name: Build Mojo addon
         run: pixi run bash build.sh
+
+      # Cheap tripwire: `require()` alone only exercises the env-only N-API path
+      # (module registration never touches a cached binding slot). The first
+      # actual call is what dereferences the NapiBindings cache.
+      - name: Smoke test
+        run: node -e "const a=require('./build/index.node'); console.log(a.hello())"
 
       - name: Run tests
         run: npm test
 
-      - name: Get Mojo version on failure
-        if: failure()
-        id: mojo-version
-        run: echo "version=$(pixi run mojo --version 2>/dev/null || echo 'unknown')" >> "$GITHUB_OUTPUT"
+      # npm test skips these six — they need --expose-gc. GC-time finalizer bugs
+      # are exactly the class a canary should be catching.
+      - name: Run GC finalizer tests
+        run: npm run test:gc
 
-      - name: Create issue on failure
+      - name: Record known-good version
+        if: success()
+        run: |
+          {
+            echo "### Canary green on ${{ matrix.os }}"
+            echo ""
+            echo '```'
+            echo "${{ steps.mojo-version.outputs.version }}"
+            grep '^max = ' pixi.toml
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report failure
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh label create canary-failure --color D93F0B --description "Nightly canary build failure" 2>/dev/null || true
-          gh issue create \
-            --title "Nightly canary failed — Mojo ${{ steps.mojo-version.outputs.version }}" \
-            --label "canary-failure" \
-            --body "The nightly canary build failed with Mojo **${{ steps.mojo-version.outputs.version }}**.
+          TITLE="Nightly canary failed — ${{ steps.mojo-version.outputs.version }} (${{ matrix.os }})"
+          BODY="The nightly canary failed on \`${{ matrix.os }}\` with **${{ steps.mojo-version.outputs.version }}**.
 
           [View failed run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-          This likely means a Mojo nightly introduced a breaking change. Check the build/test logs and update the framework accordingly."
+          This usually means a Mojo nightly introduced a breaking change. Diff
+          \`modular/modular:mojo/docs/nightly-changelog.md\` across the window before
+          reverse-engineering the diagnostic — see the nightly upgrade runbook in CLAUDE.md."
+
+          # Comment on the open canary issue rather than filing a new one every
+          # run; an unattended break would otherwise open two issues a week.
+          EXISTING=$(gh issue list --state open --label canary-failure \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --label canary-failure --body "$BODY"
+          fi

@@ -149,7 +149,7 @@ def type_tag_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         var argc = CbArgs.argc(b, env, info)
         var argv = alloc[NapiValue](Int(argc))
-        CbArgs.get_argv(b, env, info, argc, argv)
+        CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
         var obj = argv[0]
         var lower = UInt64(Int(JsNumber.from_napi_value(b, env, argv[1])))
         var upper = UInt64(Int(JsNumber.from_napi_value(b, env, argv[2])))
@@ -157,7 +157,7 @@ def type_tag_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var tag = NapiTypeTag(lower, upper)
         var tag_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
             to=tag
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_type_tag_object(b, env, obj, tag_ptr))
         return JsBoolean.create(b, env, True).value
     except:
@@ -170,7 +170,7 @@ def check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         var argc = CbArgs.argc(b, env, info)
         var argv = alloc[NapiValue](Int(argc))
-        CbArgs.get_argv(b, env, info, argc, argv)
+        CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
         var obj = argv[0]
         var lower = UInt64(Int(JsNumber.from_napi_value(b, env, argv[1])))
         var upper = UInt64(Int(JsNumber.from_napi_value(b, env, argv[2])))
@@ -178,7 +178,7 @@ def check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var tag = NapiTypeTag(lower, upper)
         var tag_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
             to=tag
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var result: Bool = False
         check_status(
             raw_check_object_type_tag(
@@ -186,7 +186,7 @@ def check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 env,
                 obj,
                 tag_ptr,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsBoolean.create(b, env, result).value
@@ -200,7 +200,7 @@ def get_all_property_names_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         var argc: UInt = 4
         var argv = alloc[NapiValue](4)
-        CbArgs.get_argv(b, env, info, argc, argv)
+        CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
         var obj = argv[0]
         var mode = Int32(Int(JsNumber.from_napi_value(b, env, argv[1])))
         var filter = Int32(Int(JsNumber.from_napi_value(b, env, argv[2])))

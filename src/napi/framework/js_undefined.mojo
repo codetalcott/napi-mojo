@@ -32,7 +32,7 @@ struct JsUndefined:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_undefined(b, env, result_ptr)
         check_status(status)
         return JsUndefined(result)

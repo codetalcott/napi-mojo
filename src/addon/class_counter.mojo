@@ -40,7 +40,7 @@ def counter_finalize(
     hint: OpaquePointer[MutAnyOrigin],
 ):
     var ptr = data.bitcast[CounterData]()
-    ptr.destroy_pointee()
+    ptr.unsafe_deinit_pointee()
     ptr.free()
 
 
@@ -57,7 +57,7 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             return NapiValue(unsafe_from_address=Int(0))
         var initial = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[CounterData](1)
-        data_ptr.init_pointee_move(CounterData(initial))
+        data_ptr.unsafe_write(CounterData(initial))
         var fin_ref = counter_finalize
         var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
             OpaquePointer[MutAnyOrigin]
@@ -67,7 +67,7 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 b,
                 env,
                 this_val,
-                data_ptr.bitcast[NoneType](),
+                data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
                 fin_ptr,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
@@ -158,7 +158,7 @@ def counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var result = NapiValue(unsafe_from_address=Int(0))
         var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
             to=arg0
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_new_instance(
                 b,
@@ -166,7 +166,7 @@ def counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 this_val,
                 1,
                 argv_ptr,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result
@@ -195,5 +195,5 @@ def register_counter(mut m: ModuleBuilder, b: Bindings) raises:
     var registry = ClassRegistry()
     registry.register(b, counter.env, "Counter", counter.ctor)
     var registry_ptr = alloc[ClassRegistry](1)
-    registry_ptr.init_pointee_move(registry^)
-    b[].registry = registry_ptr.bitcast[NoneType]()
+    registry_ptr.unsafe_write(registry^)
+    b[].registry = registry_ptr.bitcast[NoneType]().as_unsafe_any_origin()

@@ -32,7 +32,7 @@ struct JsBigInt:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_bigint_int64(
-                env, n, UnsafePointer(to=result).bitcast[NoneType]()
+                env, n, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsBigInt(result)
@@ -42,7 +42,7 @@ struct JsBigInt:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_bigint_int64(
-                b, env, n, UnsafePointer(to=result).bitcast[NoneType]()
+                b, env, n, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsBigInt(result)
@@ -52,7 +52,7 @@ struct JsBigInt:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_bigint_uint64(
-                env, n, UnsafePointer(to=result).bitcast[NoneType]()
+                env, n, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsBigInt(result)
@@ -62,7 +62,7 @@ struct JsBigInt:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_bigint_uint64(
-                b, env, n, UnsafePointer(to=result).bitcast[NoneType]()
+                b, env, n, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsBigInt(result)
@@ -75,8 +75,8 @@ struct JsBigInt:
             raw_get_value_bigint_int64(
                 env,
                 val,
-                UnsafePointer(to=result).bitcast[NoneType](),
-                UnsafePointer(to=lossless).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=lossless).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         if not lossless:
@@ -92,8 +92,8 @@ struct JsBigInt:
                 b,
                 env,
                 val,
-                UnsafePointer(to=result).bitcast[NoneType](),
-                UnsafePointer(to=lossless).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=lossless).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         if not lossless:
@@ -148,7 +148,7 @@ struct JsBigInt:
                 sign_bit,
                 word_count,
                 words_ptr,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsBigInt(result)
@@ -169,7 +169,7 @@ struct JsBigInt:
                 sign_bit,
                 word_count,
                 words_ptr,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsBigInt(result)

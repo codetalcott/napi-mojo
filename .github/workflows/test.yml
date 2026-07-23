@@ -43,6 +43,15 @@ jobs:
       - name: Install Node.js dependencies
         run: npm ci
 
+      # src/generated/ is checked in but `npm run build` never regenerates it,
+      # so the generator can silently drift from its own output — it did, twice,
+      # and a regeneration would have regressed the build. Any idiom migration
+      # must patch the templates too; this is the gate that proves it.
+      - name: Verify generated sources are up to date
+        run: |
+          npm run generate:addon
+          git diff --exit-code src/generated/
+
       - name: Build Mojo addon
         run: pixi run bash build.sh
 

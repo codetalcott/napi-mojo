@@ -79,10 +79,10 @@ struct JsString:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_string_utf8(
             env, str_ptr, UInt(s.byte_length()), result_ptr
         )
@@ -94,10 +94,10 @@ struct JsString:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_string_utf8(
             b, env, str_ptr, UInt(s.byte_length()), result_ptr
         )
@@ -113,10 +113,10 @@ struct JsString:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_string_utf8(
             env, str_ptr, UInt(s.byte_length()), result_ptr
         )
@@ -130,10 +130,10 @@ struct JsString:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_string_utf8(
             b, env, str_ptr, UInt(s.byte_length()), result_ptr
         )
@@ -156,16 +156,16 @@ struct JsString:
         var actual: UInt = 0
         var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=buf[0]
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=actual
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_get_value_string_utf8(env, val, buf_ptr, 256, actual_ptr)
         )
         if actual < 255:
             var span = Span[Byte](
-                ptr=UnsafePointer(to=buf[0]), length=Int(actual)
+                unsafe_ptr=UnsafePointer(to=buf[0]), length=Int(actual)
             )
             return String(from_utf8=span)
 
@@ -174,7 +174,7 @@ struct JsString:
         var needed: UInt = 0
         var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=needed
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_get_value_string_utf8(env, val, null, 0, needed_ptr))
 
         if needed < 4096:
@@ -182,17 +182,17 @@ struct JsString:
             var actual2: UInt = 0
             var buf2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
                 to=buf2[0]
-            ).bitcast[NoneType]()
+            ).bitcast[NoneType]().as_unsafe_any_origin()
             var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
                 to=actual2
-            ).bitcast[NoneType]()
+            ).bitcast[NoneType]().as_unsafe_any_origin()
             check_status(
                 raw_get_value_string_utf8(
                     env, val, buf2_ptr, needed + 1, actual2_ptr
                 )
             )
             var span = Span[Byte](
-                ptr=UnsafePointer(to=buf2[0]), length=Int(actual2)
+                unsafe_ptr=UnsafePointer(to=buf2[0]), length=Int(actual2)
             )
             return String(from_utf8=span)
         else:
@@ -201,16 +201,16 @@ struct JsString:
                 var actual2: UInt = 0
                 var heap_ptr: OpaquePointer[MutAnyOrigin] = heap_buf.bitcast[
                     NoneType
-                ]()
+                ]().as_unsafe_any_origin()
                 var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
                     to=actual2
-                ).bitcast[NoneType]()
+                ).bitcast[NoneType]().as_unsafe_any_origin()
                 check_status(
                     raw_get_value_string_utf8(
                         env, val, heap_ptr, needed + 1, actual2_ptr
                     )
                 )
-                var span = Span[Byte](ptr=heap_buf, length=Int(actual2))
+                var span = Span[Byte](unsafe_ptr=heap_buf, length=Int(actual2))
                 var result = String(from_utf8=span)
                 heap_buf.free()
                 return result
@@ -227,16 +227,16 @@ struct JsString:
         var actual: UInt = 0
         var buf_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=buf[0]
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=actual
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_get_value_string_utf8(b, env, val, buf_ptr, 256, actual_ptr)
         )
         if actual < 255:
             var span = Span[Byte](
-                ptr=UnsafePointer(to=buf[0]), length=Int(actual)
+                unsafe_ptr=UnsafePointer(to=buf[0]), length=Int(actual)
             )
             return String(from_utf8=span)
 
@@ -245,7 +245,7 @@ struct JsString:
         var needed: UInt = 0
         var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=needed
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_get_value_string_utf8(b, env, val, null, 0, needed_ptr)
         )
@@ -255,17 +255,17 @@ struct JsString:
             var actual2: UInt = 0
             var buf2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
                 to=buf2[0]
-            ).bitcast[NoneType]()
+            ).bitcast[NoneType]().as_unsafe_any_origin()
             var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
                 to=actual2
-            ).bitcast[NoneType]()
+            ).bitcast[NoneType]().as_unsafe_any_origin()
             check_status(
                 raw_get_value_string_utf8(
                     b, env, val, buf2_ptr, needed + 1, actual2_ptr
                 )
             )
             var span = Span[Byte](
-                ptr=UnsafePointer(to=buf2[0]), length=Int(actual2)
+                unsafe_ptr=UnsafePointer(to=buf2[0]), length=Int(actual2)
             )
             return String(from_utf8=span)
         else:
@@ -274,16 +274,16 @@ struct JsString:
                 var actual2: UInt = 0
                 var heap_ptr: OpaquePointer[MutAnyOrigin] = heap_buf.bitcast[
                     NoneType
-                ]()
+                ]().as_unsafe_any_origin()
                 var actual2_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
                     to=actual2
-                ).bitcast[NoneType]()
+                ).bitcast[NoneType]().as_unsafe_any_origin()
                 check_status(
                     raw_get_value_string_utf8(
                         b, env, val, heap_ptr, needed + 1, actual2_ptr
                     )
                 )
-                var span = Span[Byte](ptr=heap_buf, length=Int(actual2))
+                var span = Span[Byte](unsafe_ptr=heap_buf, length=Int(actual2))
                 var result = String(from_utf8=span)
                 heap_buf.free()
                 return result
@@ -322,7 +322,7 @@ struct JsString:
         var needed: UInt = 0
         var needed_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=needed
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_get_value_string_latin1(
                 b, env, val, OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)), 0, needed_ptr
@@ -333,13 +333,13 @@ struct JsString:
         var actual: UInt = 0
         var actual_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=actual
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_get_value_string_latin1(
-                b, env, val, buf.bitcast[NoneType](), needed + 1, actual_ptr
+                b, env, val, buf.bitcast[NoneType]().as_unsafe_any_origin(), needed + 1, actual_ptr
             )
         )
-        return Latin1Buf(buf, actual)
+        return Latin1Buf(buf.as_unsafe_any_origin(), actual)
 
     ## create_property_key — create an engine-internalized string for property access (N-API v10)
     ##
@@ -353,10 +353,10 @@ struct JsString:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_create_property_key_utf8(
                 b, env, str_ptr, UInt(s.byte_length()), result_ptr
@@ -407,11 +407,11 @@ struct JsString:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var copied: Bool = False
         var copied_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=copied
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_create_external_string_latin1(
                 b,

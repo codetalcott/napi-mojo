@@ -67,7 +67,7 @@ struct JsObject:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_object(env, result_ptr)
         check_status(status)
         return JsObject(result)
@@ -82,7 +82,7 @@ struct JsObject:
     ) raises:
         var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var status = raw_set_named_property(env, self.value, key_ptr, val)
         check_status(status)
 
@@ -96,7 +96,7 @@ struct JsObject:
     ) raises:
         var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var status = raw_set_named_property(env, self.value, name_ptr, val)
         check_status(status)
 
@@ -117,7 +117,7 @@ struct JsObject:
         var exists: Bool = False
         var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=exists
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_has_property(env, self.value, key, exists_ptr)
         check_status(status)
         return exists
@@ -130,7 +130,7 @@ struct JsObject:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_property(env, self.value, key, result_ptr)
         check_status(status)
         return result
@@ -145,10 +145,10 @@ struct JsObject:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_named_property(
             env, self.value, key_ptr, result_ptr
         )
@@ -164,11 +164,11 @@ struct JsObject:
     ) raises -> NapiValue:
         var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_named_property(
             env, self.value, name_ptr, result_ptr
         )
@@ -182,10 +182,10 @@ struct JsObject:
         var exists: Bool = False
         var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=exists
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_has_named_property(
             env, self.value, key_ptr, exists_ptr
         )
@@ -212,7 +212,7 @@ struct JsObject:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_all_property_names(
             env,
             self.value,
@@ -231,7 +231,7 @@ struct JsObject:
         var exists: Bool = False
         var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=exists
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_has_own_property(env, self.value, key, exists_ptr)
         check_status(status)
         return exists
@@ -243,7 +243,7 @@ struct JsObject:
         var deleted: Bool = False
         var deleted_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=deleted
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_delete_property(env, self.value, key, deleted_ptr)
         check_status(status)
         return deleted
@@ -255,7 +255,7 @@ struct JsObject:
         var result: Bool = False
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_instanceof(env, self.value, constructor, result_ptr)
         check_status(status)
         return result
@@ -281,7 +281,7 @@ struct JsObject:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_prototype(env, self.value, result_ptr)
         check_status(status)
         return result
@@ -293,7 +293,7 @@ struct JsObject:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_object(b, env, result_ptr)
         check_status(status)
         return JsObject(result)
@@ -303,7 +303,7 @@ struct JsObject:
     ) raises:
         var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var status = raw_set_named_property(b, env, self.value, key_ptr, val)
         check_status(status)
 
@@ -312,7 +312,7 @@ struct JsObject:
     ) raises:
         var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var status = raw_set_named_property(b, env, self.value, name_ptr, val)
         check_status(status)
 
@@ -326,7 +326,7 @@ struct JsObject:
         var exists: Bool = False
         var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=exists
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_has_property(b, env, self.value, key, exists_ptr)
         check_status(status)
         return exists
@@ -337,7 +337,7 @@ struct JsObject:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_property(b, env, self.value, key, result_ptr)
         check_status(status)
         return result
@@ -348,10 +348,10 @@ struct JsObject:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_named_property(
             b, env, self.value, key_ptr, result_ptr
         )
@@ -363,11 +363,11 @@ struct JsObject:
     ) raises -> NapiValue:
         var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_named_property(
             b, env, self.value, name_ptr, result_ptr
         )
@@ -380,10 +380,10 @@ struct JsObject:
         var exists: Bool = False
         var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=exists
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_has_named_property(
             b, env, self.value, key_ptr, exists_ptr
         )
@@ -401,7 +401,7 @@ struct JsObject:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_all_property_names(
             b,
             env,
@@ -426,7 +426,7 @@ struct JsObject:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_get_all_property_names(
                 b, env, self.value, mode, filter, conversion, result_ptr
@@ -438,7 +438,7 @@ struct JsObject:
         var exists: Bool = False
         var exists_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=exists
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_has_own_property(b, env, self.value, key, exists_ptr)
         check_status(status)
         return exists
@@ -449,7 +449,7 @@ struct JsObject:
         var deleted: Bool = False
         var deleted_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=deleted
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_delete_property(b, env, self.value, key, deleted_ptr)
         check_status(status)
         return deleted
@@ -460,7 +460,7 @@ struct JsObject:
         var result: Bool = False
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_instanceof(b, env, self.value, constructor, result_ptr)
         check_status(status)
         return result
@@ -477,7 +477,7 @@ struct JsObject:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_prototype(b, env, self.value, result_ptr)
         check_status(status)
         return result

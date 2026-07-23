@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. All planned phases complete — 140 exported functions + 3 classes covering the full N-API surface (605 tests): primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError/SyntaxError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal/detach, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks (sync + async), type coercion (Boolean/Number/String/Object), TypeScript definition generation with JSDoc, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), version info (N-API + Node.js), script execution, async context + callback scope, type tagging, and external memory tracking. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, parametric array helpers (`to/from_js_array_f64/str`), an `AsyncWork` helper for ergonomic async work (promise + queue + resolve/reject), a TOML code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) with `mojo_fn` auto-trampolines, nullable returns (`Optional[T]` → `T | null`), struct-to-object mapping (`[structs.*]` → bidirectional converters), async/class generation, and auto-generated TypeScript `.d.ts` with interfaces, `MojoFloat64Array` for zero-copy TypedArray output, `parallelize_safe()` for SIMD parallel computation with automatic runtime init, **typed handles** (`JsExternal.create_typed[T]` / `get_typed[T]`, `set_instance_data[T]` / `get_instance_data[T]` with generic finalizers), and **cached NapiBindings** — all 142 N-API function pointers resolved once at module init, passed through callback data to every entry-point callback (173-389 ns/call, zero per-call dlsym).
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. All planned phases complete — 140 exported functions + 3 classes covering the full N-API surface (618 tests): primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError/SyntaxError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal/detach, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks (sync + async), type coercion (Boolean/Number/String/Object), TypeScript definition generation with JSDoc, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), version info (N-API + Node.js), script execution, async context + callback scope, type tagging, and external memory tracking. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, parametric array helpers (`to/from_js_array_f64/str`), an `AsyncWork` helper for ergonomic async work (promise + queue + resolve/reject), a TOML code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) with `mojo_fn` auto-trampolines, nullable returns (`Optional[T]` → `T | null`), struct-to-object mapping (`[structs.*]` → bidirectional converters), async/class generation, and auto-generated TypeScript `.d.ts` with interfaces, `MojoFloat64Array` for zero-copy TypedArray output, `parallelize_safe()` for SIMD parallel computation with automatic runtime init, **typed handles** (`JsExternal.create_typed[T]` / `get_typed[T]`, `set_instance_data[T]` / `get_instance_data[T]` with generic finalizers), and **cached NapiBindings** — all 142 N-API function pointers resolved once at module init, passed through callback data to every entry-point callback (173-389 ns/call, zero per-call dlsym).
 
 ## Commands
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (605 tests)
+npm test                              # run all Jest tests (618 tests)
 npm run test:gc                       # run GC finalizer tests (requires --expose-gc)
 npx jest tests/basic.test.js          # run a single test file
 npm run generate:addon                # regenerate src/generated/ from src/exports.toml
@@ -26,11 +26,11 @@ node -e "console.log(require('./build/probe.node').hello())"
 
 ### The core FFI problem
 
-N-API functions (`napi_create_string_utf8`, `napi_define_properties`, etc.) are **not in libc** — they live in the Node.js host process. When Node.js loads our `.node` file via `dlopen`, N-API symbols are already in the process address space. We access them via `OwnedDLHandle()` (equivalent to `dlopen(NULL, ...)`), which opens the host process symbol table at runtime.
+N-API functions (`napi_create_string_utf8`, `napi_define_properties`, etc.) are **not in libc** — they live in the Node.js host process. When Node.js loads our `.node` file via `dlopen`, N-API symbols are already in the process address space. We access them via `OwnedDLHandle()` (equivalent to `dlopen(NULL, ...)`), which opens the host process symbol table at runtime, and resolve individual symbols with `get_symbol` (see the `get_function` rule below — `get_function` is no longer usable for C FFI).
 
 ### Cached NapiBindings (zero per-call dlsym)
 
-All 142 N-API function pointers are resolved once at module init via a single `OwnedDLHandle()` + 142 `dlsym` calls, stored in the `NapiBindings` struct (`src/napi/bindings.mojo`). The pointer is passed through `NapiPropertyDescriptor.data` to every callback. Each callback retrieves it via `CbArgs.get_bindings(env, info)` (1 bootstrap dlsym for `napi_get_cb_info`, then all subsequent calls use cached pointers). This eliminates the per-call `OwnedDLHandle()` + `dlsym` overhead that would otherwise occur on every N-API call.
+All 142 N-API function pointers are resolved once at module init via a single `OwnedDLHandle()` + 142 `get_symbol` lookups, stored in the `NapiBindings` struct (`src/napi/bindings.mojo`). Each slot holds the symbol address directly (`_slot()`); `raw.mojo`'s `_sym[F]` reinterprets a slot as a `thin abi("C")` function pointer at the call, and `assert_fn_ptr_is_one_word()` guards that reinterpret at compile time. The pointer is passed through `NapiPropertyDescriptor.data` to every callback. Each callback retrieves it via `CbArgs.get_bindings(env, info)` (1 bootstrap dlsym for `napi_get_cb_info`, then all subsequent calls use cached pointers). This eliminates the per-call `OwnedDLHandle()` + `dlsym` overhead that would otherwise occur on every N-API call.
 
 **Callbacks that DON'T use cached bindings** (must use old `OwnedDLHandle` path):
 
@@ -113,6 +113,33 @@ tests/                                   # Jest tests — TDD outside-in
 ## Critical Mojo FFI rules
 
 > **Mojo nightly changelog:** <https://mojolang.org/releases/nightly/> — consult this when a build breaks after a nightly bump, before reverse-engineering the diagnostic. Each rule below is dated to the nightly that introduced it; cross-reference there for the upstream rationale.
+>
+> **Diff the changelog, don't read it.** The web page is a single cumulative section for the whole release cycle, so it can't tell you what changed *since your pin*. The same file lives in the modular monorepo at `modular/modular:mojo/docs/nightly-changelog.md` and is diffable — this is the single highest-value step in a nightly upgrade:
+>
+> ```bash
+> # find the changelog commit at/just-before your current pin's date
+> gh api 'repos/modular/modular/commits?path=mojo/docs/nightly-changelog.md&until=<PIN_DATE>&per_page=3' \
+>   --jq '.[] | "\(.sha) \(.commit.author.date)"'
+> # then diff that revision against main
+> diff <(gh api "repos/modular/modular/contents/mojo/docs/nightly-changelog.md?ref=<SHA>" --jq .content | base64 -d) \
+>      <(gh api "repos/modular/modular/contents/mojo/docs/nightly-changelog.md?ref=main"   --jq .content | base64 -d)
+> ```
+>
+> The stdlib source is in the same repo (`mojo/stdlib/std/…`), so you can read the *actual* new signature of anything the changelog mentions — and check whether the replacement API already exists on your current pin. That last check is what let the dev2026072306 upgrade land its 274-site FFI rewrite before bumping.
+
+**Nightly upgrade runbook** (learned from the dev2026062306 → dev2026072306 jump, which spanned a month and landed with 618 tests green):
+
+1. **Land the previous good state first.** Never start an upgrade on top of an unmerged/unverified pin. Merge the last known-good nightly to `main` so you have a clean base and a rollback point.
+2. **Diff the changelog** (above) to get the actual breaking-change list. You are not flying blind after this, which is what makes a single big jump safer than stepping through every intermediate nightly (intermediates carry transient breakage a later one repairs).
+3. **Check whether the new API already exists on your current pin.** If it does, do the risky migration on the compiler you already trust and prove it green *before* bumping. This decouples "my refactor broke it" from "the compiler broke it" — the single most valuable scheduling decision available.
+4. **Validate any new idiom in `spike/ffi_probe.mojo` before mass-editing.** Minutes of work; it de-risked a 274-site edit.
+5. **Bump, then fix hard errors before deprecation warnings.** Doing renames first floods the build log while you still need to read it.
+6. **Drive mechanical fixes from compiler diagnostics, not global sed.** Build → patch exactly the flagged locations → rebuild → repeat. The origin migration converged 351 → 187 → 65 → 35 → 30, then ~19 needed hand placement. A blind rewrite in this area is how the earlier SIGSEGVs happened.
+7. **Smoke before jest**: `node -e "require('./build/index.node').hello()"`. Module registration uses only the env-only N-API path, so `require()` alone loads fine even with a corrupt bindings cache — the first *call* is the first cached-slot dereference.
+8. **Guard Malloc after any pointer-lifetime change** (recipe below).
+9. `pixi.toml` and `pixi.lock` **always move together** (see the rule at the end of this section).
+
+**`bump-nightly.sh --rollback` is a no-op** — its Python block only prints, then `exit 0` before the sed logic it claims to delegate to. Roll back manually: `git checkout pixi.toml pixi.lock && pixi install --locked`. `.last-good-nightly` is gitignored, so it is a local-machine note only, not a portable anchor; the committed `pixi.toml` pin is the real record.
 
 **`def` replaces `fn`** (dev2026032105+): `fn` keyword is no longer supported. All function/method declarations must use `def`. Example: `def my_func(arg: Int) -> Int:`. The code generator (`generate-addon.mjs`) and DTS generator (`generate-dts.js`) have been updated accordingly.
 
@@ -145,7 +172,71 @@ tests/                                   # Jest tests — TDD outside-in
 
   **Pre-existing finalizer UAF (FIXED — was misfiled as an "unrelated flake"):** the nondeterministic `SIGABRT`/`SIGTRAP` in `node::PerIsolatePlatformData::RunForegroundTask` / libmalloc (GC-time, no addon frame in the *original* crash, ~1/8 serial / ~1/4 under Guard Malloc) was a real use-after-free in `addon/typed_helpers_ops.mojo`, NOT a migration artifact (hence it reproduced on `dev2026061206` too). `TypedPayload` stored a raw `Int64*` into a JS `ArrayBuffer`'s backing store and incremented it in `__del__`, which runs from the external's GC finalizer — but the external held no reference to the ArrayBuffer, so V8 could free the backing store first, and the finalizer's `counter[] += 1` then scribbled on freed heap (silent corruption under normal malloc; the malloc freelist checker tripped later during an unrelated GC `operator new`, which is why the faulting frame was always in node/V8, never the addon). Fix: `createTypedPayload` now takes a strong `napi_ref` on the ArrayBuffer and a bespoke finalizer releases it *after* the increment (generic `create_typed` finalizer can't release a ref). **Diagnostic recipe that localized it** (reuse for any GC-time heap corruption): run the suite via *direct* `node ./node_modules/jest/bin/jest.js --runInBand` (NOT `npx` — it drops `DYLD_INSERT_LIBRARIES`) under `DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib` (add `MALLOC_STRICT_SIZE=1` to catch <16-byte overruns), looped inside `lldb -b -o run -k "thread backtrace all" -k quit` until it faults — Guard Malloc turns the deferred freelist trap into an immediate `EXC_BAD_ACCESS` at the actual bad access, putting the offending `index.node` finalizer frame at the top of the backtrace.
 
-**`ImplicitlyDestructible` → `ImplicitlyDeletable`** (dev2026062206): the trait is renamed; old name still compiles with a deprecation warning. Used in the typed `JsExternal`/instance-data finalizer bounds (`framework/instance_data.mojo`, `addon/externals.mojo`, `addon/typed_helpers_ops.mojo`). Warnings only — not yet migrated.
+  **Running this recipe (notes from the dev2026072306 upgrade).** Two things will waste your time if you don't know them:
+
+  - **`lldb` can't attach to the Homebrew `node`** (`attach failed … could not pause execution`) — SIP/hardened runtime. Run the suite under Guard Malloc directly and read the exit code instead: `139` = SIGSEGV. Bisect *which* suite faults with `--shard=1/4 … 4/4`, then run that shard's files one at a time (`jest --listTests --shard=4/4` gives the list).
+  - **`gpu/tests/load_free.test.js` faults under `MALLOC_STRICT_SIZE=1` and is a red herring.** The root jest config picks up `gpu/tests/`, which loads `gpu/build/gpu.node` — a stale binary last built 2026-05-01 against a 26.4-era nightly and never rebuilt. It is not built from `src/` and no `src/` change can affect it. Exclude it when validating napi-mojo proper:
+
+    ```bash
+    DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib MALLOC_STRICT_SIZE=1 \
+      node ./node_modules/jest/bin/jest.js --runInBand \
+      --testPathIgnorePatterns '/node_modules/' '/gpu/'
+    ```
+
+    Baseline as of dev2026072306: **609 tests pass clean** under that command, and the full 618 pass under plain Guard Malloc (no `STRICT_SIZE`). Before blaming your change, confirm the fault survives excluding `/gpu/` — and rebuild `gpu/` before trusting any result from it.
+
+**`OwnedDLHandle.get_function` is no longer usable for C FFI** (dev2026072306): its parameter is now the *return type* rather than the full function-pointer type, and it returns `_DLCallable[R, origin_of(self)]` — a callable carrying a borrow of the handle. Two independent reasons this cannot work here:
+
+- **It can't be cached.** `_DLCallable` is origin-carrying, so it cannot be a `NapiBindings` field — that is exactly the "struct fields cannot expose AnyOrigin" rule below. Architecturally incompatible with the 142-slot cache, full stop.
+- **It isn't C ABI.** Its own docstring: *"Argument forwarding uses the Mojo calling convention, not strict `abi("C")` … For any C function that takes or returns a struct by value, this path would silently corrupt the call."*
+
+**All 274 sites migrated to `get_symbol` instead**, in two distinct forms — use the right one:
+
+```mojo
+# raw.mojo — when you need a CALLABLE. The reinterpret lives in _sym ONLY.
+@always_inline
+def _sym[F: TrivialRegisterPassable](ref h: OwnedDLHandle, name: StaticString) raises -> F:
+    var opt = h.get_symbol[NoneType](name)
+    if opt is None:
+        raise Error("napi-mojo: symbol not found: ", name)
+    var addr = opt.value()
+    return UnsafePointer(to=addr).bitcast[F]()[]
+
+# bindings.mojo — when you need a CACHE SLOT. No bitcast at all: get_symbol
+# returns the address as a value, and the slot IS that address.
+bindings.create_object = _slot(h, "napi_create_object")   # _slot = get_symbol + as_unsafe_any_origin
+```
+
+> **The trap that makes `_sym` mandatory — both of these compile:**
+>
+> - `UnsafePointer(to=addr).bitcast[F]()[]` — **correct.** Reinterprets the word *holding* the address.
+> - `addr.bitcast[F]()[]` — **catastrophically wrong.** Loads the function's first 8 bytes of *machine code* and calls that as a pointer. Jump to garbage, no compiler signal.
+>
+> Never spell the bitcast inline at a call site. Keeping it in one function is what made 130 edits safe.
+
+`get_symbol` also *raises* on a missing symbol where `get_function` aborted the process — strictly better (e.g. `parallelize_safe` now degrades to sequential instead of killing Node). Migrating `bindings.mojo` was a net safety win beyond the mechanical fix: the old code took the address of a local holding the resolved pointer and reinterpreted that word, so a future fat function reference would have stored the wrong word *and still compiled*. `assert_fn_ptr_is_one_word()` in `bindings.mojo` now guards the remaining `_sym` reinterpret at compile time. Validated end-to-end in `spike/ffi_probe.mojo` — run it before touching FFI call sites.
+
+**Named libraries need an explicit keep-alive** (dev2026072306): a resolved symbol pointer does *not* borrow the handle, so ASAP destruction can `dlclose` the library at the handle's last tracked use — the lookup — before you call through the pointer. `framework/runtime.mojo` (the only named-library site, `libKGENCompilerRTShared`) now ends with `_ = lib^` after `create_rt()`. The other 273 sites are immune because `OwnedDLHandle()` is `dlopen(NULL)` and the host process image is never unmapped. Note `runtime.mojo` is **not reachable from `src/lib.mojo`** — only `examples/vectors-addon.mojo` imports it — so `build.sh` does not type-check it; compile a driver with `-I src` to verify changes there.
+
+**Implicit `UnsafePointer` → `Mut/ImmutAnyOrigin` conversion removed** (dev2026072306, warning since dev2026062206): C-FFI signatures fix their origin at `MutAnyOrigin`/`ImmutAnyOrigin`, so every site handing them a concrete pointer now needs an explicit **`.as_unsafe_any_origin()`**. This was 351 errors across 23 files.
+
+- **Semantics are unchanged.** `as_unsafe_any_origin()` is the explicit spelling of the *same* widening that used to be implicit. The load-bearing lifetime extension documented in the AnyOrigin rule below is preserved — this is **not** the `MutUntrackedOrigin` substitution that caused SIGSEGVs, and that warning still stands in full.
+- **`get_symbol` returns `MutUntrackedOrigin`**, and `_slot` widens it. That is sound for a reason specific to symbols — a symbol address is a static code address with no lifetime — and is **not** precedent for using `UntrackedOrigin` at transient slot-cast sites.
+- **Fix from compiler diagnostics, never a global sed.** Watch for two placement mistakes the mechanical pass makes: appending to a void statement (`CbArgs.get_argv(...).as_unsafe_any_origin()` — belongs on the `argv` argument), and appending to an enclosing call's result when the un-widened pointer is an *inner* argument.
+
+**`Span(ptr=…)` → `Span(unsafe_ptr=…)`** (dev2026072306): hard rename, 10 sites (`framework/js_string.mojo` ×6 — four of them line-wrapped so `ptr=` sits on its own line and a single-line regex misses them — `addon/class_animal.mojo` ×3, `addon/user_fns.mojo` ×1).
+
+**`ImplicitlyDestructible` → `ImplicitlyDeletable`** (dev2026062206, migrated dev2026072306): trait renamed; old name warned. Also migrated at the same time: `init_pointee_move` → **`unsafe_write`** (25 sites) and `destroy_pointee` → **`unsafe_deinit_pointee`** (22 sites). The build is now warning-clean.
+
+**Explicit `__moveinit__` fails in a main-module file** (dev2026072306): `def __moveinit__(out self, deinit take: Self)` errors with `'None' has no attributes` on `self` when the struct is declared in a file compiled as the entry module, while the identical spelling compiles inside the `napi` package (`bindings.mojo` still declares its own). `Movable` is auto-derived, so dropping the explicit move ctor is the workaround — `spike/ffi_probe.mojo` does. Don't "fix" one context to match the other without re-checking both.
+
+**Codegen moves in lockstep with the code.** `src/generated/` is checked in but `npm run build` never regenerates it, so `scripts/generate-addon.mjs` can silently drift from its own output — it did, twice, and regenerating would have regressed the build (11 templates still emitting the `unsafe_from_address=0` literal form that stopped compiling at dev2026061206, and an async data struct missing `@__allow_legacy_any_origin_fields`). Both had been hand-patched in the *output* and never fed back. Any FFI or idiom migration must patch the templates too. The gate, now in `test.yml`, is:
+
+```bash
+npm run generate:addon && git diff --exit-code src/generated/
+```
+
+**`pixi.toml` and `pixi.lock` always move together.** Commit `92bc2d4` bumped the toml alone; `pixi install --locked` then hard-failed on `main`, which took the Nightly Canary down for two weeks (`setup-pixi` runs `--locked` *before* the workflow's own unpin step) and made two open nightly PRs conflict. A lock-less bump is never "just a version string".
 
 **Build flag**: `mojo build --emit shared-lib` — not `-shared`.
 

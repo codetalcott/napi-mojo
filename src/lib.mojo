@@ -36,11 +36,15 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
     try:
         var bindings = NapiBindings()
         init_bindings(bindings)
-        bindings_ptr.init_pointee_move(bindings^)
+        bindings_ptr.unsafe_write(bindings^)
     except:
         bindings_ptr.free()
         return exports
-    var cb_data = bindings_ptr.bitcast[NoneType]()
+    # as_unsafe_any_origin() spells out the widening that used to happen
+    # implicitly: the heap pointer's concrete origin is discarded to reach the
+    # MutAnyOrigin that C-FFI signatures fix. dev2026072306 removed the
+    # implicit conversion, so this must now be explicit.
+    var cb_data = bindings_ptr.bitcast[NoneType]().as_unsafe_any_origin()
 
     try:
         var m = ModuleBuilder(env, exports, cb_data)
@@ -49,7 +53,7 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         register_collections(m)
         register_async(m)
         register_binary(m)
-        register_counter(m, bindings_ptr)
+        register_counter(m, bindings_ptr.as_unsafe_any_origin())
         register_animal(m)
         register_functions(m)
         register_refs(m)
@@ -70,7 +74,7 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
             var err_val = NapiValue(unsafe_from_address=Int(0))
             var err_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
                 to=err_val
-            ).bitcast[NoneType]()
+            ).bitcast[NoneType]().as_unsafe_any_origin()
             _ = raw_create_error(env, null_code, err_msg.value, err_ptr)
             _ = raw_fatal_exception(env, err_val)
         except:
