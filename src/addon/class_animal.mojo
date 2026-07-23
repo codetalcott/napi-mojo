@@ -70,7 +70,7 @@ def animal_finalize(
 ):
     var ptr = data.bitcast[AnimalData]()
     ptr[].name_ptr.bitcast[Byte]().free()
-    ptr.destroy_pointee()
+    ptr.unsafe_deinit_pointee()
     ptr.free()
 
 
@@ -82,7 +82,7 @@ def dog_finalize(
     var ptr = data.bitcast[DogData]()
     ptr[].name_ptr.bitcast[Byte]().free()
     ptr[].breed_ptr.bitcast[Byte]().free()
-    ptr.destroy_pointee()
+    ptr.unsafe_deinit_pointee()
     ptr.free()
 
 
@@ -103,7 +103,7 @@ def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         for i in range(Int(name_len)):
             name_buf[i] = name_str.as_bytes()[i]
         var data_ptr = alloc[AnimalData](1)
-        data_ptr.init_pointee_move(
+        data_ptr.unsafe_write(
             AnimalData(name_buf.bitcast[NoneType]().as_unsafe_any_origin(), name_len)
         )
         var fin_ref = animal_finalize
@@ -124,7 +124,7 @@ def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             )
         except e:
             name_buf.free()
-            data_ptr.destroy_pointee()
+            data_ptr.unsafe_deinit_pointee()
             data_ptr.free()
             raise e^
         return this_val
@@ -199,7 +199,7 @@ def dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             for i in range(Int(breed_len)):
                 breed_buf[i] = breed_str.as_bytes()[i]
             var data_ptr = alloc[DogData](1)
-            data_ptr.init_pointee_move(
+            data_ptr.unsafe_write(
                 DogData(
                     name_buf.bitcast[NoneType]().as_unsafe_any_origin(),
                     name_len,
@@ -226,7 +226,7 @@ def dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             except e:
                 name_buf.free()
                 breed_buf.free()
-                data_ptr.destroy_pointee()
+                data_ptr.unsafe_deinit_pointee()
                 data_ptr.free()
                 raise e^
         except e:

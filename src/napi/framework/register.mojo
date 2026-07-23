@@ -122,7 +122,7 @@ struct ModuleBuilder(Movable):
         desc.method = ptr
         desc.data = self.data
         desc.attributes = 0
-        (self._descs + self._count).init_pointee_move(desc^)
+        (self._descs + self._count).unsafe_write(desc^)
         self._count += 1
 
     ## flush — register all accumulated method descriptors in one N-API call
@@ -427,7 +427,7 @@ struct ClassRegistry(Movable):
         entry.name_ptr = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         entry.name_len = name.byte_length()
         entry.ctor_ref = JsRef.create(b, env, ctor, 1).handle
-        (self._entries + self._count).init_pointee_move(entry^)
+        (self._entries + self._count).unsafe_write(entry^)
         self._count += 1
 
     ## new_instance — call `new ClassName(args)` from Mojo code

@@ -39,7 +39,7 @@ from napi.framework.register import fn_ptr, ModuleBuilder
 
 # --- Native data struct ------------------------------------------------------
 # Heap-allocated and wrapped onto the JS object via napi_wrap.
-# Must implement Movable so alloc[T] + init_pointee_move works.
+# Must implement Movable so alloc[T] + unsafe_write works.
 
 
 struct CounterData(Movable):
@@ -66,7 +66,7 @@ def counter_finalize(
     hint: OpaquePointer[MutAnyOrigin],
 ):
     var ptr = data.bitcast[CounterData]()
-    ptr.destroy_pointee()
+    ptr.unsafe_deinit_pointee()
     ptr.free()
 
 
@@ -88,7 +88,7 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
         # Heap-allocate native data and wrap onto `this`
         var data_ptr = alloc[CounterData](1)
-        data_ptr.init_pointee_move(CounterData(initial))
+        data_ptr.unsafe_write(CounterData(initial))
 
         var fin_ref = counter_finalize
         var fin_ptr = UnsafePointer(to=fin_ref).bitcast[

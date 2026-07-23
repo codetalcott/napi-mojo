@@ -117,7 +117,7 @@ def async_double_complete(
             )
     except:
         pass
-    ptr.destroy_pointee()
+    ptr.unsafe_deinit_pointee()
     ptr.free()
 
 
@@ -127,7 +127,7 @@ def async_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[AsyncDoubleData](1)
-        data_ptr.init_pointee_move(AsyncDoubleData(n))
+        data_ptr.unsafe_write(AsyncDoubleData(n))
         var exec_ref = async_double_execute
         var comp_ref = async_double_complete
         var aw = AsyncWork.queue(
@@ -191,7 +191,7 @@ def async_triple_complete(
             )
     except:
         pass
-    ptr.destroy_pointee()
+    ptr.unsafe_deinit_pointee()
     ptr.free()
 
 
@@ -201,7 +201,7 @@ def async_triple_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[AsyncTripleData](1)
-        data_ptr.init_pointee_move(AsyncTripleData(n))
+        data_ptr.unsafe_write(AsyncTripleData(n))
         var exec_ref = async_triple_execute
         var comp_ref = async_triple_complete
         var aw = AsyncWork.queue(
@@ -264,7 +264,7 @@ def progress_call_js_cb(
 ):
     var val_ptr = data.bitcast[Float64]()
     var value = val_ptr[]
-    val_ptr.destroy_pointee()
+    val_ptr.unsafe_deinit_pointee()
     val_ptr.free()
     if Int(env) == 0:
         return
@@ -302,7 +302,7 @@ def progress_finalize_cb(
             _ = raw_delete_async_work(env, ptr[].work)
         except:
             pass
-    ptr.destroy_pointee()
+    ptr.unsafe_deinit_pointee()
     ptr.free()
 
 
@@ -312,13 +312,13 @@ def async_progress_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
     var tsfn = ptr[].tsfn
     for i in range(count):
         var val_ptr = alloc[Float64](1)
-        val_ptr.init_pointee_move(Float64(i))
+        val_ptr.unsafe_write(Float64(i))
         try:
             _ = raw_call_threadsafe_function(
                 tsfn, val_ptr.bitcast[NoneType]().as_unsafe_any_origin(), NAPI_TSFN_BLOCKING
             )
         except:
-            val_ptr.destroy_pointee()
+            val_ptr.unsafe_deinit_pointee()
             val_ptr.free()
 
 
@@ -351,7 +351,7 @@ def async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             OpaquePointer[MutAnyOrigin]
         ]()[]
         var data_ptr = alloc[AsyncProgressData](1)
-        data_ptr.init_pointee_move(
+        data_ptr.unsafe_write(
             AsyncProgressData(
                 p.deferred,
                 NapiAsyncWork(unsafe_from_address=Int(0)),
@@ -450,7 +450,7 @@ def cancel_async_complete(
             _ = raw_reject_deferred(env, ptr[].deferred, error_val)
     except:
         pass
-    ptr.destroy_pointee()
+    ptr.unsafe_deinit_pointee()
     ptr.free()
 
 
@@ -459,7 +459,7 @@ def cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         var p = JsPromise.create(b, env)
         var data_ptr = alloc[CancelAsyncData](1)
-        data_ptr.init_pointee_move(CancelAsyncData(p.deferred))
+        data_ptr.unsafe_write(CancelAsyncData(p.deferred))
         var exec_ref = cancel_async_execute
         var complete_ref = cancel_async_complete
         var exec_ptr = UnsafePointer(to=exec_ref).bitcast[

@@ -67,7 +67,7 @@ struct TypedPayload(Movable):
 ## typed_payload_finalize — GC finalizer for createTypedPayload externals.
 ##
 ## Runs on the main thread during the finalizer drain (outside GC), where N-API
-## calls are permitted. Order is load-bearing: destroy_pointee() increments the
+## calls are permitted. Order is load-bearing: unsafe_deinit_pointee() increments the
 ## counter while the ArrayBuffer is still pinned by ab_ref, THEN we release the
 ## reference so the ArrayBuffer becomes collectable. Reversing the order would
 ## reintroduce the use-after-free this finalizer exists to prevent.
@@ -78,7 +78,7 @@ def typed_payload_finalize(
 ):
     var ptr = data.bitcast[TypedPayload]()
     var ab_ref = ptr[].ab_ref  # copy handle out before the struct is destroyed
-    ptr.destroy_pointee()  # __del__: counter[] += 1 (ArrayBuffer still pinned)
+    ptr.unsafe_deinit_pointee()  # __del__: counter[] += 1 (ArrayBuffer still pinned)
     ptr.free()
     try:
         JsRef(ab_ref).delete(env)  # release the ArrayBuffer (env-only overload)
@@ -107,7 +107,7 @@ def create_typed_payload_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         # stays valid until the finalizer is done with it (released there).
         var ab_ref = JsRef.create(b, env, args[1], 1)
         var data_ptr = alloc[TypedPayload](1)
-        data_ptr.init_pointee_move(TypedPayload(v, counter_ptr, ab_ref.handle))
+        data_ptr.unsafe_write(TypedPayload(v, counter_ptr, ab_ref.handle))
         var fin_ref = typed_payload_finalize
         var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
             OpaquePointer[MutAnyOrigin]
@@ -118,7 +118,7 @@ def create_typed_payload_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             ).value
         except e:
             # External never created → its finalizer will not run; clean up here.
-            data_ptr.destroy_pointee()
+            data_ptr.unsafe_deinit_pointee()
             data_ptr.free()
             try:
                 ab_ref.delete(b, env)

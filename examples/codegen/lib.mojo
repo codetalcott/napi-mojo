@@ -16,7 +16,7 @@ def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
     try:
         var bindings = NapiBindings()
         init_bindings(bindings)
-        bindings_ptr.init_pointee_move(bindings^)
+        bindings_ptr.unsafe_write(bindings^)
     except:
         bindings_ptr.free()
         return exports

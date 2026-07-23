@@ -424,7 +424,7 @@ function generateAsyncFunction(name, decl) {
   out.push(`            AsyncWork.reject_with_error(env, ptr[].deferred, ptr[].work, "${jsName} failed")`);
   out.push(`    except:`);
   out.push(`        pass`);
-  out.push(`    ptr.destroy_pointee()`);
+  out.push(`    ptr.unsafe_deinit_pointee()`);
   out.push(`    ptr.free()`);
 
   // 4. Entry-point callback (standard N-API: type-check, alloc, queue, return promise)
@@ -453,7 +453,7 @@ function generateAsyncFunction(name, decl) {
   }
   const inputArgs = argMojoTypes.map((_, i) => `input${i}`).join(', ');
   out.push(`        var data_ptr = alloc[${structName}](1)`);
-  out.push(`        data_ptr.init_pointee_move(${structName}(${inputArgs}))`);
+  out.push(`        data_ptr.unsafe_write(${structName}(${inputArgs}))`);
   out.push(`        var exec_ref = ${name}_execute`);
   out.push(`        var comp_ref = ${name}_complete`);
   // .as_unsafe_any_origin() is required as of dev2026072306: the implicit

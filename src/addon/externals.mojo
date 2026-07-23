@@ -34,7 +34,7 @@ def external_finalize(
     hint: OpaquePointer[MutAnyOrigin],
 ):
     var ptr = data.bitcast[ExternalData]()
-    ptr.destroy_pointee()
+    ptr.unsafe_deinit_pointee()
     ptr.free()
 
 
@@ -45,7 +45,7 @@ def create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var x = JsNumber.from_napi_value(b, env, args[0])
         var y = JsNumber.from_napi_value(b, env, args[1])
         var data_ptr = alloc[ExternalData](1)
-        data_ptr.init_pointee_move(ExternalData(x, y))
+        data_ptr.unsafe_write(ExternalData(x, y))
         var fin_ref = external_finalize
         var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
             OpaquePointer[MutAnyOrigin]

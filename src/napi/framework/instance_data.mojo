@@ -16,7 +16,7 @@ from napi.raw import raw_set_instance_data, raw_get_instance_data
 from napi.error import check_status
 
 
-def set_instance_data[T: Movable & ImplicitlyDestructible](
+def set_instance_data[T: Movable & ImplicitlyDeletable](
     b: Bindings, env: NapiEnv, var value: T
 ) raises:
     """Heap-allocate `value` and register it as the env's instance data.
@@ -25,7 +25,7 @@ def set_instance_data[T: Movable & ImplicitlyDestructible](
     when the env is torn down (or when overwritten by a later call).
     """
     var data_ptr = alloc[T](1)
-    data_ptr.init_pointee_move(value^)
+    data_ptr.unsafe_write(value^)
     var fin_ref = _typed_instance_data_finalize[T]
     var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
         OpaquePointer[MutAnyOrigin]
@@ -56,11 +56,11 @@ def get_instance_data[T: AnyType](
     return raw.value().bitcast[T]()
 
 
-def _typed_instance_data_finalize[T: Movable & ImplicitlyDestructible](
+def _typed_instance_data_finalize[T: Movable & ImplicitlyDeletable](
     env: NapiEnv,
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
 ):
     var ptr = data.bitcast[T]()
-    ptr.destroy_pointee()
+    ptr.unsafe_deinit_pointee()
     ptr.free()

@@ -467,7 +467,7 @@ def async_sum_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[Mut
             AsyncWork.reject_with_error(env, ptr[].deferred, ptr[].work, "asyncSum failed")
     except:
         pass
-    ptr.destroy_pointee()
+    ptr.unsafe_deinit_pointee()
     ptr.free()
 
 def async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -485,7 +485,7 @@ def async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var input0 = JsNumber.from_napi_value(_b, env, args[0])
         var input1 = JsNumber.from_napi_value(_b, env, args[1])
         var data_ptr = alloc[AsyncSumData](1)
-        data_ptr.init_pointee_move(AsyncSumData(input0, input1))
+        data_ptr.unsafe_write(AsyncSumData(input0, input1))
         var exec_ref = async_sum_execute
         var comp_ref = async_sum_complete
         var aw = AsyncWork.queue(_b, env, "asyncSum", data_ptr.bitcast[NoneType]().as_unsafe_any_origin(), fn_ptr(exec_ref), fn_ptr(comp_ref))

@@ -69,7 +69,7 @@ def create_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         var n = JsNumber.from_napi_value(b, env, arg0)
         var cap_ptr = alloc[AdderCapture](1)
-        cap_ptr.init_pointee_move(AdderCapture(n, b))
+        cap_ptr.unsafe_write(AdderCapture(n, b))
         var cb_ref = inner_adder_fn
         var cb_ptr = UnsafePointer(to=cb_ref).bitcast[
             OpaquePointer[MutAnyOrigin]

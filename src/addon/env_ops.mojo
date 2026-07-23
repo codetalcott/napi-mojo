@@ -38,7 +38,7 @@ def instance_data_finalize(
     hint: OpaquePointer[MutAnyOrigin],
 ):
     var ptr = data.bitcast[Float64]()
-    ptr.destroy_pointee()
+    ptr.unsafe_deinit_pointee()
     ptr.free()
 
 
@@ -74,7 +74,7 @@ def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = alloc[Float64](1)
-        data_ptr.init_pointee_move(n)
+        data_ptr.unsafe_write(n)
         check_status(
             raw_set_instance_data(
                 b,

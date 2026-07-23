@@ -4,7 +4,7 @@
 ##
 ## Usage (entry-point callback):
 ##   var data_ptr = alloc[MyData](1)
-##   data_ptr.init_pointee_move(MyData(args))
+##   data_ptr.unsafe_write(MyData(args))
 ##   var exec_ref = my_execute
 ##   var comp_ref = my_complete
 ##   var aw = AsyncWork.queue(env, "name", data_ptr.bitcast[NoneType](),
@@ -15,7 +15,7 @@
 ##
 ## Usage (complete callback):
 ##   AsyncWork.resolve(env, ptr[].deferred, ptr[].work, result_val)
-##   ptr.destroy_pointee()
+##   ptr.unsafe_deinit_pointee()
 ##   ptr.free()
 
 from napi.types import (
@@ -63,7 +63,7 @@ struct AsyncWork:
     ## queue — create promise, create async work, queue it
     ##
     ## The caller must:
-    ##   1. Heap-allocate their data struct with alloc[T](1) + init_pointee_move()
+    ##   1. Heap-allocate their data struct with alloc[T](1) + unsafe_write()
     ##   2. Pass data_ptr.bitcast[NoneType]() as data_opaque
     ##   3. After this call, patch deferred and work into their data struct
     ##
