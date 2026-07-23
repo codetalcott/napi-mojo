@@ -28,7 +28,7 @@ def uppercase_pure(s: String) raises -> String:
             result.append(b - 32)
         else:
             result.append(b)
-    var span = Span[Byte](ptr=result.unsafe_ptr(), length=len(result))
+    var span = Span[Byte](unsafe_ptr=result.unsafe_ptr(), length=len(result))
     return String(from_utf8=span)
 
 

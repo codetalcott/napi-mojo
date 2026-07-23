@@ -79,7 +79,7 @@ def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             raw_set_instance_data(
                 b,
                 env,
-                data_ptr.bitcast[NoneType](),
+                data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_cb = NULL
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
@@ -96,7 +96,7 @@ def get_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_instance_data(
-                b, env, UnsafePointer(to=data).bitcast[NoneType]()
+                b, env, UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         if Int(data) == 0:
@@ -123,7 +123,7 @@ def add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         arg_ptr[0] = Byte(0)
         check_status(
             raw_add_env_cleanup_hook(
-                b, env, hook_ptr, arg_ptr.bitcast[NoneType]()
+                b, env, hook_ptr, arg_ptr.bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsBoolean.create(b, env, True).value
@@ -143,12 +143,12 @@ def remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         arg_ptr[0] = Byte(0)
         check_status(
             raw_add_env_cleanup_hook(
-                b, env, hook_ptr, arg_ptr.bitcast[NoneType]()
+                b, env, hook_ptr, arg_ptr.bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         check_status(
             raw_remove_env_cleanup_hook(
-                b, env, hook_ptr, arg_ptr.bitcast[NoneType]()
+                b, env, hook_ptr, arg_ptr.bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         arg_ptr.free()

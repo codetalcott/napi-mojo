@@ -46,10 +46,10 @@ struct JsPromise:
         var promise = NapiValue(unsafe_from_address=Int(0))
         var deferred_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=deferred
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var promise_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=promise
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_promise(env, deferred_ptr, promise_ptr)
         check_status(status)
         return JsPromise(promise, deferred)
@@ -77,10 +77,10 @@ struct JsPromise:
         var promise = NapiValue(unsafe_from_address=Int(0))
         var deferred_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=deferred
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var promise_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=promise
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_promise(b, env, deferred_ptr, promise_ptr)
         check_status(status)
         return JsPromise(promise, deferred)

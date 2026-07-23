@@ -44,7 +44,7 @@ struct JsNumber:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_double(env, n, result_ptr)
         check_status(status)
         return JsNumber(result)
@@ -54,7 +54,7 @@ struct JsNumber:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_double(b, env, n, result_ptr)
         check_status(status)
         return JsNumber(result)
@@ -68,7 +68,7 @@ struct JsNumber:
         var n: Float64 = 0.0
         var n_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=n).bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var status = raw_get_value_double(env, val, n_ptr)
         check_status(status)
         return n
@@ -80,7 +80,7 @@ struct JsNumber:
         var n: Float64 = 0.0
         var n_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=n).bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var status = raw_get_value_double(b, env, val, n_ptr)
         check_status(status)
         return n
@@ -91,7 +91,7 @@ struct JsNumber:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_int64(
-                env, Int64(n), UnsafePointer(to=result).bitcast[NoneType]()
+                env, Int64(n), UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsNumber(result)
@@ -101,7 +101,7 @@ struct JsNumber:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_int64(
-                b, env, Int64(n), UnsafePointer(to=result).bitcast[NoneType]()
+                b, env, Int64(n), UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsNumber(result)

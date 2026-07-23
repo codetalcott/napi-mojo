@@ -48,7 +48,7 @@ struct JsArray:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_array_with_length(env, len, result_ptr)
         check_status(status)
         return JsArray(result)
@@ -67,7 +67,7 @@ struct JsArray:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_element(env, self.value, index, result_ptr)
         check_status(status)
         return result
@@ -79,7 +79,7 @@ struct JsArray:
         var len: UInt32 = 0
         var len_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=len
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_array_length(env, self.value, len_ptr)
         check_status(status)
         return len
@@ -91,7 +91,7 @@ struct JsArray:
         var result: Bool = False
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_has_element(env, self.value, index, result_ptr)
         check_status(status)
         return result
@@ -103,7 +103,7 @@ struct JsArray:
         var deleted: Bool = False
         var deleted_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=deleted
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_delete_element(env, self.value, index, deleted_ptr)
         check_status(status)
         return deleted
@@ -117,7 +117,7 @@ struct JsArray:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_array_with_length(b, env, len, result_ptr)
         check_status(status)
         return JsArray(result)
@@ -132,7 +132,7 @@ struct JsArray:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_element(b, env, self.value, index, result_ptr)
         check_status(status)
         return result
@@ -141,7 +141,7 @@ struct JsArray:
         var len: UInt32 = 0
         var len_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=len
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_array_length(b, env, self.value, len_ptr)
         check_status(status)
         return len
@@ -150,7 +150,7 @@ struct JsArray:
         var result: Bool = False
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_has_element(b, env, self.value, index, result_ptr)
         check_status(status)
         return result
@@ -161,7 +161,7 @@ struct JsArray:
         var deleted: Bool = False
         var deleted_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=deleted
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_delete_element(b, env, self.value, index, deleted_ptr)
         check_status(status)
         return deleted

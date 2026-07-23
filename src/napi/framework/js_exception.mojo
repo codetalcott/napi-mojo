@@ -60,7 +60,7 @@ def js_get_and_clear_last_exception(env: NapiEnv) raises -> NapiValue:
     var result = NapiValue(unsafe_from_address=Int(0))
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_and_clear_last_exception(env, result_ptr))
     return result
 
@@ -87,7 +87,7 @@ def js_get_and_clear_last_exception(
     var result = NapiValue(unsafe_from_address=Int(0))
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_and_clear_last_exception(b, env, result_ptr))
     return result
 

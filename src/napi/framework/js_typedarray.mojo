@@ -47,7 +47,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -69,7 +69,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -86,7 +86,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -108,7 +108,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -125,7 +125,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -147,7 +147,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -164,7 +164,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -186,7 +186,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -203,7 +203,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -225,7 +225,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -242,7 +242,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -264,7 +264,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -281,7 +281,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -303,7 +303,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -320,7 +320,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -342,7 +342,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -359,7 +359,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -381,7 +381,7 @@ struct JsTypedArray:
                 length,
                 arraybuffer,
                 offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsTypedArray(result)
@@ -472,7 +472,7 @@ struct JsTypedArray:
             raw_get_typedarray_info(
                 env,
                 self.value,
-                UnsafePointer(to=t).bitcast[NoneType](),
+                UnsafePointer(to=t).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
                 null,
@@ -489,7 +489,7 @@ struct JsTypedArray:
                 b,
                 env,
                 self.value,
-                UnsafePointer(to=t).bitcast[NoneType](),
+                UnsafePointer(to=t).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
                 null,
@@ -507,7 +507,7 @@ struct JsTypedArray:
                 env,
                 self.value,
                 null,
-                UnsafePointer(to=len).bitcast[NoneType](),
+                UnsafePointer(to=len).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
                 null,
@@ -524,7 +524,7 @@ struct JsTypedArray:
                 env,
                 self.value,
                 null,
-                UnsafePointer(to=len).bitcast[NoneType](),
+                UnsafePointer(to=len).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
                 null,
@@ -544,7 +544,7 @@ struct JsTypedArray:
                 self.value,
                 null,
                 null,
-                UnsafePointer(to=data).bitcast[NoneType](),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -563,7 +563,7 @@ struct JsTypedArray:
                 self.value,
                 null,
                 null,
-                UnsafePointer(to=data).bitcast[NoneType](),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -787,7 +787,7 @@ struct JsTypedArray:
         var result: Bool = False
         check_status(
             raw_is_typedarray(
-                env, val, UnsafePointer(to=result).bitcast[NoneType]()
+                env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result
@@ -797,7 +797,7 @@ struct JsTypedArray:
         var result: Bool = False
         check_status(
             raw_is_typedarray(
-                b, env, val, UnsafePointer(to=result).bitcast[NoneType]()
+                b, env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result

@@ -34,7 +34,7 @@ def set_instance_data[T: Movable & ImplicitlyDestructible](
         raw_set_instance_data(
             b,
             env,
-            data_ptr.bitcast[NoneType](),
+            data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
             fin_ptr,
             OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
         )
@@ -48,7 +48,7 @@ def get_instance_data[T: AnyType](
     var raw: Optional[OpaquePointer[MutAnyOrigin]] = None
     check_status(
         raw_get_instance_data(
-            b, env, UnsafePointer(to=raw).bitcast[NoneType]()
+            b, env, UnsafePointer(to=raw).bitcast[NoneType]().as_unsafe_any_origin()
         )
     )
     if raw is None:

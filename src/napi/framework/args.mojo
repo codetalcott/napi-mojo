@@ -115,8 +115,8 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
-                UnsafePointer(to=arg0).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=arg0).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -135,8 +135,8 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
-                UnsafePointer(to=arg0).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=arg0).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -161,8 +161,8 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
-                UnsafePointer(to=args[0]).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=args[0]).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -183,8 +183,8 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
-                UnsafePointer(to=args[0]).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=args[0]).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -206,8 +206,8 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
-                UnsafePointer(to=args[0]).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=args[0]).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -251,9 +251,9 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
-                UnsafePointer(to=this_val).bitcast[NoneType](),
+                UnsafePointer(to=this_val).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
             )
         )
@@ -271,9 +271,9 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
-                UnsafePointer(to=this_val).bitcast[NoneType](),
+                UnsafePointer(to=this_val).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
             )
         )
@@ -342,7 +342,7 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=count).bitcast[NoneType](),
+                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
                 null,
@@ -359,7 +359,7 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=count).bitcast[NoneType](),
+                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
                 null,
@@ -381,7 +381,7 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=actual).bitcast[NoneType](),
+                UnsafePointer(to=actual).bitcast[NoneType]().as_unsafe_any_origin(),
                 argv_ptr.bitcast[NoneType](),
                 null,
                 null,
@@ -403,7 +403,7 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=actual).bitcast[NoneType](),
+                UnsafePointer(to=actual).bitcast[NoneType]().as_unsafe_any_origin(),
                 argv_ptr.bitcast[NoneType](),
                 null,
                 null,
@@ -424,10 +424,10 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
-                UnsafePointer(to=data).bitcast[NoneType](),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return data
@@ -444,10 +444,10 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
-                UnsafePointer(to=data).bitcast[NoneType](),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return data
@@ -480,10 +480,10 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
-                UnsafePointer(to=arg0).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=arg0).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
-                UnsafePointer(to=data).bitcast[NoneType](),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         if argc < 1:
@@ -503,10 +503,10 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
-                UnsafePointer(to=args[0]).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=args[0]).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
-                UnsafePointer(to=data).bitcast[NoneType](),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         if argc < 2:
@@ -555,10 +555,10 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
-                UnsafePointer(to=this_val).bitcast[NoneType](),
-                UnsafePointer(to=data).bitcast[NoneType](),
+                UnsafePointer(to=this_val).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return BindingsAndThis(data.bitcast[NapiBindings](), this_val)
@@ -580,10 +580,10 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
-                UnsafePointer(to=arg0).bitcast[NoneType](),
-                UnsafePointer(to=this_val).bitcast[NoneType](),
-                UnsafePointer(to=data).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=arg0).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=this_val).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         if argc < 1:

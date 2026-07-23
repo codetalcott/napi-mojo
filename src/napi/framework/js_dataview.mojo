@@ -33,7 +33,7 @@ struct JsDataView:
                 byte_length,
                 arraybuffer,
                 byte_offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsDataView(result)
@@ -54,7 +54,7 @@ struct JsDataView:
                 byte_length,
                 arraybuffer,
                 byte_offset,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsDataView(result)
@@ -66,7 +66,7 @@ struct JsDataView:
             raw_get_dataview_info(
                 env,
                 self.value,
-                UnsafePointer(to=length).bitcast[NoneType](),
+                UnsafePointer(to=length).bitcast[NoneType]().as_unsafe_any_origin(),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
@@ -81,7 +81,7 @@ struct JsDataView:
                 b,
                 env,
                 self.value,
-                UnsafePointer(to=length).bitcast[NoneType](),
+                UnsafePointer(to=length).bitcast[NoneType]().as_unsafe_any_origin(),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
@@ -99,7 +99,7 @@ struct JsDataView:
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=offset).bitcast[NoneType](),
+                UnsafePointer(to=offset).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return offset
@@ -114,7 +114,7 @@ struct JsDataView:
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=offset).bitcast[NoneType](),
+                UnsafePointer(to=offset).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return offset
@@ -189,7 +189,7 @@ struct JsDataView:
         var result: Bool = False
         check_status(
             raw_is_dataview(
-                env, val, UnsafePointer(to=result).bitcast[NoneType]()
+                env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result
@@ -199,7 +199,7 @@ struct JsDataView:
         var result: Bool = False
         check_status(
             raw_is_dataview(
-                b, env, val, UnsafePointer(to=result).bitcast[NoneType]()
+                b, env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result

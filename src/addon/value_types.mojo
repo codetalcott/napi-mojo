@@ -81,7 +81,7 @@ def symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var key = JsString.from_napi_value(b, env, arg0)
         var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var key_len = UInt(key.byte_length())
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
@@ -90,7 +90,7 @@ def symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 env,
                 key_ptr,
                 key_len,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         _ = key^  # prevent ASAP destruction before raw_symbol_for reads key_ptr
@@ -114,7 +114,11 @@ def bigint_from_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             var num = JsNumber.from_napi_value(b, env, elem)
             words_ptr[i] = UInt64(num)
         var result = JsBigInt.from_words(
-            b, env, sign_bit, words_ptr.bitcast[NoneType](), UInt(arr_len)
+            b,
+            env,
+            sign_bit,
+            words_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
+            UInt(arr_len),
         )
         words_ptr.free()
         return result.value
@@ -135,9 +139,9 @@ def bigint_to_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 b,
                 env,
                 arg0,
-                UnsafePointer(to=sign).bitcast[NoneType](),
-                UnsafePointer(to=count).bitcast[NoneType](),
-                words_ptr.bitcast[NoneType](),
+                UnsafePointer(to=sign).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
+                words_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         var obj = JsObject.create(b, env)

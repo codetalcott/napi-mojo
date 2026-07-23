@@ -25,7 +25,7 @@ struct JsUInt32:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_uint32(
-                b, env, n, UnsafePointer(to=result).bitcast[NoneType]()
+                b, env, n, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsUInt32(result)
@@ -37,7 +37,7 @@ struct JsUInt32:
         var n: UInt32 = 0
         check_status(
             raw_get_value_uint32(
-                b, env, val, UnsafePointer(to=n).bitcast[NoneType]()
+                b, env, val, UnsafePointer(to=n).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return n

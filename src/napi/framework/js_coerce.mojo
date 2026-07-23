@@ -27,7 +27,7 @@ def js_coerce_to_bool(env: NapiEnv, val: NapiValue) raises -> NapiValue:
     var result = NapiValue(unsafe_from_address=Int(0))
     check_status(
         raw_coerce_to_bool(
-            env, val, UnsafePointer(to=result).bitcast[NoneType]()
+            env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
         )
     )
     return result
@@ -39,7 +39,7 @@ def js_coerce_to_number(env: NapiEnv, val: NapiValue) raises -> NapiValue:
     var result = NapiValue(unsafe_from_address=Int(0))
     check_status(
         raw_coerce_to_number(
-            env, val, UnsafePointer(to=result).bitcast[NoneType]()
+            env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
         )
     )
     return result
@@ -51,7 +51,7 @@ def js_coerce_to_string(env: NapiEnv, val: NapiValue) raises -> NapiValue:
     var result = NapiValue(unsafe_from_address=Int(0))
     check_status(
         raw_coerce_to_string(
-            env, val, UnsafePointer(to=result).bitcast[NoneType]()
+            env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
         )
     )
     return result
@@ -63,7 +63,7 @@ def js_coerce_to_object(env: NapiEnv, val: NapiValue) raises -> NapiValue:
     var result = NapiValue(unsafe_from_address=Int(0))
     check_status(
         raw_coerce_to_object(
-            env, val, UnsafePointer(to=result).bitcast[NoneType]()
+            env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
         )
     )
     return result
@@ -79,7 +79,7 @@ def js_coerce_to_bool(
     var result = NapiValue(unsafe_from_address=Int(0))
     check_status(
         raw_coerce_to_bool(
-            b, env, val, UnsafePointer(to=result).bitcast[NoneType]()
+            b, env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
         )
     )
     return result
@@ -93,7 +93,7 @@ def js_coerce_to_number(
     var result = NapiValue(unsafe_from_address=Int(0))
     check_status(
         raw_coerce_to_number(
-            b, env, val, UnsafePointer(to=result).bitcast[NoneType]()
+            b, env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
         )
     )
     return result
@@ -107,7 +107,7 @@ def js_coerce_to_string(
     var result = NapiValue(unsafe_from_address=Int(0))
     check_status(
         raw_coerce_to_string(
-            b, env, val, UnsafePointer(to=result).bitcast[NoneType]()
+            b, env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
         )
     )
     return result
@@ -121,7 +121,7 @@ def js_coerce_to_object(
     var result = NapiValue(unsafe_from_address=Int(0))
     check_status(
         raw_coerce_to_object(
-            b, env, val, UnsafePointer(to=result).bitcast[NoneType]()
+            b, env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
         )
     )
     return result

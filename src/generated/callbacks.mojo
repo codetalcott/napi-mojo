@@ -488,7 +488,7 @@ def async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         data_ptr.init_pointee_move(AsyncSumData(input0, input1))
         var exec_ref = async_sum_execute
         var comp_ref = async_sum_complete
-        var aw = AsyncWork.queue(_b, env, "asyncSum", data_ptr.bitcast[NoneType](), fn_ptr(exec_ref), fn_ptr(comp_ref))
+        var aw = AsyncWork.queue(_b, env, "asyncSum", data_ptr.bitcast[NoneType]().as_unsafe_any_origin(), fn_ptr(exec_ref), fn_ptr(comp_ref))
         data_ptr[].deferred = aw.deferred
         data_ptr[].work = aw.work
         return aw.value

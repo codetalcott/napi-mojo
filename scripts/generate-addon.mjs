@@ -456,7 +456,9 @@ function generateAsyncFunction(name, decl) {
   out.push(`        data_ptr.init_pointee_move(${structName}(${inputArgs}))`);
   out.push(`        var exec_ref = ${name}_execute`);
   out.push(`        var comp_ref = ${name}_complete`);
-  out.push(`        var aw = AsyncWork.queue(_b, env, "${jsName}", data_ptr.bitcast[NoneType](), fn_ptr(exec_ref), fn_ptr(comp_ref))`);
+  // .as_unsafe_any_origin() is required as of dev2026072306: the implicit
+  // UnsafePointer -> MutAnyOrigin conversion at C-FFI signatures was removed.
+  out.push(`        var aw = AsyncWork.queue(_b, env, "${jsName}", data_ptr.bitcast[NoneType]().as_unsafe_any_origin(), fn_ptr(exec_ref), fn_ptr(comp_ref))`);
   out.push(`        data_ptr[].deferred = aw.deferred`);
   out.push(`        data_ptr[].work = aw.work`);
   out.push(`        return aw.value`);

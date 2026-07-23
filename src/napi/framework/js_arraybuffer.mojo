@@ -67,8 +67,8 @@ struct JsArrayBuffer:
             raw_create_arraybuffer(
                 env,
                 byte_length,
-                UnsafePointer(to=data).bitcast[NoneType](),
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         var ptr = data.bitcast[Byte]()
@@ -87,8 +87,8 @@ struct JsArrayBuffer:
                 b,
                 env,
                 byte_length,
-                UnsafePointer(to=data).bitcast[NoneType](),
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         var ptr = data.bitcast[Byte]()
@@ -104,7 +104,7 @@ struct JsArrayBuffer:
                 env,
                 self.value,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=length).bitcast[NoneType](),
+                UnsafePointer(to=length).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return length
@@ -117,7 +117,7 @@ struct JsArrayBuffer:
                 env,
                 self.value,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=length).bitcast[NoneType](),
+                UnsafePointer(to=length).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return length
@@ -131,7 +131,7 @@ struct JsArrayBuffer:
             raw_get_arraybuffer_info(
                 env,
                 self.value,
-                UnsafePointer(to=data).bitcast[NoneType](),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
@@ -146,7 +146,7 @@ struct JsArrayBuffer:
                 b,
                 env,
                 self.value,
-                UnsafePointer(to=data).bitcast[NoneType](),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
@@ -158,7 +158,7 @@ struct JsArrayBuffer:
         var result: Bool = False
         check_status(
             raw_is_arraybuffer(
-                env, val, UnsafePointer(to=result).bitcast[NoneType]()
+                env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result
@@ -170,7 +170,7 @@ struct JsArrayBuffer:
         var result: Bool = False
         check_status(
             raw_is_arraybuffer(
-                b, env, val, UnsafePointer(to=result).bitcast[NoneType]()
+                b, env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result
@@ -188,7 +188,7 @@ struct JsArrayBuffer:
         var result: Bool = False
         check_status(
             raw_is_detached_arraybuffer(
-                env, val, UnsafePointer(to=result).bitcast[NoneType]()
+                env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result
@@ -198,7 +198,7 @@ struct JsArrayBuffer:
         var result: Bool = False
         check_status(
             raw_is_detached_arraybuffer(
-                b, env, val, UnsafePointer(to=result).bitcast[NoneType]()
+                b, env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result

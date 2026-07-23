@@ -33,7 +33,7 @@ struct JsExternal:
                 data,
                 finalize_cb,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint = NULL
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsExternal(result)
@@ -54,7 +54,7 @@ struct JsExternal:
                 data,
                 finalize_cb,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint = NULL
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsExternal(result)
@@ -107,7 +107,7 @@ struct JsExternal:
             raw_get_value_external(
                 env,
                 val,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result
@@ -123,7 +123,7 @@ struct JsExternal:
                 b,
                 env,
                 val,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result

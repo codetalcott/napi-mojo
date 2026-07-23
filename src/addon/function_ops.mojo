@@ -75,7 +75,7 @@ def create_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             OpaquePointer[MutAnyOrigin]
         ]()[]
         return JsFunction.create_with_data(
-            b, env, "adder", cb_ptr, cap_ptr.bitcast[NoneType]()
+            b, env, "adder", cb_ptr, cap_ptr.bitcast[NoneType]().as_unsafe_any_origin()
         ).value
     except:
         throw_js_error(env, "createAdder requires one number argument")
@@ -89,7 +89,7 @@ def sum_args_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         if count == 0:
             return JsNumber.create(b, env, 0.0).value
         var argv = alloc[NapiValue](Int(count))
-        CbArgs.get_argv(b, env, info, count, argv)
+        CbArgs.get_argv(b, env, info, count, argv.as_unsafe_any_origin())
         var total: Float64 = 0.0
         for i in range(Int(count)):
             var t = js_typeof(b, env, argv[i])
@@ -137,7 +137,7 @@ def new_counter_from_registry_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var registry = b[].registry.bitcast[ClassRegistry]()
         var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
             to=arg0
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         return registry[].new_instance(b, env, "Counter", 1, argv_ptr)
     except:
         throw_js_error(env, "newCounterFromRegistry failed")

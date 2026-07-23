@@ -25,7 +25,7 @@ struct JsSymbol:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_symbol(
-                env, description, UnsafePointer(to=result).bitcast[NoneType]()
+                env, description, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsSymbol(result)
@@ -56,7 +56,7 @@ struct JsSymbol:
                 b,
                 env,
                 description,
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsSymbol(result)

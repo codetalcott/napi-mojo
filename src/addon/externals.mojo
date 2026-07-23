@@ -51,7 +51,7 @@ def create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             OpaquePointer[MutAnyOrigin]
         ]()[]
         return JsExternal.create(
-            b, env, data_ptr.bitcast[NoneType](), fin_ptr
+            b, env, data_ptr.bitcast[NoneType]().as_unsafe_any_origin(), fin_ptr
         ).value
     except:
         throw_js_error(env, "createExternal requires two number arguments")
@@ -120,11 +120,11 @@ def create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 raw_create_external_arraybuffer(
                     b,
                     env,
-                    data_ptr.bitcast[NoneType](),
+                    data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
                     byte_len,
                     fin_ptr,
                     OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                    UnsafePointer(to=result).bitcast[NoneType](),
+                    UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
                 )
             )
         except e:
@@ -160,7 +160,7 @@ def attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 b,
                 env,
                 arg0,
-                dummy.bitcast[NoneType](),
+                dummy.bitcast[NoneType]().as_unsafe_any_origin(),
                 fin_ptr,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),

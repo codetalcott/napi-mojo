@@ -62,7 +62,7 @@ def reject_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var error_val = NapiValue(unsafe_from_address=Int(0))
         var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=error_val
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_create_error(env, null_code, arg0, error_ptr))
         var p = JsPromise.create(b, env)
         p.reject(b, env, error_val)
@@ -134,7 +134,7 @@ def async_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             b,
             env,
             "asyncDouble",
-            data_ptr.bitcast[NoneType](),
+            data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
             fn_ptr(exec_ref),
             fn_ptr(comp_ref),
         )
@@ -208,7 +208,7 @@ def async_triple_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             b,
             env,
             "asyncTriple",
-            data_ptr.bitcast[NoneType](),
+            data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
             fn_ptr(exec_ref),
             fn_ptr(comp_ref),
         )
@@ -296,7 +296,7 @@ def progress_finalize_cb(
                 var error_val = NapiValue(unsafe_from_address=Int(0))
                 var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
                     to=error_val
-                ).bitcast[NoneType]()
+                ).bitcast[NoneType]().as_unsafe_any_origin()
                 _ = raw_create_error(env, null_code, msg.value, error_ptr)
                 _ = raw_reject_deferred(env, ptr[].deferred, error_val)
             _ = raw_delete_async_work(env, ptr[].work)
@@ -315,7 +315,7 @@ def async_progress_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
         val_ptr.init_pointee_move(Float64(i))
         try:
             _ = raw_call_threadsafe_function(
-                tsfn, val_ptr.bitcast[NoneType](), NAPI_TSFN_BLOCKING
+                tsfn, val_ptr.bitcast[NoneType]().as_unsafe_any_origin(), NAPI_TSFN_BLOCKING
             )
         except:
             val_ptr.destroy_pointee()
@@ -361,7 +361,7 @@ def async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         )
         var data_opaque: OpaquePointer[MutAnyOrigin] = data_ptr.bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var tsfn = ThreadsafeFunction.create(
             b,
             env,
@@ -384,7 +384,7 @@ def async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var work = NapiAsyncWork(unsafe_from_address=Int(0))
         var work_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=work
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         var null_resource = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_async_work(
@@ -445,7 +445,7 @@ def cancel_async_complete(
             var error_val = NapiValue(unsafe_from_address=Int(0))
             var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
                 to=error_val
-            ).bitcast[NoneType]()
+            ).bitcast[NoneType]().as_unsafe_any_origin()
             _ = raw_create_error(env, null_code, msg.value, error_ptr)
             _ = raw_reject_deferred(env, ptr[].deferred, error_val)
     except:
@@ -472,7 +472,7 @@ def cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var work = NapiAsyncWork(unsafe_from_address=Int(0))
         var work_out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=work
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_create_async_work(
                 b,
@@ -481,7 +481,7 @@ def cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 resource_name.value,
                 exec_ptr,
                 complete_ptr,
-                data_ptr.bitcast[NoneType](),
+                data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
                 work_out_ptr,
             )
         )

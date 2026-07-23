@@ -27,8 +27,8 @@ def _get_prototype(env: NapiEnv, constructor: NapiValue) raises -> NapiValue:
         raw_get_named_property(
             env,
             constructor,
-            "prototype".unsafe_ptr().bitcast[NoneType](),
-            UnsafePointer(to=proto).bitcast[NoneType](),
+            "prototype".unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+            UnsafePointer(to=proto).bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     return proto
@@ -43,8 +43,8 @@ def _get_prototype(
             b,
             env,
             constructor,
-            "prototype".unsafe_ptr().bitcast[NoneType](),
-            UnsafePointer(to=proto).bitcast[NoneType](),
+            "prototype".unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+            UnsafePointer(to=proto).bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     return proto
@@ -65,13 +65,13 @@ def define_class(
     check_status(
         raw_define_class(
             env,
-            name.unsafe_ptr().bitcast[NoneType](),
+            name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
             auto_length,
             constructor_ptr,
             OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # data = NULL
             0,  # property_count = 0
             OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0)),  # properties = NULL
-            UnsafePointer(to=result).bitcast[NoneType](),
+            UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     return result
@@ -89,13 +89,13 @@ def define_class(
     check_status(
         raw_define_class(
             env,
-            name.unsafe_ptr().bitcast[NoneType](),
+            name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
             auto_length,
             constructor_ptr,
             data_ptr,
             0,
             OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0)),
-            UnsafePointer(to=result).bitcast[NoneType](),
+            UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     return result
@@ -113,13 +113,13 @@ def define_class(
         raw_define_class(
             b,
             env,
-            name.unsafe_ptr().bitcast[NoneType](),
+            name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
             auto_length,
             constructor_ptr,
             OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # data = NULL
             0,  # property_count = 0
             OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0)),  # properties = NULL
-            UnsafePointer(to=result).bitcast[NoneType](),
+            UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     return result
@@ -138,13 +138,13 @@ def define_class(
         raw_define_class(
             b,
             env,
-            name.unsafe_ptr().bitcast[NoneType](),
+            name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
             auto_length,
             constructor_ptr,
             data_ptr,
             0,
             OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0)),
-            UnsafePointer(to=result).bitcast[NoneType](),
+            UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     return result
@@ -323,8 +323,8 @@ def set_class_prototype(
         raw_get_named_property(
             env,
             global_obj.value,
-            "Object".unsafe_ptr().bitcast[NoneType](),
-            UnsafePointer(to=object_key).bitcast[NoneType](),
+            "Object".unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+            UnsafePointer(to=object_key).bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     var set_proto_of = NapiValue(unsafe_from_address=Int(0))
@@ -332,8 +332,8 @@ def set_class_prototype(
         raw_get_named_property(
             env,
             object_key,
-            "setPrototypeOf".unsafe_ptr().bitcast[NoneType](),
-            UnsafePointer(to=set_proto_of).bitcast[NoneType](),
+            "setPrototypeOf".unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+            UnsafePointer(to=set_proto_of).bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
 
@@ -357,8 +357,8 @@ def set_class_prototype(
             b,
             env,
             global_obj.value,
-            "Object".unsafe_ptr().bitcast[NoneType](),
-            UnsafePointer(to=object_key).bitcast[NoneType](),
+            "Object".unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+            UnsafePointer(to=object_key).bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     var set_proto_of = NapiValue(unsafe_from_address=Int(0))
@@ -367,8 +367,8 @@ def set_class_prototype(
             b,
             env,
             object_key,
-            "setPrototypeOf".unsafe_ptr().bitcast[NoneType](),
-            UnsafePointer(to=set_proto_of).bitcast[NoneType](),
+            "setPrototypeOf".unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+            UnsafePointer(to=set_proto_of).bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
 
@@ -458,7 +458,7 @@ def unwrap_native_from_this[
 ]:
     var data: Optional[OpaquePointer[MutAnyOrigin]] = None
     check_status(
-        raw_unwrap(b, env, this_val, UnsafePointer(to=data).bitcast[NoneType]())
+        raw_unwrap(b, env, this_val, UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin())
     )
     if data is None:
         raise Error("unwrap failed: NULL native pointer")

@@ -114,7 +114,7 @@ def create_typed_payload_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         ]()[]
         try:
             return JsExternal.create(
-                b, env, data_ptr.bitcast[NoneType](), fin_ptr
+                b, env, data_ptr.bitcast[NoneType]().as_unsafe_any_origin(), fin_ptr
             ).value
         except e:
             # External never created → its finalizer will not run; clean up here.
