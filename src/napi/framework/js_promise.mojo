@@ -24,7 +24,9 @@ from napi.error import check_status
 
 
 struct JsPromise:
+    @__allow_legacy_any_origin_fields
     var value: NapiValue  # the promise — return this to JavaScript
+    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred  # used once to resolve or reject
 
     def __init__(out self, value: NapiValue, deferred: NapiDeferred):
@@ -40,8 +42,8 @@ struct JsPromise:
     ## napi_value (to return to JS) and the deferred handle (to settle it).
     @staticmethod
     def create(env: NapiEnv) raises -> JsPromise:
-        var deferred = NapiDeferred(unsafe_from_address=0)
-        var promise = NapiValue(unsafe_from_address=0)
+        var deferred = NapiDeferred(unsafe_from_address=Int(0))
+        var promise = NapiValue(unsafe_from_address=Int(0))
         var deferred_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=deferred
         ).bitcast[NoneType]()
@@ -71,8 +73,8 @@ struct JsPromise:
 
     @staticmethod
     def create(b: Bindings, env: NapiEnv) raises -> JsPromise:
-        var deferred = NapiDeferred(unsafe_from_address=0)
-        var promise = NapiValue(unsafe_from_address=0)
+        var deferred = NapiDeferred(unsafe_from_address=Int(0))
+        var promise = NapiValue(unsafe_from_address=Int(0))
         var deferred_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=deferred
         ).bitcast[NoneType]()

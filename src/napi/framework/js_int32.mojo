@@ -14,6 +14,7 @@ from napi.bindings import Bindings
 
 
 struct JsInt32:
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):
@@ -21,7 +22,7 @@ struct JsInt32:
 
     @staticmethod
     def create(b: Bindings, env: NapiEnv, n: Int32) raises -> JsInt32:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_int32(
                 b, env, n, UnsafePointer(to=result).bitcast[NoneType]()

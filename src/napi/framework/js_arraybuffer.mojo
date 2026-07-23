@@ -18,6 +18,7 @@ from napi.error import check_status
 
 
 struct JsArrayBuffer:
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):
@@ -26,8 +27,8 @@ struct JsArrayBuffer:
     ## create — allocate a new ArrayBuffer with `byte_length` bytes.
     @staticmethod
     def create(env: NapiEnv, byte_length: UInt) raises -> JsArrayBuffer:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        var result = NapiValue(unsafe_from_address=0)
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_arraybuffer(
                 env,
@@ -42,8 +43,8 @@ struct JsArrayBuffer:
     def create(
         b: Bindings, env: NapiEnv, byte_length: UInt
     ) raises -> JsArrayBuffer:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        var result = NapiValue(unsafe_from_address=0)
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_arraybuffer(
                 b,
@@ -60,8 +61,8 @@ struct JsArrayBuffer:
     def create_and_fill(
         env: NapiEnv, byte_length: UInt
     ) raises -> JsArrayBuffer:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        var result = NapiValue(unsafe_from_address=0)
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_arraybuffer(
                 env,
@@ -79,8 +80,8 @@ struct JsArrayBuffer:
     def create_and_fill(
         b: Bindings, env: NapiEnv, byte_length: UInt
     ) raises -> JsArrayBuffer:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        var result = NapiValue(unsafe_from_address=0)
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_arraybuffer(
                 b,
@@ -102,7 +103,7 @@ struct JsArrayBuffer:
             raw_get_arraybuffer_info(
                 env,
                 self.value,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 UnsafePointer(to=length).bitcast[NoneType](),
             )
         )
@@ -115,7 +116,7 @@ struct JsArrayBuffer:
                 b,
                 env,
                 self.value,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 UnsafePointer(to=length).bitcast[NoneType](),
             )
         )
@@ -125,13 +126,13 @@ struct JsArrayBuffer:
     def data_ptr(
         self, env: NapiEnv
     ) raises -> UnsafePointer[Byte, MutAnyOrigin]:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_arraybuffer_info(
                 env,
                 self.value,
                 UnsafePointer(to=data).bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
         return data.bitcast[Byte]()
@@ -139,14 +140,14 @@ struct JsArrayBuffer:
     def data_ptr(
         self, b: Bindings, env: NapiEnv
     ) raises -> UnsafePointer[Byte, MutAnyOrigin]:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_arraybuffer_info(
                 b,
                 env,
                 self.value,
                 UnsafePointer(to=data).bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
         return data.bitcast[Byte]()

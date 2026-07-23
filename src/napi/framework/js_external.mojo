@@ -13,6 +13,7 @@ from napi.framework.js_value import js_typeof, js_type_name
 
 
 struct JsExternal:
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):
@@ -25,13 +26,13 @@ struct JsExternal:
         finalize_cb: OpaquePointer[MutAnyOrigin],
     ) raises -> JsExternal:
         """Create an external with a finalize callback (called on GC)."""
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_external(
                 env,
                 data,
                 finalize_cb,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),  # finalize_hint = NULL
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint = NULL
                 UnsafePointer(to=result).bitcast[NoneType](),
             )
         )
@@ -45,14 +46,14 @@ struct JsExternal:
         finalize_cb: OpaquePointer[MutAnyOrigin],
     ) raises -> JsExternal:
         """Create an external with a finalize callback (called on GC)."""
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_external(
                 b,
                 env,
                 data,
                 finalize_cb,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),  # finalize_hint = NULL
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint = NULL
                 UnsafePointer(to=result).bitcast[NoneType](),
             )
         )
@@ -64,13 +65,13 @@ struct JsExternal:
         data: OpaquePointer[MutAnyOrigin],
     ) raises -> JsExternal:
         """Create an external with no finalize callback."""
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_external(
                 env,
                 data,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),  # finalize_cb = NULL
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),  # finalize_hint = NULL
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_cb = NULL
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint = NULL
                 UnsafePointer(to=result).bitcast[NoneType](),
             )
         )
@@ -83,14 +84,14 @@ struct JsExternal:
         data: OpaquePointer[MutAnyOrigin],
     ) raises -> JsExternal:
         """Create an external with no finalize callback."""
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_external(
                 b,
                 env,
                 data,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),  # finalize_cb = NULL
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),  # finalize_hint = NULL
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_cb = NULL
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint = NULL
                 UnsafePointer(to=result).bitcast[NoneType](),
             )
         )
@@ -101,7 +102,7 @@ struct JsExternal:
         env: NapiEnv, val: NapiValue
     ) raises -> OpaquePointer[MutAnyOrigin]:
         """Retrieve the opaque data pointer from an external value."""
-        var result = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var result = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_value_external(
                 env,
@@ -116,7 +117,7 @@ struct JsExternal:
         b: Bindings, env: NapiEnv, val: NapiValue
     ) raises -> OpaquePointer[MutAnyOrigin]:
         """Retrieve the opaque data pointer from an external value."""
-        var result = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var result = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_value_external(
                 b,

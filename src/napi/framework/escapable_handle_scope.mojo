@@ -22,6 +22,7 @@ from napi.bindings import Bindings
 
 
 struct EscapableHandleScope:
+    @__allow_legacy_any_origin_fields
     var scope: NapiEscapableHandleScope
 
     def __init__(out self, scope: NapiEscapableHandleScope):
@@ -29,7 +30,7 @@ struct EscapableHandleScope:
 
     @staticmethod
     def open(env: NapiEnv) raises -> EscapableHandleScope:
-        var scope = NapiEscapableHandleScope(unsafe_from_address=0)
+        var scope = NapiEscapableHandleScope(unsafe_from_address=Int(0))
         check_status(
             raw_open_escapable_handle_scope(
                 env, UnsafePointer(to=scope).bitcast[NoneType]()
@@ -39,7 +40,7 @@ struct EscapableHandleScope:
 
     @staticmethod
     def open(b: Bindings, env: NapiEnv) raises -> EscapableHandleScope:
-        var scope = NapiEscapableHandleScope(unsafe_from_address=0)
+        var scope = NapiEscapableHandleScope(unsafe_from_address=Int(0))
         check_status(
             raw_open_escapable_handle_scope(
                 b, env, UnsafePointer(to=scope).bitcast[NoneType]()
@@ -48,7 +49,7 @@ struct EscapableHandleScope:
         return EscapableHandleScope(scope)
 
     def escape(self, env: NapiEnv, value: NapiValue) raises -> NapiValue:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_escape_handle(
                 env,
@@ -62,7 +63,7 @@ struct EscapableHandleScope:
     def escape(
         self, b: Bindings, env: NapiEnv, value: NapiValue
     ) raises -> NapiValue:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_escape_handle(
                 b,

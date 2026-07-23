@@ -21,6 +21,7 @@ from napi.error import check_status
 
 
 struct JsRef:
+    @__allow_legacy_any_origin_fields
     var handle: NapiRef
 
     def __init__(out self, handle: NapiRef):
@@ -30,7 +31,7 @@ struct JsRef:
     def create(
         env: NapiEnv, value: NapiValue, initial_refcount: UInt32
     ) raises -> JsRef:
-        var result = NapiRef(unsafe_from_address=0)
+        var result = NapiRef(unsafe_from_address=Int(0))
         check_status(
             raw_create_reference(
                 env,
@@ -63,7 +64,7 @@ struct JsRef:
         return count
 
     def get(self, env: NapiEnv) raises -> NapiValue:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_get_reference_value(
                 env, self.handle, UnsafePointer(to=result).bitcast[NoneType]()
@@ -83,7 +84,7 @@ struct JsRef:
     def create(
         b: Bindings, env: NapiEnv, value: NapiValue, initial_refcount: UInt32
     ) raises -> JsRef:
-        var result = NapiRef(unsafe_from_address=0)
+        var result = NapiRef(unsafe_from_address=Int(0))
         check_status(
             raw_create_reference(
                 b,
@@ -117,7 +118,7 @@ struct JsRef:
         return count
 
     def get(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_get_reference_value(
                 b,

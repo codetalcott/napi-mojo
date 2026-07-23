@@ -14,6 +14,7 @@ from napi.error import check_status
 
 
 struct JsDate:
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):
@@ -21,7 +22,7 @@ struct JsDate:
 
     @staticmethod
     def create(env: NapiEnv, timestamp_ms: Float64) raises -> JsDate:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_date(
                 env, timestamp_ms, UnsafePointer(to=result).bitcast[NoneType]()
@@ -52,7 +53,7 @@ struct JsDate:
     def create(
         b: Bindings, env: NapiEnv, timestamp_ms: Float64
     ) raises -> JsDate:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_date(
                 b,

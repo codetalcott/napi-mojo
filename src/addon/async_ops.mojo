@@ -51,15 +51,15 @@ def resolve_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return p.value
     except:
         throw_js_error(env, "resolveWith requires one argument")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def reject_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
-        var null_code = NapiValue(unsafe_from_address=0)
-        var error_val = NapiValue(unsafe_from_address=0)
+        var null_code = NapiValue(unsafe_from_address=Int(0))
+        var error_val = NapiValue(unsafe_from_address=Int(0))
         var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=error_val
         ).bitcast[NoneType]()
@@ -69,7 +69,7 @@ def reject_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return p.value
     except:
         throw_js_error(env, "rejectWith requires one string argument")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 # ---------------------------------------------------------------------------
@@ -78,14 +78,16 @@ def reject_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 
 struct AsyncDoubleData(Movable):
+    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred
+    @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
     var input: Float64
     var result: Float64
 
     def __init__(out self, input: Float64):
-        self.deferred = NapiDeferred(unsafe_from_address=0)
-        self.work = NapiAsyncWork(unsafe_from_address=0)
+        self.deferred = NapiDeferred(unsafe_from_address=Int(0))
+        self.work = NapiAsyncWork(unsafe_from_address=Int(0))
         self.input = input
         self.result = 0.0
 
@@ -141,7 +143,7 @@ def async_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return aw.value
     except:
         throw_js_error(env, "asyncDouble requires one number argument")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 # ---------------------------------------------------------------------------
@@ -150,14 +152,16 @@ def async_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 
 struct AsyncTripleData(Movable):
+    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred
+    @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
     var input: Float64
     var result: Float64
 
     def __init__(out self, input: Float64):
-        self.deferred = NapiDeferred(unsafe_from_address=0)
-        self.work = NapiAsyncWork(unsafe_from_address=0)
+        self.deferred = NapiDeferred(unsafe_from_address=Int(0))
+        self.work = NapiAsyncWork(unsafe_from_address=Int(0))
         self.input = input
         self.result = 0.0
 
@@ -213,7 +217,7 @@ def async_triple_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return aw.value
     except:
         throw_js_error(env, "asyncTriple requires one number argument")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 # ---------------------------------------------------------------------------
@@ -222,8 +226,11 @@ def async_triple_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 
 struct AsyncProgressData(Movable):
+    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred
+    @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
+    @__allow_legacy_any_origin_fields
     var tsfn: NapiThreadsafeFunction
     var count: Int
     var status: NapiStatus
@@ -285,8 +292,8 @@ def progress_finalize_cb(
                 var msg = JsString.create_literal(
                     env, "async progress work failed"
                 )
-                var null_code = NapiValue(unsafe_from_address=0)
-                var error_val = NapiValue(unsafe_from_address=0)
+                var null_code = NapiValue(unsafe_from_address=Int(0))
+                var error_val = NapiValue(unsafe_from_address=Int(0))
                 var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
                     to=error_val
                 ).bitcast[NoneType]()
@@ -347,8 +354,8 @@ def async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         data_ptr.init_pointee_move(
             AsyncProgressData(
                 p.deferred,
-                NapiAsyncWork(unsafe_from_address=0),
-                NapiThreadsafeFunction(unsafe_from_address=0),
+                NapiAsyncWork(unsafe_from_address=Int(0)),
+                NapiThreadsafeFunction(unsafe_from_address=Int(0)),
                 Int(count),
             )
         )
@@ -374,11 +381,11 @@ def async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var comp_ptr = UnsafePointer(to=comp_ref).bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
-        var work = NapiAsyncWork(unsafe_from_address=0)
+        var work = NapiAsyncWork(unsafe_from_address=Int(0))
         var work_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=work
         ).bitcast[NoneType]()
-        var null_resource = NapiValue(unsafe_from_address=0)
+        var null_resource = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_async_work(
                 b,
@@ -396,7 +403,7 @@ def async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return p.value
     except:
         throw_js_error(env, "asyncProgress requires (count, callback)")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 # ---------------------------------------------------------------------------
@@ -405,12 +412,14 @@ def async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 
 struct CancelAsyncData(Movable):
+    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred
+    @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
 
     def __init__(out self, deferred: NapiDeferred):
         self.deferred = deferred
-        self.work = NapiAsyncWork(unsafe_from_address=0)
+        self.work = NapiAsyncWork(unsafe_from_address=Int(0))
 
     def __moveinit__(out self, deinit take: Self):
         self.deferred = take.deferred
@@ -432,8 +441,8 @@ def cancel_async_complete(
             _ = raw_resolve_deferred(env, ptr[].deferred, result_val.value)
         else:
             var msg = JsString.create_literal(env, "cancelled")
-            var null_code = NapiValue(unsafe_from_address=0)
-            var error_val = NapiValue(unsafe_from_address=0)
+            var null_code = NapiValue(unsafe_from_address=Int(0))
+            var error_val = NapiValue(unsafe_from_address=Int(0))
             var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
                 to=error_val
             ).bitcast[NoneType]()
@@ -460,7 +469,7 @@ def cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             OpaquePointer[MutAnyOrigin]
         ]()[]
         var resource_name = JsString.create_literal(b, env, "cancelTest")
-        var work = NapiAsyncWork(unsafe_from_address=0)
+        var work = NapiAsyncWork(unsafe_from_address=Int(0))
         var work_out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=work
         ).bitcast[NoneType]()
@@ -468,7 +477,7 @@ def cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             raw_create_async_work(
                 b,
                 env,
-                NapiValue(unsafe_from_address=0),
+                NapiValue(unsafe_from_address=Int(0)),
                 resource_name.value,
                 exec_ptr,
                 complete_ptr,
@@ -482,7 +491,7 @@ def cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return p.value
     except:
         throw_js_error(env, "cancelAsyncWork failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def register_async(mut m: ModuleBuilder) raises:

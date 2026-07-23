@@ -21,6 +21,7 @@ from napi.error import check_status
 
 
 struct JsAsyncContext:
+    @__allow_legacy_any_origin_fields
     var value: NapiAsyncContext
 
     def __init__(out self, value: NapiAsyncContext):
@@ -39,7 +40,7 @@ struct JsAsyncContext:
         async_resource: NapiValue,
         async_resource_name: NapiValue,
     ) raises -> JsAsyncContext:
-        var result = NapiAsyncContext(unsafe_from_address=0)
+        var result = NapiAsyncContext(unsafe_from_address=Int(0))
         check_status(
             raw_async_init(
                 b,
@@ -66,7 +67,7 @@ struct JsAsyncContext:
         recv: NapiValue,
         func: NapiValue,
     ) raises -> NapiValue:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_make_callback(
                 b,
@@ -75,7 +76,7 @@ struct JsAsyncContext:
                 recv,
                 func,
                 0,
-                OpaquePointer[ImmutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0)),
                 UnsafePointer(to=result).bitcast[NoneType](),
             )
         )
@@ -90,7 +91,7 @@ struct JsAsyncContext:
         func: NapiValue,
         arg0: NapiValue,
     ) raises -> NapiValue:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
             to=arg0
         ).bitcast[NoneType]()
@@ -118,8 +119,8 @@ struct JsAsyncContext:
         arg0: NapiValue,
         arg1: NapiValue,
     ) raises -> NapiValue:
-        var result = NapiValue(unsafe_from_address=0)
-        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=0))
+        var result = NapiValue(unsafe_from_address=Int(0))
+        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         args[0] = arg0
         args[1] = arg1
         var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(

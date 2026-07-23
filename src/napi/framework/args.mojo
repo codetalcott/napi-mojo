@@ -23,7 +23,9 @@ from napi.bindings import NapiBindings, Bindings
 
 ## BindingsAndOne — bindings pointer + one argument (single napi_get_cb_info call)
 struct BindingsAndOne:
+    @__allow_legacy_any_origin_fields
     var b: Bindings
+    @__allow_legacy_any_origin_fields
     var arg0: NapiValue
 
     def __init__(out self, b: Bindings, arg0: NapiValue):
@@ -33,8 +35,11 @@ struct BindingsAndOne:
 
 ## BindingsAndTwo — bindings pointer + two arguments (single napi_get_cb_info call)
 struct BindingsAndTwo:
+    @__allow_legacy_any_origin_fields
     var b: Bindings
+    @__allow_legacy_any_origin_fields
     var arg0: NapiValue
+    @__allow_legacy_any_origin_fields
     var arg1: NapiValue
 
     def __init__(out self, b: Bindings, arg0: NapiValue, arg1: NapiValue):
@@ -64,7 +69,9 @@ struct BindingsAndThree:
 ## Used by zero-argument class method/getter callbacks. Pass this_val directly
 ## to unwrap_native_from_this[T](b, env, this_val) to skip a second get_cb_info.
 struct BindingsAndThis:
+    @__allow_legacy_any_origin_fields
     var b: Bindings
+    @__allow_legacy_any_origin_fields
     var this_val: NapiValue
 
     def __init__(out self, b: Bindings, this_val: NapiValue):
@@ -77,8 +84,11 @@ struct BindingsAndThis:
 ## Used by one-argument class method/setter callbacks. Replaces the triple call:
 ##   get_bindings + get_one(b,...) + get_this inside unwrap_native.
 struct BindingsThisAndOne:
+    @__allow_legacy_any_origin_fields
     var b: Bindings
+    @__allow_legacy_any_origin_fields
     var this_val: NapiValue
+    @__allow_legacy_any_origin_fields
     var arg0: NapiValue
 
     def __init__(out self, b: Bindings, this_val: NapiValue, arg0: NapiValue):
@@ -99,8 +109,8 @@ struct CbArgs:
     @staticmethod
     def get_one(env: NapiEnv, info: NapiValue) raises -> NapiValue:
         var argc: UInt = 1
-        var arg0: NapiValue = NapiValue(unsafe_from_address=0)
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
@@ -118,8 +128,8 @@ struct CbArgs:
     @staticmethod
     def get_one(b: Bindings, env: NapiEnv, info: NapiValue) raises -> NapiValue:
         var argc: UInt = 1
-        var arg0: NapiValue = NapiValue(unsafe_from_address=0)
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 b,
@@ -145,8 +155,8 @@ struct CbArgs:
         env: NapiEnv, info: NapiValue
     ) raises -> InlineArray[NapiValue, 2]:
         var argc: UInt = 2
-        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=0))
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
@@ -166,8 +176,8 @@ struct CbArgs:
         b: Bindings, env: NapiEnv, info: NapiValue
     ) raises -> InlineArray[NapiValue, 2]:
         var argc: UInt = 2
-        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=0))
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 b,
@@ -189,8 +199,8 @@ struct CbArgs:
         b: Bindings, env: NapiEnv, info: NapiValue
     ) raises -> InlineArray[NapiValue, 3]:
         var argc: UInt = 3
-        var args = InlineArray[NapiValue, 3](fill=NapiValue(unsafe_from_address=0))
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var args = InlineArray[NapiValue, 3](fill=NapiValue(unsafe_from_address=Int(0)))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 b,
@@ -212,8 +222,8 @@ struct CbArgs:
         b: Bindings, env: NapiEnv, info: NapiValue
     ) raises -> InlineArray[NapiValue, 4]:
         var argc: UInt = 4
-        var args = InlineArray[NapiValue, 4](fill=NapiValue(unsafe_from_address=0))
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var args = InlineArray[NapiValue, 4](fill=NapiValue(unsafe_from_address=Int(0)))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 b,
@@ -235,8 +245,8 @@ struct CbArgs:
     @staticmethod
     def get_this(env: NapiEnv, info: NapiValue) raises -> NapiValue:
         var argc: UInt = 0
-        var this_val: NapiValue = NapiValue(unsafe_from_address=0)
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
@@ -254,8 +264,8 @@ struct CbArgs:
         b: Bindings, env: NapiEnv, info: NapiValue
     ) raises -> NapiValue:
         var argc: UInt = 0
-        var this_val: NapiValue = NapiValue(unsafe_from_address=0)
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 b,
@@ -277,9 +287,9 @@ struct CbArgs:
         env: NapiEnv, info: NapiValue
     ) raises -> InlineArray[NapiValue, 2]:
         var argc: UInt = 1
-        var arg0: NapiValue = NapiValue(unsafe_from_address=0)
-        var this_val: NapiValue = NapiValue(unsafe_from_address=0)
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
@@ -292,7 +302,7 @@ struct CbArgs:
         )
         if argc < 1:
             raise Error("expected at least 1 argument")
-        var result = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=0))
+        var result = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         result[0] = this_val
         result[1] = arg0
         return result^
@@ -302,9 +312,9 @@ struct CbArgs:
         b: Bindings, env: NapiEnv, info: NapiValue
     ) raises -> InlineArray[NapiValue, 2]:
         var argc: UInt = 1
-        var arg0: NapiValue = NapiValue(unsafe_from_address=0)
-        var this_val: NapiValue = NapiValue(unsafe_from_address=0)
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 b,
@@ -318,7 +328,7 @@ struct CbArgs:
         )
         if argc < 1:
             raise Error("expected at least 1 argument")
-        var result = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=0))
+        var result = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         result[0] = this_val
         result[1] = arg0
         return result^
@@ -327,7 +337,7 @@ struct CbArgs:
     @staticmethod
     def argc(env: NapiEnv, info: NapiValue) raises -> UInt:
         var count: UInt = 0
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
@@ -343,7 +353,7 @@ struct CbArgs:
     @staticmethod
     def argc(b: Bindings, env: NapiEnv, info: NapiValue) raises -> UInt:
         var count: UInt = 0
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 b,
@@ -366,7 +376,7 @@ struct CbArgs:
         argv_ptr: UnsafePointer[NapiValue, MutAnyOrigin],
     ) raises:
         var actual = count
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
@@ -387,7 +397,7 @@ struct CbArgs:
         argv_ptr: UnsafePointer[NapiValue, MutAnyOrigin],
     ) raises:
         var actual = count
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 b,
@@ -408,8 +418,8 @@ struct CbArgs:
         env: NapiEnv, info: NapiValue
     ) raises -> OpaquePointer[MutAnyOrigin]:
         var argc: UInt = 0
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
@@ -427,8 +437,8 @@ struct CbArgs:
         b: Bindings, env: NapiEnv, info: NapiValue
     ) raises -> OpaquePointer[MutAnyOrigin]:
         var argc: UInt = 0
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 b,
@@ -463,9 +473,9 @@ struct CbArgs:
         env: NapiEnv, info: NapiValue
     ) raises -> BindingsAndOne:
         var argc: UInt = 1
-        var arg0: NapiValue = NapiValue(unsafe_from_address=0)
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
@@ -486,9 +496,9 @@ struct CbArgs:
         env: NapiEnv, info: NapiValue
     ) raises -> BindingsAndTwo:
         var argc: UInt = 2
-        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=0))
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
@@ -509,9 +519,9 @@ struct CbArgs:
         env: NapiEnv, info: NapiValue
     ) raises -> BindingsAndThree:
         var argc: UInt = 3
-        var args = InlineArray[NapiValue, 3](fill=NapiValue(unsafe_from_address=0))
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var args = InlineArray[NapiValue, 3](fill=NapiValue(unsafe_from_address=Int(0)))
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
@@ -538,9 +548,9 @@ struct CbArgs:
         env: NapiEnv, info: NapiValue
     ) raises -> BindingsAndThis:
         var argc: UInt = 0
-        var this_val: NapiValue = NapiValue(unsafe_from_address=0)
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
-        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
@@ -563,9 +573,9 @@ struct CbArgs:
         env: NapiEnv, info: NapiValue
     ) raises -> BindingsThisAndOne:
         var argc: UInt = 1
-        var arg0: NapiValue = NapiValue(unsafe_from_address=0)
-        var this_val: NapiValue = NapiValue(unsafe_from_address=0)
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,

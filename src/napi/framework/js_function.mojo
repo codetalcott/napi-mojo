@@ -21,6 +21,7 @@ from napi.framework.js_number import JsNumber
 ## JsFunction — typed wrapper for a JavaScript function napi_value
 struct JsFunction:
     ## The underlying napi_value handle. Valid within the current handle scope.
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):
@@ -28,13 +29,13 @@ struct JsFunction:
 
     ## call0 — call with no arguments, undefined as `this`
     def call0(self, env: NapiEnv) raises -> NapiValue:
-        var recv: NapiValue = NapiValue(unsafe_from_address=0)
+        var recv: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=recv
         ).bitcast[NoneType]()
         check_status(raw_get_undefined(env, recv_ptr))
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
-        var null_argv = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var null_argv = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -47,12 +48,12 @@ struct JsFunction:
     ## bootstrap-safe: retained for TSFN call_js_cb which lacks an `info`
     ## parameter. Use call1(b, env, arg0) in all hot-path callbacks.
     def call1(self, env: NapiEnv, arg0: NapiValue) raises -> NapiValue:
-        var recv: NapiValue = NapiValue(unsafe_from_address=0)
+        var recv: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=recv
         ).bitcast[NoneType]()
         check_status(raw_get_undefined(env, recv_ptr))
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
             to=arg0
         ).bitcast[NoneType]()
@@ -68,15 +69,15 @@ struct JsFunction:
     def call2(
         self, env: NapiEnv, arg0: NapiValue, arg1: NapiValue
     ) raises -> NapiValue:
-        var recv: NapiValue = NapiValue(unsafe_from_address=0)
+        var recv: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=recv
         ).bitcast[NoneType]()
         check_status(raw_get_undefined(env, recv_ptr))
-        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=0))
+        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         args[0] = arg0
         args[1] = arg1
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
             to=args[0]
         ).bitcast[NoneType]()
@@ -93,7 +94,7 @@ struct JsFunction:
     def create(
         env: NapiEnv, name: StringLiteral, cb_ptr: OpaquePointer[MutAnyOrigin]
     ) raises -> JsFunction:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         var auto_length: UInt = ~UInt(0)
         check_status(
             raw_create_function(
@@ -101,7 +102,7 @@ struct JsFunction:
                 name.unsafe_ptr().bitcast[NoneType](),
                 auto_length,
                 cb_ptr,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 UnsafePointer(to=result).bitcast[NoneType](),
             )
         )
@@ -117,7 +118,7 @@ struct JsFunction:
         cb_ptr: OpaquePointer[MutAnyOrigin],
         data: OpaquePointer[MutAnyOrigin],
     ) raises -> JsFunction:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         var auto_length: UInt = ~UInt(0)
         check_status(
             raw_create_function(
@@ -134,13 +135,13 @@ struct JsFunction:
     # --- Bindings-aware overloads ---
 
     def call0(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
-        var recv: NapiValue = NapiValue(unsafe_from_address=0)
+        var recv: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=recv
         ).bitcast[NoneType]()
         check_status(raw_get_undefined(b, env, recv_ptr))
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
-        var null_argv = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var null_argv = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -154,12 +155,12 @@ struct JsFunction:
     def call1(
         self, b: Bindings, env: NapiEnv, arg0: NapiValue
     ) raises -> NapiValue:
-        var recv: NapiValue = NapiValue(unsafe_from_address=0)
+        var recv: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=recv
         ).bitcast[NoneType]()
         check_status(raw_get_undefined(b, env, recv_ptr))
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
             to=arg0
         ).bitcast[NoneType]()
@@ -174,15 +175,15 @@ struct JsFunction:
     def call2(
         self, b: Bindings, env: NapiEnv, arg0: NapiValue, arg1: NapiValue
     ) raises -> NapiValue:
-        var recv: NapiValue = NapiValue(unsafe_from_address=0)
+        var recv: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=recv
         ).bitcast[NoneType]()
         check_status(raw_get_undefined(b, env, recv_ptr))
-        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=0))
+        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         args[0] = arg0
         args[1] = arg1
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
             to=args[0]
         ).bitcast[NoneType]()
@@ -201,7 +202,7 @@ struct JsFunction:
         name: StringLiteral,
         cb_ptr: OpaquePointer[MutAnyOrigin],
     ) raises -> JsFunction:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         var auto_length: UInt = ~UInt(0)
         check_status(
             raw_create_function(
@@ -210,7 +211,7 @@ struct JsFunction:
                 name.unsafe_ptr().bitcast[NoneType](),
                 auto_length,
                 cb_ptr,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 UnsafePointer(to=result).bitcast[NoneType](),
             )
         )
@@ -224,7 +225,7 @@ struct JsFunction:
         cb_ptr: OpaquePointer[MutAnyOrigin],
         data: OpaquePointer[MutAnyOrigin],
     ) raises -> JsFunction:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         var auto_length: UInt = ~UInt(0)
         check_status(
             raw_create_function(
@@ -257,7 +258,7 @@ struct JsFunction:
         length: Int,
         cb_ptr: OpaquePointer[MutAnyOrigin],
     ) raises -> JsFunction:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         var auto_length: UInt = ~UInt(0)
         var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[
             NoneType
@@ -268,7 +269,7 @@ struct JsFunction:
                 name_ptr,
                 auto_length,
                 cb_ptr,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 UnsafePointer(to=result).bitcast[NoneType](),
             )
         )
@@ -277,10 +278,10 @@ struct JsFunction:
         var len_val = JsNumber.create_int(env, length).value
         var desc = NapiPropertyDescriptor()
         desc.utf8name = "length".unsafe_ptr().bitcast[NoneType]()
-        desc.method = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        desc.method = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         desc.value = len_val
         desc.attributes = 4  # napi_configurable
-        desc.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        desc.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         define_property(env, result, desc)
         return JsFunction(result)
 
@@ -293,7 +294,7 @@ struct JsFunction:
         cb_ptr: OpaquePointer[MutAnyOrigin],
     ) raises -> JsFunction:
         return JsFunction.create_named(
-            b, env, name, length, cb_ptr, OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+            b, env, name, length, cb_ptr, OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         )
 
     @staticmethod
@@ -305,7 +306,7 @@ struct JsFunction:
         cb_ptr: OpaquePointer[MutAnyOrigin],
         data_ptr: OpaquePointer[MutAnyOrigin],
     ) raises -> JsFunction:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         var auto_length: UInt = ~UInt(0)
         var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[
             NoneType
@@ -326,9 +327,9 @@ struct JsFunction:
         var len_val = JsNumber.create_int(b, env, length).value
         var desc = NapiPropertyDescriptor()
         desc.utf8name = "length".unsafe_ptr().bitcast[NoneType]()
-        desc.method = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        desc.method = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         desc.value = len_val
         desc.attributes = 4  # napi_configurable
-        desc.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        desc.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         define_property(b, env, result, desc)
         return JsFunction(result)

@@ -50,6 +50,7 @@ from napi.error import check_status
 ## JsObject — typed wrapper for a JavaScript object napi_value
 struct JsObject:
     ## The underlying napi_value handle. Valid within the current handle scope.
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):
@@ -63,7 +64,7 @@ struct JsObject:
     ## Calls napi_create_object and checks the status.
     @staticmethod
     def create(env: NapiEnv) raises -> JsObject:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -126,7 +127,7 @@ struct JsObject:
     ## Most general form — works with any key type (string, symbol, etc.).
     ## Pass the JS key napi_value directly; avoids any string conversion.
     def get(self, env: NapiEnv, key: NapiValue) raises -> NapiValue:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -141,7 +142,7 @@ struct JsObject:
     def get_property(
         self, env: NapiEnv, key: StringLiteral
     ) raises -> NapiValue:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
             NoneType
         ]()
@@ -164,7 +165,7 @@ struct JsObject:
         var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[
             NoneType
         ]()
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -208,7 +209,7 @@ struct JsObject:
     ## Uses napi_get_all_property_names with own-only + enumerable filter.
     ## Equivalent to Object.keys(obj).
     def keys(self, env: NapiEnv) raises -> NapiValue:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -277,7 +278,7 @@ struct JsObject:
     ##
     ## Calls napi_get_prototype. Returns null for Object.create(null).
     def prototype(self, env: NapiEnv) raises -> NapiValue:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -289,7 +290,7 @@ struct JsObject:
 
     @staticmethod
     def create(b: Bindings, env: NapiEnv) raises -> JsObject:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -333,7 +334,7 @@ struct JsObject:
     def get(
         self, b: Bindings, env: NapiEnv, key: NapiValue
     ) raises -> NapiValue:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -344,7 +345,7 @@ struct JsObject:
     def get_property(
         self, b: Bindings, env: NapiEnv, key: StringLiteral
     ) raises -> NapiValue:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
             NoneType
         ]()
@@ -363,7 +364,7 @@ struct JsObject:
         var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().bitcast[
             NoneType
         ]()
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -397,7 +398,7 @@ struct JsObject:
         return self.get_property(b, env, key)
 
     def keys(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -422,7 +423,7 @@ struct JsObject:
         filter: Int32,
         conversion: Int32,
     ) raises -> NapiValue:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -473,7 +474,7 @@ struct JsObject:
         check_status(status)
 
     def prototype(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()

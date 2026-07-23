@@ -26,6 +26,7 @@ from napi.bindings import Bindings
 ## JsNumber — typed wrapper for a JavaScript number napi_value
 struct JsNumber:
     ## The underlying napi_value handle. Valid within the current handle scope.
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):
@@ -40,7 +41,7 @@ struct JsNumber:
     ## cached bindings. Use create(b, env, n) in all hot-path callbacks.
     @staticmethod
     def create(env: NapiEnv, n: Float64) raises -> JsNumber:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -50,7 +51,7 @@ struct JsNumber:
 
     @staticmethod
     def create(b: Bindings, env: NapiEnv, n: Float64) raises -> JsNumber:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
@@ -87,7 +88,7 @@ struct JsNumber:
     ## create_int — construct a JS number from a Mojo Int via napi_create_int64
     @staticmethod
     def create_int(env: NapiEnv, n: Int) raises -> JsNumber:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_int64(
                 env, Int64(n), UnsafePointer(to=result).bitcast[NoneType]()
@@ -97,7 +98,7 @@ struct JsNumber:
 
     @staticmethod
     def create_int(b: Bindings, env: NapiEnv, n: Int) raises -> JsNumber:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_int64(
                 b, env, Int64(n), UnsafePointer(to=result).bitcast[NoneType]()

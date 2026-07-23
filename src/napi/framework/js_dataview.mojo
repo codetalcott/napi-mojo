@@ -12,6 +12,7 @@ from napi.error import check_status
 
 
 struct JsDataView:
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):
@@ -25,7 +26,7 @@ struct JsDataView:
         arraybuffer: NapiValue,
         byte_offset: UInt,
     ) raises -> JsDataView:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_dataview(
                 env,
@@ -45,7 +46,7 @@ struct JsDataView:
         arraybuffer: NapiValue,
         byte_offset: UInt,
     ) raises -> JsDataView:
-        var result = NapiValue(unsafe_from_address=0)
+        var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_dataview(
                 b,
@@ -66,9 +67,9 @@ struct JsDataView:
                 env,
                 self.value,
                 UnsafePointer(to=length).bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
         return length
@@ -81,9 +82,9 @@ struct JsDataView:
                 env,
                 self.value,
                 UnsafePointer(to=length).bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
         return length
@@ -95,9 +96,9 @@ struct JsDataView:
             raw_get_dataview_info(
                 env,
                 self.value,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 UnsafePointer(to=offset).bitcast[NoneType](),
             )
         )
@@ -110,9 +111,9 @@ struct JsDataView:
                 b,
                 env,
                 self.value,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 UnsafePointer(to=offset).bitcast[NoneType](),
             )
         )
@@ -122,15 +123,15 @@ struct JsDataView:
     def data_ptr(
         self, env: NapiEnv
     ) raises -> UnsafePointer[Byte, MutAnyOrigin]:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_dataview_info(
                 env,
                 self.value,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 UnsafePointer(to=data).bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
         return data.bitcast[Byte]()
@@ -138,46 +139,46 @@ struct JsDataView:
     def data_ptr(
         self, b: Bindings, env: NapiEnv
     ) raises -> UnsafePointer[Byte, MutAnyOrigin]:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_dataview_info(
                 b,
                 env,
                 self.value,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 UnsafePointer(to=data).bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
         return data.bitcast[Byte]()
 
     ## arraybuffer — get the underlying ArrayBuffer
     def arraybuffer(self, env: NapiEnv) raises -> NapiValue:
-        var ab = NapiValue(unsafe_from_address=0)
+        var ab = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_get_dataview_info(
                 env,
                 self.value,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 UnsafePointer(to=ab).bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
         return ab
 
     def arraybuffer(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
-        var ab = NapiValue(unsafe_from_address=0)
+        var ab = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_get_dataview_info(
                 b,
                 env,
                 self.value,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 UnsafePointer(to=ab).bitcast[NoneType](),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=0),
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
         return ab

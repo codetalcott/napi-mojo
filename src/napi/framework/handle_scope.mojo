@@ -21,6 +21,7 @@ from napi.bindings import Bindings
 
 ## HandleScope — typed wrapper for napi_handle_scope
 struct HandleScope:
+    @__allow_legacy_any_origin_fields
     var scope: NapiHandleScope
 
     def __init__(out self, scope: NapiHandleScope):
@@ -29,7 +30,7 @@ struct HandleScope:
     ## open — create a new handle scope
     @staticmethod
     def open(env: NapiEnv) raises -> HandleScope:
-        var scope: NapiHandleScope = NapiHandleScope(unsafe_from_address=0)
+        var scope: NapiHandleScope = NapiHandleScope(unsafe_from_address=Int(0))
         var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=scope
         ).bitcast[NoneType]()
@@ -38,7 +39,7 @@ struct HandleScope:
 
     @staticmethod
     def open(b: Bindings, env: NapiEnv) raises -> HandleScope:
-        var scope: NapiHandleScope = NapiHandleScope(unsafe_from_address=0)
+        var scope: NapiHandleScope = NapiHandleScope(unsafe_from_address=Int(0))
         var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=scope
         ).bitcast[NoneType]()

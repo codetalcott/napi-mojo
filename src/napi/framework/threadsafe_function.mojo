@@ -29,6 +29,7 @@ from napi.error import check_status
 
 
 struct ThreadsafeFunction:
+    @__allow_legacy_any_origin_fields
     var tsfn: NapiThreadsafeFunction
 
     def __init__(out self, tsfn: NapiThreadsafeFunction):
@@ -52,9 +53,9 @@ struct ThreadsafeFunction:
         finalize_data: OpaquePointer[MutAnyOrigin],
         finalize_cb: OpaquePointer[MutAnyOrigin],
     ) raises -> ThreadsafeFunction:
-        var tsfn = NapiThreadsafeFunction(unsafe_from_address=0)
-        var null_resource = NapiValue(unsafe_from_address=0)
-        var null_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var tsfn = NapiThreadsafeFunction(unsafe_from_address=Int(0))
+        var null_resource = NapiValue(unsafe_from_address=Int(0))
+        var null_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_create_threadsafe_function(
                 env,
@@ -83,9 +84,9 @@ struct ThreadsafeFunction:
         finalize_data: OpaquePointer[MutAnyOrigin],
         finalize_cb: OpaquePointer[MutAnyOrigin],
     ) raises -> ThreadsafeFunction:
-        var tsfn = NapiThreadsafeFunction(unsafe_from_address=0)
-        var null_resource = NapiValue(unsafe_from_address=0)
-        var null_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        var tsfn = NapiThreadsafeFunction(unsafe_from_address=Int(0))
+        var null_resource = NapiValue(unsafe_from_address=Int(0))
+        var null_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_create_threadsafe_function(
                 b,

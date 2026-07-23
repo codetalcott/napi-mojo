@@ -15,6 +15,7 @@ from napi.framework.register import fn_ptr, ModuleBuilder, ClassRegistry
 ## AdderCapture — closure data for inner_adder_fn (captured n + bindings)
 struct AdderCapture(Movable):
     var n: Float64
+    @__allow_legacy_any_origin_fields
     var b_raw: OpaquePointer[MutAnyOrigin]
 
     def __init__(out self, n: Float64, b: Bindings):
@@ -31,7 +32,7 @@ def inner_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         return JsString.create_literal(b, env, "hello from callback").value
     except:
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def create_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -46,7 +47,7 @@ def create_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         ).value
     except:
         throw_js_error(env, "createCallback failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def inner_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -59,7 +60,7 @@ def inner_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(b, env, cap[].n + x).value
     except:
         throw_js_error(env, "adder callback failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def create_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -78,7 +79,7 @@ def create_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         ).value
     except:
         throw_js_error(env, "createAdder requires one number argument")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def sum_args_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -97,13 +98,13 @@ def sum_args_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 throw_js_error_dynamic(
                     b, env, "sumArgs: expected number, got " + js_type_name(t)
                 )
-                return NapiValue(unsafe_from_address=0)
+                return NapiValue(unsafe_from_address=Int(0))
             total += JsNumber.from_napi_value(b, env, argv[i])
         argv.free()
         return JsNumber.create(b, env, total).value
     except:
         throw_js_error(env, "sumArgs failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def get_global_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -112,7 +113,7 @@ def get_global_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return js_get_global(b, env).value
     except:
         throw_js_error(env, "getGlobal failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def create_named_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -126,7 +127,7 @@ def create_named_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return func.value
     except:
         throw_js_error(env, "createNamedFn failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def new_counter_from_registry_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -140,7 +141,7 @@ def new_counter_from_registry_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return registry[].new_instance(b, env, "Counter", 1, argv_ptr)
     except:
         throw_js_error(env, "newCounterFromRegistry failed")
-        return NapiValue(unsafe_from_address=0)
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def register_functions(mut m: ModuleBuilder) raises:

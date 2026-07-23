@@ -65,9 +65,13 @@ comptime MAX_DESCRIPTORS: Int = 192
 
 
 struct ModuleBuilder(Movable):
+    @__allow_legacy_any_origin_fields
     var env: NapiEnv
+    @__allow_legacy_any_origin_fields
     var exports: NapiValue
+    @__allow_legacy_any_origin_fields
     var data: OpaquePointer[MutAnyOrigin]
+    @__allow_legacy_any_origin_fields
     var _descs: UnsafePointer[NapiPropertyDescriptor, MutAnyOrigin]
     var _count: Int
     var _capacity: Int
@@ -75,7 +79,7 @@ struct ModuleBuilder(Movable):
     def __init__(out self, env: NapiEnv, exports: NapiValue):
         self.env = env
         self.exports = exports
-        self.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        self.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         self._descs = alloc[NapiPropertyDescriptor](MAX_DESCRIPTORS)
         self._count = 0
         self._capacity = MAX_DESCRIPTORS
@@ -166,14 +170,17 @@ struct ModuleBuilder(Movable):
 ## methods, getters, setters, and static members to a class. Sets desc.data
 ## on all property descriptors so callbacks get the bindings pointer.
 struct ClassBuilder:
+    @__allow_legacy_any_origin_fields
     var env: NapiEnv
+    @__allow_legacy_any_origin_fields
     var ctor: NapiValue
+    @__allow_legacy_any_origin_fields
     var data: OpaquePointer[MutAnyOrigin]
 
     def __init__(out self, env: NapiEnv, ctor: NapiValue):
         self.env = env
         self.ctor = ctor
-        self.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=0)
+        self.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
 
     def __init__(
         out self,
@@ -363,14 +370,16 @@ def _bytes_equal(
 ## plus a NapiRef handle that keeps the constructor alive.
 ## Fields are all primitive types (pointers + Int) so no destructor needed.
 struct ClassEntry(Movable):
+    @__allow_legacy_any_origin_fields
     var name_ptr: OpaquePointer[ImmutAnyOrigin]  # StringLiteral .rodata pointer
     var name_len: Int
+    @__allow_legacy_any_origin_fields
     var ctor_ref: NapiRef
 
     def __init__(out self):
-        self.name_ptr = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=0)
+        self.name_ptr = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
         self.name_len = 0
-        self.ctor_ref = NapiRef(unsafe_from_address=0)
+        self.ctor_ref = NapiRef(unsafe_from_address=Int(0))
 
     def __moveinit__(out self, deinit take: Self):
         self.name_ptr = take.name_ptr
@@ -392,6 +401,7 @@ struct ClassEntry(Movable):
 ##   # ... in a callback:
 ##   var inst = reg.new_instance(b, env, "Counter", 1, argv_ptr)
 struct ClassRegistry(Movable):
+    @__allow_legacy_any_origin_fields
     var _entries: UnsafePointer[ClassEntry, MutAnyOrigin]
     var _count: Int
 
@@ -440,7 +450,7 @@ struct ClassRegistry(Movable):
                 ep[].name_ptr, target_ptr.bitcast[NoneType](), target_len
             ):
                 var ctor_val = JsRef(ep[].ctor_ref).get(b, env)
-                var result = NapiValue(unsafe_from_address=0)
+                var result = NapiValue(unsafe_from_address=Int(0))
                 check_status(
                     raw_new_instance(
                         b,

@@ -18,6 +18,7 @@ from napi.error import check_status
 
 
 struct CallbackScope:
+    @__allow_legacy_any_origin_fields
     var value: NapiCallbackScope
 
     def __init__(out self, value: NapiCallbackScope):
@@ -34,7 +35,7 @@ struct CallbackScope:
         resource_object: NapiValue,
         context: NapiAsyncContext,
     ) raises -> CallbackScope:
-        var result = NapiCallbackScope(unsafe_from_address=0)
+        var result = NapiCallbackScope(unsafe_from_address=Int(0))
         check_status(
             raw_open_callback_scope(
                 b,

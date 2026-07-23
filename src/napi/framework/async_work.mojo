@@ -44,8 +44,11 @@ from napi.framework.js_string import JsString
 ## Contains the promise value (to return to JS), the deferred handle
 ## (to store in user's data struct), and the work handle (same).
 struct AsyncWorkResult:
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
+    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred
+    @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
 
     def __init__(
@@ -76,11 +79,11 @@ struct AsyncWork:
         var p = JsPromise.create(env)
         var resource_name = JsString.create_literal(env, name)
 
-        var work = NapiAsyncWork(unsafe_from_address=0)
+        var work = NapiAsyncWork(unsafe_from_address=Int(0))
         var work_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=work
         ).bitcast[NoneType]()
-        var null_resource = NapiValue(unsafe_from_address=0)
+        var null_resource = NapiValue(unsafe_from_address=Int(0))
 
         check_status(
             raw_create_async_work(
@@ -109,11 +112,11 @@ struct AsyncWork:
         var p = JsPromise.create(b, env)
         var resource_name = JsString.create_literal(b, env, name)
 
-        var work = NapiAsyncWork(unsafe_from_address=0)
+        var work = NapiAsyncWork(unsafe_from_address=Int(0))
         var work_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=work
         ).bitcast[NoneType]()
-        var null_resource = NapiValue(unsafe_from_address=0)
+        var null_resource = NapiValue(unsafe_from_address=Int(0))
 
         check_status(
             raw_create_async_work(
@@ -162,8 +165,8 @@ struct AsyncWork:
         msg: StringLiteral,
     ) raises:
         var msg_val = JsString.create_literal(env, msg)
-        var null_code = NapiValue(unsafe_from_address=0)
-        var error_val = NapiValue(unsafe_from_address=0)
+        var null_code = NapiValue(unsafe_from_address=Int(0))
+        var error_val = NapiValue(unsafe_from_address=Int(0))
         var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=error_val
         ).bitcast[NoneType]()
@@ -180,8 +183,8 @@ struct AsyncWork:
         msg: StringLiteral,
     ) raises:
         var msg_val = JsString.create_literal(b, env, msg)
-        var null_code = NapiValue(unsafe_from_address=0)
-        var error_val = NapiValue(unsafe_from_address=0)
+        var null_code = NapiValue(unsafe_from_address=Int(0))
+        var error_val = NapiValue(unsafe_from_address=Int(0))
         var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=error_val
         ).bitcast[NoneType]()
@@ -204,8 +207,8 @@ struct AsyncWork:
         var msg_copy = msg
         var msg_val = JsString.create(env, msg_copy)
         _ = msg_copy^
-        var null_code = NapiValue(unsafe_from_address=0)
-        var error_val = NapiValue(unsafe_from_address=0)
+        var null_code = NapiValue(unsafe_from_address=Int(0))
+        var error_val = NapiValue(unsafe_from_address=Int(0))
         var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=error_val
         ).bitcast[NoneType]()
@@ -224,8 +227,8 @@ struct AsyncWork:
         var msg_copy = msg
         var msg_val = JsString.create(b, env, msg_copy)
         _ = msg_copy^
-        var null_code = NapiValue(unsafe_from_address=0)
-        var error_val = NapiValue(unsafe_from_address=0)
+        var null_code = NapiValue(unsafe_from_address=Int(0))
+        var error_val = NapiValue(unsafe_from_address=Int(0))
         var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=error_val
         ).bitcast[NoneType]()

@@ -21,6 +21,7 @@ from napi.bindings import Bindings
 ## JsBoolean — typed wrapper for a JavaScript boolean napi_value
 struct JsBoolean:
     ## The underlying napi_value handle. Valid within the current handle scope.
+    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):
@@ -33,7 +34,7 @@ struct JsBoolean:
 
     @staticmethod
     def create(b: Bindings, env: NapiEnv, bval: Bool) raises -> JsBoolean:
-        var result: NapiValue = NapiValue(unsafe_from_address=0)
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
         ).bitcast[NoneType]()
