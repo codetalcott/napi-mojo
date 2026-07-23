@@ -10,6 +10,7 @@
 ##   # Store via napi_set_instance_data, retrieve via get_bindings()
 
 from std.ffi import OwnedDLHandle
+from std.sys.info import size_of
 from napi.types import (
     NapiEnv,
     NapiValue,
@@ -610,1489 +611,515 @@ struct NapiBindings(Movable):
 comptime Bindings = UnsafePointer[NapiBindings, MutAnyOrigin]
 
 
+## _slot — resolve a host-process symbol straight into a cache slot.
+##
+## Note there is deliberately NO `UnsafePointer(to=...)` + bitcast here.
+## `get_symbol` hands back the symbol's address as a value, and a cache slot
+## IS that address, so the assignment is direct. The address-of-local
+## reinterpret is only needed when you want a *callable* — see `_sym` in
+## napi/raw.mojo, which is where the fn types now live.
+##
+## This is what makes the migration off `get_function` a net safety win: the
+## old code took the address of a local holding the resolved pointer and
+## reinterpreted that word as an opaque pointer. Had a nightly ever made a
+## function reference fat, that erasure would have stored the wrong word and
+## still compiled — a jump to garbage inside Node with no build failure. That
+## failure mode no longer exists here. (`_sym` still needs the reinterpret, so
+## `assert_fn_ptr_is_one_word` below keeps guarding it.)
+##
+## `.as_unsafe_any_origin()` is the explicit spelling of the
+## MutUntrackedOrigin -> MutAnyOrigin widening the slot type requires. It is
+## sound here for a reason specific to symbols: a symbol address is a static
+## code address with no lifetime. This is NOT precedent for using
+## UntrackedOrigin at the transient slot-cast sites elsewhere — see the
+## AnyOrigin rule in CLAUDE.md.
+@always_inline
+def _slot(ref h: OwnedDLHandle, name: StaticString) raises -> OpaquePointer[
+    MutAnyOrigin
+]:
+    var opt = h.get_symbol[NoneType](name)
+    if opt is None:
+        raise Error("napi-mojo: symbol not found: ", name)
+    return opt.value().as_unsafe_any_origin()
+
+
+## Compile-time guard for the whole cache design: 142 function pointers are
+## type-erased into single-word OpaquePointer slots and reinterpreted back on
+## every call. If a future nightly makes a `thin abi("C")` function reference
+## fat, this fails the build instead of miscompiling into a runtime crash.
+@always_inline
+def assert_fn_ptr_is_one_word():
+    comptime assert size_of[
+        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+    ]() == size_of[OpaquePointer[MutAnyOrigin]](), (
+        "a thin abi(C) fn ptr is no longer one machine word — the NapiBindings"
+        " cache (fn ptr erased to OpaquePointer) is no longer sound"
+    )
+
+
 def init_bindings(mut bindings: NapiBindings) raises:
     """Resolve all 142 N-API symbols from the host process once."""
+    assert_fn_ptr_is_one_word()
     var h = OwnedDLHandle()
 
     # 1. napi_create_string_utf8
-    var _create_string_utf8 = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[ImmutAnyOrigin],
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_string_utf8")
-    bindings.create_string_utf8 = UnsafePointer(to=_create_string_utf8).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_string_utf8 = _slot(h, "napi_create_string_utf8")
 
     # 2. napi_create_object
-    var _create_object = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_create_object")
-    bindings.create_object = UnsafePointer(to=_create_object).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_object = _slot(h, "napi_create_object")
 
     # 3. napi_set_named_property
-    var _set_named_property = h.get_function[
-        def(
-            NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], NapiValue
-        ) thin abi("C") -> NapiStatus
-    ]("napi_set_named_property")
-    bindings.set_named_property = UnsafePointer(to=_set_named_property).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.set_named_property = _slot(h, "napi_set_named_property")
 
     # 4. napi_get_cb_info
-    var _get_cb_info = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_cb_info")
-    bindings.get_cb_info = UnsafePointer(to=_get_cb_info).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_cb_info = _slot(h, "napi_get_cb_info")
 
     # 5. napi_get_value_string_utf8
-    var _get_value_string_utf8 = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_value_string_utf8")
-    bindings.get_value_string_utf8 = UnsafePointer(
-        to=_get_value_string_utf8
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.get_value_string_utf8 = _slot(h, "napi_get_value_string_utf8")
 
     # 6. napi_define_properties
-    var _define_properties = h.get_function[
-        def(
-            NapiEnv, NapiValue, UInt, OpaquePointer[ImmutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_define_properties")
-    bindings.define_properties = UnsafePointer(to=_define_properties).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.define_properties = _slot(h, "napi_define_properties")
 
     # 7. napi_get_value_double
-    var _get_value_double = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_value_double")
-    bindings.get_value_double = UnsafePointer(to=_get_value_double).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_value_double = _slot(h, "napi_get_value_double")
 
     # 8. napi_create_double
-    var _create_double = h.get_function[
-        def(NapiEnv, Float64, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_create_double")
-    bindings.create_double = UnsafePointer(to=_create_double).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_double = _slot(h, "napi_create_double")
 
     # 9. napi_throw_error
-    var _throw_error = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[ImmutAnyOrigin],
-            OpaquePointer[ImmutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_throw_error")
-    bindings.throw_error = UnsafePointer(to=_throw_error).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.throw_error = _slot(h, "napi_throw_error")
 
     # 10. napi_get_boolean
-    var _get_boolean = h.get_function[
-        def(NapiEnv, Bool, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_boolean")
-    bindings.get_boolean = UnsafePointer(to=_get_boolean).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_boolean = _slot(h, "napi_get_boolean")
 
     # 11. napi_get_value_bool
-    var _get_value_bool = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_value_bool")
-    bindings.get_value_bool = UnsafePointer(to=_get_value_bool).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_value_bool = _slot(h, "napi_get_value_bool")
 
     # 12. napi_typeof
-    var _typeof = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_typeof")
-    bindings.typeof_ = UnsafePointer(to=_typeof).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.typeof_ = _slot(h, "napi_typeof")
 
     # 13. napi_get_null
-    var _get_null = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_null")
-    bindings.get_null = UnsafePointer(to=_get_null).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_null = _slot(h, "napi_get_null")
 
     # 14. napi_get_undefined
-    var _get_undefined = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_undefined")
-    bindings.get_undefined = UnsafePointer(to=_get_undefined).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_undefined = _slot(h, "napi_get_undefined")
 
     # 15. napi_create_array_with_length
-    var _create_array_with_length = h.get_function[
-        def(NapiEnv, UInt, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_create_array_with_length")
-    bindings.create_array_with_length = UnsafePointer(
-        to=_create_array_with_length
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.create_array_with_length = _slot(h, "napi_create_array_with_length")
 
     # 16. napi_set_element
-    var _set_element = h.get_function[
-        def(NapiEnv, NapiValue, UInt32, NapiValue) thin abi("C") -> NapiStatus
-    ]("napi_set_element")
-    bindings.set_element = UnsafePointer(to=_set_element).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.set_element = _slot(h, "napi_set_element")
 
     # 17. napi_get_element
-    var _get_element = h.get_function[
-        def(
-            NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_element")
-    bindings.get_element = UnsafePointer(to=_get_element).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_element = _slot(h, "napi_get_element")
 
     # 18. napi_get_array_length
-    var _get_array_length = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_array_length")
-    bindings.get_array_length = UnsafePointer(to=_get_array_length).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_array_length = _slot(h, "napi_get_array_length")
 
     # 19. napi_get_property
-    var _get_property = h.get_function[
-        def(
-            NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_property")
-    bindings.get_property = UnsafePointer(to=_get_property).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_property = _slot(h, "napi_get_property")
 
     # 20. napi_is_array
-    var _is_array = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_is_array")
-    bindings.is_array = UnsafePointer(to=_is_array).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.is_array = _slot(h, "napi_is_array")
 
     # 21. napi_get_named_property
-    var _get_named_property = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[ImmutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_named_property")
-    bindings.get_named_property = UnsafePointer(to=_get_named_property).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_named_property = _slot(h, "napi_get_named_property")
 
     # 22. napi_has_named_property
-    var _has_named_property = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[ImmutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_has_named_property")
-    bindings.has_named_property = UnsafePointer(to=_has_named_property).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.has_named_property = _slot(h, "napi_has_named_property")
 
     # 23. napi_call_function
-    var _call_function = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            NapiValue,
-            UInt,
-            OpaquePointer[ImmutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_call_function")
-    bindings.call_function = UnsafePointer(to=_call_function).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.call_function = _slot(h, "napi_call_function")
 
     # 24. napi_open_handle_scope
-    var _open_handle_scope = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_open_handle_scope")
-    bindings.open_handle_scope = UnsafePointer(to=_open_handle_scope).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.open_handle_scope = _slot(h, "napi_open_handle_scope")
 
     # 25. napi_close_handle_scope
-    var _close_handle_scope = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_close_handle_scope")
-    bindings.close_handle_scope = UnsafePointer(to=_close_handle_scope).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.close_handle_scope = _slot(h, "napi_close_handle_scope")
 
     # 26. napi_create_promise
-    var _create_promise = h.get_function[
-        def(
-            NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_promise")
-    bindings.create_promise = UnsafePointer(to=_create_promise).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_promise = _slot(h, "napi_create_promise")
 
     # 27. napi_resolve_deferred
-    var _resolve_deferred = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin], NapiValue) thin abi("C") -> NapiStatus
-    ]("napi_resolve_deferred")
-    bindings.resolve_deferred = UnsafePointer(to=_resolve_deferred).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.resolve_deferred = _slot(h, "napi_resolve_deferred")
 
     # 28. napi_reject_deferred
-    var _reject_deferred = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin], NapiValue) thin abi("C") -> NapiStatus
-    ]("napi_reject_deferred")
-    bindings.reject_deferred = UnsafePointer(to=_reject_deferred).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.reject_deferred = _slot(h, "napi_reject_deferred")
 
     # 29. napi_create_error
-    var _create_error = h.get_function[
-        def(
-            NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_error")
-    bindings.create_error = UnsafePointer(to=_create_error).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_error = _slot(h, "napi_create_error")
 
     # 30. napi_create_async_work
-    var _create_async_work = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_async_work")
-    bindings.create_async_work = UnsafePointer(to=_create_async_work).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_async_work = _slot(h, "napi_create_async_work")
 
     # 31. napi_queue_async_work
-    var _queue_async_work = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_queue_async_work")
-    bindings.queue_async_work = UnsafePointer(to=_queue_async_work).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.queue_async_work = _slot(h, "napi_queue_async_work")
 
     # 32. napi_delete_async_work
-    var _delete_async_work = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_delete_async_work")
-    bindings.delete_async_work = UnsafePointer(to=_delete_async_work).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.delete_async_work = _slot(h, "napi_delete_async_work")
 
     # 33. napi_create_int32
-    var _create_int32 = h.get_function[
-        def(NapiEnv, Int32, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_create_int32")
-    bindings.create_int32 = UnsafePointer(to=_create_int32).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_int32 = _slot(h, "napi_create_int32")
 
     # 34. napi_get_value_int32
-    var _get_value_int32 = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_value_int32")
-    bindings.get_value_int32 = UnsafePointer(to=_get_value_int32).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_value_int32 = _slot(h, "napi_get_value_int32")
 
     # 35. napi_create_uint32
-    var _create_uint32 = h.get_function[
-        def(NapiEnv, UInt32, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_create_uint32")
-    bindings.create_uint32 = UnsafePointer(to=_create_uint32).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_uint32 = _slot(h, "napi_create_uint32")
 
     # 36. napi_get_value_uint32
-    var _get_value_uint32 = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_value_uint32")
-    bindings.get_value_uint32 = UnsafePointer(to=_get_value_uint32).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_value_uint32 = _slot(h, "napi_get_value_uint32")
 
     # 37. napi_create_int64
-    var _create_int64 = h.get_function[
-        def(NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_create_int64")
-    bindings.create_int64 = UnsafePointer(to=_create_int64).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_int64 = _slot(h, "napi_create_int64")
 
     # 38. napi_get_value_int64
-    var _get_value_int64 = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_value_int64")
-    bindings.get_value_int64 = UnsafePointer(to=_get_value_int64).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_value_int64 = _slot(h, "napi_get_value_int64")
 
     # 39. napi_throw_type_error
-    var _throw_type_error = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[ImmutAnyOrigin],
-            OpaquePointer[ImmutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_throw_type_error")
-    bindings.throw_type_error = UnsafePointer(to=_throw_type_error).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.throw_type_error = _slot(h, "napi_throw_type_error")
 
     # 40. napi_throw_range_error
-    var _throw_range_error = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[ImmutAnyOrigin],
-            OpaquePointer[ImmutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_throw_range_error")
-    bindings.throw_range_error = UnsafePointer(to=_throw_range_error).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.throw_range_error = _slot(h, "napi_throw_range_error")
 
     # 41. napi_create_type_error
-    var _create_type_error = h.get_function[
-        def(
-            NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_type_error")
-    bindings.create_type_error = UnsafePointer(to=_create_type_error).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_type_error = _slot(h, "napi_create_type_error")
 
     # 42. napi_create_range_error
-    var _create_range_error = h.get_function[
-        def(
-            NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_range_error")
-    bindings.create_range_error = UnsafePointer(to=_create_range_error).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_range_error = _slot(h, "napi_create_range_error")
 
     # 43. napi_create_arraybuffer
-    var _create_arraybuffer = h.get_function[
-        def(
-            NapiEnv,
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_arraybuffer")
-    bindings.create_arraybuffer = UnsafePointer(to=_create_arraybuffer).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_arraybuffer = _slot(h, "napi_create_arraybuffer")
 
     # 44. napi_get_arraybuffer_info
-    var _get_arraybuffer_info = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_arraybuffer_info")
-    bindings.get_arraybuffer_info = UnsafePointer(
-        to=_get_arraybuffer_info
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.get_arraybuffer_info = _slot(h, "napi_get_arraybuffer_info")
 
     # 45. napi_is_arraybuffer
-    var _is_arraybuffer = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_is_arraybuffer")
-    bindings.is_arraybuffer = UnsafePointer(to=_is_arraybuffer).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.is_arraybuffer = _slot(h, "napi_is_arraybuffer")
 
     # 46. napi_detach_arraybuffer
-    var _detach_arraybuffer = h.get_function[
-        def(NapiEnv, NapiValue) thin abi("C") -> NapiStatus
-    ]("napi_detach_arraybuffer")
-    bindings.detach_arraybuffer = UnsafePointer(to=_detach_arraybuffer).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.detach_arraybuffer = _slot(h, "napi_detach_arraybuffer")
 
     # 47. napi_create_buffer
-    var _create_buffer = h.get_function[
-        def(
-            NapiEnv,
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_buffer")
-    bindings.create_buffer = UnsafePointer(to=_create_buffer).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_buffer = _slot(h, "napi_create_buffer")
 
     # 48. napi_create_buffer_copy
-    var _create_buffer_copy = h.get_function[
-        def(
-            NapiEnv,
-            UInt,
-            OpaquePointer[ImmutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_buffer_copy")
-    bindings.create_buffer_copy = UnsafePointer(to=_create_buffer_copy).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_buffer_copy = _slot(h, "napi_create_buffer_copy")
 
     # 49. napi_get_buffer_info
-    var _get_buffer_info = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_buffer_info")
-    bindings.get_buffer_info = UnsafePointer(to=_get_buffer_info).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_buffer_info = _slot(h, "napi_get_buffer_info")
 
     # 50. napi_is_buffer
-    var _is_buffer = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_is_buffer")
-    bindings.is_buffer = UnsafePointer(to=_is_buffer).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.is_buffer = _slot(h, "napi_is_buffer")
 
     # 51. napi_create_typedarray
-    var _create_typedarray = h.get_function[
-        def(
-            NapiEnv, Int32, UInt, NapiValue, UInt, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_typedarray")
-    bindings.create_typedarray = UnsafePointer(to=_create_typedarray).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_typedarray = _slot(h, "napi_create_typedarray")
 
     # 52. napi_get_typedarray_info
-    var _get_typedarray_info = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_typedarray_info")
-    bindings.get_typedarray_info = UnsafePointer(
-        to=_get_typedarray_info
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.get_typedarray_info = _slot(h, "napi_get_typedarray_info")
 
     # 53. napi_is_typedarray
-    var _is_typedarray = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_is_typedarray")
-    bindings.is_typedarray = UnsafePointer(to=_is_typedarray).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.is_typedarray = _slot(h, "napi_is_typedarray")
 
     # 54. napi_define_class
-    var _define_class = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[ImmutAnyOrigin],
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            UInt,
-            OpaquePointer[ImmutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_define_class")
-    bindings.define_class = UnsafePointer(to=_define_class).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.define_class = _slot(h, "napi_define_class")
 
     # 55. napi_wrap
-    var _wrap = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_wrap")
-    bindings.wrap = UnsafePointer(to=_wrap).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.wrap = _slot(h, "napi_wrap")
 
     # 56. napi_unwrap
-    var _unwrap = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_unwrap")
-    bindings.unwrap = UnsafePointer(to=_unwrap).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.unwrap = _slot(h, "napi_unwrap")
 
     # 57. napi_remove_wrap
-    var _remove_wrap = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_remove_wrap")
-    bindings.remove_wrap = UnsafePointer(to=_remove_wrap).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.remove_wrap = _slot(h, "napi_remove_wrap")
 
     # 58. napi_new_instance
-    var _new_instance = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            UInt,
-            OpaquePointer[ImmutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_new_instance")
-    bindings.new_instance = UnsafePointer(to=_new_instance).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.new_instance = _slot(h, "napi_new_instance")
 
     # 59. napi_create_function
-    var _create_function = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[ImmutAnyOrigin],
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_function")
-    bindings.create_function = UnsafePointer(to=_create_function).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_function = _slot(h, "napi_create_function")
 
     # 60. napi_get_new_target
-    var _get_new_target = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_new_target")
-    bindings.get_new_target = UnsafePointer(to=_get_new_target).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_new_target = _slot(h, "napi_get_new_target")
 
     # 61. napi_get_global
-    var _get_global = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_global")
-    bindings.get_global = UnsafePointer(to=_get_global).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_global = _slot(h, "napi_get_global")
 
     # 62. napi_create_reference
-    var _create_reference = h.get_function[
-        def(
-            NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_reference")
-    bindings.create_reference = UnsafePointer(to=_create_reference).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_reference = _slot(h, "napi_create_reference")
 
     # 63. napi_delete_reference
-    var _delete_reference = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_delete_reference")
-    bindings.delete_reference = UnsafePointer(to=_delete_reference).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.delete_reference = _slot(h, "napi_delete_reference")
 
     # 64. napi_reference_ref
-    var _reference_ref = h.get_function[
-        def(
-            NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_reference_ref")
-    bindings.reference_ref = UnsafePointer(to=_reference_ref).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.reference_ref = _slot(h, "napi_reference_ref")
 
     # 65. napi_reference_unref
-    var _reference_unref = h.get_function[
-        def(
-            NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_reference_unref")
-    bindings.reference_unref = UnsafePointer(to=_reference_unref).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.reference_unref = _slot(h, "napi_reference_unref")
 
     # 66. napi_get_reference_value
-    var _get_reference_value = h.get_function[
-        def(
-            NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_reference_value")
-    bindings.get_reference_value = UnsafePointer(
-        to=_get_reference_value
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.get_reference_value = _slot(h, "napi_get_reference_value")
 
     # 67. napi_open_escapable_handle_scope
-    var _open_escapable_handle_scope = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_open_escapable_handle_scope")
-    bindings.open_escapable_handle_scope = UnsafePointer(
-        to=_open_escapable_handle_scope
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.open_escapable_handle_scope = _slot(h, "napi_open_escapable_handle_scope")
 
     # 68. napi_close_escapable_handle_scope
-    var _close_escapable_handle_scope = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_close_escapable_handle_scope")
-    bindings.close_escapable_handle_scope = UnsafePointer(
-        to=_close_escapable_handle_scope
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.close_escapable_handle_scope = _slot(h, "napi_close_escapable_handle_scope")
 
     # 69. napi_escape_handle
-    var _escape_handle = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[MutAnyOrigin],
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_escape_handle")
-    bindings.escape_handle = UnsafePointer(to=_escape_handle).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.escape_handle = _slot(h, "napi_escape_handle")
 
     # 70. napi_create_bigint_int64
-    var _create_bigint_int64 = h.get_function[
-        def(NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_create_bigint_int64")
-    bindings.create_bigint_int64 = UnsafePointer(
-        to=_create_bigint_int64
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.create_bigint_int64 = _slot(h, "napi_create_bigint_int64")
 
     # 71. napi_create_bigint_uint64
-    var _create_bigint_uint64 = h.get_function[
-        def(NapiEnv, UInt64, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_create_bigint_uint64")
-    bindings.create_bigint_uint64 = UnsafePointer(
-        to=_create_bigint_uint64
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.create_bigint_uint64 = _slot(h, "napi_create_bigint_uint64")
 
     # 72. napi_get_value_bigint_int64
-    var _get_value_bigint_int64 = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_value_bigint_int64")
-    bindings.get_value_bigint_int64 = UnsafePointer(
-        to=_get_value_bigint_int64
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.get_value_bigint_int64 = _slot(h, "napi_get_value_bigint_int64")
 
     # 73. napi_get_value_bigint_uint64
-    var _get_value_bigint_uint64 = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_value_bigint_uint64")
-    bindings.get_value_bigint_uint64 = UnsafePointer(
-        to=_get_value_bigint_uint64
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.get_value_bigint_uint64 = _slot(h, "napi_get_value_bigint_uint64")
 
     # 74. napi_create_date
-    var _create_date = h.get_function[
-        def(NapiEnv, Float64, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_create_date")
-    bindings.create_date = UnsafePointer(to=_create_date).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_date = _slot(h, "napi_create_date")
 
     # 75. napi_get_date_value
-    var _get_date_value = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_date_value")
-    bindings.get_date_value = UnsafePointer(to=_get_date_value).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_date_value = _slot(h, "napi_get_date_value")
 
     # 76. napi_is_date
-    var _is_date = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_is_date")
-    bindings.is_date = UnsafePointer(to=_is_date).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.is_date = _slot(h, "napi_is_date")
 
     # 77. napi_create_symbol
-    var _create_symbol = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_create_symbol")
-    bindings.create_symbol = UnsafePointer(to=_create_symbol).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_symbol = _slot(h, "napi_create_symbol")
 
     # 78. node_api_symbol_for
-    var _symbol_for = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[ImmutAnyOrigin],
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("node_api_symbol_for")
-    bindings.symbol_for = UnsafePointer(to=_symbol_for).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.symbol_for = _slot(h, "node_api_symbol_for")
 
     # 79. napi_get_property_names
-    var _get_property_names = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_property_names")
-    bindings.get_property_names = UnsafePointer(to=_get_property_names).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_property_names = _slot(h, "napi_get_property_names")
 
     # 80. napi_get_all_property_names
-    var _get_all_property_names = h.get_function[
-        def(
-            NapiEnv, NapiValue, Int32, Int32, Int32, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_all_property_names")
-    bindings.get_all_property_names = UnsafePointer(
-        to=_get_all_property_names
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.get_all_property_names = _slot(h, "napi_get_all_property_names")
 
     # 81. napi_has_own_property
-    var _has_own_property = h.get_function[
-        def(
-            NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_has_own_property")
-    bindings.has_own_property = UnsafePointer(to=_has_own_property).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.has_own_property = _slot(h, "napi_has_own_property")
 
     # 82. napi_delete_property
-    var _delete_property = h.get_function[
-        def(
-            NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_delete_property")
-    bindings.delete_property = UnsafePointer(to=_delete_property).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.delete_property = _slot(h, "napi_delete_property")
 
     # 83. napi_strict_equals
-    var _strict_equals = h.get_function[
-        def(
-            NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_strict_equals")
-    bindings.strict_equals = UnsafePointer(to=_strict_equals).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.strict_equals = _slot(h, "napi_strict_equals")
 
     # 84. napi_instanceof
-    var _instanceof = h.get_function[
-        def(
-            NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_instanceof")
-    bindings.instanceof_ = UnsafePointer(to=_instanceof).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.instanceof_ = _slot(h, "napi_instanceof")
 
     # 85. napi_object_freeze
-    var _object_freeze = h.get_function[def(NapiEnv, NapiValue) thin abi("C") -> NapiStatus](
-        "napi_object_freeze"
-    )
-    bindings.object_freeze = UnsafePointer(to=_object_freeze).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.object_freeze = _slot(h, "napi_object_freeze")
 
     # 86. napi_object_seal
-    var _object_seal = h.get_function[def(NapiEnv, NapiValue) thin abi("C") -> NapiStatus](
-        "napi_object_seal"
-    )
-    bindings.object_seal = UnsafePointer(to=_object_seal).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.object_seal = _slot(h, "napi_object_seal")
 
     # 87. napi_has_element
-    var _has_element = h.get_function[
-        def(
-            NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_has_element")
-    bindings.has_element = UnsafePointer(to=_has_element).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.has_element = _slot(h, "napi_has_element")
 
     # 88. napi_delete_element
-    var _delete_element = h.get_function[
-        def(
-            NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_delete_element")
-    bindings.delete_element = UnsafePointer(to=_delete_element).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.delete_element = _slot(h, "napi_delete_element")
 
     # 89. napi_get_prototype
-    var _get_prototype = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_prototype")
-    bindings.get_prototype = UnsafePointer(to=_get_prototype).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_prototype = _slot(h, "napi_get_prototype")
 
     # 90. napi_create_threadsafe_function
-    var _create_threadsafe_function = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            NapiValue,
-            NapiValue,
-            UInt,
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_threadsafe_function")
-    bindings.create_threadsafe_function = UnsafePointer(
-        to=_create_threadsafe_function
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.create_threadsafe_function = _slot(h, "napi_create_threadsafe_function")
 
     # 91. napi_call_threadsafe_function (no env param)
-    var _call_threadsafe_function = h.get_function[
-        def(
-            OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], Int32
-        ) thin abi("C") -> NapiStatus
-    ]("napi_call_threadsafe_function")
-    bindings.call_threadsafe_function = UnsafePointer(
-        to=_call_threadsafe_function
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.call_threadsafe_function = _slot(h, "napi_call_threadsafe_function")
 
     # 92. napi_acquire_threadsafe_function (no env param)
-    var _acquire_threadsafe_function = h.get_function[
-        def(OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_acquire_threadsafe_function")
-    bindings.acquire_threadsafe_function = UnsafePointer(
-        to=_acquire_threadsafe_function
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.acquire_threadsafe_function = _slot(h, "napi_acquire_threadsafe_function")
 
     # 93. napi_release_threadsafe_function (no env param)
-    var _release_threadsafe_function = h.get_function[
-        def(OpaquePointer[MutAnyOrigin], Int32) thin abi("C") -> NapiStatus
-    ]("napi_release_threadsafe_function")
-    bindings.release_threadsafe_function = UnsafePointer(
-        to=_release_threadsafe_function
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.release_threadsafe_function = _slot(h, "napi_release_threadsafe_function")
 
     # 94. napi_create_external
-    var _create_external = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_external")
-    bindings.create_external = UnsafePointer(to=_create_external).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_external = _slot(h, "napi_create_external")
 
     # 95. napi_get_value_external
-    var _get_value_external = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_value_external")
-    bindings.get_value_external = UnsafePointer(to=_get_value_external).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_value_external = _slot(h, "napi_get_value_external")
 
     # 96. napi_get_version
-    var _get_version = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_version")
-    bindings.get_version = UnsafePointer(to=_get_version).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_version = _slot(h, "napi_get_version")
 
     # 97. napi_get_node_version
-    var _get_node_version = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_node_version")
-    bindings.get_node_version = UnsafePointer(to=_get_node_version).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_node_version = _slot(h, "napi_get_node_version")
 
     # 98. napi_set_property
-    var _set_property = h.get_function[
-        def(NapiEnv, NapiValue, NapiValue, NapiValue) thin abi("C") -> NapiStatus
-    ]("napi_set_property")
-    bindings.set_property = UnsafePointer(to=_set_property).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.set_property = _slot(h, "napi_set_property")
 
     # 99. napi_has_property
-    var _has_property = h.get_function[
-        def(
-            NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_has_property")
-    bindings.has_property = UnsafePointer(to=_has_property).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.has_property = _slot(h, "napi_has_property")
 
     # 100. napi_throw
-    var _throw = h.get_function[def(NapiEnv, NapiValue) thin abi("C") -> NapiStatus](
-        "napi_throw"
-    )
-    bindings.throw_ = UnsafePointer(to=_throw).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.throw_ = _slot(h, "napi_throw")
 
     # 101. napi_is_exception_pending
-    var _is_exception_pending = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_is_exception_pending")
-    bindings.is_exception_pending = UnsafePointer(
-        to=_is_exception_pending
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.is_exception_pending = _slot(h, "napi_is_exception_pending")
 
     # 102. napi_get_and_clear_last_exception
-    var _get_and_clear_last_exception = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_and_clear_last_exception")
-    bindings.get_and_clear_last_exception = UnsafePointer(
-        to=_get_and_clear_last_exception
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.get_and_clear_last_exception = _slot(h, "napi_get_and_clear_last_exception")
 
     # 103. napi_coerce_to_bool
-    var _coerce_to_bool = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_coerce_to_bool")
-    bindings.coerce_to_bool = UnsafePointer(to=_coerce_to_bool).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.coerce_to_bool = _slot(h, "napi_coerce_to_bool")
 
     # 104. napi_coerce_to_number
-    var _coerce_to_number = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_coerce_to_number")
-    bindings.coerce_to_number = UnsafePointer(to=_coerce_to_number).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.coerce_to_number = _slot(h, "napi_coerce_to_number")
 
     # 105. napi_coerce_to_string
-    var _coerce_to_string = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_coerce_to_string")
-    bindings.coerce_to_string = UnsafePointer(to=_coerce_to_string).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.coerce_to_string = _slot(h, "napi_coerce_to_string")
 
     # 106. napi_coerce_to_object
-    var _coerce_to_object = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_coerce_to_object")
-    bindings.coerce_to_object = UnsafePointer(to=_coerce_to_object).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.coerce_to_object = _slot(h, "napi_coerce_to_object")
 
     # 107. napi_create_dataview
-    var _create_dataview = h.get_function[
-        def(
-            NapiEnv, UInt, NapiValue, UInt, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_dataview")
-    bindings.create_dataview = UnsafePointer(to=_create_dataview).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.create_dataview = _slot(h, "napi_create_dataview")
 
     # 108. napi_get_dataview_info
-    var _get_dataview_info = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_dataview_info")
-    bindings.get_dataview_info = UnsafePointer(to=_get_dataview_info).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_dataview_info = _slot(h, "napi_get_dataview_info")
 
     # 109. napi_is_dataview
-    var _is_dataview = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_is_dataview")
-    bindings.is_dataview = UnsafePointer(to=_is_dataview).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.is_dataview = _slot(h, "napi_is_dataview")
 
     # 110. napi_create_bigint_words
-    var _create_bigint_words = h.get_function[
-        def(
-            NapiEnv,
-            Int32,
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_bigint_words")
-    bindings.create_bigint_words = UnsafePointer(
-        to=_create_bigint_words
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.create_bigint_words = _slot(h, "napi_create_bigint_words")
 
     # 111. napi_get_value_bigint_words
-    var _get_value_bigint_words = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_value_bigint_words")
-    bindings.get_value_bigint_words = UnsafePointer(
-        to=_get_value_bigint_words
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.get_value_bigint_words = _slot(h, "napi_get_value_bigint_words")
 
     # 112. napi_add_finalizer
-    var _add_finalizer = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_add_finalizer")
-    bindings.add_finalizer = UnsafePointer(to=_add_finalizer).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.add_finalizer = _slot(h, "napi_add_finalizer")
 
     # 113. napi_create_external_arraybuffer
-    var _create_external_arraybuffer = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[MutAnyOrigin],
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_create_external_arraybuffer")
-    bindings.create_external_arraybuffer = UnsafePointer(
-        to=_create_external_arraybuffer
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.create_external_arraybuffer = _slot(h, "napi_create_external_arraybuffer")
 
     # 114. napi_set_instance_data
-    var _set_instance_data = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_set_instance_data")
-    bindings.set_instance_data = UnsafePointer(to=_set_instance_data).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.set_instance_data = _slot(h, "napi_set_instance_data")
 
     # 115. napi_get_instance_data
-    var _get_instance_data = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_instance_data")
-    bindings.get_instance_data = UnsafePointer(to=_get_instance_data).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_instance_data = _slot(h, "napi_get_instance_data")
 
     # 116. napi_add_env_cleanup_hook
-    var _add_env_cleanup_hook = h.get_function[
-        def(
-            NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_add_env_cleanup_hook")
-    bindings.add_env_cleanup_hook = UnsafePointer(
-        to=_add_env_cleanup_hook
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.add_env_cleanup_hook = _slot(h, "napi_add_env_cleanup_hook")
 
     # 117. napi_remove_env_cleanup_hook
-    var _remove_env_cleanup_hook = h.get_function[
-        def(
-            NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_remove_env_cleanup_hook")
-    bindings.remove_env_cleanup_hook = UnsafePointer(
-        to=_remove_env_cleanup_hook
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.remove_env_cleanup_hook = _slot(h, "napi_remove_env_cleanup_hook")
 
     # 118. napi_cancel_async_work
-    var _cancel_async_work = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_cancel_async_work")
-    bindings.cancel_async_work = UnsafePointer(to=_cancel_async_work).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.cancel_async_work = _slot(h, "napi_cancel_async_work")
 
     # 119. napi_is_error
-    var _is_error = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_is_error")
-    bindings.is_error = UnsafePointer(to=_is_error).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.is_error = _slot(h, "napi_is_error")
 
     # 120. napi_adjust_external_memory
-    var _adjust_external_memory = h.get_function[
-        def(NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_adjust_external_memory")
-    bindings.adjust_external_memory = UnsafePointer(
-        to=_adjust_external_memory
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.adjust_external_memory = _slot(h, "napi_adjust_external_memory")
 
     # 121. napi_run_script
-    var _run_script = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_run_script")
-    bindings.run_script = UnsafePointer(to=_run_script).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.run_script = _slot(h, "napi_run_script")
 
     # 122. node_api_throw_syntax_error (N-API v9)
-    var _throw_syntax_error = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[ImmutAnyOrigin],
-            OpaquePointer[ImmutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("node_api_throw_syntax_error")
-    bindings.throw_syntax_error = UnsafePointer(to=_throw_syntax_error).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.throw_syntax_error = _slot(h, "node_api_throw_syntax_error")
 
     # 123. node_api_create_syntax_error (N-API v9)
-    var _create_syntax_error = h.get_function[
-        def(
-            NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("node_api_create_syntax_error")
-    bindings.create_syntax_error = UnsafePointer(
-        to=_create_syntax_error
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.create_syntax_error = _slot(h, "node_api_create_syntax_error")
 
     # 124. napi_is_detached_arraybuffer (N-API v7)
-    var _is_detached_arraybuffer = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_is_detached_arraybuffer")
-    bindings.is_detached_arraybuffer = UnsafePointer(
-        to=_is_detached_arraybuffer
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.is_detached_arraybuffer = _slot(h, "napi_is_detached_arraybuffer")
 
     # 125. napi_fatal_exception
-    var _fatal_exception = h.get_function[
-        def(NapiEnv, NapiValue) thin abi("C") -> NapiStatus
-    ]("napi_fatal_exception")
-    bindings.fatal_exception = UnsafePointer(to=_fatal_exception).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.fatal_exception = _slot(h, "napi_fatal_exception")
 
     # 126. napi_type_tag_object (N-API v8)
-    var _type_tag_object = h.get_function[
-        def(NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_type_tag_object")
-    bindings.type_tag_object = UnsafePointer(to=_type_tag_object).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.type_tag_object = _slot(h, "napi_type_tag_object")
 
     # 127. napi_check_object_type_tag (N-API v8)
-    var _check_object_type_tag = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[ImmutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_check_object_type_tag")
-    bindings.check_object_type_tag = UnsafePointer(
-        to=_check_object_type_tag
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.check_object_type_tag = _slot(h, "napi_check_object_type_tag")
 
     # 128. napi_add_async_cleanup_hook (N-API v8)
     # hook: fn(handle, arg), arg: void*, remove_handle: out *
-    var _add_async_cleanup_hook = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_add_async_cleanup_hook")
-    bindings.add_async_cleanup_hook = UnsafePointer(
-        to=_add_async_cleanup_hook
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.add_async_cleanup_hook = _slot(h, "napi_add_async_cleanup_hook")
 
     # 129. napi_remove_async_cleanup_hook (N-API v8)
     # Takes only the handle (no env) — can be called from any thread
-    var _remove_async_cleanup_hook = h.get_function[
-        def(OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_remove_async_cleanup_hook")
-    bindings.remove_async_cleanup_hook = UnsafePointer(
-        to=_remove_async_cleanup_hook
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.remove_async_cleanup_hook = _slot(h, "napi_remove_async_cleanup_hook")
 
     # 130. napi_get_uv_event_loop (N-API v2)
     # Returns the uv_loop_t* for the current environment
-    var _get_uv_event_loop = h.get_function[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_uv_event_loop")
-    bindings.get_uv_event_loop = UnsafePointer(to=_get_uv_event_loop).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.get_uv_event_loop = _slot(h, "napi_get_uv_event_loop")
 
     # 131. napi_async_init (N-API v1)
     # Creates an async context for async_hooks tracking.
     # async_resource: JS object representing the resource (or undefined)
     # async_resource_name: string identifying the resource type
-    var _async_init = h.get_function[
-        def(
-            NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_async_init")
-    bindings.async_init = UnsafePointer(to=_async_init).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.async_init = _slot(h, "napi_async_init")
 
     # 132. napi_async_destroy (N-API v1)
     # Destroys an async context previously created with napi_async_init.
-    var _async_destroy = h.get_function[
-        def(NapiEnv, NapiAsyncContext) thin abi("C") -> NapiStatus
-    ]("napi_async_destroy")
-    bindings.async_destroy = UnsafePointer(to=_async_destroy).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.async_destroy = _slot(h, "napi_async_destroy")
 
     # 133. napi_make_callback (N-API v1)
     # Calls a JS function in the given async context, correctly propagating
     # AsyncLocalStorage and async_hooks tracking.
-    var _make_callback = h.get_function[
-        def(
-            NapiEnv,
-            NapiAsyncContext,
-            NapiValue,
-            NapiValue,
-            UInt,
-            OpaquePointer[ImmutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_make_callback")
-    bindings.make_callback = UnsafePointer(to=_make_callback).bitcast[
-        OpaquePointer[MutAnyOrigin]
-    ]()[]
+    bindings.make_callback = _slot(h, "napi_make_callback")
 
     # 134. napi_open_callback_scope (N-API v3)
     # Opens a callback scope, setting up the async context for synchronous
     # N-API calls (needed for correct async_hooks integration).
-    var _open_callback_scope = h.get_function[
-        def(
-            NapiEnv, NapiValue, NapiAsyncContext, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("napi_open_callback_scope")
-    bindings.open_callback_scope = UnsafePointer(
-        to=_open_callback_scope
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.open_callback_scope = _slot(h, "napi_open_callback_scope")
 
     # 135. napi_close_callback_scope (N-API v3)
     # Closes a callback scope previously opened with napi_open_callback_scope.
-    var _close_callback_scope = h.get_function[
-        def(NapiEnv, NapiCallbackScope) thin abi("C") -> NapiStatus
-    ]("napi_close_callback_scope")
-    bindings.close_callback_scope = UnsafePointer(
-        to=_close_callback_scope
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.close_callback_scope = _slot(h, "napi_close_callback_scope")
 
     # N-API v10 additions (136-141)
 
     # 136. node_api_create_external_string_latin1 (N-API v10)
     # Creates a JS string backed by a native Latin-1 buffer without copying.
     # finalize_cb fires when the string is GC'd; copied_out indicates if a copy was forced.
-    var _create_external_string_latin1 = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[ImmutAnyOrigin],
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("node_api_create_external_string_latin1")
-    bindings.create_external_string_latin1 = UnsafePointer(
-        to=_create_external_string_latin1
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.create_external_string_latin1 = _slot(h, "node_api_create_external_string_latin1")
 
     # 137. node_api_create_external_string_utf16 (N-API v10)
     # Creates a JS string backed by a native UTF-16LE buffer without copying.
-    var _create_external_string_utf16 = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[ImmutAnyOrigin],
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("node_api_create_external_string_utf16")
-    bindings.create_external_string_utf16 = UnsafePointer(
-        to=_create_external_string_utf16
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.create_external_string_utf16 = _slot(h, "node_api_create_external_string_utf16")
 
     # 138. node_api_create_property_key_utf8 (N-API v10)
     # Creates an engine-internalized string from UTF-8 for use as a property key.
     # More efficient than napi_create_string_utf8 for repeated property access.
-    var _create_property_key_utf8 = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[ImmutAnyOrigin],
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("node_api_create_property_key_utf8")
-    bindings.create_property_key_utf8 = UnsafePointer(
-        to=_create_property_key_utf8
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.create_property_key_utf8 = _slot(h, "node_api_create_property_key_utf8")
 
     # 139. node_api_create_property_key_latin1 (N-API v10)
     # Creates an engine-internalized string from Latin-1 for use as a property key.
-    var _create_property_key_latin1 = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[ImmutAnyOrigin],
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("node_api_create_property_key_latin1")
-    bindings.create_property_key_latin1 = UnsafePointer(
-        to=_create_property_key_latin1
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.create_property_key_latin1 = _slot(h, "node_api_create_property_key_latin1")
 
     # 140. node_api_create_property_key_utf16 (N-API v10)
     # Creates an engine-internalized string from UTF-16LE for use as a property key.
-    var _create_property_key_utf16 = h.get_function[
-        def(
-            NapiEnv,
-            OpaquePointer[ImmutAnyOrigin],
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("node_api_create_property_key_utf16")
-    bindings.create_property_key_utf16 = UnsafePointer(
-        to=_create_property_key_utf16
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.create_property_key_utf16 = _slot(h, "node_api_create_property_key_utf16")
 
     # 141. node_api_create_buffer_from_arraybuffer (N-API v10)
     # Creates a zero-copy Node.js Buffer view into a slice of an existing ArrayBuffer.
     # Raises RangeError if offset+length exceeds the ArrayBuffer bounds.
-    var _create_buffer_from_arraybuffer = h.get_function[
-        def(
-            NapiEnv, NapiValue, UInt, UInt, OpaquePointer[MutAnyOrigin]
-        ) thin abi("C") -> NapiStatus
-    ]("node_api_create_buffer_from_arraybuffer")
-    bindings.create_buffer_from_arraybuffer = UnsafePointer(
-        to=_create_buffer_from_arraybuffer
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.create_buffer_from_arraybuffer = _slot(h, "node_api_create_buffer_from_arraybuffer")
 
     # 142. napi_get_value_string_latin1 (N-API v1)
     # Reads a JS string as Latin-1 (ISO-8859-1) bytes.
     # Same signature as napi_get_value_string_utf8 but output is single-byte Latin-1.
-    var _get_value_string_latin1 = h.get_function[
-        def(
-            NapiEnv,
-            NapiValue,
-            OpaquePointer[MutAnyOrigin],
-            UInt,
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ]("napi_get_value_string_latin1")
-    bindings.get_value_string_latin1 = UnsafePointer(
-        to=_get_value_string_latin1
-    ).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+    bindings.get_value_string_latin1 = _slot(h, "napi_get_value_string_latin1")
 
 
 def get_bindings(env: NapiEnv) raises -> Bindings:
     """Retrieve the NapiBindings pointer stored as instance data."""
     var h = OwnedDLHandle()
-    var f = h.get_function[
+    var f = _sym[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]("napi_get_instance_data")
+    ](h, "napi_get_instance_data")
     var data_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
     var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=data_ptr
