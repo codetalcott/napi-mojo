@@ -50,9 +50,6 @@ struct CounterData(Movable):
         self.count = initial
         self.initial = initial
 
-    def __moveinit__(out self, deinit take: Self):
-        self.count = take.count
-        self.initial = take.initial
 
 
 # --- GC finalizer ------------------------------------------------------------
@@ -82,7 +79,7 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var t = js_typeof(env, arg0)
         if t != NAPI_TYPE_NUMBER:
             throw_js_type_error(env, "Counter requires a number argument")
-            return NapiValue()
+            return NapiValue(unsafe_from_address=Int(0))
 
         var initial = JsNumber.from_napi_value(env, arg0)
 
@@ -99,17 +96,17 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             raw_wrap(
                 env,
                 this_val,
-                data_ptr.bitcast[NoneType](),  # native_object
+                data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),  # native_object
                 fin_ptr,  # finalize_cb
-                OpaquePointer[MutAnyOrigin](),  # finalize_hint (NULL)
-                OpaquePointer[MutAnyOrigin](),  # result ref (NULL)
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint (NULL)
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # result ref (NULL)
             )
         )
 
         return this_val
     except:
         throw_js_error(env, "Counter constructor failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 # --- Instance methods --------------------------------------------------------
@@ -123,7 +120,7 @@ def counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsUndefined.create(env).value
     except:
         throw_js_error(env, "Counter.increment failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 # --- Getter / Setter ---------------------------------------------------------
@@ -135,7 +132,7 @@ def counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsNumber.create(env, ptr[].count).value
     except:
         throw_js_error(env, "Counter.value getter failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -146,7 +143,7 @@ def counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsUndefined.create(env).value
     except:
         throw_js_error(env, "Counter.value setter failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 # --- Static method -----------------------------------------------------------
@@ -167,14 +164,14 @@ def counter_is_counter_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsBoolean.create(env, result).value
     except:
         throw_js_error(env, "Counter.isCounter failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 # --- Module entry point ------------------------------------------------------
 
 
-@export("napi_register_module_v1", ABI="C")
-def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
+@export("napi_register_module_v1")
+def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
     # All function refs declared before try block (ASAP destruction safety)
     var ctor_ref = counter_constructor_fn
     var inc_ref = counter_increment_fn
@@ -190,6 +187,7 @@ def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         counter.instance_method("increment", fn_ptr(inc_ref))
         counter.getter_setter("value", fn_ptr(get_val_ref), fn_ptr(set_val_ref))
         counter.static_method("isCounter", fn_ptr(is_counter_ref))
+        m.flush()
     except:
         pass
 

@@ -424,7 +424,9 @@ def unwrap_native[
     var this_val = CbArgs.get_this(env, info)
     var data: Optional[OpaquePointer[MutAnyOrigin]] = None
     check_status(
-        raw_unwrap(env, this_val, UnsafePointer(to=data).bitcast[NoneType]())
+        raw_unwrap(
+            env, this_val, UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin()
+        )
     )
     if data is None:
         raise Error("unwrap failed: NULL native pointer")
@@ -439,7 +441,9 @@ def unwrap_native[
     var this_val = CbArgs.get_this(env, info)
     var data: Optional[OpaquePointer[MutAnyOrigin]] = None
     check_status(
-        raw_unwrap(b, env, this_val, UnsafePointer(to=data).bitcast[NoneType]())
+        raw_unwrap(
+            b, env, this_val, UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin()
+        )
     )
     if data is None:
         raise Error("unwrap failed: NULL native pointer")

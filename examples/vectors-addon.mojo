@@ -10,7 +10,7 @@
 ##         mv build/vectors.dylib build/vectors.node   # macOS
 ## Run:    node examples/vectors.js
 
-from std.algorithm.functional import vectorize, parallelize
+from std.algorithm.functional import vectorize
 from std.sys import simd_width_of
 from std.math import sqrt
 from std.memory import alloc
@@ -22,7 +22,7 @@ from napi.framework.js_typedarray import JsTypedArray
 from napi.framework.js_mojo_array import MojoFloat64Array
 from napi.framework.args import CbArgs
 from napi.framework.register import fn_ptr, ModuleBuilder
-from napi.framework.runtime import init_async_runtime
+from napi.framework.runtime import init_async_runtime, parallelize_safe
 
 
 # Note on API style: this example uses ModuleBuilder(env, exports) without a
@@ -43,11 +43,11 @@ comptime NUM_WORKERS = 4
 
 
 def _vectorized_dot(
-    a: UnsafePointer[Float64], b: UnsafePointer[Float64], start: Int, end: Int
+    a: UnsafePointer[Float64, MutAnyOrigin], b: UnsafePointer[Float64, MutAnyOrigin], start: Int, end: Int
 ) -> Float64:
     var result: Float64 = 0.0
 
-    def compute[width: Int](offset: Int) unified {mut}:
+    def compute[width: Int](offset: Int) {mut result, imm a, imm b, imm start}:
         result += (
             a.load[width=width](start + offset)
             * b.load[width=width](start + offset)
@@ -58,11 +58,11 @@ def _vectorized_dot(
 
 
 def _vectorized_euclid(
-    a: UnsafePointer[Float64], b: UnsafePointer[Float64], start: Int, end: Int
+    a: UnsafePointer[Float64, MutAnyOrigin], b: UnsafePointer[Float64, MutAnyOrigin], start: Int, end: Int
 ) -> Float64:
     var sum_sq: Float64 = 0.0
 
-    def compute[width: Int](offset: Int) unified {mut}:
+    def compute[width: Int](offset: Int) {mut sum_sq, imm a, imm b, imm start}:
         var diff = a.load[width=width](start + offset) - b.load[width=width](
             start + offset
         )
@@ -73,7 +73,7 @@ def _vectorized_euclid(
 
 
 def dot_product(
-    a: UnsafePointer[Float64], b: UnsafePointer[Float64], size: Int
+    a: UnsafePointer[Float64, MutAnyOrigin], b: UnsafePointer[Float64, MutAnyOrigin], size: Int
 ) -> Float64:
     if size < PARALLEL_THRESHOLD:
         return _vectorized_dot(a, b, 0, size)
@@ -85,7 +85,7 @@ def dot_product(
         var e = s + chunk_size if wid < NUM_WORKERS - 1 else size
         partials[wid] = _vectorized_dot(a, b, s, e)
 
-    parallelize[worker](NUM_WORKERS)
+    parallelize_safe[worker](NUM_WORKERS)
     var result: Float64 = 0.0
     for i in range(NUM_WORKERS):
         result += partials[i]
@@ -94,14 +94,14 @@ def dot_product(
 
 
 def cosine_similarity(
-    a: UnsafePointer[Float64], b: UnsafePointer[Float64], size: Int
+    a: UnsafePointer[Float64, MutAnyOrigin], b: UnsafePointer[Float64, MutAnyOrigin], size: Int
 ) -> Float64:
     if size < PARALLEL_THRESHOLD:
         var dot: Float64 = 0.0
         var norm_a: Float64 = 0.0
         var norm_b: Float64 = 0.0
 
-        def compute_st[width: Int](offset: Int) unified {mut}:
+        def compute_st[width: Int](offset: Int) {mut dot, mut norm_a, mut norm_b, imm a, imm b}:
             var ca = a.load[width=width](offset)
             var cb = b.load[width=width](offset)
             dot += (ca * cb).reduce_add()
@@ -127,7 +127,7 @@ def cosine_similarity(
         var local_na: Float64 = 0.0
         var local_nb: Float64 = 0.0
 
-        def compute[width: Int](offset: Int) unified {mut}:
+        def compute[width: Int](offset: Int) {mut local_dot, mut local_na, mut local_nb, imm a, imm b, imm s}:
             var ca = a.load[width=width](s + offset)
             var cb = b.load[width=width](s + offset)
             local_dot += (ca * cb).reduce_add()
@@ -139,7 +139,7 @@ def cosine_similarity(
         norms_a[wid] = local_na
         norms_b[wid] = local_nb
 
-    parallelize[worker](NUM_WORKERS)
+    parallelize_safe[worker](NUM_WORKERS)
 
     var dot: Float64 = 0.0
     var na: Float64 = 0.0
@@ -158,7 +158,7 @@ def cosine_similarity(
 
 
 def euclidean_distance(
-    a: UnsafePointer[Float64], b: UnsafePointer[Float64], size: Int
+    a: UnsafePointer[Float64, MutAnyOrigin], b: UnsafePointer[Float64, MutAnyOrigin], size: Int
 ) -> Float64:
     if size < PARALLEL_THRESHOLD:
         return sqrt(_vectorized_euclid(a, b, 0, size))
@@ -170,7 +170,7 @@ def euclidean_distance(
         var e = s + chunk_size if wid < NUM_WORKERS - 1 else size
         partials[wid] = _vectorized_euclid(a, b, s, e)
 
-    parallelize[worker](NUM_WORKERS)
+    parallelize_safe[worker](NUM_WORKERS)
     var sum_sq: Float64 = 0.0
     for i in range(NUM_WORKERS):
         sum_sq += partials[i]
@@ -188,20 +188,20 @@ def dot_product_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             env, args[0]
         ) or not JsTypedArray.is_typedarray(env, args[1]):
             throw_js_error(env, "dotProduct requires two TypedArray arguments")
-            return NapiValue()
+            return NapiValue(unsafe_from_address=Int(0))
         var ta_a = JsTypedArray(args[0])
         var ta_b = JsTypedArray(args[1])
         var len_a = Int(ta_a.length(env))
         var len_b = Int(ta_b.length(env))
         if len_a != len_b:
             throw_js_error(env, "vectors must have equal length")
-            return NapiValue()
+            return NapiValue(unsafe_from_address=Int(0))
         var ptr_a = ta_a.data_ptr_float64(env)
         var ptr_b = ta_b.data_ptr_float64(env)
         return JsNumber.create(env, dot_product(ptr_a, ptr_b, len_a)).value
     except:
         throw_js_error(env, "dotProduct failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def cosine_similarity_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -213,14 +213,14 @@ def cosine_similarity_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error(
                 env, "cosineSimilarity requires two TypedArray arguments"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=Int(0))
         var ta_a = JsTypedArray(args[0])
         var ta_b = JsTypedArray(args[1])
         var len_a = Int(ta_a.length(env))
         var len_b = Int(ta_b.length(env))
         if len_a != len_b:
             throw_js_error(env, "vectors must have equal length")
-            return NapiValue()
+            return NapiValue(unsafe_from_address=Int(0))
         var ptr_a = ta_a.data_ptr_float64(env)
         var ptr_b = ta_b.data_ptr_float64(env)
         return JsNumber.create(
@@ -228,7 +228,7 @@ def cosine_similarity_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         ).value
     except:
         throw_js_error(env, "cosineSimilarity failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def euclidean_distance_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -240,14 +240,14 @@ def euclidean_distance_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error(
                 env, "euclideanDistance requires two TypedArray arguments"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=Int(0))
         var ta_a = JsTypedArray(args[0])
         var ta_b = JsTypedArray(args[1])
         var len_a = Int(ta_a.length(env))
         var len_b = Int(ta_b.length(env))
         if len_a != len_b:
             throw_js_error(env, "vectors must have equal length")
-            return NapiValue()
+            return NapiValue(unsafe_from_address=Int(0))
         var ptr_a = ta_a.data_ptr_float64(env)
         var ptr_b = ta_b.data_ptr_float64(env)
         return JsNumber.create(
@@ -255,7 +255,7 @@ def euclidean_distance_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         ).value
     except:
         throw_js_error(env, "euclideanDistance failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def normalize_vector_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -267,7 +267,7 @@ def normalize_vector_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_error(
                 env, "normalizeVector requires a Float64Array argument"
             )
-            return NapiValue()
+            return NapiValue(unsafe_from_address=Int(0))
         var ta = JsTypedArray(arg0)
         var n = Int(ta.length(env))
         var v_ptr = ta.data_ptr_float64(
@@ -276,7 +276,7 @@ def normalize_vector_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         # Compute L2 norm via SIMD vectorize
         var norm_sq: Float64 = 0.0
 
-        def compute_norm[width: Int](offset: Int) unified {mut}:
+        def compute_norm[width: Int](offset: Int) {mut norm_sq, imm v_ptr}:
             var x = v_ptr.load[width=width](offset)
             norm_sq += (x * x).reduce_add()
 
@@ -292,14 +292,14 @@ def normalize_vector_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return out.to_js(env)  # __del__ frees buffer if to_js() raises
     except:
         throw_js_error(env, "normalizeVector failed")
-        return NapiValue()
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 # --- Module entry point -------------------------------------------------------
 
 
-@export("napi_register_module_v1", ABI="C")
-def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
+@export("napi_register_module_v1")
+def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
     # Initialize Mojo async runtime for parallelize() support
     try:
         init_async_runtime()
@@ -317,6 +317,7 @@ def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         m.method("cosineSimilarity", fn_ptr(cos_ref))
         m.method("euclideanDistance", fn_ptr(euc_ref))
         m.method("normalizeVector", fn_ptr(norm_ref))
+        m.flush()
     except:
         pass
 

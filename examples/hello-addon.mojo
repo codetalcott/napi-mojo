@@ -35,7 +35,7 @@ def hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         return JsString.create_literal(env, "Hello from Mojo!").value
     except:
-        return NapiValue()
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -44,11 +44,11 @@ def greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var t = js_typeof(env, arg0)
         if t != NAPI_TYPE_STRING:
             throw_js_type_error(env, "greet requires a string argument")
-            return NapiValue()
+            return NapiValue(unsafe_from_address=Int(0))
         var name = JsString.from_napi_value(env, arg0)
         return JsString.create(env, "Hello, " + name + "!").value
     except:
-        return NapiValue()
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 def add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -58,15 +58,15 @@ def add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = JsNumber.from_napi_value(env, args[1])
         return JsNumber.create(env, a + b).value
     except:
-        return NapiValue()
+        return NapiValue(unsafe_from_address=Int(0))
 
 
 # --- Module entry point ------------------------------------------------------
 # Node.js calls this via dlsym("napi_register_module_v1") when loading the .node file.
 
 
-@export("napi_register_module_v1", ABI="C")
-def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
+@export("napi_register_module_v1")
+def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
     # Declare function refs BEFORE the try block — ASAP destruction safety.
     # Each ref must stay alive through all fn_ptr() calls.
     var hello_ref = hello_fn
@@ -78,6 +78,7 @@ def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
         m.method("hello", fn_ptr(hello_ref))
         m.method("greet", fn_ptr(greet_ref))
         m.method("add", fn_ptr(add_ref))
+        m.flush()
     except:
         pass
 
