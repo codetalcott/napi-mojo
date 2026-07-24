@@ -229,8 +229,8 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
-                UnsafePointer(to=args[0]).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=args[0]).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )

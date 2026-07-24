@@ -108,8 +108,8 @@ struct JsBigInt:
             raw_get_value_bigint_uint64(
                 env,
                 val,
-                UnsafePointer(to=result).bitcast[NoneType](),
-                UnsafePointer(to=lossless).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=lossless).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         if not lossless:
@@ -125,8 +125,8 @@ struct JsBigInt:
                 b,
                 env,
                 val,
-                UnsafePointer(to=result).bitcast[NoneType](),
-                UnsafePointer(to=lossless).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=lossless).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         if not lossless:

@@ -144,7 +144,7 @@ struct JsExternal:
             OpaquePointer[MutAnyOrigin]
         ]()[]
         return JsExternal.create(
-            b, env, data_ptr.bitcast[NoneType](), fin_ptr
+            b, env, data_ptr.bitcast[NoneType]().as_unsafe_any_origin(), fin_ptr
         )
 
     @staticmethod
