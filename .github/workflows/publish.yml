@@ -38,32 +38,18 @@ jobs:
       - name: Build Mojo addon
         run: pixi run bash build.sh
 
-      # Mirrors test.yml retry: macOS workers occasionally SIGABRT/SIGSEGV at
-      # exit due to a Mojo 1.0.0b1 gap (no thin C-ABI fn-pointer for `def`s
-      # at finalizer registration sites). Retry 3× absorbs the flake without
-      # masking real regressions (a deterministic bug fails all 3).
-      - name: Run tests (retry on intermittent flake)
-        run: |
-          for attempt in 1 2 3; do
-            if npm test; then exit 0; fi
-            echo "::warning::npm test attempt $attempt failed; retrying"
-            sleep 2
-          done
-          echo "::error::npm test failed 3 attempts in a row — likely a real regression"
-          exit 1
+      # No retry wrapper — mirrors test.yml. The flake these steps used to
+      # absorb was a real use-after-free in the TypedPayload finalizer (fixed
+      # in e2f4efe), not the Mojo `def` fn-pointer gap originally blamed.
+      # A release gate especially must not mask a deterministic regression.
+      - name: Run tests
+        run: npm test
 
-      # GC finalizer suite is gated on --expose-gc, so `npm test` skips
-      # all 6 tests by design. Run them explicitly so finalizer
-      # regressions can't ship in a release. Same 3× retry as above.
-      - name: Run GC finalizer tests (retry on intermittent flake)
-        run: |
-          for attempt in 1 2 3; do
-            if npm run test:gc; then exit 0; fi
-            echo "::warning::npm run test:gc attempt $attempt failed; retrying"
-            sleep 2
-          done
-          echo "::error::npm run test:gc failed 3 attempts in a row — likely a real regression"
-          exit 1
+      # GC finalizer suite is gated on --expose-gc, so `npm test` skips all 6
+      # tests by design. Run them explicitly so finalizer regressions can't
+      # ship in a release.
+      - name: Run GC finalizer tests
+        run: npm run test:gc
 
       - name: Bundle runtime libraries
         run: pixi run bash scripts/bundle-runtime.sh

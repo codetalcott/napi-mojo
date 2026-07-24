@@ -1,6 +1,18 @@
 # Plan: typed `JsExternal` + `instance_data` helpers
 
-**Status**: planned, not yet implemented
+**Status**: **Level 1 implemented** (2026-07-23). `JsExternal.create_typed[T]` /
+`get_typed[T]` and `set_instance_data[T]` / `get_instance_data[T]` all shipped —
+see [`src/napi/framework/js_external.mojo`](../src/napi/framework/js_external.mojo),
+[`src/napi/framework/instance_data.mojo`](../src/napi/framework/instance_data.mojo),
+and the `createTypedPayload` / `readTypedPayload` / `set`+`getTypedInstanceData`
+callbacks in [`src/addon/typed_helpers_ops.mojo`](../src/addon/typed_helpers_ops.mojo)
+(tested in `tests/typed-external.test.js`).
+
+**Level 2 (`napi.framework.cached_gpu`) remains deferred** at the 6+ cached-GPU-addon
+threshold recorded in Non-goals below (still 4). Reaffirmed 2026-07-23: napi-mojo is
+an outside-facing framework, so GPU plumbing stays downstream — see the
+"Scope: no GPU code here" section in [`CLAUDE.md`](../CLAUDE.md).
+
 **Created**: 2026-04-12
 **Driver**: `mojo-addon-examples` now has 4 cached GPU addons (simd-search, image, stats, matmul) that duplicate ~150 lines of N-API handle plumbing each. Extracting the common typed-wrapper pattern into napi-mojo would eliminate ~280 lines of duplication across those addons and provide a general-purpose ergonomic improvement for any napi-mojo consumer wanting to attach Mojo structs to JS handles or addon-instance state.
 

@@ -16,8 +16,8 @@ addon.greet("world"); // "Hello, world!"
 ## Project Status
 
 **Alpha** — napi-mojo is under active development and not yet proven in
-production. The API covers the full N-API v10 surface (140 exported functions, 3
-classes, 624 tests). Expect breaking changes as the project matures.
+production. The API covers the full N-API v10 surface (140 exported functions, 4
+classes, 615 tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
   complete, ergonomic framework for building Node.js native addons in Mojo.
@@ -44,7 +44,7 @@ classes, 624 tests). Expect breaking changes as the project matures.
 
 ## Features
 
-- **140 exported functions** and **3 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
+- **140 exported functions** and **4 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
 - Primitives: strings, numbers (Float64/Int32/UInt32/Int64), booleans, null,
   undefined, BigInt, Symbol, Date
 - Objects: create, read/write properties, enumerate keys, freeze/seal, prototype
@@ -101,13 +101,17 @@ git clone https://github.com/codetalcott/napi-mojo.git
 cd napi-mojo
 npm install
 npm run build    # compiles Mojo → build/index.node + generates TypeScript defs
-npm test         # 624 tests, 80 suites
+npm test         # 609 tests, 80 suites (6 GC tests need `npm run test:gc`)
 ```
 
 **Prerequisites:** [Mojo nightly](https://mojolang.org/install/) via
 [pixi](https://pixi.sh) (exact version pinned in [`pixi.toml`](pixi.toml);
 `npm run build` provisions it from the `max-nightly` conda channel
 automatically), Node.js 22.12+ (N-API v10)
+
+**pixi 0.73 or newer is required** — `pixi.lock` is lockfile format v7, which
+older pixi cannot read. A fresh clone on pixi 0.66 fails at `pixi install` with
+a lockfile-version error rather than anything that points at this project.
 
 ## Usage Examples
 
@@ -307,7 +311,8 @@ build, works in any TypeScript-aware IDE.
 
 ```bash
 npm run build        # compile + generate TypeScript defs
-npm test             # run Jest test suite (624 tests)
+npm test             # run Jest test suite (609 tests)
+npm run test:gc      # run the 6 GC finalizer tests (needs --expose-gc)
 npm run generate:addon  # regenerate src/generated/ from src/exports.toml
 npx jest tests/basic.test.js   # run a single test file
 npm run generate:docs  # generate HTML API docs → docs/api/ (requires: npm i -D typedoc)

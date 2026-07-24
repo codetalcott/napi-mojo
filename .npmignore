@@ -1,5 +1,15 @@
-# Source and build inputs
-src/
+# NOTE: package.json's "files" array is the authoritative publish whitelist and
+# it wins over this file. Anything listed there ships regardless of what appears
+# below, so entries here that contradict it are no-ops — this file previously
+# listed src/ and examples/codegen/build/ and both shipped anyway. To exclude
+# something inside a whitelisted directory, add a "!" negation to "files"
+# instead. Verify any change with `npm pack --dry-run`.
+#
+# This file is kept only as a second line of defence for paths that are not
+# whitelisted, in case the "files" array is ever removed.
+
+# Source and build inputs (src/ IS published deliberately — napi-mojo ships
+# Mojo source; consumers compile against it via -I node_modules/napi-mojo/src)
 spike/
 build/
 build.sh
@@ -15,10 +25,6 @@ scripts/
 docs/
 CLAUDE.md
 CONTRIBUTING.md
-TDD_PROMPTS.md
-PLANNING.md
-SPEC.md
-n-api-addendum.txt
 
 # Platform sub-packages (published separately)
 npm/
@@ -27,9 +33,3 @@ npm/
 .git/
 node_modules/
 package-lock.json
-
-# Generated example build artifacts
-examples/codegen/build
-examples/codegen/build/**
-examples/codegen/generated
-examples/codegen/generated/**
