@@ -74,10 +74,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # node-version 24 (npm 11.16.0) is REQUIRED, not a preference. npm's OIDC
+      # trusted-publishing auth landed in npm 11.5.1; Node 22 bundles npm 10.9.8,
+      # which never attempts the OIDC exchange and can only authenticate with a
+      # token. That is what broke the v0.5.0 publish: the registry rejected the
+      # token and returned E404 on PUT (npm returns 404 rather than 401/403 for
+      # scoped packages so it can't leak whether a package exists). Do not pin
+      # this back to 22 — the build job above is separate and can move freely.
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Download all binaries
@@ -96,19 +103,22 @@ jobs:
       - name: Sync versions from root package.json
         run: node scripts/sync-versions.mjs
 
+      # No NODE_AUTH_TOKEN on any publish step, deliberately. These packages
+      # authenticate via npm trusted publishing (OIDC), which is why the job
+      # needs `id-token: write` and `environment: npm` — both must match what
+      # is registered on npmjs.com, along with this file's name (publish.yml).
+      # npm's own guidance is to NOT set a token alongside trusted publishing:
+      # a present token can take precedence over the OIDC path and put you back
+      # on the 90-day expiry treadmill that caused the v0.5.0 failure. If a
+      # publish ever 404s again, check the trusted-publisher config on npmjs.com
+      # before reaching for a token — adding one back is not the fix.
       - name: Publish @napi-mojo/darwin-arm64
         run: npm publish --access public --provenance || [[ "$?" == "1" && $(npm view @napi-mojo/darwin-arm64 version 2>/dev/null) == "$(node -p 'require("./package.json").version')" ]]
         working-directory: npm/darwin-arm64
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN2 }}
 
       - name: Publish @napi-mojo/linux-x64
         run: npm publish --access public --provenance || [[ "$?" == "1" && $(npm view @napi-mojo/linux-x64 version 2>/dev/null) == "$(node -p 'require("./package.json").version')" ]]
         working-directory: npm/linux-x64
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN2 }}
 
       - name: Publish napi-mojo
         run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN2 }}
