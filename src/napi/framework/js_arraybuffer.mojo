@@ -33,8 +33,8 @@ struct JsArrayBuffer:
             raw_create_arraybuffer(
                 env,
                 byte_length,
-                UnsafePointer(to=data).bitcast[NoneType](),
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsArrayBuffer(result)
@@ -50,8 +50,8 @@ struct JsArrayBuffer:
                 b,
                 env,
                 byte_length,
-                UnsafePointer(to=data).bitcast[NoneType](),
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsArrayBuffer(result)

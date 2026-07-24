@@ -46,7 +46,7 @@ def js_is_exception_pending(env: NapiEnv) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_is_exception_pending(env, result_ptr))
     return result
 
@@ -76,7 +76,7 @@ def js_is_exception_pending(b: Bindings, env: NapiEnv) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
         to=result
-    ).bitcast[NoneType]()
+    ).bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_is_exception_pending(b, env, result_ptr))
     return result
 

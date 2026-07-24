@@ -50,9 +50,13 @@ struct BindingsAndTwo:
 
 ## BindingsAndThree — bindings pointer + three arguments (single napi_get_cb_info call)
 struct BindingsAndThree:
+    @__allow_legacy_any_origin_fields
     var b: Bindings
+    @__allow_legacy_any_origin_fields
     var arg0: NapiValue
+    @__allow_legacy_any_origin_fields
     var arg1: NapiValue
+    @__allow_legacy_any_origin_fields
     var arg2: NapiValue
 
     def __init__(
@@ -229,8 +233,8 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
-                UnsafePointer(to=args[0]).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=args[0]).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -294,9 +298,9 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
-                UnsafePointer(to=arg0).bitcast[NoneType](),
-                UnsafePointer(to=this_val).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=arg0).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=this_val).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
             )
         )
@@ -320,9 +324,9 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
-                UnsafePointer(to=arg0).bitcast[NoneType](),
-                UnsafePointer(to=this_val).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=arg0).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=this_val).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
             )
         )
@@ -526,10 +530,10 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType](),
-                UnsafePointer(to=args[0]).bitcast[NoneType](),
+                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                UnsafePointer(to=args[0]).bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
-                UnsafePointer(to=data).bitcast[NoneType](),
+                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         if argc < 3:

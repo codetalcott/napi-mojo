@@ -37,9 +37,9 @@ struct JsSymbol:
         check_status(
             raw_symbol_for(
                 env,
-                key.unsafe_ptr().bitcast[NoneType](),
-                UInt(len(key)),
-                UnsafePointer(to=result).bitcast[NoneType](),
+                key.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+                UInt(key.byte_length()),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsSymbol(result)
@@ -70,9 +70,9 @@ struct JsSymbol:
             raw_symbol_for(
                 b,
                 env,
-                key.unsafe_ptr().bitcast[NoneType](),
-                UInt(len(key)),
-                UnsafePointer(to=result).bitcast[NoneType](),
+                key.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+                UInt(key.byte_length()),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsSymbol(result)

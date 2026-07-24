@@ -71,6 +71,23 @@ jobs:
             echo "::endgroup::"
           done
 
+      # Mojo elaborates imported-package `def` bodies lazily, per METHOD: a
+      # body full of type errors compiles unless something in the compiled
+      # graph calls that exact method. 0.5.1 shipped four broken framework
+      # modules that way with build.sh and 609 tests green (5161dfc), and this
+      # target's first run found 61 more. It calls every public framework
+      # method — each env-only/Bindings overload separately — from an
+      # @export-rooted function, so *compiling* it type-checks all of them.
+      # It is never run: its export name is deliberately not
+      # napi_register_module_v1, because every call inside it uses null
+      # handles. The "Build examples" step above is not a substitute; it
+      # covers whichever methods the examples happen to call.
+      - name: Compile framework coverage (compile-only)
+        run: |
+          pixi run mojo build --emit shared-lib -I src \
+            tests/compile/framework_coverage.mojo -o /tmp/framework_coverage.so
+          node scripts/check-compile-coverage.mjs
+
       # No retry wrapper, deliberately. These steps used to retry 3×, blamed
       # on a Mojo `def` function-pointer gap at finalizer registration sites.
       # That diagnosis was wrong: the intermittent macOS SIGABRT/SIGSEGV was a

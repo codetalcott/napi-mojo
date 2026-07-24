@@ -105,6 +105,7 @@
 | `getUvEventLoop()` | `get_uv_event_loop_fn` | Returns the libuv event loop pointer (external value) |
 | `addAsyncCleanupHook()` | `add_async_cleanup_hook_fn` | Registers an async env cleanup hook, returns true |
 | `removeAsyncCleanupHook()` | `remove_async_cleanup_hook_fn` | Registers then removes an async cleanup hook, returns true |
+| `asyncRuntimeInitOk()` | `async_runtime_init_ok_fn` | True when the Mojo async runtime initialized, i.e. `parallelize_safe()` dispatches to threads rather than falling back to a sequential loop |
 | `getErrorMessage(err)` | `get_error_message_fn` | Returns `.message` string from any Error-like object |
 | `getErrorStack(err)` | `get_error_stack_fn` | Returns `.stack` string from any Error-like object |
 | `getOptValue(obj)` | `get_opt_value_fn` | Returns `obj.x` if present, else `null` (tests `JsObject.get_opt`) |
