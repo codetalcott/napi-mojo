@@ -3,6 +3,20 @@ name: Publish
 on:
   release:
     types: [published]
+  # Rehearsal trigger. Runs everything EXCEPT the three npm publish steps, so
+  # the release pipeline can be exercised without shipping anything. This is
+  # not a convenience: until it existed, the only way to find out whether this
+  # workflow still worked was to cut a release and watch. Dependabot had
+  # already bumped upload-artifact v4 -> v7 and download-artifact v4 -> v8
+  # here, and neither had ever executed — test.yml uses no artifacts, so a
+  # fully green CI proved nothing about the artifact round-trip that the
+  # staging step below depends on.
+  #
+  # Deliberately has no "actually publish" input. Publishing happens on a
+  # release and nowhere else; a boolean that flips a manual run into a real
+  # publish is a footgun, and a failed release publish can be re-run from the
+  # Actions UI instead.
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -54,6 +68,48 @@ jobs:
       - name: Bundle runtime libraries
         run: pixi run bash scripts/bundle-runtime.sh
 
+      # bundle-runtime.sh rewrites install names and rpaths and re-signs the
+      # binary — and until this step, nothing verified the result. `npm test`
+      # above runs against the PRE-bundle build, so a botched rpath rewrite or
+      # a failed codesign would sail through every gate and ship. The whole
+      # "fully self-contained, no Mojo installation needed" claim in that
+      # script's header was asserted and never checked.
+      #
+      # Loading from a scratch directory with the dyld/ld search paths cleared
+      # is the consumer's situation: no pixi environment, no Mojo anywhere.
+      # asyncRuntimeInitOk() is the sharp end of it — init_async_runtime()
+      # dlopen()s libKGENCompilerRTShared by leaf name, which resolves only
+      # because index.node already pulled it in via @loader_path/$ORIGIN. If
+      # the bundling is wrong that returns false, and the consumer silently
+      # loses all thread parallelism rather than getting an error.
+      - name: Verify bundled binary is self-contained
+        run: |
+          set -euo pipefail
+          EXT=$([ "$(uname -s)" = "Darwin" ] && echo dylib || echo so)
+          for lib in libKGENCompilerRTShared libAsyncRTMojoBindings \
+                     libAsyncRTRuntimeGlobals libMSupportGlobals; do
+            test -f "build/${lib}.${EXT}" \
+              || { echo "::error::bundle-runtime.sh did not produce build/${lib}.${EXT}"; exit 1; }
+          done
+          rm -rf /tmp/selfcontained && mkdir -p /tmp/selfcontained
+          cp build/index.node "build/"*."${EXT}" /tmp/selfcontained/
+          env -u DYLD_LIBRARY_PATH -u DYLD_FALLBACK_LIBRARY_PATH -u LD_LIBRARY_PATH \
+            node -e "
+              const a = require('/tmp/selfcontained/index.node');
+              const greeting = a.hello();
+              if (greeting !== 'Hello from Mojo!') {
+                throw new Error('bundled binary returned: ' + greeting);
+              }
+              if (a.asyncRuntimeInitOk() !== true) {
+                throw new Error(
+                  'bundled binary loads, but the Mojo async runtime did not ' +
+                  'initialize from the bundled libraries — parallelize_safe() ' +
+                  'would silently run sequentially for every consumer'
+                );
+              }
+              console.log('bundled binary is self-contained:', greeting);
+            "
+
       - name: Upload binary and runtime libs
         uses: actions/upload-artifact@v7
         with:
@@ -92,13 +148,28 @@ jobs:
         with:
           path: artifacts
 
+      # The runtime-lib copies used to end in `2>/dev/null || true`, which
+      # turned "the artifacts are not where we expect" into "publish a
+      # platform package containing index.node and none of the libraries it
+      # needs" — a package that installs cleanly and then fails at require().
+      # bundle-runtime.sh runs under `set -euo pipefail` and always emits all
+      # four libraries, so a missing one is never normal; it means the artifact
+      # round-trip changed shape. Fail here instead.
       - name: Stage platform packages
         run: |
+          set -euo pipefail
           ls -R artifacts/
-          cp artifacts/darwin-arm64/index.node npm/darwin-arm64/index.node
-          cp artifacts/darwin-arm64/*.dylib npm/darwin-arm64/ 2>/dev/null || true
-          cp artifacts/linux-x64/index.node npm/linux-x64/index.node
-          cp artifacts/linux-x64/*.so npm/linux-x64/ 2>/dev/null || true
+          stage() {
+            local platform="$1" ext="$2" dest="npm/$1"
+            cp "artifacts/${platform}/index.node" "${dest}/index.node"
+            for lib in libKGENCompilerRTShared libAsyncRTMojoBindings \
+                       libAsyncRTRuntimeGlobals libMSupportGlobals; do
+              cp "artifacts/${platform}/${lib}.${ext}" "${dest}/${lib}.${ext}"
+            done
+            echo "staged ${platform}: $(ls -1 "${dest}"/*.node "${dest}"/*."${ext}" | wc -l | tr -d ' ') files"
+          }
+          stage darwin-arm64 dylib
+          stage linux-x64 so
 
       - name: Sync versions from root package.json
         run: node scripts/sync-versions.mjs
@@ -113,12 +184,15 @@ jobs:
       # publish ever 404s again, check the trusted-publisher config on npmjs.com
       # before reaching for a token — adding one back is not the fix.
       - name: Publish @napi-mojo/darwin-arm64
+        if: github.event_name == 'release'
         run: npm publish --access public --provenance || [[ "$?" == "1" && $(npm view @napi-mojo/darwin-arm64 version 2>/dev/null) == "$(node -p 'require("./package.json").version')" ]]
         working-directory: npm/darwin-arm64
 
       - name: Publish @napi-mojo/linux-x64
+        if: github.event_name == 'release'
         run: npm publish --access public --provenance || [[ "$?" == "1" && $(npm view @napi-mojo/linux-x64 version 2>/dev/null) == "$(node -p 'require("./package.json").version')" ]]
         working-directory: npm/linux-x64
 
       - name: Publish napi-mojo
+        if: github.event_name == 'release'
         run: npm publish --access public --provenance
