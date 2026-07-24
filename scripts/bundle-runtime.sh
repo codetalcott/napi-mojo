@@ -29,9 +29,15 @@ else
 fi
 
 # deps_of FILE — print basenames of FILE's dependencies that live in the pixi
-# environment. System libraries (libc, libSystem, …) are deliberately excluded:
-# they belong to the host, and bundling them would be both wrong and a
-# licensing problem.
+# environment. Libraries that resolve outside it (libc, libSystem, …) belong to
+# the host and are left alone.
+#
+# Note what this does include on Linux: pixi ships its own libstdc++.so.6 and
+# libgcc_s.so.1, and the Mojo runtime is built against those, so they are part
+# of the closure and get bundled. That is deliberate — it is what makes the
+# package work on a host whose C++ runtime is older than Mojo requires — and it
+# is permitted: libstdc++/libgcc carry the GCC Runtime Library Exception, which
+# exists precisely to allow redistribution alongside a binary.
 #
 # Must run BEFORE any rpath rewriting, while the binaries still point at
 # PIXI_LIB — that is what lets the loader resolve them for us.
@@ -120,6 +126,12 @@ else
         patchelf --set-rpath '$ORIGIN' "build/${name}"
     done
 fi
+
+# Record the exact set for downstream steps. publish.yml stages and packs from
+# this manifest rather than re-deriving it from a glob, because a glob is how
+# libstdc++.so.6 and libgcc_s.so.1 went missing: `build/*.so` does not match a
+# versioned soname, and neither does an npm `files` entry of "*.so".
+printf '%s\n' $bundled > build/bundled-libs.txt
 
 echo "Runtime bundled ($(printf '%s\n' $bundled | wc -w | tr -d ' ') libraries):"
 for name in $bundled; do

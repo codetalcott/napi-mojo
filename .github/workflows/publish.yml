@@ -110,14 +110,18 @@ jobs:
               console.log('bundled binary is self-contained:', greeting);
             "
 
+      # The globs need the trailing `*`: Linux sonames are versioned
+      # (libstdc++.so.6, libgcc_s.so.1) and `build/*.so` does not match them,
+      # so two of the seven bundled libraries never left this job.
       - name: Upload binary and runtime libs
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.platform }}
           path: |
             build/index.node
-            build/*.dylib
-            build/*.so
+            build/bundled-libs.txt
+            build/*.dylib*
+            build/*.so*
 
   publish:
     needs: build
@@ -148,31 +152,78 @@ jobs:
         with:
           path: artifacts
 
-      # The runtime-lib copies used to end in `2>/dev/null || true`, which
-      # turned "the artifacts are not where we expect" into "publish a
-      # platform package containing index.node and none of the libraries it
-      # needs" — a package that installs cleanly and then fails at require().
-      # bundle-runtime.sh runs under `set -euo pipefail` and always emits all
-      # four libraries, so a missing one is never normal; it means the artifact
-      # round-trip changed shape. Fail here instead.
+      # Stages exactly what bundle-runtime.sh reported, read from its manifest.
+      # Every earlier version of this step hardcoded a four-library list, and
+      # so did the bundler, and so did the npm `files` glob — the same wrong
+      # assumption in four places, which is why a broken linux-x64 package
+      # shipped for several releases. The manifest is now the single source of
+      # truth and a missing entry is a hard error, not a silent omission.
       - name: Stage platform packages
         run: |
           set -euo pipefail
           ls -R artifacts/
           stage() {
-            local platform="$1" ext="$2" dest="npm/$1"
+            local platform="$1" dest="npm/$1"
             cp "artifacts/${platform}/index.node" "${dest}/index.node"
-            for lib in libKGENCompilerRTShared libAsyncRTMojoBindings \
-                       libAsyncRTRuntimeGlobals libMSupportGlobals; do
-              cp "artifacts/${platform}/${lib}.${ext}" "${dest}/${lib}.${ext}"
-            done
-            echo "staged ${platform}: $(ls -1 "${dest}"/*.node "${dest}"/*."${ext}" | wc -l | tr -d ' ') files"
+            while read -r lib; do
+              [ -n "$lib" ] || continue
+              cp "artifacts/${platform}/${lib}" "${dest}/${lib}"
+            done < "artifacts/${platform}/bundled-libs.txt"
+            echo "staged ${platform}: index.node + $(wc -l < "artifacts/${platform}/bundled-libs.txt" | tr -d ' ') libraries"
           }
-          stage darwin-arm64 dylib
-          stage linux-x64 so
+          stage darwin-arm64
+          stage linux-x64
 
       - name: Sync versions from root package.json
         run: node scripts/sync-versions.mjs
+
+      # Verify the TARBALL, not the build directory.
+      #
+      # The previous check loaded build/index.node in the build job, which
+      # passed while the package that actually shipped was still broken: the
+      # artifact glob dropped two versioned sonames, the staging step dropped a
+      # third, and npm's `files: ["*.so"]` would have dropped them again. Every
+      # layer between the bundler and the registry could silently subtract a
+      # file, and only the last one matters.
+      #
+      # `npm pack` produces the exact bytes that get published, so unpacking
+      # and loading that is the only check that cannot be fooled. This job runs
+      # on ubuntu, so linux-x64 gets actually executed; darwin-arm64 can only be
+      # checked for completeness against the manifest.
+      - name: Verify packed tarballs
+        run: |
+          set -euo pipefail
+          check_contents() {
+            local platform="$1" dir="npm/$1"
+            local tgz
+            tgz="$(cd "$dir" && npm pack --silent)"
+            mkdir -p "/tmp/packed/$platform"
+            tar xzf "$dir/$tgz" -C "/tmp/packed/$platform" --strip-components=1
+            test -f "/tmp/packed/$platform/index.node" \
+              || { echo "::error::$platform tarball has no index.node"; exit 1; }
+            while read -r lib; do
+              [ -n "$lib" ] || continue
+              test -f "/tmp/packed/$platform/$lib" \
+                || { echo "::error::$platform tarball is missing $lib (npm files glob dropped it?)"; exit 1; }
+            done < "artifacts/${platform}/bundled-libs.txt"
+            echo "$platform tarball contains index.node + all $(wc -l < "artifacts/${platform}/bundled-libs.txt" | tr -d ' ') libraries"
+          }
+          check_contents darwin-arm64
+          check_contents linux-x64
+
+          # Load the packed linux-x64 binary the way a consumer would: no pixi,
+          # no Mojo, library search paths cleared.
+          env -u LD_LIBRARY_PATH node -e "
+            const a = require('/tmp/packed/linux-x64/index.node');
+            const greeting = a.hello();
+            if (greeting !== 'Hello from Mojo!') {
+              throw new Error('packed linux-x64 binary returned: ' + greeting);
+            }
+            if (a.asyncRuntimeInitOk() !== true) {
+              throw new Error('packed linux-x64 binary: async runtime did not initialize');
+            }
+            console.log('packed linux-x64 tarball loads standalone:', greeting);
+          "
 
       # No NODE_AUTH_TOKEN on any publish step, deliberately. These packages
       # authenticate via npm trusted publishing (OIDC), which is why the job

@@ -5,7 +5,7 @@
   "main": "index.node",
   "files": [
     "index.node",
-    "*.dylib"
+    "*.dylib*"
   ],
   "os": [
     "darwin"
