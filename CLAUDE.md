@@ -310,3 +310,17 @@ The TOML code generator reduces N-API boilerplate to near-zero for common patter
 ## Development workflow
 
 Follow the RED → GREEN → REFACTOR TDD cycle (see `docs/METHODOLOGY.md`). Every feature starts with a failing Jest test. The spike (`spike/ffi_probe.mojo`) is the exception — it is validated experimentally, not by tests.
+
+## Repository / CI contract
+
+**`main` is protected.** Required status checks: `test (macos-latest)` and `test (ubuntu-latest)`. No review requirement (solo repo — you cannot approve your own PR). `strict` is off, so a PR need not be up to date with `main` before merging; turn it on if concurrent PRs become common.
+
+**Auto-merge is enabled** — `gh pr merge <N> --merge --auto` arms a PR to merge itself when the required checks pass. Before branch protection existed this was actively unsafe: with no *required* checks, GitHub auto-merge fires as soon as a PR is mergeable, i.e. immediately, without waiting for CI. The two settings only make sense together.
+
+**`enforce_admins` is off, deliberately.** `ubuntu-latest` only runs on `pull_request` events (see the matrix in `test.yml`), so a direct push to `main` can never satisfy that required check. Without the admin bypass you would be locked out of pushing to your own default branch.
+
+**Never add `paths-ignore` to the `pull_request` trigger in `test.yml`.** A filtered-out workflow reports *no checks at all* rather than passing ones, so a docs-only PR would never satisfy the required checks and would be permanently unmergeable except by admin bypass. `paths-ignore` on `push` is fine and is kept — nothing gates a push. The asymmetry is intentional; the comment in `test.yml` says so at the point of temptation.
+
+**Stacked PRs need a nudge.** `test.yml` only fires on PRs targeting `main`, so a PR based on another branch gets *zero* checks and will sit there looking `CLEAN` and mergeable with nothing behind it. Retargeting it after the parent merges does **not** start a run either — a base change emits `edited`, which is not in the default `pull_request` trigger set. Close and reopen the PR to fire `reopened`.
+
+**Nightly Canary** runs Tue/Fri 22:00 UTC on `macos-latest` + `ubuntu-latest`, unpinning to `max = "*"` to catch breaking nightlies early. Dispatch it on demand with `gh workflow run nightly-canary.yml --ref main`; it accepts an optional `max_version` input for bisection probes. Green runs record the resolved version to the job summary — that, not the gitignored `.last-good-nightly`, is the portable record.
