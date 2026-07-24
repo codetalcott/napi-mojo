@@ -62,7 +62,8 @@ struct JsNumber:
     ## from_napi_value — read a NapiValue as a Mojo Float64
     ##
     ## Calls napi_get_value_double and checks the status.
-    ## The NapiValue must hold a JS number; returns a NapiError otherwise.
+    ## The NapiValue must hold a JS number; raises `napi_number_expected`
+    ## otherwise.
     @staticmethod
     def from_napi_value(env: NapiEnv, val: NapiValue) raises -> Float64:
         var n: Float64 = 0.0

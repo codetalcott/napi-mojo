@@ -21,7 +21,8 @@ from napi.types import (
 
 
 struct NapiBindings(Movable):
-    # --- 142 fields, one per raw_* function ---
+    # --- 143 fields: 142 resolved N-API symbols + the ClassRegistry pointer
+    # (`registry`, below) which is not a symbol and is set after class setup ---
     @__allow_legacy_any_origin_fields
     var create_string_utf8: OpaquePointer[MutAnyOrigin]
     @__allow_legacy_any_origin_fields

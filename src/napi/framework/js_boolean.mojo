@@ -56,7 +56,8 @@ struct JsBoolean:
     ## from_napi_value — read a NapiValue as a Mojo Bool
     ##
     ## Calls napi_get_value_bool and checks the status.
-    ## The NapiValue must hold a JS boolean; returns a NapiError otherwise.
+    ## The NapiValue must hold a JS boolean; raises `napi_boolean_expected`
+    ## otherwise.
 
     @staticmethod
     def from_napi_value(
