@@ -5,9 +5,10 @@
 ## "Every N-API call returning napi_status must be immediately passed to
 ## check_status()."
 ##
-## NapiError struct is defined for future use (e.g., typed error propagation
-## in Phase 4+). Currently check_status() raises a built-in Error with a
-## formatted message, which is compatible with Mojo v26.2's raises system.
+## check_status() raises a built-in `Error` carrying the status name from
+## `napi_status_name()`. There is no typed error struct: Mojo cannot raise
+## custom struct types, so one would only ever be constructed and stringified,
+## which is what the message already does.
 
 from napi.types import NapiEnv, NapiStatus, NAPI_OK
 from napi.bindings import Bindings
@@ -76,23 +77,6 @@ def napi_status_name(status: NapiStatus) -> String:
     if status == 23:
         return "napi_cannot_run_js"
     return "napi_status_" + String(status)
-
-
-# ---------------------------------------------------------------------------
-# NapiError — typed wrapper around a failed napi_status code
-#
-# Kept for future use when Mojo's error system supports raising custom struct
-# types. Currently check_status() raises Error(...) with a string message.
-# ---------------------------------------------------------------------------
-struct NapiError:
-    ## The raw napi_status code that caused the error.
-    var status: NapiStatus
-
-    def __init__(out self, status: NapiStatus):
-        self.status = status
-
-    def __str__(self) -> String:
-        return "NapiError: " + napi_status_name(self.status)
 
 
 # ---------------------------------------------------------------------------
