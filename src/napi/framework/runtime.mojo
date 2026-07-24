@@ -34,17 +34,27 @@ def init_async_runtime() raises:
         lib = OwnedDLHandle("libKGENCompilerRTShared.dylib")
     except:
         lib = OwnedDLHandle("libKGENCompilerRTShared.so")
-    # NOTE (dev2026072306): this symbol no longer exists. The library now
-    # exports `KGEN_CompilerRT_AsyncRT_GetOrCreateCPUDevice` instead, whose
-    # C++ counterpart is
-    #   getOrCreateCPUDevice(CPUDeviceSource, const CPUDeviceOptions&, bool)
-    # — i.e. it takes arguments, unlike the old zero-arg entry point. Calling
-    # it blind would be guessing at an undocumented internal ABI, so the
-    # lookup below simply fails and parallelize_safe() falls back to running
-    # sequentially (correct results, no thread dispatch). Verify the real
-    # signature before wiring the fast path back up.
+    # dev2026072306 renamed this entry point: the old
+    # `KGEN_CompilerRT_AsyncRT_GetOrCreateRuntime` is gone, replaced by
+    # `..._GetOrCreateCPUDevice`. Do NOT be misled by the C++ symbol it
+    # forwards to —
+    #   M::AsyncRT::getOrCreateCPUDevice(CPUDeviceSource, const CPUDeviceOptions&, bool)
+    # takes three arguments, which is why this was first read as an ABI change
+    # too risky to guess at. The exported C WRAPPER is a different function:
+    # it ignores its incoming registers, stack-constructs a default
+    # CPUDeviceOptions, and calls the C++ function with (source=1, &options,
+    # false). At the C ABI it is nullary — a drop-in replacement for the old
+    # symbol, which is why the signature below is unchanged. Verified two ways:
+    # by disassembling the wrapper, and at runtime by spike/runtime_probe.mojo
+    # (non-null device, same pointer on a second call, ParallelismLevel 4,
+    # parallelize() producing correct results inside Node).
+    #
+    # To re-check the export list after a nightly bump, note that `nm -gU` on
+    # this library shows NOTHING useful — its exports live in the LC_DYLD
+    # export trie, so nm reports only undefined imports. Use
+    # `dyld_info -exports` (macOS) or `nm -D` (Linux).
     var create_rt = _sym[def() thin abi("C") -> OpaquePointer[MutAnyOrigin]](
-        lib, "KGEN_CompilerRT_AsyncRT_GetOrCreateRuntime"
+        lib, "KGEN_CompilerRT_AsyncRT_GetOrCreateCPUDevice"
     )
     _ = create_rt()
     # `lib` owns a NAMED library, unlike every other FFI site in this project
