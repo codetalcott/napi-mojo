@@ -71,38 +71,20 @@ jobs:
             echo "::endgroup::"
           done
 
-      # macOS workers occasionally SIGABRT/SIGSEGV at exit due to a
-      # known Mojo 1.0.0b1 gap: the address-of-local-var pattern napi-mojo
-      # uses at finalizer registration sites doesn't yield a thin C-ABI
-      # function pointer for `def`s — the broken pointer crashes when
-      # N-API invokes it at env teardown. Linux is more deterministic
-      # (we've worked around the consistent failure mode in
-      # set_instance_data_fn); macOS 15-arm64 hits it intermittently as
-      # the image's malloc/teardown timing changes between runner
-      # releases. Retry 3× catches the residual flake without masking a
-      # real regression: a deterministic bug would still fail all 3.
-      # Remove once Mojo exposes function-address syntax for `def`s.
-      - name: Run tests (retry on intermittent flake)
-        run: |
-          for attempt in 1 2 3; do
-            if npm test; then exit 0; fi
-            echo "::warning::npm test attempt $attempt failed; retrying"
-            sleep 2
-          done
-          echo "::error::npm test failed 3 attempts in a row — likely a real regression"
-          exit 1
+      # No retry wrapper, deliberately. These steps used to retry 3×, blamed
+      # on a Mojo `def` function-pointer gap at finalizer registration sites.
+      # That diagnosis was wrong: the intermittent macOS SIGABRT/SIGSEGV was a
+      # real use-after-free in the TypedPayload finalizer, fixed in e2f4efe.
+      # The suite has since survived a month-long nightly migration, a 274-site
+      # FFI rewrite, and Guard Malloc with MALLOC_STRICT_SIZE=1 — all clean.
+      # A 3× retry masks a deterministic 1-in-3 regression, which is a failure
+      # mode this codebase has actually shipped. If flake returns, diagnose it
+      # (see the Guard Malloc recipe in CLAUDE.md); don't paper over it.
+      - name: Run tests
+        run: npm test
 
-      # GC finalizer suite is gated on --expose-gc, so `npm test` skips
-      # all 6 tests by design. Run them explicitly so finalizer
-      # regressions can't slip through CI. Same 3× retry as above
-      # because these tests exercise the finalizer registration sites
-      # that trigger the macOS exit-time flake described above.
-      - name: Run GC finalizer tests (retry on intermittent flake)
-        run: |
-          for attempt in 1 2 3; do
-            if npm run test:gc; then exit 0; fi
-            echo "::warning::npm run test:gc attempt $attempt failed; retrying"
-            sleep 2
-          done
-          echo "::error::npm run test:gc failed 3 attempts in a row — likely a real regression"
-          exit 1
+      # GC finalizer suite is gated on --expose-gc, so `npm test` skips all 6
+      # tests by design. Run them explicitly so finalizer regressions can't
+      # slip through CI.
+      - name: Run GC finalizer tests
+        run: npm run test:gc

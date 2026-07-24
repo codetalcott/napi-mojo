@@ -116,7 +116,48 @@
 | `objectFromArrays(keys, vals)` | `object_from_arrays_fn` | Creates object from parallel key/value arrays |
 | `objectToArrays(obj)` | `object_to_arrays_fn` | Returns `{keys, values}` arrays from an object |
 | `genericDoubleArray(arr)` | `generic_double_array_fn` | Generic parametric version of `doubleArray` (demonstrates `ToJsValue`/`FromJsValue`) |
-| `genericReverseStrings(arr)` | `generic_reverse_strings_ref` | Generic parametric version of `reverseStrings` |
+| `genericReverseStrings(arr)` | `generic_reverse_strings_fn` | Generic parametric version of `reverseStrings` |
 | `createPropertyKey(str)` | `create_property_key_fn` | Creates an engine-internalized property key string (N-API v10) |
 | `createExternalString(str)` | `create_external_string_fn` | Creates a zero-copy external Latin-1 string with GC finalizer (N-API v10) |
 | `bufferFromArrayBuffer(ab, offset, length)` | `buffer_from_arraybuffer_fn` | Zero-copy Buffer view into an ArrayBuffer slice (N-API v10) |
+| `createTypedPayload(counter)` | `create_typed_payload_fn` | External handle over a typed Mojo struct (`JsExternal.create_typed`); holds a ref on the backing ArrayBuffer |
+| `readTypedPayload(handle)` | `read_typed_payload_fn` | Reads the typed struct back out (`JsExternal.get_typed`) |
+| `setTypedInstanceData(tag)` | `set_typed_instance_data_fn` | Stores a typed per-env singleton (`set_instance_data[T]`) |
+| `getTypedInstanceData()` | `get_typed_instance_data_fn` | Reads the typed per-env singleton (`get_instance_data[T]`) |
+
+## Generated from `src/exports.toml`
+
+These are produced by `scripts/generate-addon.mjs` into `src/generated/callbacks.mojo`
+— they exercise the code generator rather than adding framework surface. Regenerate
+with `npm run generate:addon`; CI gates drift with `git diff --exit-code src/generated/`.
+
+| JS name | Kind | Description |
+|---------|------|-------------|
+| `exampleAdd(a, b)` | inline body | `a + b` (Float64) — mirrors hand-written `add` |
+| `exampleGreet(name)` | inline body | `"Hello, <name>!"` — mirrors hand-written `greet` |
+| `exampleIsPositive(n)` | inline body | `n > 0` |
+| `exampleAddUInt32(a, b)` | inline body | UInt32 addition (`uint32` type token) |
+| `exampleDoubleInt64(n)` | inline body | `n * 2` as Int64 (`int64` type token) |
+| `exampleNegateBool(b)` | inline body | `!b` (`bool` type token) |
+| `exampleHasKey(obj, key)` | inline body | `key in obj` (`object` + `string` tokens) |
+| `exampleArrayLen(arr)` | inline body | `arr.length` (`array` token) |
+| `exampleNullableEcho(v)` | inline body | Returns `v` unchanged (`any?` skips the type check) |
+| `exampleClamp(val, lo, hi)` | inline body | 3-arg path through the generator |
+| `square(x)` | `mojo_fn` | Calls pure `square_pure` in `user_fns.mojo` |
+| `clamp(val, lo, hi)` | `mojo_fn` | Calls pure `clamp_pure` |
+| `uppercase(s)` | `mojo_fn` | Calls pure `uppercase_pure` (string round-trip) |
+| `sumArrayPure(items)` | `mojo_fn` | Calls pure `sum_array_pure` (`number[]` token) |
+| `negateBoolPure(b)` | `mojo_fn` | Calls pure `negate_bool_pure` |
+| `addInt32Pure(a, b)` | `mojo_fn` | Calls pure `add_int32_pure` (`int32` token) |
+| `describePure(s, n)` | `mojo_fn` | Calls pure `describe_pure` (mixed arg types) |
+| `reverseStringsPure(arr)` | `mojo_fn` | Calls pure `reverse_strings_pure` (`string[]` token) |
+| `safeDivide(a, b)` | `mojo_fn` | Nullable return (`number?`) — `null` on divide-by-zero |
+| `findName(arr, i)` | `mojo_fn` | Nullable return (`string?`) — `null` when out of range |
+| `echoConfig(cfg)` | `mojo_fn` + struct | Round-trips a `Config` struct (`[structs.config]`) |
+| `configSummary(cfg)` | `mojo_fn` + struct | Formats a `Config` as a string |
+| `asyncSum(a, b)` | `async = true` | Returns a Promise; sums on a worker thread |
+| `new ExamplePoint(x, y)` | class | Generated class: `.x`/`.y` getters + setters, `.sum()`, `ExamplePoint.isPoint()` |
+
+`Config` (`[structs.config]`) generates the `ConfigData` Mojo struct plus
+`config_from_js()` / `config_to_js()` converters in `src/generated/structs.mojo`,
+and a TypeScript `interface Config` in the emitted `.d.ts`.

@@ -1,0 +1,33 @@
+version: 2
+
+updates:
+  # npm dev-dependencies (jest and its transitive tree — the package ships no
+  # runtime JS deps). Security alerts kept accumulating here because nothing
+  # was configured to open routine version PRs: Dependabot's *security* updater
+  # could only reach the vulnerable transitives by downgrading jest, so it
+  # failed with security_update_not_possible and the alerts sat open. Regular
+  # version updates keep the tree current enough that the security path stays
+  # resolvable.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for the whole routine bump. The tree is entirely dev-deps, so
+      # per-package PRs would be noise, and CI (609 tests) gates the group.
+      dev-dependencies:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns:
+          - '*'

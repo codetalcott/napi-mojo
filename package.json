@@ -9,6 +9,8 @@
     "build/index.d.ts",
     "src/",
     "examples/",
+    "!examples/codegen/build",
+    "!examples/codegen/generated",
     "README.md",
     "LICENSE"
   ],
