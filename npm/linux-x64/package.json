@@ -5,7 +5,7 @@
   "main": "index.node",
   "files": [
     "index.node",
-    "*.so"
+    "*.so*"
   ],
   "os": [
     "linux"
