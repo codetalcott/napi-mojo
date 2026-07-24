@@ -20,15 +20,15 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
 
       - name: Install pixi
-        uses: prefix-dev/setup-pixi@v0.8.1
+        uses: prefix-dev/setup-pixi@v0.10.0
         with:
           pixi-version: latest
 
@@ -55,7 +55,7 @@ jobs:
         run: pixi run bash scripts/bundle-runtime.sh
 
       - name: Upload binary and runtime libs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.platform }}
           path: |
@@ -72,7 +72,7 @@ jobs:
     environment: npm
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # node-version 24 (npm 11.16.0) is REQUIRED, not a preference. npm's OIDC
       # trusted-publishing auth landed in npm 11.5.1; Node 22 bundles npm 10.9.8,
@@ -82,13 +82,13 @@ jobs:
       # scoped packages so it can't leak whether a package exists). Do not pin
       # this back to 22 — the build job above is separate and can move freely.
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Download all binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
