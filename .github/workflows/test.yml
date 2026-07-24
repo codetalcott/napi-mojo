@@ -1,6 +1,8 @@
 name: Test
 
 on:
+  # push: paths-ignore is safe here — nothing gates a push, so skipping the
+  # run on a docs-only commit just saves CI minutes.
   push:
     branches: [main]
     paths-ignore:
@@ -8,13 +10,14 @@ on:
       - 'docs/**'
       - '.gitignore'
       - 'LICENSE'
+  # pull_request: NO paths-ignore, deliberately. `test (macos-latest)` and
+  # `test (ubuntu-latest)` are REQUIRED status checks on main. A filtered-out
+  # workflow reports no checks at all rather than passing ones, so a docs-only
+  # PR would never satisfy them and could only be landed by admin bypass.
+  # Do not "optimize" this back — a docs-only PR costs ~1 CI-minute, and the
+  # alternative is a permanently unmergeable PR.
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.gitignore'
-      - 'LICENSE'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
