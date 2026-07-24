@@ -190,6 +190,7 @@ struct JsStr(Copyable, FromJsValue, ToJsValue):
 
 ## JsRaw — NapiValue pass-through (no type checking)
 struct JsRaw(FromJsValue, ToJsValue):
+    @__allow_legacy_any_origin_fields
     var val: NapiValue
 
     def __init__(out self, val: NapiValue):

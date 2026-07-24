@@ -20,6 +20,18 @@ struct JsInt32:
     def __init__(out self, value: NapiValue):
         self.value = value
 
+    ## env-only: required by convert.mojo's JsI32.to_js(env) / from_js(env),
+    ## which serve callbacks that cannot reach cached bindings.
+    @staticmethod
+    def create(env: NapiEnv, n: Int32) raises -> JsInt32:
+        var result = NapiValue(unsafe_from_address=Int(0))
+        check_status(
+            raw_create_int32(
+                env, n, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
+            )
+        )
+        return JsInt32(result)
+
     @staticmethod
     def create(b: Bindings, env: NapiEnv, n: Int32) raises -> JsInt32:
         var result = NapiValue(unsafe_from_address=Int(0))
@@ -29,6 +41,17 @@ struct JsInt32:
             )
         )
         return JsInt32(result)
+
+    ## env-only
+    @staticmethod
+    def from_napi_value(env: NapiEnv, val: NapiValue) raises -> Int32:
+        var n: Int32 = 0
+        check_status(
+            raw_get_value_int32(
+                env, val, UnsafePointer(to=n).bitcast[NoneType]().as_unsafe_any_origin()
+            )
+        )
+        return n
 
     @staticmethod
     def from_napi_value(

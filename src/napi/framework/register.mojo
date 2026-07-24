@@ -296,7 +296,7 @@ struct ClassBuilder:
         self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
     ) raises:
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         desc.getter = ptr
         desc.data = self.data
         desc.attributes = 0
@@ -306,7 +306,7 @@ struct ClassBuilder:
         self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
     ) raises:
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         desc.getter = ptr
         desc.data = self.data
         desc.attributes = 0
@@ -320,7 +320,7 @@ struct ClassBuilder:
         set_ptr: OpaquePointer[MutAnyOrigin],
     ) raises:
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         desc.getter = get_ptr
         desc.setter = set_ptr
         desc.data = self.data
@@ -335,7 +335,7 @@ struct ClassBuilder:
         set_ptr: OpaquePointer[MutAnyOrigin],
     ) raises:
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
         desc.getter = get_ptr
         desc.setter = set_ptr
         desc.data = self.data

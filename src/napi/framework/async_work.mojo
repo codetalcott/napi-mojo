@@ -211,7 +211,7 @@ struct AsyncWork:
         var error_val = NapiValue(unsafe_from_address=Int(0))
         var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=error_val
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_create_error(env, null_code, msg_val.value, error_ptr))
         check_status(raw_reject_deferred(env, deferred, error_val))
         check_status(raw_delete_async_work(env, work))
@@ -231,7 +231,7 @@ struct AsyncWork:
         var error_val = NapiValue(unsafe_from_address=Int(0))
         var error_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=error_val
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_create_error(b, env, null_code, msg_val.value, error_ptr)
         )

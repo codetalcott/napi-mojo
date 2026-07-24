@@ -375,10 +375,10 @@ struct JsString:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().bitcast[
             NoneType
-        ]()
+        ]().as_unsafe_any_origin()
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_create_property_key_utf8(
                 b, env, str_ptr, UInt(s.byte_length()), result_ptr

@@ -113,7 +113,9 @@ struct JsNumber:
         var n: Int64 = 0
         check_status(
             raw_get_value_int64(
-                env, val, UnsafePointer(to=n).bitcast[NoneType]()
+                env,
+                val,
+                UnsafePointer(to=n).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return Int(n)
@@ -123,7 +125,10 @@ struct JsNumber:
         var n: Int64 = 0
         check_status(
             raw_get_value_int64(
-                b, env, val, UnsafePointer(to=n).bitcast[NoneType]()
+                b,
+                env,
+                val,
+                UnsafePointer(to=n).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return Int(n)

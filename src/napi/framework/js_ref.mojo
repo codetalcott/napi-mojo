@@ -49,7 +49,9 @@ struct JsRef:
         var count: UInt32 = 0
         check_status(
             raw_reference_ref(
-                env, self.handle, UnsafePointer(to=count).bitcast[NoneType]()
+                env,
+                self.handle,
+                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return count
@@ -58,7 +60,9 @@ struct JsRef:
         var count: UInt32 = 0
         check_status(
             raw_reference_unref(
-                env, self.handle, UnsafePointer(to=count).bitcast[NoneType]()
+                env,
+                self.handle,
+                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return count
@@ -103,7 +107,10 @@ struct JsRef:
         var count: UInt32 = 0
         check_status(
             raw_reference_ref(
-                b, env, self.handle, UnsafePointer(to=count).bitcast[NoneType]()
+                b,
+                env,
+                self.handle,
+                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return count
@@ -112,7 +119,10 @@ struct JsRef:
         var count: UInt32 = 0
         check_status(
             raw_reference_unref(
-                b, env, self.handle, UnsafePointer(to=count).bitcast[NoneType]()
+                b,
+                env,
+                self.handle,
+                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return count

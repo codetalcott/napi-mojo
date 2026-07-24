@@ -59,6 +59,18 @@ struct JsBoolean:
     ## The NapiValue must hold a JS boolean; raises `napi_boolean_expected`
     ## otherwise.
 
+    ## env-only: required by convert.mojo's JsBool.from_js(env), which serves
+    ## callbacks that cannot reach cached bindings.
+    @staticmethod
+    def from_napi_value(env: NapiEnv, val: NapiValue) raises -> Bool:
+        var bval: Bool = False
+        var b_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=bval).bitcast[
+            NoneType
+        ]().as_unsafe_any_origin()
+        var status = raw_get_value_bool(env, val, b_ptr)
+        check_status(status)
+        return bval
+
     @staticmethod
     def from_napi_value(
         b: Bindings, env: NapiEnv, val: NapiValue

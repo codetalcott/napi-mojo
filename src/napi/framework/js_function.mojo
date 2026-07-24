@@ -32,13 +32,13 @@ struct JsFunction:
         var recv: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=recv
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_get_undefined(env, recv_ptr))
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var null_argv = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_call_function(env, recv, self.value, 0, null_argv, result_ptr)
         )
@@ -99,11 +99,11 @@ struct JsFunction:
         check_status(
             raw_create_function(
                 env,
-                name.unsafe_ptr().bitcast[NoneType](),
+                name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
                 auto_length,
                 cb_ptr,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsFunction(result)
@@ -138,13 +138,13 @@ struct JsFunction:
         var recv: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var recv_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=recv
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_get_undefined(b, env, recv_ptr))
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var null_argv = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
             to=result
-        ).bitcast[NoneType]()
+        ).bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_call_function(
                 b, env, recv, self.value, 0, null_argv, result_ptr
@@ -208,11 +208,11 @@ struct JsFunction:
             raw_create_function(
                 b,
                 env,
-                name.unsafe_ptr().bitcast[NoneType](),
+                name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
                 auto_length,
                 cb_ptr,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=result).bitcast[NoneType](),
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsFunction(result)

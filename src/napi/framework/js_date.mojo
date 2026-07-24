@@ -43,7 +43,11 @@ struct JsDate:
     def is_date(env: NapiEnv, val: NapiValue) raises -> Bool:
         var result: Bool = False
         check_status(
-            raw_is_date(env, val, UnsafePointer(to=result).bitcast[NoneType]())
+            raw_is_date(
+                env,
+                val,
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+            )
         )
         return result
 
@@ -78,7 +82,10 @@ struct JsDate:
         var result: Bool = False
         check_status(
             raw_is_date(
-                b, env, val, UnsafePointer(to=result).bitcast[NoneType]()
+                b,
+                env,
+                val,
+                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result
