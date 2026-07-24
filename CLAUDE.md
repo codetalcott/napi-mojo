@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 pixi run bash build.sh               # compile src/lib.mojo → build/index.node
-npm test                              # run all Jest tests (609 tests; gpu/ excluded)
+npm test                              # run all Jest tests (609 tests)
 npm run test:gc                       # run GC finalizer tests (requires --expose-gc)
 npx jest tests/basic.test.js          # run a single test file
 npm run generate:addon                # regenerate src/generated/ from src/exports.toml
@@ -175,9 +175,9 @@ tests/                                   # Jest tests — TDD outside-in
   **Running this recipe (notes from the dev2026072306 upgrade).** Two things will waste your time if you don't know them:
 
   - **`lldb` can't attach to the Homebrew `node`** (`attach failed … could not pause execution`) — SIP/hardened runtime. Run the suite under Guard Malloc directly and read the exit code instead: `139` = SIGSEGV. Bisect *which* suite faults with `--shard=1/4 … 4/4`, then run that shard's files one at a time (`jest --listTests --shard=4/4` gives the list).
-  - **`gpu/` is excluded from the root jest run** (`jest.testPathIgnorePatterns` in `package.json`). It loads `gpu/build/gpu.node`, a stale binary last built 2026-05-01 against a 26.4-era nightly that faults under `MALLOC_STRICT_SIZE=1` — a red herring that cost real time to chase, since no `src/` change can affect it. `gpu/` keeps its own `npm test`; rebuild it before trusting any result from there.
+  - **A stale sibling addon can masquerade as an `index.node` regression.** The `gpu/` subpackage used to live here and shipped a `gpu.node` built months earlier against an old nightly; it faulted under `MALLOC_STRICT_SIZE=1` and read as an addon regression that no `src/` change could possibly cause. `gpu/` has since moved out (see below), but if any sibling addon is ever vendored back in, exclude it from the root jest run before trusting this recipe.
 
-    Baseline as of dev2026072306: **609 tests pass clean** under the full recipe, no manual exclusion needed:
+    Baseline as of dev2026072306: **609 tests pass clean** under the full recipe:
 
     ```bash
     DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib MALLOC_STRICT_SIZE=1 \
@@ -310,6 +310,14 @@ The TOML code generator reduces N-API boilerplate to near-zero for common patter
 ## Development workflow
 
 Follow the RED → GREEN → REFACTOR TDD cycle (see `docs/METHODOLOGY.md`). Every feature starts with a failing Jest test. The spike (`spike/ffi_probe.mojo`) is the exception — it is validated experimentally, not by tests.
+
+## Scope: no GPU code here
+
+**napi-mojo is the framework — the Mojo equivalent of `napi-rs` — and GPU workloads live downstream.** `matmulHandle` / `searchHandle` have RAG-specific top-k semantics; `linalg.matmul` and `DeviceContext` are a workload, not a framework primitive. A framework contributor refactoring addon code should never have to understand them.
+
+GPU work lives in **`@qkstat/rag`** (`mojo-addon-examples/packages/rag`), which builds against this framework via `-I node_modules/napi-mojo/src`. **Consequence: that package can only adopt a new Mojo nightly after napi-mojo publishes the corresponding framework release** — it compiles against the *published* `src/`, not a local checkout.
+
+The `gpu/` subpackage that briefly lived here was a scaffold (handle registry only — never had matmul or search) and was removed in favour of `@qkstat/rag`, which already had the complete surface. Recover it from `89b441c` if ever needed; the older in-tree GPU generation plus the distribution spike are on the `spike/gpu-fatbin` branch. Don't re-vendor GPU code into this repo without revisiting the framework-shaped argument first — the last attempt rotted for three months with no CI and produced a stale binary that read as an `index.node` regression.
 
 ## Repository / CI contract
 

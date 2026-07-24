@@ -29,12 +29,6 @@
     "test:gc": "NODE_OPTIONS='--expose-gc' npx jest tests/finalizer_gc.test.js",
     "version": "node scripts/sync-versions.mjs"
   },
-  "jest": {
-    "testPathIgnorePatterns": [
-      "/node_modules/",
-      "<rootDir>/gpu/"
-    ]
-  },
   "engines": {
     "node": ">=18.0.0"
   },
