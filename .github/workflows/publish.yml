@@ -85,14 +85,19 @@ jobs:
       - name: Verify bundled binary is self-contained
         run: |
           set -euo pipefail
-          EXT=$([ "$(uname -s)" = "Darwin" ] && echo dylib || echo so)
-          for lib in libKGENCompilerRTShared libAsyncRTMojoBindings \
-                     libAsyncRTRuntimeGlobals libMSupportGlobals; do
-            test -f "build/${lib}.${EXT}" \
-              || { echo "::error::bundle-runtime.sh did not produce build/${lib}.${EXT}"; exit 1; }
-          done
+          # Read the manifest rather than naming libraries. An earlier version
+          # of this very step hardcoded the same four names that were wrong
+          # everywhere else in this pipeline.
+          test -s build/bundled-libs.txt \
+            || { echo "::error::bundle-runtime.sh produced no manifest"; exit 1; }
           rm -rf /tmp/selfcontained && mkdir -p /tmp/selfcontained
-          cp build/index.node "build/"*."${EXT}" /tmp/selfcontained/
+          cp build/index.node /tmp/selfcontained/
+          while read -r lib; do
+            [ -n "$lib" ] || continue
+            test -f "build/${lib}" \
+              || { echo "::error::manifest lists ${lib} but build/ does not have it"; exit 1; }
+            cp "build/${lib}" /tmp/selfcontained/
+          done < build/bundled-libs.txt
           env -u DYLD_LIBRARY_PATH -u DYLD_FALLBACK_LIBRARY_PATH -u LD_LIBRARY_PATH \
             node -e "
               const a = require('/tmp/selfcontained/index.node');
