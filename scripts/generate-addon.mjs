@@ -303,11 +303,18 @@ function generateCallback(name, decl) {
 // Async data structs cross the JS→worker-thread boundary — Mojo types with
 // destructors (String, List, objects) cannot be safely moved across threads.
 // This is an intentional strict subset of TYPE_MAP.
+// createExpr uses the cached-bindings overloads: the complete callback has no
+// `info` to fetch bindings from, but the ENTRY callback does — so the
+// generated data struct carries the bindings address across the async hop
+// (written on the main thread before queueing, read on the main thread in
+// complete; the worker-thread execute never touches it). Mojo has no module
+// globals (see spike/global_probe.mojo's verdict), so the payload the
+// context already carries is the only zero-dlsym channel.
 const ASYNC_TYPE_MAP = {
-  number: { mojoType: 'Float64', zeroVal: '0.0', createExpr: (e) => `JsNumber.create(env, ${e})` },
-  int32:  { mojoType: 'Int32',   zeroVal: '0',   createExpr: (e) => `JsInt32.create(env, ${e})` },
-  uint32: { mojoType: 'UInt32',  zeroVal: '0',   createExpr: (e) => `JsUInt32.create(env, ${e})` },
-  int64:  { mojoType: 'Int64',   zeroVal: '0',   createExpr: (e) => `JsInt64.create(env, ${e})` },
+  number: { mojoType: 'Float64', zeroVal: '0.0', createExpr: (e) => `JsNumber.create(_b, env, ${e})` },
+  int32:  { mojoType: 'Int32',   zeroVal: '0',   createExpr: (e) => `JsInt32.create(_b, env, ${e})` },
+  uint32: { mojoType: 'UInt32',  zeroVal: '0',   createExpr: (e) => `JsUInt32.create(_b, env, ${e})` },
+  int64:  { mojoType: 'Int64',   zeroVal: '0',   createExpr: (e) => `JsInt64.create(_b, env, ${e})` },
 };
 
 function snakeToPascal(s) {
@@ -354,6 +361,9 @@ function generateAsyncFunction(name, decl) {
   out.push(`    var deferred: NapiDeferred`);
   out.push(`    @__allow_legacy_any_origin_fields`);
   out.push(`    var work: NapiAsyncWork`);
+  out.push(`    # Cached NapiBindings address, written by the entry callback on the`);
+  out.push(`    # main thread; read only by the complete callback (also main thread).`);
+  out.push(`    var bindings_addr: Int`);
   for (let i = 0; i < args.length; i++) {
     out.push(`    var input${i}: ${argMojoTypes[i].mojoType}`);
   }
@@ -363,6 +373,7 @@ function generateAsyncFunction(name, decl) {
   out.push(`    def __init__(out self${initParams ? ', ' + initParams : ''}):`);
   out.push(`        self.deferred = NapiDeferred(unsafe_from_address=Int(0))`);
   out.push(`        self.work = NapiAsyncWork(unsafe_from_address=Int(0))`);
+  out.push(`        self.bindings_addr = 0`);
   for (let i = 0; i < args.length; i++) {
     out.push(`        self.input${i} = input${i}`);
   }
@@ -371,6 +382,7 @@ function generateAsyncFunction(name, decl) {
   out.push(`    def __moveinit__(out self, deinit take: Self):`);
   out.push(`        self.deferred = take.deferred`);
   out.push(`        self.work = take.work`);
+  out.push(`        self.bindings_addr = take.bindings_addr`);
   for (let i = 0; i < args.length; i++) {
     out.push(`        self.input${i} = take.input${i}`);
   }
@@ -387,16 +399,19 @@ function generateAsyncFunction(name, decl) {
     out.push(el.trim() ? `    ${el}` : '');
   }
 
-  // 3. Complete callback (main thread — resolve/reject, then free heap)
+  // 3. Complete callback (main thread — resolve/reject, then free heap).
+  // Reconstructs the cached bindings from the struct field, so the whole
+  // settle path runs on cached function pointers — no per-call dlsym.
   out.push('');
   out.push(`def ${name}_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):`);
   out.push(`    var ptr = data.unsafe_bitcast[${structName}]()`);
   out.push(`    try:`);
+  out.push(`        var _b = Bindings(unsafe_from_address=ptr[].bindings_addr)`);
   out.push(`        if status == NAPI_OK:`);
   out.push(`            var rv = ${retType.createExpr('ptr[].result')}`);
-  out.push(`            AsyncWork.resolve(env, ptr[].deferred, ptr[].work, rv.value)`);
+  out.push(`            AsyncWork.resolve(_b, env, ptr[].deferred, ptr[].work, rv.value)`);
   out.push(`        else:`);
-  out.push(`            AsyncWork.reject_with_error(env, ptr[].deferred, ptr[].work, "${jsName} failed")`);
+  out.push(`            AsyncWork.reject_with_error(_b, env, ptr[].deferred, ptr[].work, "${jsName} failed")`);
   out.push(`    except:`);
   out.push(`        pass`);
   out.push(`    ptr.unsafe_deinit_pointee()`);
@@ -429,6 +444,7 @@ function generateAsyncFunction(name, decl) {
   const inputArgs = argMojoTypes.map((_, i) => `input${i}`).join(', ');
   out.push(`        var data_ptr = unsafe_alloc[${structName}](1)`);
   out.push(`        data_ptr.unsafe_write(${structName}(${inputArgs}))`);
+  out.push(`        data_ptr[].bindings_addr = Int(_b)`);
   out.push(`        var exec_ref = ${name}_execute`);
   out.push(`        var comp_ref = ${name}_complete`);
   // .as_unsafe_any_origin() is required as of dev2026072306: the implicit

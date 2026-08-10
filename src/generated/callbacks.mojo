@@ -435,6 +435,9 @@ struct AsyncSumData(Movable):
     var deferred: NapiDeferred
     @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
+    # Cached NapiBindings address, written by the entry callback on the
+    # main thread; read only by the complete callback (also main thread).
+    var bindings_addr: Int
     var input0: Float64
     var input1: Float64
     var result: Float64
@@ -442,6 +445,7 @@ struct AsyncSumData(Movable):
     def __init__(out self, input0: Float64, input1: Float64):
         self.deferred = NapiDeferred(unsafe_from_address=Int(0))
         self.work = NapiAsyncWork(unsafe_from_address=Int(0))
+        self.bindings_addr = 0
         self.input0 = input0
         self.input1 = input1
         self.result = 0.0
@@ -449,6 +453,7 @@ struct AsyncSumData(Movable):
     def __moveinit__(out self, deinit take: Self):
         self.deferred = take.deferred
         self.work = take.work
+        self.bindings_addr = take.bindings_addr
         self.input0 = take.input0
         self.input1 = take.input1
         self.result = take.result
@@ -460,11 +465,12 @@ def async_sum_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
 def async_sum_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
     var ptr = data.unsafe_bitcast[AsyncSumData]()
     try:
+        var _b = Bindings(unsafe_from_address=ptr[].bindings_addr)
         if status == NAPI_OK:
-            var rv = JsNumber.create(env, ptr[].result)
-            AsyncWork.resolve(env, ptr[].deferred, ptr[].work, rv.value)
+            var rv = JsNumber.create(_b, env, ptr[].result)
+            AsyncWork.resolve(_b, env, ptr[].deferred, ptr[].work, rv.value)
         else:
-            AsyncWork.reject_with_error(env, ptr[].deferred, ptr[].work, "asyncSum failed")
+            AsyncWork.reject_with_error(_b, env, ptr[].deferred, ptr[].work, "asyncSum failed")
     except:
         pass
     ptr.unsafe_deinit_pointee()
@@ -486,6 +492,7 @@ def async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var input1 = JsNumber.from_napi_value(_b, env, args[1])
         var data_ptr = unsafe_alloc[AsyncSumData](1)
         data_ptr.unsafe_write(AsyncSumData(input0, input1))
+        data_ptr[].bindings_addr = Int(_b)
         var exec_ref = async_sum_execute
         var comp_ref = async_sum_complete
         var aw = AsyncWork.queue(_b, env, "asyncSum", data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), fn_ptr(exec_ref), fn_ptr(comp_ref))

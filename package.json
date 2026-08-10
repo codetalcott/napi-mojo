@@ -3,11 +3,28 @@
   "version": "0.6.0",
   "description": "Build Node.js native addons in Mojo — the Mojo equivalent of napi-rs",
   "main": "index.js",
-  "types": "build/index.d.ts",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./demo": {
+      "types": "./build/index.d.ts",
+      "default": "./demo.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "index.js",
+    "index.d.ts",
+    "demo.js",
     "build/index.d.ts",
     "src/",
+    "!src/addon",
+    "!src/lib.mojo",
+    "!src/generated",
+    "!src/exports.toml",
     "examples/",
     "!examples/codegen/build",
     "!examples/codegen/generated",
