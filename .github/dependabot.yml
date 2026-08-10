@@ -15,7 +15,7 @@ updates:
     open-pull-requests-limit: 5
     groups:
       # One PR for the whole routine bump. The tree is entirely dev-deps, so
-      # per-package PRs would be noise, and CI (636 tests) gates the group.
+      # per-package PRs would be noise, and CI (641 tests) gates the group.
       dev-dependencies:
         patterns:
           - '*'

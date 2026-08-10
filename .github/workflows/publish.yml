@@ -249,14 +249,29 @@ jobs:
           tgz="$(npm pack --silent)"
           mkdir -p /tmp/packed/root
           tar xzf "$tgz" -C /tmp/packed/root --strip-components=1
-          for f in build/index.d.ts index.js \
+          for f in build/index.d.ts index.js index.d.ts demo.js \
                    scripts/generate-addon.mjs scripts/generate-dts.js scripts/toml-lite.js \
                    src/napi/bindings.mojo src/napi/framework/register.mojo \
-                   src/exports.toml examples/codegen/build.sh; do
+                   examples/codegen/build.sh examples/codegen/exports.toml; do
             test -f "/tmp/packed/root/$f" \
               || { echo "::error::root tarball is missing $f"; exit 1; }
           done
-          echo "root tarball contains index.d.ts, generators, and framework source"
+          # The package is the FRAMEWORK; the demo addon's Mojo source (the
+          # test harness) must not ship. If any of these reappear, the "files"
+          # negations in package.json have regressed.
+          for d in src/addon src/generated src/lib.mojo src/exports.toml; do
+            test ! -e "/tmp/packed/root/$d" \
+              || { echo "::error::root tarball contains demo source $d — package identity regressed"; exit 1; }
+          done
+          # The entry API must resolve from the packed layout.
+          node -e "
+            const m = require('/tmp/packed/root/index.js');
+            const fs = require('fs');
+            if (!fs.existsSync(m.include + '/napi/framework')) throw new Error('include path broken: ' + m.include);
+            if (!fs.existsSync(m.generator)) throw new Error('generator path broken: ' + m.generator);
+            console.log('root tarball: framework entry OK,', m.version);
+          "
+          echo "root tarball contains the framework, generators, and entries — and no demo source"
 
       # No NODE_AUTH_TOKEN on any publish step, deliberately. These packages
       # authenticate via npm trusted publishing (OIDC), which is why the job

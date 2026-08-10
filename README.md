@@ -5,19 +5,27 @@
 Build Node.js native addons in [Mojo](https://www.modular.com/mojo) — the Mojo
 equivalent of Rust's [napi-rs](https://napi.rs).
 
-```js
-const addon = require("napi-mojo");
+napi-mojo is a **source framework**, the way `node-addon-api` is for C++: your
+addon compiles against it with `mojo build -I <include>`. The package's JS
+entry exposes the paths your build needs; the compiled demonstration addon
+(the binary this repo's 641-test suite runs against) lives behind a subpath:
 
-addon.hello(); // "Hello from Mojo!"
-addon.add(2, 3); // 5
-addon.greet("world"); // "Hello, world!"
+```js
+const napiMojo = require("napi-mojo");
+napiMojo.include; //   …/node_modules/napi-mojo/src — pass to `mojo build -I`
+napiMojo.generator; // the TOML → Mojo code generator
+
+const demo = require("napi-mojo/demo"); // prebuilt demo addon
+demo.hello(); // "Hello from Mojo!"
+demo.add(2, 3); // 5
+demo.greet("world"); // "Hello, world!"
 ```
 
 ## Project Status
 
 **Alpha** — napi-mojo is under active development and not yet proven in
 production. The API covers the full N-API v10 surface (141 exported functions, 4
-classes, 643 tests). Expect breaking changes as the project matures.
+classes, 648 tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
   complete, ergonomic framework for building Node.js native addons in Mojo.
@@ -82,10 +90,22 @@ classes, 643 tests). Expect breaking changes as the project matures.
 npm install napi-mojo
 ```
 
-Prebuilt binaries ship for **darwin-arm64** and **linux-x64** (Node.js
-22.12+ / N-API v10). On other platforms `npm install` succeeds but the first
-`require("napi-mojo")` throws with a pointer here — build from source instead,
-see [Building from source](#building-from-source) below.
+The install gives you:
+
+- **The framework source** (`require('napi-mojo').include`) — compile your
+  addon against it: `mojo build --emit shared-lib -I <include> lib.mojo -o addon.node`
+- **The code generators** (`require('napi-mojo').generator`) — declare your
+  exports in TOML, generate the N-API trampolines. See
+  [`examples/codegen/`](examples/codegen/) for the complete workflow — it is
+  the recommended starting point for a new addon.
+- **The demo addon** (`require('napi-mojo/demo')`) — prebuilt for
+  **darwin-arm64** and **linux-x64** (Node.js 22.12+ / N-API v10) so you can
+  poke at a napi-mojo-built binary without a Mojo toolchain. On other
+  platforms the demo throws on load; the framework itself works anywhere Mojo
+  does.
+
+Building your own addon requires the [Mojo nightly](https://mojolang.org/install/)
+toolchain — see [Building from source](#building-from-source) below.
 
 See [`examples/`](examples/) for runnable scripts.
 
@@ -96,7 +116,7 @@ git clone https://github.com/codetalcott/napi-mojo.git
 cd napi-mojo
 npm install
 npm run build    # compiles Mojo → build/index.node + generates TypeScript defs
-npm test         # 636 tests, 81 suites (7 GC tests need `npm run test:gc`)
+npm test         # 641 tests, 82 suites (7 GC tests need `npm run test:gc`)
 ```
 
 **Prerequisites:** [Mojo nightly](https://mojolang.org/install/) via
@@ -113,7 +133,7 @@ a lockfile-version error rather than anything that points at this project.
 ### Primitives and type coercion
 
 ```js
-const m = require("napi-mojo");
+const m = require("napi-mojo/demo");
 
 m.add(2.5, 3.7); // 6.2
 m.addInts(10, 20); // 30  (Int32)
@@ -306,7 +326,7 @@ build, works in any TypeScript-aware IDE.
 
 ```bash
 npm run build        # compile + generate TypeScript defs
-npm test             # run Jest test suite (636 tests)
+npm test             # run Jest test suite (641 tests)
 npm run test:gc      # run the 7 GC finalizer tests (needs --expose-gc)
 npm run generate:addon  # regenerate src/generated/ from src/exports.toml
 npx jest tests/basic.test.js   # run a single test file
