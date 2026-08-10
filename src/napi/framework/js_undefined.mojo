@@ -32,18 +32,18 @@ struct JsUndefined:
     @staticmethod
     def create(env: NapiEnv) raises -> JsUndefined:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+        var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=result
-        ).bitcast[NoneType]().as_unsafe_any_origin()
+        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_get_undefined(env, result_ptr))
         return JsUndefined(result)
 
     @staticmethod
     def create(b: Bindings, env: NapiEnv) raises -> JsUndefined:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+        var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=result
-        ).bitcast[NoneType]().as_unsafe_any_origin()
+        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_undefined(b, env, result_ptr)
         check_status(status)
         return JsUndefined(result)

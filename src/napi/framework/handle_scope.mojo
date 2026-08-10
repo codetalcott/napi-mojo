@@ -31,18 +31,18 @@ struct HandleScope:
     @staticmethod
     def open(env: NapiEnv) raises -> HandleScope:
         var scope: NapiHandleScope = NapiHandleScope(unsafe_from_address=Int(0))
-        var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+        var scope_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=scope
-        ).bitcast[NoneType]().as_unsafe_any_origin()
+        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_open_handle_scope(env, scope_ptr))
         return HandleScope(scope)
 
     @staticmethod
     def open(b: Bindings, env: NapiEnv) raises -> HandleScope:
         var scope: NapiHandleScope = NapiHandleScope(unsafe_from_address=Int(0))
-        var scope_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+        var scope_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=scope
-        ).bitcast[NoneType]().as_unsafe_any_origin()
+        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_open_handle_scope(b, env, scope_ptr))
         return HandleScope(scope)
 

@@ -3,7 +3,7 @@
 ## Allocates NapiBindings, creates ModuleBuilder, then delegates all
 ## callback registration to per-feature addon modules.
 
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 from napi.types import NapiEnv, NapiValue
 from napi.bindings import NapiBindings, Bindings, init_bindings
 from napi.raw import raw_create_error, raw_fatal_exception
@@ -33,19 +33,19 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
     # Allocate and initialize NapiBindings — resolves all N-API symbols
     # once via a single OwnedDLHandle. The pointer is passed as callback
     # data to every registered function so callbacks can retrieve it cheaply.
-    var bindings_ptr = alloc[NapiBindings](1)
+    var bindings_ptr = unsafe_alloc[NapiBindings](1)
     try:
         var bindings = NapiBindings()
         init_bindings(bindings)
         bindings_ptr.unsafe_write(bindings^)
     except:
-        bindings_ptr.free()
+        bindings_ptr.unsafe_free()
         return exports
     # as_unsafe_any_origin() spells out the widening that used to happen
     # implicitly: the heap pointer's concrete origin is discarded to reach the
     # MutAnyOrigin that C-FFI signatures fix. dev2026072306 removed the
     # implicit conversion, so this must now be explicit.
-    var cb_data = bindings_ptr.bitcast[NoneType]().as_unsafe_any_origin()
+    var cb_data = bindings_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
 
     try:
         var m = ModuleBuilder(env, exports, cb_data)
@@ -74,9 +74,9 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
                 env, "napi-mojo: register_module failed"
             )
             var err_val = NapiValue(unsafe_from_address=Int(0))
-            var err_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+            var err_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
                 to=err_val
-            ).bitcast[NoneType]().as_unsafe_any_origin()
+            ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             _ = raw_create_error(env, null_code, err_msg.value, err_ptr)
             _ = raw_fatal_exception(env, err_val)
         except:

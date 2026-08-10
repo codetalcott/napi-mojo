@@ -33,7 +33,7 @@ struct JsDataView:
                 byte_length,
                 arraybuffer,
                 byte_offset,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsDataView(result)
@@ -54,7 +54,7 @@ struct JsDataView:
                 byte_length,
                 arraybuffer,
                 byte_offset,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsDataView(result)
@@ -66,7 +66,7 @@ struct JsDataView:
             raw_get_dataview_info(
                 env,
                 self.value,
-                UnsafePointer(to=length).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=length).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
@@ -81,7 +81,7 @@ struct JsDataView:
                 b,
                 env,
                 self.value,
-                UnsafePointer(to=length).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=length).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
@@ -99,7 +99,7 @@ struct JsDataView:
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=offset).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=offset).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return offset
@@ -114,7 +114,7 @@ struct JsDataView:
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=offset).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=offset).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return offset
@@ -122,23 +122,23 @@ struct JsDataView:
     ## data_ptr — get a raw pointer to the DataView's data
     def data_ptr(
         self, env: NapiEnv
-    ) raises -> UnsafePointer[Byte, MutAnyOrigin]:
+    ) raises -> Pointer[Byte, MutAnyOrigin]:
         var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_dataview_info(
                 env,
                 self.value,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
-        return data.bitcast[Byte]()
+        return data.unsafe_bitcast[Byte]()
 
     def data_ptr(
         self, b: Bindings, env: NapiEnv
-    ) raises -> UnsafePointer[Byte, MutAnyOrigin]:
+    ) raises -> Pointer[Byte, MutAnyOrigin]:
         var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_dataview_info(
@@ -146,12 +146,12 @@ struct JsDataView:
                 env,
                 self.value,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
-        return data.bitcast[Byte]()
+        return data.unsafe_bitcast[Byte]()
 
     ## arraybuffer — get the underlying ArrayBuffer
     def arraybuffer(self, env: NapiEnv) raises -> NapiValue:
@@ -162,7 +162,7 @@ struct JsDataView:
                 self.value,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=ab).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=ab).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
@@ -177,7 +177,7 @@ struct JsDataView:
                 self.value,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=ab).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=ab).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
@@ -189,7 +189,7 @@ struct JsDataView:
         var result: Bool = False
         check_status(
             raw_is_dataview(
-                env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
+                env, val, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result
@@ -199,7 +199,7 @@ struct JsDataView:
         var result: Bool = False
         check_status(
             raw_is_dataview(
-                b, env, val, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
+                b, env, val, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result

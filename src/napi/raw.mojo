@@ -29,8 +29,8 @@ from napi.bindings import NapiBindings, Bindings
 ## at call sites: `get_symbol` returns the symbol's ADDRESS AS A VALUE, so the
 ## machine word holding that address is what must be reinterpreted —
 ##
-##     UnsafePointer(to=addr).bitcast[F]()[]   # correct
-##     addr.bitcast[F]()[]                     # WRONG: loads the function's
+##     Pointer(to=addr).unsafe_bitcast[F]()[]   # correct
+##     addr.unsafe_bitcast[F]()[]                     # WRONG: loads the function's
 ##                                             # first 8 bytes of machine code
 ##                                             # and calls THAT as a pointer
 ##
@@ -52,7 +52,7 @@ def _sym[F: TrivialRegisterPassable](
     if opt is None:
         raise Error("napi-mojo: symbol not found: ", name)
     var addr = opt.value()
-    return UnsafePointer(to=addr).bitcast[F]()[]
+    return Pointer(to=addr).unsafe_bitcast[F]()[]
 
 
 ## raw_create_string_utf8 — wraps napi_create_string_utf8
@@ -86,7 +86,7 @@ def raw_create_string_utf8(
     length: UInt,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_string_utf8).bitcast[
+    var f = Pointer(to=b[].create_string_utf8).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
@@ -117,7 +117,7 @@ def raw_create_object(
     env: NapiEnv,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_object).bitcast[
+    var f = Pointer(to=b[].create_object).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, result)
@@ -150,7 +150,7 @@ def raw_set_named_property(
     utf8name: OpaquePointer[ImmutAnyOrigin],
     value: NapiValue,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].set_named_property).bitcast[
+    var f = Pointer(to=b[].set_named_property).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin], NapiValue
         ) thin abi("C") -> NapiStatus
@@ -196,7 +196,7 @@ def raw_get_cb_info(
     this_arg: OpaquePointer[MutAnyOrigin],
     data: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_cb_info).bitcast[
+    var f = Pointer(to=b[].get_cb_info).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -243,7 +243,7 @@ def raw_get_value_string_utf8(
     bufsize: UInt,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_value_string_utf8).bitcast[
+    var f = Pointer(to=b[].get_value_string_utf8).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -282,7 +282,7 @@ def raw_define_properties(
     property_count: UInt,
     properties: OpaquePointer[ImmutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].define_properties).bitcast[
+    var f = Pointer(to=b[].define_properties).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, UInt, OpaquePointer[ImmutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -313,7 +313,7 @@ def raw_get_value_double(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_value_double).bitcast[
+    var f = Pointer(to=b[].get_value_double).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -342,7 +342,7 @@ def raw_create_double(
     value: Float64,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_double).bitcast[
+    var f = Pointer(to=b[].create_double).unsafe_bitcast[
         def(NapiEnv, Float64, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -378,7 +378,7 @@ def raw_throw_error(
     code: OpaquePointer[ImmutAnyOrigin],
     msg: OpaquePointer[ImmutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].throw_error).bitcast[
+    var f = Pointer(to=b[].throw_error).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
@@ -411,7 +411,7 @@ def raw_get_boolean(
     value: Bool,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_boolean).bitcast[
+    var f = Pointer(to=b[].get_boolean).unsafe_bitcast[
         def(NapiEnv, Bool, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -440,7 +440,7 @@ def raw_get_value_bool(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_value_bool).bitcast[
+    var f = Pointer(to=b[].get_value_bool).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -469,7 +469,7 @@ def raw_typeof(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].typeof_).bitcast[
+    var f = Pointer(to=b[].typeof_).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -495,7 +495,7 @@ def raw_get_null(
     env: NapiEnv,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_null).bitcast[
+    var f = Pointer(to=b[].get_null).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, result)
@@ -521,7 +521,7 @@ def raw_get_undefined(
     env: NapiEnv,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_undefined).bitcast[
+    var f = Pointer(to=b[].get_undefined).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, result)
@@ -550,7 +550,7 @@ def raw_create_array_with_length(
     length: UInt,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_array_with_length).bitcast[
+    var f = Pointer(to=b[].create_array_with_length).unsafe_bitcast[
         def(NapiEnv, UInt, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, length, result)
@@ -582,7 +582,7 @@ def raw_set_element(
     index: UInt32,
     value: NapiValue,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].set_element).bitcast[
+    var f = Pointer(to=b[].set_element).unsafe_bitcast[
         def(NapiEnv, NapiValue, UInt32, NapiValue) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, object, index, value)
@@ -616,7 +616,7 @@ def raw_get_element(
     index: UInt32,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_element).bitcast[
+    var f = Pointer(to=b[].get_element).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -647,7 +647,7 @@ def raw_get_array_length(
     object: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_array_length).bitcast[
+    var f = Pointer(to=b[].get_array_length).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, object, result)
@@ -681,7 +681,7 @@ def raw_get_property(
     key: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_property).bitcast[
+    var f = Pointer(to=b[].get_property).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -712,7 +712,7 @@ def raw_is_array(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].is_array).bitcast[
+    var f = Pointer(to=b[].is_array).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -749,7 +749,7 @@ def raw_get_named_property(
     utf8name: OpaquePointer[ImmutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_named_property).bitcast[
+    var f = Pointer(to=b[].get_named_property).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -791,7 +791,7 @@ def raw_has_named_property(
     utf8name: OpaquePointer[ImmutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].has_named_property).bitcast[
+    var f = Pointer(to=b[].has_named_property).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -841,7 +841,7 @@ def raw_call_function(
     argv: OpaquePointer[ImmutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].call_function).bitcast[
+    var f = Pointer(to=b[].call_function).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -876,7 +876,7 @@ def raw_open_handle_scope(
     env: NapiEnv,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].open_handle_scope).bitcast[
+    var f = Pointer(to=b[].open_handle_scope).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, result)
@@ -904,7 +904,7 @@ def raw_close_handle_scope(
     env: NapiEnv,
     scope: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].close_handle_scope).bitcast[
+    var f = Pointer(to=b[].close_handle_scope).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, scope)
@@ -935,7 +935,7 @@ def raw_create_promise(
     deferred: OpaquePointer[MutAnyOrigin],
     promise: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_promise).bitcast[
+    var f = Pointer(to=b[].create_promise).unsafe_bitcast[
         def(
             NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -967,7 +967,7 @@ def raw_resolve_deferred(
     deferred: OpaquePointer[MutAnyOrigin],
     resolution: NapiValue,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].resolve_deferred).bitcast[
+    var f = Pointer(to=b[].resolve_deferred).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin], NapiValue) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, deferred, resolution)
@@ -997,7 +997,7 @@ def raw_reject_deferred(
     deferred: OpaquePointer[MutAnyOrigin],
     rejection: NapiValue,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].reject_deferred).bitcast[
+    var f = Pointer(to=b[].reject_deferred).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin], NapiValue) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, deferred, rejection)
@@ -1033,7 +1033,7 @@ def raw_create_error(
     msg: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_error).bitcast[
+    var f = Pointer(to=b[].create_error).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -1095,7 +1095,7 @@ def raw_create_async_work(
     data: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_async_work).bitcast[
+    var f = Pointer(to=b[].create_async_work).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -1137,7 +1137,7 @@ def raw_queue_async_work(
     env: NapiEnv,
     work: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].queue_async_work).bitcast[
+    var f = Pointer(to=b[].queue_async_work).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, work)
@@ -1165,7 +1165,7 @@ def raw_delete_async_work(
     env: NapiEnv,
     work: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].delete_async_work).bitcast[
+    var f = Pointer(to=b[].delete_async_work).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, work)
@@ -1192,7 +1192,7 @@ def raw_create_int32(
     value: Int32,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_int32).bitcast[
+    var f = Pointer(to=b[].create_int32).unsafe_bitcast[
         def(NapiEnv, Int32, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -1219,7 +1219,7 @@ def raw_get_value_int32(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_value_int32).bitcast[
+    var f = Pointer(to=b[].get_value_int32).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -1246,7 +1246,7 @@ def raw_create_uint32(
     value: UInt32,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_uint32).bitcast[
+    var f = Pointer(to=b[].create_uint32).unsafe_bitcast[
         def(NapiEnv, UInt32, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -1273,7 +1273,7 @@ def raw_get_value_uint32(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_value_uint32).bitcast[
+    var f = Pointer(to=b[].get_value_uint32).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -1300,7 +1300,7 @@ def raw_create_int64(
     value: Int64,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_int64).bitcast[
+    var f = Pointer(to=b[].create_int64).unsafe_bitcast[
         def(NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -1327,7 +1327,7 @@ def raw_get_value_int64(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_value_int64).bitcast[
+    var f = Pointer(to=b[].get_value_int64).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -1358,7 +1358,7 @@ def raw_throw_type_error(
     code: OpaquePointer[ImmutAnyOrigin],
     msg: OpaquePointer[ImmutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].throw_type_error).bitcast[
+    var f = Pointer(to=b[].throw_type_error).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
@@ -1393,7 +1393,7 @@ def raw_throw_range_error(
     code: OpaquePointer[ImmutAnyOrigin],
     msg: OpaquePointer[ImmutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].throw_range_error).bitcast[
+    var f = Pointer(to=b[].throw_range_error).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
@@ -1428,7 +1428,7 @@ def raw_create_type_error(
     msg: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_type_error).bitcast[
+    var f = Pointer(to=b[].create_type_error).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -1461,7 +1461,7 @@ def raw_create_range_error(
     msg: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_range_error).bitcast[
+    var f = Pointer(to=b[].create_range_error).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -1499,7 +1499,7 @@ def raw_create_arraybuffer(
     data_ptr: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_arraybuffer).bitcast[
+    var f = Pointer(to=b[].create_arraybuffer).unsafe_bitcast[
         def(
             NapiEnv,
             UInt,
@@ -1538,7 +1538,7 @@ def raw_get_arraybuffer_info(
     data_ptr: OpaquePointer[MutAnyOrigin],
     byte_length: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_arraybuffer_info).bitcast[
+    var f = Pointer(to=b[].get_arraybuffer_info).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -1570,7 +1570,7 @@ def raw_is_arraybuffer(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].is_arraybuffer).bitcast[
+    var f = Pointer(to=b[].is_arraybuffer).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -1591,7 +1591,7 @@ def raw_detach_arraybuffer(
     env: NapiEnv,
     arraybuffer: NapiValue,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].detach_arraybuffer).bitcast[
+    var f = Pointer(to=b[].detach_arraybuffer).unsafe_bitcast[
         def(NapiEnv, NapiValue) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, arraybuffer)
@@ -1626,7 +1626,7 @@ def raw_create_buffer(
     data_ptr: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_buffer).bitcast[
+    var f = Pointer(to=b[].create_buffer).unsafe_bitcast[
         def(
             NapiEnv,
             UInt,
@@ -1668,7 +1668,7 @@ def raw_create_buffer_copy(
     data_ptr: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_buffer_copy).bitcast[
+    var f = Pointer(to=b[].create_buffer_copy).unsafe_bitcast[
         def(
             NapiEnv,
             UInt,
@@ -1708,7 +1708,7 @@ def raw_get_buffer_info(
     data_ptr: OpaquePointer[MutAnyOrigin],
     length: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_buffer_info).bitcast[
+    var f = Pointer(to=b[].get_buffer_info).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -1740,7 +1740,7 @@ def raw_is_buffer(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].is_buffer).bitcast[
+    var f = Pointer(to=b[].is_buffer).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -1779,7 +1779,7 @@ def raw_create_typedarray(
     byte_offset: UInt,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_typedarray).bitcast[
+    var f = Pointer(to=b[].create_typedarray).unsafe_bitcast[
         def(
             NapiEnv, Int32, UInt, NapiValue, UInt, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -1826,7 +1826,7 @@ def raw_get_typedarray_info(
     arraybuffer: OpaquePointer[MutAnyOrigin],
     byte_offset: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_typedarray_info).bitcast[
+    var f = Pointer(to=b[].get_typedarray_info).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -1863,7 +1863,7 @@ def raw_is_typedarray(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].is_typedarray).bitcast[
+    var f = Pointer(to=b[].is_typedarray).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -1925,7 +1925,7 @@ def raw_define_class(
     properties: OpaquePointer[ImmutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].define_class).bitcast[
+    var f = Pointer(to=b[].define_class).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
@@ -1986,7 +1986,7 @@ def raw_wrap(
     finalize_hint: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].wrap).bitcast[
+    var f = Pointer(to=b[].wrap).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -2020,7 +2020,7 @@ def raw_unwrap(
     js_object: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].unwrap).bitcast[
+    var f = Pointer(to=b[].unwrap).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, js_object, result)
@@ -2047,7 +2047,7 @@ def raw_remove_wrap(
     js_object: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].remove_wrap).bitcast[
+    var f = Pointer(to=b[].remove_wrap).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, js_object, result)
@@ -2084,7 +2084,7 @@ def raw_new_instance(
     argv: OpaquePointer[ImmutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].new_instance).bitcast[
+    var f = Pointer(to=b[].new_instance).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -2134,7 +2134,7 @@ def raw_create_function(
     data: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_function).bitcast[
+    var f = Pointer(to=b[].create_function).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
@@ -2169,7 +2169,7 @@ def raw_get_new_target(
     info: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_new_target).bitcast[
+    var f = Pointer(to=b[].get_new_target).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, info, result)
@@ -2194,7 +2194,7 @@ def raw_get_global(
     env: NapiEnv,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_global).bitcast[
+    var f = Pointer(to=b[].get_global).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, result)
@@ -2225,7 +2225,7 @@ def raw_create_reference(
     initial_refcount: UInt32,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_reference).bitcast[
+    var f = Pointer(to=b[].create_reference).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -2252,7 +2252,7 @@ def raw_delete_reference(
     env: NapiEnv,
     napi_ref: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].delete_reference).bitcast[
+    var f = Pointer(to=b[].delete_reference).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, napi_ref)
@@ -2281,7 +2281,7 @@ def raw_reference_ref(
     napi_ref: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].reference_ref).bitcast[
+    var f = Pointer(to=b[].reference_ref).unsafe_bitcast[
         def(
             NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -2312,7 +2312,7 @@ def raw_reference_unref(
     napi_ref: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].reference_unref).bitcast[
+    var f = Pointer(to=b[].reference_unref).unsafe_bitcast[
         def(
             NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -2343,7 +2343,7 @@ def raw_get_reference_value(
     napi_ref: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_reference_value).bitcast[
+    var f = Pointer(to=b[].get_reference_value).unsafe_bitcast[
         def(
             NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -2368,7 +2368,7 @@ def raw_open_escapable_handle_scope(
     env: NapiEnv,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].open_escapable_handle_scope).bitcast[
+    var f = Pointer(to=b[].open_escapable_handle_scope).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, result)
@@ -2391,7 +2391,7 @@ def raw_close_escapable_handle_scope(
     env: NapiEnv,
     scope: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].close_escapable_handle_scope).bitcast[
+    var f = Pointer(to=b[].close_escapable_handle_scope).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, scope)
@@ -2426,7 +2426,7 @@ def raw_escape_handle(
     escapee: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].escape_handle).bitcast[
+    var f = Pointer(to=b[].escape_handle).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[MutAnyOrigin],
@@ -2456,7 +2456,7 @@ def raw_create_bigint_int64(
     value: Int64,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_bigint_int64).bitcast[
+    var f = Pointer(to=b[].create_bigint_int64).unsafe_bitcast[
         def(NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -2481,7 +2481,7 @@ def raw_create_bigint_uint64(
     value: UInt64,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_bigint_uint64).bitcast[
+    var f = Pointer(to=b[].create_bigint_uint64).unsafe_bitcast[
         def(NapiEnv, UInt64, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -2515,7 +2515,7 @@ def raw_get_value_bigint_int64(
     result: OpaquePointer[MutAnyOrigin],
     lossless: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_value_bigint_int64).bitcast[
+    var f = Pointer(to=b[].get_value_bigint_int64).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -2552,7 +2552,7 @@ def raw_get_value_bigint_uint64(
     result: OpaquePointer[MutAnyOrigin],
     lossless: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_value_bigint_uint64).bitcast[
+    var f = Pointer(to=b[].get_value_bigint_uint64).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -2582,7 +2582,7 @@ def raw_create_date(
     time: Float64,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_date).bitcast[
+    var f = Pointer(to=b[].create_date).unsafe_bitcast[
         def(NapiEnv, Float64, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, time, result)
@@ -2607,7 +2607,7 @@ def raw_get_date_value(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_date_value).bitcast[
+    var f = Pointer(to=b[].get_date_value).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -2632,7 +2632,7 @@ def raw_is_date(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].is_date).bitcast[
+    var f = Pointer(to=b[].is_date).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -2657,7 +2657,7 @@ def raw_create_symbol(
     description: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_symbol).bitcast[
+    var f = Pointer(to=b[].create_symbol).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, description, result)
@@ -2691,7 +2691,7 @@ def raw_symbol_for(
     length: UInt,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].symbol_for).bitcast[
+    var f = Pointer(to=b[].symbol_for).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
@@ -2725,7 +2725,7 @@ def raw_get_property_names(
     object: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_property_names).bitcast[
+    var f = Pointer(to=b[].get_property_names).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, object, result)
@@ -2763,7 +2763,7 @@ def raw_get_all_property_names(
     key_conversion: Int32,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_all_property_names).bitcast[
+    var f = Pointer(to=b[].get_all_property_names).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, Int32, Int32, Int32, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -2797,7 +2797,7 @@ def raw_has_own_property(
     key: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].has_own_property).bitcast[
+    var f = Pointer(to=b[].has_own_property).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -2831,7 +2831,7 @@ def raw_delete_property(
     key: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].delete_property).bitcast[
+    var f = Pointer(to=b[].delete_property).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -2864,7 +2864,7 @@ def raw_strict_equals(
     rhs: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].strict_equals).bitcast[
+    var f = Pointer(to=b[].strict_equals).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -2897,7 +2897,7 @@ def raw_instanceof(
     constructor: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].instanceof_).bitcast[
+    var f = Pointer(to=b[].instanceof_).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -2922,7 +2922,7 @@ def raw_object_freeze(
     env: NapiEnv,
     object: NapiValue,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].object_freeze).bitcast[
+    var f = Pointer(to=b[].object_freeze).unsafe_bitcast[
         def(NapiEnv, NapiValue) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, object)
@@ -2945,7 +2945,7 @@ def raw_object_seal(
     env: NapiEnv,
     object: NapiValue,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].object_seal).bitcast[
+    var f = Pointer(to=b[].object_seal).unsafe_bitcast[
         def(NapiEnv, NapiValue) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, object)
@@ -2976,7 +2976,7 @@ def raw_has_element(
     index: UInt32,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].has_element).bitcast[
+    var f = Pointer(to=b[].has_element).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -3009,7 +3009,7 @@ def raw_delete_element(
     index: UInt32,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].delete_element).bitcast[
+    var f = Pointer(to=b[].delete_element).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, UInt32, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -3038,7 +3038,7 @@ def raw_get_prototype(
     object: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_prototype).bitcast[
+    var f = Pointer(to=b[].get_prototype).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, object, result)
@@ -3115,7 +3115,7 @@ def raw_create_threadsafe_function(
     call_js_cb: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_threadsafe_function).bitcast[
+    var f = Pointer(to=b[].create_threadsafe_function).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -3173,7 +3173,7 @@ def raw_call_threadsafe_function(
     data: OpaquePointer[MutAnyOrigin],
     is_blocking: Int32,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].call_threadsafe_function).bitcast[
+    var f = Pointer(to=b[].call_threadsafe_function).unsafe_bitcast[
         def(
             OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], Int32
         ) thin abi("C") -> NapiStatus
@@ -3197,7 +3197,7 @@ def raw_acquire_threadsafe_function(
     b: Bindings,
     func: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].acquire_threadsafe_function).bitcast[
+    var f = Pointer(to=b[].acquire_threadsafe_function).unsafe_bitcast[
         def(OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(func)
@@ -3224,7 +3224,7 @@ def raw_release_threadsafe_function(
     func: OpaquePointer[MutAnyOrigin],
     mode: Int32,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].release_threadsafe_function).bitcast[
+    var f = Pointer(to=b[].release_threadsafe_function).unsafe_bitcast[
         def(OpaquePointer[MutAnyOrigin], Int32) thin abi("C") -> NapiStatus
     ]()[]
     return f(func, mode)
@@ -3268,7 +3268,7 @@ def raw_create_external(
     finalize_hint: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_external).bitcast[
+    var f = Pointer(to=b[].create_external).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[MutAnyOrigin],
@@ -3301,7 +3301,7 @@ def raw_get_value_external(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_value_external).bitcast[
+    var f = Pointer(to=b[].get_value_external).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -3331,7 +3331,7 @@ def raw_get_version(
     env: NapiEnv,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_version).bitcast[
+    var f = Pointer(to=b[].get_version).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, result)
@@ -3357,7 +3357,7 @@ def raw_get_node_version(
     env: NapiEnv,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_node_version).bitcast[
+    var f = Pointer(to=b[].get_node_version).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, result)
@@ -3387,7 +3387,7 @@ def raw_set_property(
     key: NapiValue,
     value: NapiValue,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].set_property).bitcast[
+    var f = Pointer(to=b[].set_property).unsafe_bitcast[
         def(NapiEnv, NapiValue, NapiValue, NapiValue) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, object, key, value)
@@ -3419,7 +3419,7 @@ def raw_has_property(
     key: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].has_property).bitcast[
+    var f = Pointer(to=b[].has_property).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -3446,7 +3446,7 @@ def raw_throw(
     env: NapiEnv,
     error: NapiValue,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].throw_).bitcast[
+    var f = Pointer(to=b[].throw_).unsafe_bitcast[
         def(NapiEnv, NapiValue) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, error)
@@ -3471,7 +3471,7 @@ def raw_is_exception_pending(
     env: NapiEnv,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].is_exception_pending).bitcast[
+    var f = Pointer(to=b[].is_exception_pending).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, result)
@@ -3497,7 +3497,7 @@ def raw_get_and_clear_last_exception(
     env: NapiEnv,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_and_clear_last_exception).bitcast[
+    var f = Pointer(to=b[].get_and_clear_last_exception).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, result)
@@ -3524,7 +3524,7 @@ def raw_coerce_to_bool(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].coerce_to_bool).bitcast[
+    var f = Pointer(to=b[].coerce_to_bool).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -3552,7 +3552,7 @@ def raw_coerce_to_number(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].coerce_to_number).bitcast[
+    var f = Pointer(to=b[].coerce_to_number).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -3580,7 +3580,7 @@ def raw_coerce_to_string(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].coerce_to_string).bitcast[
+    var f = Pointer(to=b[].coerce_to_string).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -3608,7 +3608,7 @@ def raw_coerce_to_object(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].coerce_to_object).bitcast[
+    var f = Pointer(to=b[].coerce_to_object).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -3642,7 +3642,7 @@ def raw_create_dataview(
     byte_offset: UInt,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_dataview).bitcast[
+    var f = Pointer(to=b[].create_dataview).unsafe_bitcast[
         def(
             NapiEnv, UInt, NapiValue, UInt, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -3685,7 +3685,7 @@ def raw_get_dataview_info(
     arraybuffer: OpaquePointer[MutAnyOrigin],
     byte_offset: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_dataview_info).bitcast[
+    var f = Pointer(to=b[].get_dataview_info).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -3719,7 +3719,7 @@ def raw_is_dataview(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].is_dataview).bitcast[
+    var f = Pointer(to=b[].is_dataview).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -3758,7 +3758,7 @@ def raw_create_bigint_words(
     words: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_bigint_words).bitcast[
+    var f = Pointer(to=b[].create_bigint_words).unsafe_bitcast[
         def(
             NapiEnv,
             Int32,
@@ -3802,7 +3802,7 @@ def raw_get_value_bigint_words(
     word_count: OpaquePointer[MutAnyOrigin],
     words: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_value_bigint_words).bitcast[
+    var f = Pointer(to=b[].get_value_bigint_words).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -3850,7 +3850,7 @@ def raw_add_finalizer(
     finalize_hint: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].add_finalizer).bitcast[
+    var f = Pointer(to=b[].add_finalizer).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -3900,7 +3900,7 @@ def raw_create_external_arraybuffer(
     finalize_hint: OpaquePointer[MutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_external_arraybuffer).bitcast[
+    var f = Pointer(to=b[].create_external_arraybuffer).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[MutAnyOrigin],
@@ -3943,7 +3943,7 @@ def raw_set_instance_data(
     finalize_cb: OpaquePointer[MutAnyOrigin],
     finalize_hint: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].set_instance_data).bitcast[
+    var f = Pointer(to=b[].set_instance_data).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[MutAnyOrigin],
@@ -3973,7 +3973,7 @@ def raw_get_instance_data(
     env: NapiEnv,
     data: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_instance_data).bitcast[
+    var f = Pointer(to=b[].get_instance_data).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, data)
@@ -4003,7 +4003,7 @@ def raw_add_env_cleanup_hook(
     fun: OpaquePointer[MutAnyOrigin],
     arg: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].add_env_cleanup_hook).bitcast[
+    var f = Pointer(to=b[].add_env_cleanup_hook).unsafe_bitcast[
         def(
             NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -4034,7 +4034,7 @@ def raw_remove_env_cleanup_hook(
     fun: OpaquePointer[MutAnyOrigin],
     arg: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].remove_env_cleanup_hook).bitcast[
+    var f = Pointer(to=b[].remove_env_cleanup_hook).unsafe_bitcast[
         def(
             NapiEnv, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -4062,7 +4062,7 @@ def raw_cancel_async_work(
     env: NapiEnv,
     work: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].cancel_async_work).bitcast[
+    var f = Pointer(to=b[].cancel_async_work).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, work)
@@ -4091,7 +4091,7 @@ def raw_is_error(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].is_error).bitcast[
+    var f = Pointer(to=b[].is_error).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -4120,7 +4120,7 @@ def raw_adjust_external_memory(
     change_in_bytes: Int64,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].adjust_external_memory).bitcast[
+    var f = Pointer(to=b[].adjust_external_memory).unsafe_bitcast[
         def(NapiEnv, Int64, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, change_in_bytes, result)
@@ -4149,7 +4149,7 @@ def raw_run_script(
     script: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].run_script).bitcast[
+    var f = Pointer(to=b[].run_script).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, script, result)
@@ -4181,7 +4181,7 @@ def raw_throw_syntax_error(
     code: OpaquePointer[ImmutAnyOrigin],
     msg: OpaquePointer[ImmutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].throw_syntax_error).bitcast[
+    var f = Pointer(to=b[].throw_syntax_error).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
@@ -4216,7 +4216,7 @@ def raw_create_syntax_error(
     msg: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_syntax_error).bitcast[
+    var f = Pointer(to=b[].create_syntax_error).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -4245,7 +4245,7 @@ def raw_is_detached_arraybuffer(
     value: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].is_detached_arraybuffer).bitcast[
+    var f = Pointer(to=b[].is_detached_arraybuffer).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, result)
@@ -4268,7 +4268,7 @@ def raw_fatal_exception(
     env: NapiEnv,
     err: NapiValue,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].fatal_exception).bitcast[
+    var f = Pointer(to=b[].fatal_exception).unsafe_bitcast[
         def(NapiEnv, NapiValue) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, err)
@@ -4296,7 +4296,7 @@ def raw_type_tag_object(
     value: NapiValue,
     type_tag: OpaquePointer[ImmutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].type_tag_object).bitcast[
+    var f = Pointer(to=b[].type_tag_object).unsafe_bitcast[
         def(NapiEnv, NapiValue, OpaquePointer[ImmutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, value, type_tag)
@@ -4330,7 +4330,7 @@ def raw_check_object_type_tag(
     type_tag: OpaquePointer[ImmutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].check_object_type_tag).bitcast[
+    var f = Pointer(to=b[].check_object_type_tag).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -4370,7 +4370,7 @@ def raw_add_async_cleanup_hook(
     arg: OpaquePointer[MutAnyOrigin],
     remove_handle: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].add_async_cleanup_hook).bitcast[
+    var f = Pointer(to=b[].add_async_cleanup_hook).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[MutAnyOrigin],
@@ -4397,7 +4397,7 @@ def raw_remove_async_cleanup_hook(
     b: Bindings,
     handle: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].remove_async_cleanup_hook).bitcast[
+    var f = Pointer(to=b[].remove_async_cleanup_hook).unsafe_bitcast[
         def(OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(handle)
@@ -4423,7 +4423,7 @@ def raw_get_uv_event_loop(
     env: NapiEnv,
     loop_out: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_uv_event_loop).bitcast[
+    var f = Pointer(to=b[].get_uv_event_loop).unsafe_bitcast[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, loop_out)
@@ -4442,7 +4442,7 @@ def raw_async_init(
     async_resource_name: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].async_init).bitcast[
+    var f = Pointer(to=b[].async_init).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, NapiValue, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -4458,7 +4458,7 @@ def raw_async_destroy(
     env: NapiEnv,
     async_context: NapiAsyncContext,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].async_destroy).bitcast[
+    var f = Pointer(to=b[].async_destroy).unsafe_bitcast[
         def(NapiEnv, NapiAsyncContext) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, async_context)
@@ -4484,7 +4484,7 @@ def raw_make_callback(
     argv: OpaquePointer[ImmutAnyOrigin],
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].make_callback).bitcast[
+    var f = Pointer(to=b[].make_callback).unsafe_bitcast[
         def(
             NapiEnv,
             NapiAsyncContext,
@@ -4513,7 +4513,7 @@ def raw_open_callback_scope(
     context: NapiAsyncContext,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].open_callback_scope).bitcast[
+    var f = Pointer(to=b[].open_callback_scope).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, NapiAsyncContext, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
@@ -4529,7 +4529,7 @@ def raw_close_callback_scope(
     env: NapiEnv,
     scope: NapiCallbackScope,
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].close_callback_scope).bitcast[
+    var f = Pointer(to=b[].close_callback_scope).unsafe_bitcast[
         def(NapiEnv, NapiCallbackScope) thin abi("C") -> NapiStatus
     ]()[]
     return f(env, scope)
@@ -4551,7 +4551,7 @@ def raw_get_value_string_latin1(
     bufsize: UInt,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].get_value_string_latin1).bitcast[
+    var f = Pointer(to=b[].get_value_string_latin1).unsafe_bitcast[
         def(
             NapiEnv,
             NapiValue,
@@ -4583,7 +4583,7 @@ def raw_create_external_string_latin1(
     result: OpaquePointer[MutAnyOrigin],
     copied_out: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_external_string_latin1).bitcast[
+    var f = Pointer(to=b[].create_external_string_latin1).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
@@ -4618,7 +4618,7 @@ def raw_create_external_string_utf16(
     result: OpaquePointer[MutAnyOrigin],
     copied_out: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_external_string_utf16).bitcast[
+    var f = Pointer(to=b[].create_external_string_utf16).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
@@ -4646,7 +4646,7 @@ def raw_create_property_key_utf8(
     length: UInt,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_property_key_utf8).bitcast[
+    var f = Pointer(to=b[].create_property_key_utf8).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
@@ -4667,7 +4667,7 @@ def raw_create_property_key_latin1(
     length: UInt,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_property_key_latin1).bitcast[
+    var f = Pointer(to=b[].create_property_key_latin1).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
@@ -4690,7 +4690,7 @@ def raw_create_property_key_utf16(
     length: UInt,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_property_key_utf16).bitcast[
+    var f = Pointer(to=b[].create_property_key_utf16).unsafe_bitcast[
         def(
             NapiEnv,
             OpaquePointer[ImmutAnyOrigin],
@@ -4717,7 +4717,7 @@ def raw_create_buffer_from_arraybuffer(
     byte_length: UInt,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
-    var f = UnsafePointer(to=b[].create_buffer_from_arraybuffer).bitcast[
+    var f = Pointer(to=b[].create_buffer_from_arraybuffer).unsafe_bitcast[
         def(
             NapiEnv, NapiValue, UInt, UInt, OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus

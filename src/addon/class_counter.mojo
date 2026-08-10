@@ -1,6 +1,6 @@
 ## src/addon/class_counter.mojo — Counter class (constructor + methods + ClassRegistry)
 
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 from napi.types import (
     NapiEnv,
     NapiValue,
@@ -39,9 +39,9 @@ def counter_finalize(
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
 ):
-    var ptr = data.bitcast[CounterData]()
+    var ptr = data.unsafe_bitcast[CounterData]()
     ptr.unsafe_deinit_pointee()
-    ptr.free()
+    ptr.unsafe_free()
 
 
 def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -56,10 +56,10 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             )
             return NapiValue(unsafe_from_address=Int(0))
         var initial = JsNumber.from_napi_value(b, env, arg0)
-        var data_ptr = alloc[CounterData](1)
+        var data_ptr = unsafe_alloc[CounterData](1)
         data_ptr.unsafe_write(CounterData(initial))
         var fin_ref = counter_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
         check_status(
@@ -67,7 +67,7 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 b,
                 env,
                 this_val,
-                data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
+                data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 fin_ptr,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
@@ -156,9 +156,9 @@ def counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             )
             return NapiValue(unsafe_from_address=Int(0))
         var result = NapiValue(unsafe_from_address=Int(0))
-        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
+        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = Pointer(
             to=arg0
-        ).bitcast[NoneType]().as_unsafe_any_origin()
+        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_new_instance(
                 b,
@@ -166,7 +166,7 @@ def counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 this_val,
                 1,
                 argv_ptr,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result
@@ -194,6 +194,6 @@ def register_counter(mut m: ModuleBuilder, b: Bindings) raises:
     # Set up ClassRegistry so new_instance("Counter", ...) works
     var registry = ClassRegistry()
     registry.register(b, counter.env, "Counter", counter.ctor)
-    var registry_ptr = alloc[ClassRegistry](1)
+    var registry_ptr = unsafe_alloc[ClassRegistry](1)
     registry_ptr.unsafe_write(registry^)
-    b[].registry = registry_ptr.bitcast[NoneType]().as_unsafe_any_origin()
+    b[].registry = registry_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin()

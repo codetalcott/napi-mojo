@@ -27,8 +27,8 @@ def _get_prototype(env: NapiEnv, constructor: NapiValue) raises -> NapiValue:
         raw_get_named_property(
             env,
             constructor,
-            "prototype".unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
-            UnsafePointer(to=proto).bitcast[NoneType]().as_unsafe_any_origin(),
+            "prototype".unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            Pointer(to=proto).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     return proto
@@ -43,8 +43,8 @@ def _get_prototype(
             b,
             env,
             constructor,
-            "prototype".unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
-            UnsafePointer(to=proto).bitcast[NoneType]().as_unsafe_any_origin(),
+            "prototype".unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            Pointer(to=proto).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     return proto
@@ -65,13 +65,13 @@ def define_class(
     check_status(
         raw_define_class(
             env,
-            name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+            name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             auto_length,
             constructor_ptr,
             OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # data = NULL
             0,  # property_count = 0
             OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0)),  # properties = NULL
-            UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+            Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     return result
@@ -89,13 +89,13 @@ def define_class(
     check_status(
         raw_define_class(
             env,
-            name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+            name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             auto_length,
             constructor_ptr,
             data_ptr,
             0,
             OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0)),
-            UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+            Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     return result
@@ -113,13 +113,13 @@ def define_class(
         raw_define_class(
             b,
             env,
-            name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+            name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             auto_length,
             constructor_ptr,
             OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # data = NULL
             0,  # property_count = 0
             OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0)),  # properties = NULL
-            UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+            Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     return result
@@ -138,13 +138,13 @@ def define_class(
         raw_define_class(
             b,
             env,
-            name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+            name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             auto_length,
             constructor_ptr,
             data_ptr,
             0,
             OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0)),
-            UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+            Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     return result
@@ -159,7 +159,7 @@ def register_instance_method(
 ) raises:
     var proto = _get_prototype(env, constructor)
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     desc.method = method_ptr
     desc.attributes = 0
     define_property(env, proto, desc)
@@ -174,7 +174,7 @@ def register_instance_method(
 ) raises:
     var proto = _get_prototype(b, env, constructor)
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     desc.method = method_ptr
     desc.attributes = 0
     define_property(b, env, proto, desc)
@@ -189,7 +189,7 @@ def register_getter(
 ) raises:
     var proto = _get_prototype(env, constructor)
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     desc.getter = getter_ptr
     desc.attributes = 0
     define_property(env, proto, desc)
@@ -204,7 +204,7 @@ def register_getter(
 ) raises:
     var proto = _get_prototype(b, env, constructor)
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     desc.getter = getter_ptr
     desc.attributes = 0
     define_property(b, env, proto, desc)
@@ -220,7 +220,7 @@ def register_getter_setter(
 ) raises:
     var proto = _get_prototype(env, constructor)
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     desc.getter = getter_ptr
     desc.setter = setter_ptr
     desc.attributes = 0
@@ -237,7 +237,7 @@ def register_getter_setter(
 ) raises:
     var proto = _get_prototype(b, env, constructor)
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     desc.getter = getter_ptr
     desc.setter = setter_ptr
     desc.attributes = 0
@@ -256,7 +256,7 @@ def register_static_method(
     method_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     desc.method = method_ptr
     desc.attributes = 0
     define_property(env, constructor, desc)
@@ -270,7 +270,7 @@ def register_static_method(
     method_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     desc.method = method_ptr
     desc.attributes = 0
     define_property(b, env, constructor, desc)
@@ -284,7 +284,7 @@ def register_static_getter(
     getter_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     desc.getter = getter_ptr
     desc.attributes = 0
     define_property(env, constructor, desc)
@@ -298,7 +298,7 @@ def register_static_getter(
     getter_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     desc.getter = getter_ptr
     desc.attributes = 0
     define_property(b, env, constructor, desc)
@@ -323,8 +323,8 @@ def set_class_prototype(
         raw_get_named_property(
             env,
             global_obj.value,
-            "Object".unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
-            UnsafePointer(to=object_key).bitcast[NoneType]().as_unsafe_any_origin(),
+            "Object".unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            Pointer(to=object_key).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     var set_proto_of = NapiValue(unsafe_from_address=Int(0))
@@ -332,8 +332,8 @@ def set_class_prototype(
         raw_get_named_property(
             env,
             object_key,
-            "setPrototypeOf".unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
-            UnsafePointer(to=set_proto_of).bitcast[NoneType]().as_unsafe_any_origin(),
+            "setPrototypeOf".unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            Pointer(to=set_proto_of).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
 
@@ -357,8 +357,8 @@ def set_class_prototype(
             b,
             env,
             global_obj.value,
-            "Object".unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
-            UnsafePointer(to=object_key).bitcast[NoneType]().as_unsafe_any_origin(),
+            "Object".unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            Pointer(to=object_key).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
     var set_proto_of = NapiValue(unsafe_from_address=Int(0))
@@ -367,8 +367,8 @@ def set_class_prototype(
             b,
             env,
             object_key,
-            "setPrototypeOf".unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
-            UnsafePointer(to=set_proto_of).bitcast[NoneType]().as_unsafe_any_origin(),
+            "setPrototypeOf".unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            Pointer(to=set_proto_of).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
 
@@ -384,7 +384,7 @@ def register_static_getter_setter(
     setter_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     desc.getter = getter_ptr
     desc.setter = setter_ptr
     desc.attributes = 0
@@ -400,7 +400,7 @@ def register_static_getter_setter(
     setter_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     desc.getter = getter_ptr
     desc.setter = setter_ptr
     desc.attributes = 0
@@ -413,41 +413,41 @@ def register_static_getter_setter(
 ##   var this_val = CbArgs.get_this(env, info)
 ##   var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
 ##   check_status(raw_unwrap(env, this_val, ...))
-##   var ptr = data.bitcast[T]()
+##   var ptr = data.unsafe_bitcast[T]()
 ##
 ## Usage:
 ##   var ptr = unwrap_native[CounterData](env, info)
 ##   return JsNumber.create(env, ptr[].count).value
 def unwrap_native[
     T: AnyType
-](env: NapiEnv, info: NapiValue) raises -> UnsafePointer[T, MutAnyOrigin]:
+](env: NapiEnv, info: NapiValue) raises -> Pointer[T, MutAnyOrigin]:
     var this_val = CbArgs.get_this(env, info)
     var data: Optional[OpaquePointer[MutAnyOrigin]] = None
     check_status(
         raw_unwrap(
-            env, this_val, UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin()
+            env, this_val, Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         )
     )
     if data is None:
         raise Error("unwrap failed: NULL native pointer")
-    return data.value().bitcast[T]()
+    return data.value().unsafe_bitcast[T]()
 
 
 def unwrap_native[
     T: AnyType
-](b: Bindings, env: NapiEnv, info: NapiValue) raises -> UnsafePointer[
+](b: Bindings, env: NapiEnv, info: NapiValue) raises -> Pointer[
     T, MutAnyOrigin
 ]:
     var this_val = CbArgs.get_this(env, info)
     var data: Optional[OpaquePointer[MutAnyOrigin]] = None
     check_status(
         raw_unwrap(
-            b, env, this_val, UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin()
+            b, env, this_val, Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         )
     )
     if data is None:
         raise Error("unwrap failed: NULL native pointer")
-    return data.value().bitcast[T]()
+    return data.value().unsafe_bitcast[T]()
 
 
 ## unwrap_native_from_this — unwrap using a pre-extracted this_val
@@ -457,13 +457,13 @@ def unwrap_native[
 ## Distinct name required: same type signature as unwrap_native[T](b, env, info).
 def unwrap_native_from_this[
     T: AnyType
-](b: Bindings, env: NapiEnv, this_val: NapiValue) raises -> UnsafePointer[
+](b: Bindings, env: NapiEnv, this_val: NapiValue) raises -> Pointer[
     T, MutAnyOrigin
 ]:
     var data: Optional[OpaquePointer[MutAnyOrigin]] = None
     check_status(
-        raw_unwrap(b, env, this_val, UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin())
+        raw_unwrap(b, env, this_val, Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin())
     )
     if data is None:
         raise Error("unwrap failed: NULL native pointer")
-    return data.value().bitcast[T]()
+    return data.value().unsafe_bitcast[T]()

@@ -292,10 +292,10 @@ function generateCallback(name, decl) {
   } else {
     // N >= 5: heap-allocate argv, copy to locals, free immediately before body
     const n = args.length;
-    lines.push(`        var _argv = alloc[NapiValue](${n})`);
+    lines.push(`        var _argv = unsafe_alloc[NapiValue](${n})`);
     lines.push(`        CbArgs.get_argv(_b, env, info, ${n}, _argv)`);
-    for (let i = 0; i < n; i++) lines.push(`        var _a${i} = _argv[${i}]`);
-    lines.push(`        _argv.free()`);
+    for (let i = 0; i < n; i++) lines.push(`        var _a${i} = _argv[unsafe_offset=${i}]`);
+    lines.push(`        _argv.unsafe_free()`);
     for (let i = 0; i < n; i++) emitTypeCheck(lines, jsName, args[i], `_a${i}`, `arg ${i+1}`);
   }
 
@@ -407,7 +407,7 @@ function generateAsyncFunction(name, decl) {
   // 2. Execute callback (worker thread — no N-API calls allowed)
   out.push('');
   out.push(`def ${name}_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):`);
-  out.push(`    var ptr = data.bitcast[${structName}]()`);
+  out.push(`    var ptr = data.unsafe_bitcast[${structName}]()`);
   for (const el of executeBody.split('\n')) {
     if (el.trim()) out.push(`    ${el.trim()}`);
   }
@@ -415,7 +415,7 @@ function generateAsyncFunction(name, decl) {
   // 3. Complete callback (main thread — resolve/reject, then free heap)
   out.push('');
   out.push(`def ${name}_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):`);
-  out.push(`    var ptr = data.bitcast[${structName}]()`);
+  out.push(`    var ptr = data.unsafe_bitcast[${structName}]()`);
   out.push(`    try:`);
   out.push(`        if status == NAPI_OK:`);
   out.push(`            var rv = ${retType.createExpr('ptr[].result')}`);
@@ -425,7 +425,7 @@ function generateAsyncFunction(name, decl) {
   out.push(`    except:`);
   out.push(`        pass`);
   out.push(`    ptr.unsafe_deinit_pointee()`);
-  out.push(`    ptr.free()`);
+  out.push(`    ptr.unsafe_free()`);
 
   // 4. Entry-point callback (standard N-API: type-check, alloc, queue, return promise)
   out.push('');
@@ -452,13 +452,13 @@ function generateAsyncFunction(name, decl) {
     for (let i = 0; i < 4; i++) out.push((TYPE_MAP[args[i].replace(/\?$/, '')] || TYPE_MAP.number).extract(`input${i}`, `args[${i}]`));
   }
   const inputArgs = argMojoTypes.map((_, i) => `input${i}`).join(', ');
-  out.push(`        var data_ptr = alloc[${structName}](1)`);
+  out.push(`        var data_ptr = unsafe_alloc[${structName}](1)`);
   out.push(`        data_ptr.unsafe_write(${structName}(${inputArgs}))`);
   out.push(`        var exec_ref = ${name}_execute`);
   out.push(`        var comp_ref = ${name}_complete`);
   // .as_unsafe_any_origin() is required as of dev2026072306: the implicit
   // UnsafePointer -> MutAnyOrigin conversion at C-FFI signatures was removed.
-  out.push(`        var aw = AsyncWork.queue(_b, env, "${jsName}", data_ptr.bitcast[NoneType]().as_unsafe_any_origin(), fn_ptr(exec_ref), fn_ptr(comp_ref))`);
+  out.push(`        var aw = AsyncWork.queue(_b, env, "${jsName}", data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), fn_ptr(exec_ref), fn_ptr(comp_ref))`);
   out.push(`        data_ptr[].deferred = aw.deferred`);
   out.push(`        data_ptr[].work = aw.work`);
   out.push(`        return aw.value`);
@@ -875,7 +875,7 @@ function main() {
   output.push('from napi.framework.js_object import JsObject');
   output.push('from napi.framework.js_array import JsArray');
   if (hasAsync || hasNPlusArgs) {
-    output.push('from std.memory import alloc');
+    output.push('from std.memory.alloc import unsafe_alloc');
   }
   if (hasAsync) {
     output.push('from napi.framework.async_work import AsyncWork, AsyncWorkResult');

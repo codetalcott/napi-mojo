@@ -13,10 +13,10 @@
 ## Usage (no-bindings — simple/example addons):
 ##   return arr.to_js(env)
 ##
-## After to_js() is called, do NOT call arr.ptr.free() — GC owns the memory.
+## After to_js() is called, do NOT call arr.ptr.unsafe_free() — GC owns the memory.
 ## If to_js() is never reached (error path), __del__ automatically frees the buffer.
 
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 from napi.types import NapiEnv, NapiValue
 from napi.bindings import Bindings
 from napi.raw import raw_create_external_arraybuffer
@@ -30,7 +30,7 @@ def _mojo_float64_finalizer(
     hint: OpaquePointer[MutAnyOrigin],
 ):
     """GC finalizer: frees the Mojo-allocated Float64 heap buffer."""
-    data.bitcast[Float64]().free()
+    data.unsafe_bitcast[Float64]().unsafe_free()
 
 
 struct MojoFloat64Array(Movable):
@@ -45,12 +45,12 @@ struct MojoFloat64Array(Movable):
     """
 
     @__allow_legacy_any_origin_fields
-    var ptr: UnsafePointer[Float64, MutAnyOrigin]
+    var ptr: Pointer[Float64, MutAnyOrigin]
     var length: Int
     var _transferred: Bool
 
     def __init__(out self, length: Int):
-        self.ptr = alloc[Float64](length).as_unsafe_any_origin()
+        self.ptr = unsafe_alloc[Float64](length).as_unsafe_any_origin()
         self.length = length
         self._transferred = False
 
@@ -59,9 +59,9 @@ struct MojoFloat64Array(Movable):
         self.length = take.length
         self._transferred = take._transferred
 
-    def __del__(deinit self):
+    def __deinit__(deinit self):
         if not self._transferred:
-            self.ptr.free()
+            self.ptr.unsafe_free()
 
     ## to_js — transfer ownership to JS as a Float64Array (with cached bindings)
     def to_js(mut self, b: Bindings, env: NapiEnv) raises -> NapiValue:
@@ -69,7 +69,7 @@ struct MojoFloat64Array(Movable):
         """
         var byte_len = UInt(self.length * 8)  # Float64 = 8 bytes
         var fin_ref = _mojo_float64_finalizer
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
         var ab = NapiValue(unsafe_from_address=Int(0))
@@ -77,11 +77,11 @@ struct MojoFloat64Array(Movable):
             raw_create_external_arraybuffer(
                 b,
                 env,
-                self.ptr.bitcast[NoneType]().as_unsafe_any_origin(),
+                self.ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 byte_len,
                 fin_ptr,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=ab).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=ab).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         self._transferred = True  # GC finalizer now owns memory
@@ -95,18 +95,18 @@ struct MojoFloat64Array(Movable):
         """
         var byte_len = UInt(self.length * 8)
         var fin_ref = _mojo_float64_finalizer
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
         var ab = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_external_arraybuffer(
                 env,
-                self.ptr.bitcast[NoneType]().as_unsafe_any_origin(),
+                self.ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 byte_len,
                 fin_ptr,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=ab).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=ab).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         self._transferred = True  # GC finalizer now owns memory

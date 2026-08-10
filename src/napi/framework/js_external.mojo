@@ -4,7 +4,7 @@
 ## Creates a JavaScript value that holds an opaque native pointer with
 ## an optional GC finalize callback.
 
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_EXTERNAL
 from napi.bindings import Bindings
 from napi.raw import raw_create_external, raw_get_value_external
@@ -33,7 +33,7 @@ struct JsExternal:
                 data,
                 finalize_cb,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint = NULL
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsExternal(result)
@@ -54,7 +54,7 @@ struct JsExternal:
                 data,
                 finalize_cb,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint = NULL
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsExternal(result)
@@ -72,7 +72,7 @@ struct JsExternal:
                 data,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_cb = NULL
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint = NULL
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsExternal(result)
@@ -92,7 +92,7 @@ struct JsExternal:
                 data,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_cb = NULL
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint = NULL
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsExternal(result)
@@ -107,7 +107,7 @@ struct JsExternal:
             raw_get_value_external(
                 env,
                 val,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result
@@ -123,13 +123,13 @@ struct JsExternal:
                 b,
                 env,
                 val,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result
 
     @staticmethod
-    def create_typed[T: Movable & ImplicitlyDeletable](
+    def create_typed[T: Movable & Deinitable](
         b: Bindings, env: NapiEnv, var value: T
     ) raises -> JsExternal:
         """Heap-allocate `value`, wrap in an External with a GC finalizer.
@@ -137,20 +137,20 @@ struct JsExternal:
         The finalizer destroys the pointee and frees the heap slot. Consumers
         avoid writing per-type alloc/init/finalize plumbing.
         """
-        var data_ptr = alloc[T](1)
+        var data_ptr = unsafe_alloc[T](1)
         data_ptr.unsafe_write(value^)
         var fin_ref = _typed_external_finalize[T]
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
         return JsExternal.create(
-            b, env, data_ptr.bitcast[NoneType]().as_unsafe_any_origin(), fin_ptr
+            b, env, data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), fin_ptr
         )
 
     @staticmethod
     def get_typed[T: AnyType](
         b: Bindings, env: NapiEnv, val: NapiValue, context: String
-    ) raises -> UnsafePointer[T, MutAnyOrigin]:
+    ) raises -> Pointer[T, MutAnyOrigin]:
         """Type-check + get_data + bitcast[T] in one call.
 
         Raises a TypeError whose message begins with `context` when `val` is
@@ -163,7 +163,7 @@ struct JsExternal:
             )
             raise Error("not an external")
         var data = JsExternal.get_data(b, env, val)
-        return data.bitcast[T]()
+        return data.unsafe_bitcast[T]()
 
 
 ## Generic finalizer for JsExternal.create_typed
@@ -171,11 +171,11 @@ struct JsExternal:
 ## Monomorphized per T; its address is taken via the standard fn-ptr bitcast.
 ## Not declared `abi("C")` — matches the convention used by every other
 ## finalizer in src/addon/ (external_finalize, progress_finalize_cb, etc.).
-def _typed_external_finalize[T: Movable & ImplicitlyDeletable](
+def _typed_external_finalize[T: Movable & Deinitable](
     env: NapiEnv,
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
 ):
-    var ptr = data.bitcast[T]()
+    var ptr = data.unsafe_bitcast[T]()
     ptr.unsafe_deinit_pointee()
-    ptr.free()
+    ptr.unsafe_free()

@@ -35,7 +35,7 @@
 ##      artifact can never be dlopen'd by Node as an addon.
 ##
 ## The planted error is the exact bug class 5161dfc fixed: dev2026072306
-## removed the implicit UnsafePointer -> MutAnyOrigin conversion, so a
+## removed the implicit Pointer -> MutAnyOrigin conversion, so a
 ## concrete-origin pointer handed to a C-FFI-shaped MutAnyOrigin parameter
 ## needs an explicit .as_unsafe_any_origin().
 ##

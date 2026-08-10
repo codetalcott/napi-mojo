@@ -1,7 +1,7 @@
 ## src/addon/env_ops.mojo — instance data, cleanup hooks, UV event loop,
 ##                           coerce ops
 
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 from napi.types import NapiEnv, NapiValue
 from napi.bindings import Bindings
 from napi.error import throw_js_error, check_status
@@ -37,9 +37,9 @@ def instance_data_finalize(
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
 ):
-    var ptr = data.bitcast[Float64]()
+    var ptr = data.unsafe_bitcast[Float64]()
     ptr.unsafe_deinit_pointee()
-    ptr.free()
+    ptr.unsafe_free()
 
 
 def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -53,7 +53,7 @@ def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     address-of-local-var trick
 
         var fin_ref = instance_data_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[OpaquePointer]()[]
+        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[OpaquePointer]()[]
 
     extracts the wrapper's first 8 bytes (a sentinel/discriminant), not
     the function's code address. When N-API later calls that "pointer"
@@ -73,13 +73,13 @@ def set_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         var n = JsNumber.from_napi_value(b, env, arg0)
-        var data_ptr = alloc[Float64](1)
+        var data_ptr = unsafe_alloc[Float64](1)
         data_ptr.unsafe_write(n)
         check_status(
             raw_set_instance_data(
                 b,
                 env,
-                data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
+                data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_cb = NULL
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
@@ -96,12 +96,12 @@ def get_instance_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_instance_data(
-                b, env, UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin()
+                b, env, Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         if Int(data) == 0:
             return JsNull.create(b, env).value
-        var ptr = data.bitcast[Float64]()
+        var ptr = data.unsafe_bitcast[Float64]()
         return JsNumber.create(b, env, ptr[]).value
     except:
         throw_js_error(env, "getInstanceData failed")
@@ -116,14 +116,14 @@ def add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var hook_ref = cleanup_hook_noop
-        var hook_ptr = UnsafePointer(to=hook_ref).bitcast[
+        var hook_ptr = Pointer(to=hook_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
-        var arg_ptr = alloc[Byte](1)
-        arg_ptr[0] = Byte(0)
+        var arg_ptr = unsafe_alloc[Byte](1)
+        arg_ptr[unsafe_offset=0] = Byte(0)
         check_status(
             raw_add_env_cleanup_hook(
-                b, env, hook_ptr, arg_ptr.bitcast[NoneType]().as_unsafe_any_origin()
+                b, env, hook_ptr, arg_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsBoolean.create(b, env, True).value
@@ -136,22 +136,22 @@ def remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var hook_ref = cleanup_hook_noop
-        var hook_ptr = UnsafePointer(to=hook_ref).bitcast[
+        var hook_ptr = Pointer(to=hook_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
-        var arg_ptr = alloc[Byte](1)
-        arg_ptr[0] = Byte(0)
+        var arg_ptr = unsafe_alloc[Byte](1)
+        arg_ptr[unsafe_offset=0] = Byte(0)
         check_status(
             raw_add_env_cleanup_hook(
-                b, env, hook_ptr, arg_ptr.bitcast[NoneType]().as_unsafe_any_origin()
+                b, env, hook_ptr, arg_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         check_status(
             raw_remove_env_cleanup_hook(
-                b, env, hook_ptr, arg_ptr.bitcast[NoneType]().as_unsafe_any_origin()
+                b, env, hook_ptr, arg_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
-        arg_ptr.free()
+        arg_ptr.unsafe_free()
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "removeCleanupHook failed")
@@ -179,7 +179,7 @@ def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var hook_ref = async_cleanup_hook_noop
-        var hook_ptr = UnsafePointer(to=hook_ref).bitcast[
+        var hook_ptr = Pointer(to=hook_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
         _ = add_async_cleanup_hook(
@@ -195,7 +195,7 @@ def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var hook_ref = async_cleanup_hook_noop
-        var hook_ptr = UnsafePointer(to=hook_ref).bitcast[
+        var hook_ptr = Pointer(to=hook_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
         var handle = add_async_cleanup_hook(
@@ -213,7 +213,7 @@ def get_uv_event_loop_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         var loop_ptr = get_uv_event_loop(b, env)
         return JsBigInt.from_uint64(
-            b, env, UInt64(Int(loop_ptr.bitcast[UInt8]()))
+            b, env, UInt64(Int(loop_ptr.unsafe_bitcast[UInt8]()))
         ).value
     except:
         throw_js_error(env, "getUvEventLoop failed")

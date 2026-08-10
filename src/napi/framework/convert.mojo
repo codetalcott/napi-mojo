@@ -86,8 +86,8 @@ struct JsF64(Copyable, FromJsValue, ToJsValue):
     def __init__(out self, *, copy: Self):
         self.val = copy.val
 
-    def __init__(out self, *, deinit take: Self):
-        self.val = take.val
+    def __init__(out self, *, deinit move: Self):
+        self.val = move.val
 
     def to_js(self, env: NapiEnv) raises -> NapiValue:
         return JsNumber.create(env, self.val).value
@@ -166,8 +166,8 @@ struct JsStr(Copyable, FromJsValue, ToJsValue):
     def __init__(out self, *, copy: Self):
         self.val = copy.val
 
-    def __init__(out self, *, deinit take: Self):
-        self.val = take.val^
+    def __init__(out self, *, deinit move: Self):
+        self.val = move.val^
 
     def to_js(self, env: NapiEnv) raises -> NapiValue:
         return JsString.create(env, self.val).value
@@ -306,7 +306,7 @@ def to_js_array[
 ## Raises TypeError if val is not an array. Array get/length use cached Bindings;
 ## element conversion uses the env-only trait method.
 def from_js_array[
-    T: FromJsValue & Copyable & ImplicitlyDeletable
+    T: FromJsValue & Copyable & Deinitable
 ](b: Bindings, env: NapiEnv, val: NapiValue) raises -> List[T]:
     if not js_is_array(b, env, val):
         throw_js_type_error_dynamic(env, "from_js_array: expected array")

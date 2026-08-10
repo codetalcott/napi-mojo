@@ -44,9 +44,9 @@ def js_throw(env: NapiEnv, error: NapiValue) raises:
 ## napi_throw_error, or a failed N-API call that sets a pending exception).
 def js_is_exception_pending(env: NapiEnv) raises -> Bool:
     var result: Bool = False
-    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
         to=result
-    ).bitcast[NoneType]().as_unsafe_any_origin()
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_is_exception_pending(env, result_ptr))
     return result
 
@@ -58,9 +58,9 @@ def js_is_exception_pending(env: NapiEnv) raises -> Bool:
 ## Must only be called when an exception IS pending.
 def js_get_and_clear_last_exception(env: NapiEnv) raises -> NapiValue:
     var result = NapiValue(unsafe_from_address=Int(0))
-    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
         to=result
-    ).bitcast[NoneType]().as_unsafe_any_origin()
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_and_clear_last_exception(env, result_ptr))
     return result
 
@@ -74,9 +74,9 @@ def js_throw(b: Bindings, env: NapiEnv, error: NapiValue) raises:
 
 def js_is_exception_pending(b: Bindings, env: NapiEnv) raises -> Bool:
     var result: Bool = False
-    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
         to=result
-    ).bitcast[NoneType]().as_unsafe_any_origin()
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_is_exception_pending(b, env, result_ptr))
     return result
 
@@ -85,9 +85,9 @@ def js_get_and_clear_last_exception(
     b: Bindings, env: NapiEnv
 ) raises -> NapiValue:
     var result = NapiValue(unsafe_from_address=Int(0))
-    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
         to=result
-    ).bitcast[NoneType]().as_unsafe_any_origin()
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_and_clear_last_exception(b, env, result_ptr))
     return result
 

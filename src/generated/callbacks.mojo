@@ -17,7 +17,7 @@ from napi.error import throw_js_error, throw_js_type_error_dynamic
 from napi.framework.register import fn_ptr, ModuleBuilder, ClassBuilder
 from napi.framework.js_object import JsObject
 from napi.framework.js_array import JsArray
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 from napi.framework.async_work import AsyncWork, AsyncWorkResult
 from napi.framework.js_null import JsNull
 from napi.framework.convert import from_js_array_f64, to_js_array_f64, from_js_array_str, to_js_array_str
@@ -454,11 +454,11 @@ struct AsyncSumData(Movable):
         self.result = take.result
 
 def async_sum_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
-    var ptr = data.bitcast[AsyncSumData]()
+    var ptr = data.unsafe_bitcast[AsyncSumData]()
     ptr[].result = ptr[].input0 + ptr[].input1
 
 def async_sum_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
-    var ptr = data.bitcast[AsyncSumData]()
+    var ptr = data.unsafe_bitcast[AsyncSumData]()
     try:
         if status == NAPI_OK:
             var rv = JsNumber.create(env, ptr[].result)
@@ -468,7 +468,7 @@ def async_sum_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[Mut
     except:
         pass
     ptr.unsafe_deinit_pointee()
-    ptr.free()
+    ptr.unsafe_free()
 
 def async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -484,11 +484,11 @@ def async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             return NapiValue(unsafe_from_address=Int(0))
         var input0 = JsNumber.from_napi_value(_b, env, args[0])
         var input1 = JsNumber.from_napi_value(_b, env, args[1])
-        var data_ptr = alloc[AsyncSumData](1)
+        var data_ptr = unsafe_alloc[AsyncSumData](1)
         data_ptr.unsafe_write(AsyncSumData(input0, input1))
         var exec_ref = async_sum_execute
         var comp_ref = async_sum_complete
-        var aw = AsyncWork.queue(_b, env, "asyncSum", data_ptr.bitcast[NoneType]().as_unsafe_any_origin(), fn_ptr(exec_ref), fn_ptr(comp_ref))
+        var aw = AsyncWork.queue(_b, env, "asyncSum", data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), fn_ptr(exec_ref), fn_ptr(comp_ref))
         data_ptr[].deferred = aw.deferred
         data_ptr[].work = aw.work
         return aw.value

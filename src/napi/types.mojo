@@ -4,7 +4,7 @@
 ## These types are shared across all napi/* modules and by src/lib.mojo.
 ##
 ## v26.2 notes:
-##   - OpaquePointer[MutAnyOrigin] = UnsafePointer[NoneType, MutAnyOrigin]
+##   - OpaquePointer[MutAnyOrigin] = Pointer[NoneType, MutAnyOrigin]
 ##     (fully concrete — no unbound type parameters; required for @export and
 ##      non-parametric get_function[] signatures)
 ##   - `comptime` replaces deprecated `alias`

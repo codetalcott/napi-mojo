@@ -3,24 +3,24 @@
 ## Imports generated callbacks and registers them with Node.js.
 ## This is the only file that touches N-API — fns.mojo stays pure.
 
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 from napi.types import NapiEnv, NapiValue
 from napi.bindings import NapiBindings, init_bindings
 from napi.framework.register import ModuleBuilder
 from generated.callbacks import register_generated
 
 
-@export("napi_register_module_v1", ABI="C")
-def register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
-    var bindings_ptr = alloc[NapiBindings](1)
+@export("napi_register_module_v1")
+def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
+    var bindings_ptr = unsafe_alloc[NapiBindings](1)
     try:
         var bindings = NapiBindings()
         init_bindings(bindings)
         bindings_ptr.unsafe_write(bindings^)
     except:
-        bindings_ptr.free()
+        bindings_ptr.unsafe_free()
         return exports
-    var cb_data = bindings_ptr.bitcast[NoneType]()
+    var cb_data = bindings_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
 
     try:
         var m = ModuleBuilder(env, exports, cb_data)

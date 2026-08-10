@@ -17,7 +17,7 @@ from napi.error import check_status
 ## pointer and lifetime management.
 ##
 ## NapiPropertyDescriptor is Copyable (all fields are pointer/UInt32), so
-## `desc` is passed by value. `UnsafePointer(to=desc)` points to the local
+## `desc` is passed by value. `Pointer(to=desc)` points to the local
 ## copy, which is alive for the duration of this call.
 ##
 ## Safety invariant: `desc.utf8name` must point to a string that remains alive
@@ -29,7 +29,7 @@ def define_property(
 ) raises:
     # Take the address of the local desc copy. The pointer is valid for the
     # duration of this function call (desc lives in this stack frame).
-    var p: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=desc).bitcast[
+    var p: OpaquePointer[ImmutAnyOrigin] = Pointer(to=desc).unsafe_bitcast[
         NoneType
     ]().as_unsafe_any_origin()
     var status = raw_define_properties(env, exports, 1, p)
@@ -47,7 +47,7 @@ def define_property(
 ##               a Mojo function reference:
 ##                 var fn_ref = my_fn
 ##                 register_method(env, exports, "myFn",
-##                     UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[])
+##                     Pointer(to=fn_ref).unsafe_bitcast[OpaquePointer[MutAnyOrigin]]()[])
 def register_method(
     env: NapiEnv,
     exports: NapiValue,
@@ -55,7 +55,7 @@ def register_method(
     method_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]()
     desc.method = method_ptr
     desc.attributes = 0
     define_property(env, exports, desc)
@@ -70,7 +70,7 @@ def define_property(
     exports: NapiValue,
     desc: NapiPropertyDescriptor,
 ) raises:
-    var p: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(to=desc).bitcast[
+    var p: OpaquePointer[ImmutAnyOrigin] = Pointer(to=desc).unsafe_bitcast[
         NoneType
     ]().as_unsafe_any_origin()
     var status = raw_define_properties(b, env, exports, 1, p)
@@ -85,7 +85,7 @@ def register_method(
     method_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().bitcast[NoneType]()
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]()
     desc.method = method_ptr
     desc.attributes = 0
     define_property(b, env, exports, desc)

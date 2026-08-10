@@ -1,6 +1,6 @@
 ## src/addon/class_animal.mojo — Animal and Dog classes (with inheritance)
 
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 from napi.types import (
     NapiEnv,
     NapiValue,
@@ -68,10 +68,10 @@ def animal_finalize(
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
 ):
-    var ptr = data.bitcast[AnimalData]()
-    ptr[].name_ptr.bitcast[Byte]().free()
+    var ptr = data.unsafe_bitcast[AnimalData]()
+    ptr[].name_ptr.unsafe_bitcast[Byte]().unsafe_free()
     ptr.unsafe_deinit_pointee()
-    ptr.free()
+    ptr.unsafe_free()
 
 
 def dog_finalize(
@@ -79,11 +79,11 @@ def dog_finalize(
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
 ):
-    var ptr = data.bitcast[DogData]()
-    ptr[].name_ptr.bitcast[Byte]().free()
-    ptr[].breed_ptr.bitcast[Byte]().free()
+    var ptr = data.unsafe_bitcast[DogData]()
+    ptr[].name_ptr.unsafe_bitcast[Byte]().unsafe_free()
+    ptr[].breed_ptr.unsafe_bitcast[Byte]().unsafe_free()
     ptr.unsafe_deinit_pointee()
-    ptr.free()
+    ptr.unsafe_free()
 
 
 def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -99,15 +99,15 @@ def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             return NapiValue(unsafe_from_address=Int(0))
         var name_str = JsString.from_napi_value(b, env, arg0)
         var name_len = UInt(name_str.byte_length())
-        var name_buf = alloc[Byte](Int(name_len))
+        var name_buf = unsafe_alloc[Byte](Int(name_len))
         for i in range(Int(name_len)):
-            name_buf[i] = name_str.as_bytes()[i]
-        var data_ptr = alloc[AnimalData](1)
+            name_buf[unsafe_offset=i] = name_str.as_bytes()[i]
+        var data_ptr = unsafe_alloc[AnimalData](1)
         data_ptr.unsafe_write(
-            AnimalData(name_buf.bitcast[NoneType]().as_unsafe_any_origin(), name_len)
+            AnimalData(name_buf.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), name_len)
         )
         var fin_ref = animal_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
         try:
@@ -116,16 +116,16 @@ def animal_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                     b,
                     env,
                     this_val,
-                    data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
+                    data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                     fin_ptr,
                     OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                     OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 )
             )
         except e:
-            name_buf.free()
+            name_buf.unsafe_free()
             data_ptr.unsafe_deinit_pointee()
-            data_ptr.free()
+            data_ptr.unsafe_free()
             raise e^
         return this_val
     except:
@@ -137,7 +137,7 @@ def animal_get_name_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
         var ptr = unwrap_native_from_this[AnimalData](a.b, env, a.this_val)
-        var name_bytes = ptr[].name_ptr.bitcast[Byte]()
+        var name_bytes = ptr[].name_ptr.unsafe_bitcast[Byte]()
         var span = Span[Byte](unsafe_ptr=name_bytes, length=Int(ptr[].name_len))
         var name = String(from_utf8=span)
         return JsString.create(a.b, env, name).value
@@ -150,7 +150,7 @@ def animal_speak_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
         var ptr = unwrap_native_from_this[AnimalData](a.b, env, a.this_val)
-        var name_bytes = ptr[].name_ptr.bitcast[Byte]()
+        var name_bytes = ptr[].name_ptr.unsafe_bitcast[Byte]()
         var span = Span[Byte](unsafe_ptr=name_bytes, length=Int(ptr[].name_len))
         var name = String(from_utf8=span)
         var msg = name + " says hello"
@@ -189,26 +189,26 @@ def dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             return NapiValue(unsafe_from_address=Int(0))
         var name_str = JsString.from_napi_value(b, env, args[0])
         var name_len = UInt(name_str.byte_length())
-        var name_buf = alloc[Byte](Int(name_len))
+        var name_buf = unsafe_alloc[Byte](Int(name_len))
         for i in range(Int(name_len)):
-            name_buf[i] = name_str.as_bytes()[i]
+            name_buf[unsafe_offset=i] = name_str.as_bytes()[i]
         try:
             var breed_str = JsString.from_napi_value(b, env, args[1])
             var breed_len = UInt(breed_str.byte_length())
-            var breed_buf = alloc[Byte](Int(breed_len))
+            var breed_buf = unsafe_alloc[Byte](Int(breed_len))
             for i in range(Int(breed_len)):
-                breed_buf[i] = breed_str.as_bytes()[i]
-            var data_ptr = alloc[DogData](1)
+                breed_buf[unsafe_offset=i] = breed_str.as_bytes()[i]
+            var data_ptr = unsafe_alloc[DogData](1)
             data_ptr.unsafe_write(
                 DogData(
-                    name_buf.bitcast[NoneType]().as_unsafe_any_origin(),
+                    name_buf.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                     name_len,
-                    breed_buf.bitcast[NoneType]().as_unsafe_any_origin(),
+                    breed_buf.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                     breed_len,
                 )
             )
             var fin_ref = dog_finalize
-            var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+            var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
                 OpaquePointer[MutAnyOrigin]
             ]()[]
             try:
@@ -217,20 +217,20 @@ def dog_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                         b,
                         env,
                         this_val,
-                        data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
+                        data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                         fin_ptr,
                         OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                         OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                     )
                 )
             except e:
-                name_buf.free()
-                breed_buf.free()
+                name_buf.unsafe_free()
+                breed_buf.unsafe_free()
                 data_ptr.unsafe_deinit_pointee()
-                data_ptr.free()
+                data_ptr.unsafe_free()
                 raise e^
         except e:
-            name_buf.free()
+            name_buf.unsafe_free()
             raise e^
         return this_val
     except:
@@ -242,7 +242,7 @@ def dog_get_breed_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
         var ptr = unwrap_native_from_this[DogData](a.b, env, a.this_val)
-        var breed_bytes = ptr[].breed_ptr.bitcast[Byte]()
+        var breed_bytes = ptr[].breed_ptr.unsafe_bitcast[Byte]()
         var span = Span[Byte](unsafe_ptr=breed_bytes, length=Int(ptr[].breed_len))
         var breed = String(from_utf8=span)
         return JsString.create(a.b, env, breed).value

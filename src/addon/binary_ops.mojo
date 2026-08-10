@@ -1,6 +1,6 @@
 ## src/addon/binary_ops.mojo — ArrayBuffer, Buffer, TypedArray, DataView callbacks
 
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 from napi.types import (
     NapiEnv,
     NapiValue,
@@ -83,7 +83,7 @@ def sum_buffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var len = buf.length(b, env)
         var total: Float64 = 0.0
         for i in range(Int(len)):
-            total += Float64(Int(ptr[i]))
+            total += Float64(Int(ptr[unsafe_offset=i]))
         return JsNumber.create(b, env, total).value
     except:
         throw_js_error(env, "sumBuffer requires a Buffer argument")
@@ -133,9 +133,9 @@ def double_float64_array_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var ta = JsTypedArray(arg0)
         var len = ta.length(b, env)
         var byte_ptr = ta.data_ptr(b, env)
-        var float_ptr = byte_ptr.bitcast[Float64]()
+        var float_ptr = byte_ptr.unsafe_bitcast[Float64]()
         for i in range(Int(len)):
-            float_ptr[i] = float_ptr[i] * 2.0
+            float_ptr[unsafe_offset=i] = float_ptr[unsafe_offset=i] * 2.0
         return arg0
     except:
         throw_js_error(env, "doubleFloat64Array requires a TypedArray argument")
@@ -146,17 +146,17 @@ def create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var argc = CbArgs.argc(b, env, info)
-        var argv = alloc[NapiValue](Int(argc))
+        var argv = unsafe_alloc[NapiValue](Int(argc))
         CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
         if argc < 4:
             throw_js_error(b, env, "createTypedArrayView requires 4 arguments")
-            argv.free()
+            argv.unsafe_free()
             return NapiValue(unsafe_from_address=Int(0))
-        var type_str = JsString.from_napi_value(b, env, argv[0])
-        var ab = argv[1]
-        var offset = Int(JsNumber.from_napi_value(b, env, argv[2]))
-        var length = Int(JsNumber.from_napi_value(b, env, argv[3]))
-        argv.free()
+        var type_str = JsString.from_napi_value(b, env, argv[unsafe_offset=0])
+        var ab = argv[unsafe_offset=1]
+        var offset = Int(JsNumber.from_napi_value(b, env, argv[unsafe_offset=2]))
+        var length = Int(JsNumber.from_napi_value(b, env, argv[unsafe_offset=3]))
+        argv.unsafe_free()
         var ta: JsTypedArray
         if type_str == "int8":
             ta = JsTypedArray.create_int8(
@@ -246,12 +246,12 @@ def create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         if argc < 3:
             throw_js_type_error(b, env, "createDataView requires 3 arguments")
             return NapiValue(unsafe_from_address=Int(0))
-        var argv_ptr = alloc[NapiValue](Int(argc))
+        var argv_ptr = unsafe_alloc[NapiValue](Int(argc))
         CbArgs.get_argv(b, env, info, argc, argv_ptr.as_unsafe_any_origin())
-        var ab = argv_ptr[0]
-        var byte_offset = JsNumber.from_napi_value(b, env, argv_ptr[1])
-        var byte_length = JsNumber.from_napi_value(b, env, argv_ptr[2])
-        argv_ptr.free()
+        var ab = argv_ptr[unsafe_offset=0]
+        var byte_offset = JsNumber.from_napi_value(b, env, argv_ptr[unsafe_offset=1])
+        var byte_length = JsNumber.from_napi_value(b, env, argv_ptr[unsafe_offset=2])
+        argv_ptr.unsafe_free()
         var dv = JsDataView.create(
             b, env, UInt(Int(byte_length)), ab, UInt(Int(byte_offset))
         )

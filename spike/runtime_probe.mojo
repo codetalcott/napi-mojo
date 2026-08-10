@@ -43,10 +43,18 @@
 ##
 ## EXPECTED: { deviceOk: true, idempotent: true, parallelismLevel: >1,
 ##             parallelSum: 4950, expected: 4950 }
+##
+## STATUS NOTE (dev2026080905): src/napi/framework/runtime.mojo no longer
+## resolves the KGEN symbol by hand — Mojo 1.0.0 added the official
+## `std.runtime.initialize_runtime()` for exactly this shared-lib case, and
+## the framework now calls that instead. This spike still probes the raw
+## KGEN entry point directly, which remains useful for diagnosing what the
+## official API does under the hood if runtime.test.js ever goes red.
+## `parallelize` moved from std.algorithm to max.algorithm in the same cycle.
 
 from std.ffi import OwnedDLHandle
-from std.algorithm import parallelize
-from std.memory import alloc
+from max.algorithm import parallelize
+from std.memory.alloc import unsafe_alloc
 from napi.types import NapiEnv, NapiValue
 from napi.raw import _sym
 from napi.framework.js_object import JsObject
@@ -100,19 +108,19 @@ def probe_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         _ = lib^
 
         # Q4: does parallelize() actually run now? Sum 0..N-1 across workers.
-        var partials = alloc[Float64](N)
+        var partials = unsafe_alloc[Float64](N)
         for i in range(N):
-            partials[i] = 0.0
+            partials[unsafe_offset=i] = 0.0
 
         def worker(i: Int) capturing:
-            partials[i] = Float64(i)
+            partials[unsafe_offset=i] = Float64(i)
 
         parallelize[worker](N)
 
         var total: Float64 = 0.0
         for i in range(N):
-            total += partials[i]
-        partials.free()
+            total += partials[unsafe_offset=i]
+        partials.unsafe_free()
 
         var expected = Float64(N * (N - 1) // 2)
 

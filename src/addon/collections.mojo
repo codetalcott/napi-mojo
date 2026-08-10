@@ -5,7 +5,7 @@
 ##         freezeObject, sealObject, arrayHasElement, arrayDeleteElement,
 ##         getPrototype, setPropertyByKey, hasPropertyByKey
 
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 from napi.types import (
     NapiEnv,
     NapiValue,
@@ -316,13 +316,13 @@ def set_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var argc = CbArgs.argc(b, env, info)
-        var argv = alloc[NapiValue](Int(argc))
+        var argv = unsafe_alloc[NapiValue](Int(argc))
         CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
-        var obj = argv[0]
-        var key = argv[1]
-        var val = argv[2]
+        var obj = argv[unsafe_offset=0]
+        var key = argv[unsafe_offset=1]
+        var val = argv[unsafe_offset=2]
         JsObject(obj).set(b, env, key, val)
-        argv.free()
+        argv.unsafe_free()
         return obj
     except:
         throw_js_error(env, "setPropertyByKey failed")

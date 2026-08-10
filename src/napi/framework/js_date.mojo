@@ -25,7 +25,7 @@ struct JsDate:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_date(
-                env, timestamp_ms, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
+                env, timestamp_ms, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsDate(result)
@@ -34,7 +34,7 @@ struct JsDate:
         var result: Float64 = 0.0
         check_status(
             raw_get_date_value(
-                env, self.value, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
+                env, self.value, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result
@@ -46,7 +46,7 @@ struct JsDate:
             raw_is_date(
                 env,
                 val,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result
@@ -63,7 +63,7 @@ struct JsDate:
                 b,
                 env,
                 timestamp_ms,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsDate(result)
@@ -72,7 +72,7 @@ struct JsDate:
         var result: Float64 = 0.0
         check_status(
             raw_get_date_value(
-                b, env, self.value, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
+                b, env, self.value, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result
@@ -85,7 +85,7 @@ struct JsDate:
                 b,
                 env,
                 val,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result
