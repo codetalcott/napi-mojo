@@ -55,11 +55,18 @@ if (lock.packages?.['']) {
     }
   }
 }
-// Update node_modules entries for optional platform packages
+// Update node_modules entries for optional platform packages.
+// Also drop `resolved`/`integrity`: relabeling only `version` leaves the URL
+// pinned to the OLD tarball, and `npm ci` happily downloads it — that is how
+// three test suites silently ran against a v0.2.10 registry binary while the
+// lockfile claimed 0.6.0. Without the pins, npm re-resolves by version at
+// install time (and skips the optional dep if that version isn't published yet).
 for (const dep of Object.keys(rootPkg.optionalDependencies || {})) {
   const key = `node_modules/${dep}`;
   if (lock.packages?.[key]) {
     lock.packages[key].version = version;
+    delete lock.packages[key].resolved;
+    delete lock.packages[key].integrity;
   }
 }
 writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');

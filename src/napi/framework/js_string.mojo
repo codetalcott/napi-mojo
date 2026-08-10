@@ -334,11 +334,15 @@ struct JsString:
         var actual_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=actual
         ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        check_status(
-            raw_get_value_string_latin1(
-                b, env, val, buf.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), needed + 1, actual_ptr
+        try:
+            check_status(
+                raw_get_value_string_latin1(
+                    b, env, val, buf.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), needed + 1, actual_ptr
+                )
             )
-        )
+        except e:
+            buf.unsafe_free()
+            raise e^
         return Latin1Buf(buf.as_unsafe_any_origin(), actual)
 
     ## create_property_key — create an engine-internalized string for property access (N-API v10)

@@ -17,6 +17,9 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+// Shared TOML-subset parser (also used by generate-dts.js — one format, one
+// parser; the two copies this replaced had already diverged).
+import { parseTOML } from './toml-lite.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DECL_PATH = process.env.NAPI_MOJO_TOML || join(__dirname, '..', 'src', 'exports.toml');
@@ -24,81 +27,29 @@ const OUT_DIR = process.env.NAPI_MOJO_OUT || join(__dirname, '..', 'src', 'gener
 const OUT_PATH = join(OUT_DIR, 'callbacks.mojo');
 const STRUCTS_PATH = join(OUT_DIR, 'structs.mojo');
 
-// --- Simple TOML parser (handles our subset: sections, key=value, multiline strings) ---
-function parseTOML(text) {
-  const result = {};
-  let current = result;
-  const path = [];
+// A declaration problem must fail the run, not warn-and-emit-wrong-Mojo.
+// Every silent fallback this generator used to have produced code that either
+// didn't compile (async uint32 returns), compiled but lied (async string args
+// stored into Float64 fields while the .d.ts claimed Promise<string>), or
+// crashed the generator later with a raw stack trace (unknown struct field).
+function fail(msg) {
+  console.error(`[generate-addon] ERROR: ${msg}`);
+  process.exit(1);
+}
 
-  const lines = text.split('\n');
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i].trim();
-    i++;
-
-    // Skip comments and empty lines
-    if (!line || line.startsWith('#')) continue;
-
-    // Section header: [a.b.c]
-    const sectionMatch = line.match(/^\[([^\]]+)\]$/);
-    if (sectionMatch) {
-      const parts = sectionMatch[1].split('.');
-      current = result;
-      for (const part of parts) {
-        if (!current[part]) current[part] = {};
-        current = current[part];
-      }
-      continue;
-    }
-
-    // Key = value
-    const kvMatch = line.match(/^(\w+)\s*=\s*(.*)$/);
-    if (kvMatch) {
-      const key = kvMatch[1];
-      let value = kvMatch[2].trim();
-
-      // Multiline string (triple quotes)
-      if (value.startsWith('"""')) {
-        value = value.slice(3);
-        const bodyLines = [value];
-        while (i < lines.length) {
-          const nextLine = lines[i];
-          i++;
-          if (nextLine.trim().endsWith('"""')) {
-            bodyLines.push(nextLine.trim().slice(0, -3));
-            break;
-          }
-          bodyLines.push(nextLine);
-        }
-        current[key] = bodyLines.join('\n').trim();
-        continue;
-      }
-
-      // Single-line string (quoted)
-      if (value.startsWith('"') && value.endsWith('"')) {
-        current[key] = value.slice(1, -1);
-        continue;
-      }
-
-      // Array: ["a", "b"]
-      if (value.startsWith('[')) {
-        const items = value.slice(1, -1).split(',').map(s => s.trim().replace(/"/g, ''));
-        current[key] = items.filter(Boolean);
-        continue;
-      }
-
-      // Number
-      if (/^\d+$/.test(value)) {
-        current[key] = parseInt(value);
-        continue;
-      }
-
-      current[key] = value;
-    }
+// TOML section keys become Mojo identifiers verbatim ([functions.my-fn]
+// would emit `def my-fn_fn`), and js_name is spliced into Mojo string
+// literals ("..." would terminate the literal early). Validate both.
+function validateIdentifier(name, where) {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+    fail(`${where}: "${name}" is not a valid Mojo identifier (use [a-zA-Z_][a-zA-Z0-9_]*)`);
   }
+}
 
-  return result;
+function validateJsName(jsName, where) {
+  if (/["\\\n]/.test(jsName)) {
+    fail(`${where}: js_name "${jsName}" contains a quote, backslash, or newline — it is spliced into Mojo string literals verbatim`);
+  }
 }
 
 // --- Type mapping: declaration type -> arg extraction code ---
@@ -225,13 +176,16 @@ function registerStructTypes(structs) {
 
 // --- Resolve type, handling nullable suffix ('?') ---
 // Returns { typeInfo, nullable } where nullable=true skips the type check.
+// Unknown tokens are a hard error: the old warn-and-fall-back-to-any produced
+// a raw NapiValue that flowed into a mojo_fn expecting a typed value, failing
+// far from the cause (or, for mismatched signatures, not compiling at all).
 function resolveType(rawType) {
   const nullable = rawType.endsWith('?');
   const baseType = nullable ? rawType.slice(0, -1) : rawType;
   if (!TYPE_MAP[baseType]) {
-    console.warn(`[generate-addon] Warning: unknown type "${baseType}" — falling back to "any". Check your exports.toml.`);
+    fail(`unknown type token "${baseType}" — valid tokens: ${Object.keys(TYPE_MAP).join(', ')} (plus declared struct names). Check your exports.toml.`);
   }
-  return { typeInfo: TYPE_MAP[baseType] || TYPE_MAP.any, nullable };
+  return { typeInfo: TYPE_MAP[baseType], nullable };
 }
 
 // --- Get the arg expression variable for position i in a totalArgs-arg function ---
@@ -268,6 +222,15 @@ function generateCallback(name, decl) {
   const body = decl.body;
   const mojoFn = decl.mojo_fn;  // optional: call a named pure Mojo function
   const fnName = `${name}_fn`;
+
+  validateIdentifier(name, `[functions.${name}]`);
+  validateJsName(jsName, `[functions.${name}]`);
+  if (!body && !mojoFn) {
+    fail(`[functions.${name}] has neither "body" nor "mojo_fn" — the generated callback would fall through its try block with no return value`);
+  }
+  if (body && mojoFn) {
+    console.warn(`[generate-addon] Warning: [functions.${name}] declares both "body" and "mojo_fn" — mojo_fn wins, body is ignored.`);
+  }
 
   const lines = [];
   lines.push(`def ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
@@ -359,16 +322,25 @@ function generateAsyncFunction(name, decl) {
   const executeBody = decl.execute_body || '';
   const structName = `${snakeToPascal(name)}Data`;
 
+  validateIdentifier(name, `[functions.${name}] (async)`);
+  validateJsName(jsName, `[functions.${name}] (async)`);
+  // Hard errors, not fallbacks. The old fallback-to-number path emitted arg
+  // extraction from TYPE_MAP (e.g. JsString.from_napi_value) assigned into a
+  // Float64 struct field — code that cannot compile — while generate-dts.js
+  // typed it Promise<string>. An unsupported type must stop the run.
   if (!ASYNC_TYPE_MAP[returnsToken]) {
-    console.warn(`[generate-addon] Warning: async function "${name}" return type "${returnsToken}" is not supported in async structs (only numeric types) — falling back to "number".`);
+    fail(`async function "${name}": return type "${returnsToken}" is not supported for async (worker-thread data structs allow only: ${Object.keys(ASYNC_TYPE_MAP).join(', ')})`);
   }
-  const retType = ASYNC_TYPE_MAP[returnsToken] || ASYNC_TYPE_MAP.number;
+  if (args.length > 4) {
+    fail(`async function "${name}": ${args.length} args declared, but async generation supports at most 4`);
+  }
+  const retType = ASYNC_TYPE_MAP[returnsToken];
   const argMojoTypes = args.map((a, idx) => {
     const tok = a.replace(/\?$/, '');
     if (!ASYNC_TYPE_MAP[tok]) {
-      console.warn(`[generate-addon] Warning: async function "${name}" arg[${idx}] type "${tok}" is not supported in async structs (only numeric types) — falling back to "number".`);
+      fail(`async function "${name}": arg[${idx}] type "${tok}" is not supported for async (worker-thread data structs allow only: ${Object.keys(ASYNC_TYPE_MAP).join(', ')})`);
     }
-    return ASYNC_TYPE_MAP[tok] || ASYNC_TYPE_MAP.number;
+    return ASYNC_TYPE_MAP[tok];
   });
 
   const out = [];
@@ -408,8 +380,11 @@ function generateAsyncFunction(name, decl) {
   out.push('');
   out.push(`def ${name}_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):`);
   out.push(`    var ptr = data.unsafe_bitcast[${structName}]()`);
+  // Preserve relative indentation, exactly like the sync `body` path does.
+  // The old per-line .trim() flattened every line to one level, silently
+  // destroying any if/for nesting inside execute_body.
   for (const el of executeBody.split('\n')) {
-    if (el.trim()) out.push(`    ${el.trim()}`);
+    out.push(el.trim() ? `    ${el}` : '');
   }
 
   // 3. Complete callback (main thread — resolve/reject, then free heap)
@@ -498,6 +473,14 @@ function generateClassConstructor(className, decl) {
   const ctorBody = decl.constructor_body || 'pass';
   const fnName = `${className}_ctor_fn`;
 
+  validateIdentifier(className, `[classes.${className}]`);
+  validateJsName(jsName, `[classes.${className}]`);
+  if (ctorArgs.length > 4) {
+    // The arity chain below ends at 4 with no else — more args would emit a
+    // body referencing `args` that was never declared.
+    fail(`class "${className}": ${ctorArgs.length} constructor args declared, but class generation supports at most 4`);
+  }
+
   const lines = [];
   lines.push(`def ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
   lines.push(`    try:`);
@@ -538,6 +521,12 @@ function generateClassMethod(className, methodName, decl) {
   const fnName = `${className}_${methodName}_fn`;
   const args = decl.args || [];
   const body = decl.body || 'return JsUndefined.create(_b, env).value';
+
+  validateIdentifier(methodName, `[classes.${className}.instance_methods.${methodName}]`);
+  validateJsName(jsName, `[classes.${className}.instance_methods.${methodName}]`);
+  if (args.length > 4) {
+    fail(`class method "${className}.${methodName}": ${args.length} args declared, but class generation supports at most 4`);
+  }
 
   const lines = [];
   lines.push(`def ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
@@ -583,6 +572,11 @@ function generateClassStaticMethod(className, methodName, decl) {
   const fnName = `${className}_static_${camelToSnake(methodName)}_fn`;
   const args = decl.args || [];
   const body = decl.body || 'return JsUndefined.create(_b, env).value';
+
+  validateJsName(jsName, `[classes.${className}.static_methods.${methodName}]`);
+  if (args.length > 4) {
+    fail(`static method "${className}.${methodName}": ${args.length} args declared, but class generation supports at most 4`);
+  }
 
   const lines = [];
   lines.push(`def ${fnName}(env: NapiEnv, info: NapiValue) -> NapiValue:`);
@@ -722,14 +716,21 @@ function generateStruct(name, sDecl) {
   const structName = `${pascalName}Data`;
   const out = [];
 
+  validateIdentifier(name, `[structs.${name}]`);
+
   // --- Struct definition ---
   out.push(`struct ${structName}(Movable, Copyable):`);
   for (const [fName, fType] of fieldEntries) {
-    const baseType = fType.replace(/\?$/, '');
-    const info = STRUCT_FIELD_MAP[baseType];
+    validateIdentifier(fName, `[structs.${name}] field "${fName}"`);
+    // The old warn-and-continue here was a lie: the loops below dereference
+    // STRUCT_FIELD_MAP[...] unguarded, so an unknown field type crashed the
+    // generator with a raw TypeError three functions later.
+    if (fType.endsWith('?')) {
+      fail(`struct "${name}" field "${fName}": optional struct fields ("${fType}") are not supported — the generated from_js reads every field unconditionally and the .d.ts would emit it as required anyway`);
+    }
+    const info = STRUCT_FIELD_MAP[fType];
     if (!info) {
-      console.warn(`[generate-addon] Warning: unknown struct field type "${fType}" for ${name}.${fName}`);
-      continue;
+      fail(`struct "${name}" field "${fName}": unknown field type "${fType}" (valid: ${Object.keys(STRUCT_FIELD_MAP).join(', ')})`);
     }
     out.push(`    var ${fName}: ${info.mojoType}`);
   }
@@ -838,9 +839,19 @@ function main() {
       Object.values(d.instance_methods || {}).some(m => (m.args || []).length >= 5) ||
       Object.values(d.static_methods || {}).some(m => (m.args || []).length >= 5));
 
-  // Detect whether any function uses number[] or string[] types
-  const allTypeTokens = funcEntries.flatMap(([, d]) =>
-    [...(d.args || []), d.returns || ''].map(t => t.replace(/\?$/, ''))
+  // Detect whether any function OR class member uses number[] / string[]
+  // types. This scan must cover the same declaration surface as the emitters
+  // do — it used to scan functions only, so a class method with
+  // args = ["number[]"] emitted from_js_array_f64(...) with no import.
+  const classMemberDecls = classEntries.flatMap(([, d]) => [
+    { args: d.constructor_args || [] },
+    ...Object.values(d.instance_methods || {}),
+    ...Object.values(d.static_methods || {}),
+    ...Object.values(d.getters || {}),
+    ...Object.values(d.setters || {}),
+  ]);
+  const allTypeTokens = [...funcEntries.map(([, d]) => d), ...classMemberDecls].flatMap((d) =>
+    [...(d.args || []), d.returns || ''].map(t => String(t).replace(/\?$/, ''))
   );
   const needsF64Array = allTypeTokens.includes('number[]');
   const needsStrArray = allTypeTokens.includes('string[]');
@@ -966,12 +977,15 @@ function main() {
   mkdirSync(OUT_DIR, { recursive: true });
   writeFileSync(OUT_PATH, output.join('\n') + '\n');
 
-  // Generate structs file if any structs are declared
+  // ALWAYS write structs.mojo, even with zero structs declared. Writing it
+  // conditionally left a stale checked-in structs.mojo surviving a clean
+  // `git diff` after the last [structs.*] section was removed — the drift
+  // gate can only catch what the generator actually rewrites.
+  const structOutput = [];
+  structOutput.push('## src/generated/structs.mojo — AUTO-GENERATED by scripts/generate-addon.mjs');
+  structOutput.push('## Do not edit manually. Regenerate with: node scripts/generate-addon.mjs');
+  structOutput.push('');
   if (structEntries.length > 0) {
-    const structOutput = [];
-    structOutput.push('## src/generated/structs.mojo — AUTO-GENERATED by scripts/generate-addon.mjs');
-    structOutput.push('## Do not edit manually. Regenerate with: node scripts/generate-addon.mjs');
-    structOutput.push('');
     structOutput.push('from napi.types import NapiEnv, NapiValue');
     structOutput.push('from napi.bindings import Bindings');
     structOutput.push('from napi.framework.js_string import JsString');
@@ -988,9 +1002,12 @@ function main() {
       structOutput.push(generateStruct(sName, sDecl));
       structOutput.push('');
     }
-    writeFileSync(STRUCTS_PATH, structOutput.join('\n') + '\n');
-    console.log(`Generated ${STRUCTS_PATH} (${structEntries.length} structs)`);
+  } else {
+    structOutput.push('# No [structs.*] sections declared in exports.toml.');
+    structOutput.push('');
   }
+  writeFileSync(STRUCTS_PATH, structOutput.join('\n') + '\n');
+  console.log(`Generated ${STRUCTS_PATH} (${structEntries.length} structs)`);
 
   console.log(`Generated ${OUT_PATH} (${funcEntries.length} functions, ${classEntries.length} classes)`);
 }

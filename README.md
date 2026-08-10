@@ -16,8 +16,8 @@ addon.greet("world"); // "Hello, world!"
 ## Project Status
 
 **Alpha** — napi-mojo is under active development and not yet proven in
-production. The API covers the full N-API v10 surface (140 exported functions, 4
-classes, 615 tests). Expect breaking changes as the project matures.
+production. The API covers the full N-API v10 surface (141 exported functions, 4
+classes, 643 tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
   complete, ergonomic framework for building Node.js native addons in Mojo.
@@ -35,16 +35,10 @@ classes, 615 tests). Expect breaking changes as the project matures.
   distribution (currently darwin-arm64 + linux-x64 only), performance
   benchmarking against napi-rs, and documentation beyond this README and the
   generated `.d.ts`.
-- **Known issue (macOS):** A Mojo 1.0.0b1 gap — the language doesn't yet
-  expose a thin C-ABI function-pointer syntax for `def`s — causes
-  intermittent SIGABRT/SIGSEGV at Node env teardown on macOS-arm64 when
-  finalizers are invoked. CI works around it with a 3× retry; users
-  exercising instance-data finalizers heavily may occasionally see the
-  same exit-time crash. Will resolve when Mojo lands the missing syntax.
 
 ## Features
 
-- **140 exported functions** and **4 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
+- **141 exported functions** and **4 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
 - Primitives: strings, numbers (Float64/Int32/UInt32/Int64), booleans, null,
   undefined, BigInt, Symbol, Date
 - Objects: create, read/write properties, enumerate keys, freeze/seal, prototype
@@ -89,8 +83,9 @@ npm install napi-mojo
 ```
 
 Prebuilt binaries ship for **darwin-arm64** and **linux-x64** (Node.js
-22.12+ / N-API v10). On other platforms install falls back to building from
-source — see [Building from source](#building-from-source) below.
+22.12+ / N-API v10). On other platforms `npm install` succeeds but the first
+`require("napi-mojo")` throws with a pointer here — build from source instead,
+see [Building from source](#building-from-source) below.
 
 See [`examples/`](examples/) for runnable scripts.
 
@@ -101,7 +96,7 @@ git clone https://github.com/codetalcott/napi-mojo.git
 cd napi-mojo
 npm install
 npm run build    # compiles Mojo → build/index.node + generates TypeScript defs
-npm test         # 609 tests, 80 suites (6 GC tests need `npm run test:gc`)
+npm test         # 636 tests, 81 suites (7 GC tests need `npm run test:gc`)
 ```
 
 **Prerequisites:** [Mojo nightly](https://mojolang.org/install/) via
@@ -311,8 +306,8 @@ build, works in any TypeScript-aware IDE.
 
 ```bash
 npm run build        # compile + generate TypeScript defs
-npm test             # run Jest test suite (609 tests)
-npm run test:gc      # run the 6 GC finalizer tests (needs --expose-gc)
+npm test             # run Jest test suite (636 tests)
+npm run test:gc      # run the 7 GC finalizer tests (needs --expose-gc)
 npm run generate:addon  # regenerate src/generated/ from src/exports.toml
 npx jest tests/basic.test.js   # run a single test file
 npm run generate:docs  # generate HTML API docs → docs/api/ (requires: npm i -D typedoc)

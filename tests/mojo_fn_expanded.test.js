@@ -1,4 +1,6 @@
-const addon = require('../index');
+// Load the build under test directly — requiring '../index' can resolve to a
+// published @napi-mojo platform package instead of the freshly built addon.
+const addon = require('../build/index.node');
 
 describe('mojo_fn expanded type coverage', () => {
   test('negateBoolPure: boolean round-trip', () => {

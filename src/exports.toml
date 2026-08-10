@@ -14,7 +14,20 @@
 # Output: src/generated/callbacks.mojo
 
 # --- Extra imports added verbatim to callbacks.mojo when mojo_fn is used ---
-extra_imports = ["from addon.user_fns import square_pure", "from addon.user_fns import clamp_pure", "from addon.user_fns import uppercase_pure", "from addon.user_fns import sum_array_pure", "from addon.user_fns import negate_bool_pure", "from addon.user_fns import add_int32_pure", "from addon.user_fns import describe_pure", "from addon.user_fns import reverse_strings_pure", "from addon.user_fns import safe_divide_pure", "from addon.user_fns import find_name_pure", "from addon.struct_fns import echo_config_pure", "from addon.struct_fns import config_summary_pure"]
+extra_imports = [
+  "from addon.user_fns import square_pure",
+  "from addon.user_fns import clamp_pure",
+  "from addon.user_fns import uppercase_pure",
+  "from addon.user_fns import sum_array_pure",
+  "from addon.user_fns import negate_bool_pure",
+  "from addon.user_fns import add_int32_pure",
+  "from addon.user_fns import describe_pure",
+  "from addon.user_fns import reverse_strings_pure",
+  "from addon.user_fns import safe_divide_pure",
+  "from addon.user_fns import find_name_pure",
+  "from addon.struct_fns import echo_config_pure",
+  "from addon.struct_fns import config_summary_pure",
+]
 
 # --- Example declarations ---
 # These mirror existing hand-written functions for demonstration.

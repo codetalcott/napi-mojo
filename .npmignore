@@ -19,7 +19,10 @@ pixi.lock
 # Tests and benchmarks
 tests/
 benchmarks/
-scripts/
+# scripts/ is NOT blanket-excluded: the code generators
+# (generate-addon.mjs, generate-dts.js, toml-lite.js) are whitelisted in
+# "files" — examples/codegen/build.sh invokes them from the installed
+# package, so excluding them breaks the documented codegen workflow.
 
 # Docs and dev notes
 docs/

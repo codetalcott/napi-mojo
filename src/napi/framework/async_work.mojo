@@ -135,6 +135,11 @@ struct AsyncWork:
         return AsyncWorkResult(p.value, p.deferred, work)
 
     ## resolve — resolve deferred + delete async work
+    ##
+    ## The work handle must be deleted on EVERY path: settling first and
+    ## deleting second used to mean a failed settle leaked the napi_async_work
+    ## handle (and the promise stays pending — nothing can fix that once the
+    ## settle itself has failed, but the handle leak is avoidable).
     @staticmethod
     def resolve(
         env: NapiEnv,
@@ -142,7 +147,14 @@ struct AsyncWork:
         work: NapiAsyncWork,
         result: NapiValue,
     ) raises:
-        check_status(raw_resolve_deferred(env, deferred, result))
+        try:
+            check_status(raw_resolve_deferred(env, deferred, result))
+        except e:
+            try:
+                check_status(raw_delete_async_work(env, work))
+            except:
+                pass  # keep the settle failure as the reported error
+            raise e^
         check_status(raw_delete_async_work(env, work))
 
     @staticmethod
@@ -153,10 +165,20 @@ struct AsyncWork:
         work: NapiAsyncWork,
         result: NapiValue,
     ) raises:
-        check_status(raw_resolve_deferred(b, env, deferred, result))
+        try:
+            check_status(raw_resolve_deferred(b, env, deferred, result))
+        except e:
+            try:
+                check_status(raw_delete_async_work(b, env, work))
+            except:
+                pass  # keep the settle failure as the reported error
+            raise e^
         check_status(raw_delete_async_work(b, env, work))
 
     ## reject_with_error — create Error, reject deferred, delete async work
+    ##
+    ## Same invariant as resolve(): the work handle is deleted on every path,
+    ## including when creating the Error value or the reject itself fails.
     @staticmethod
     def reject_with_error(
         env: NapiEnv,
@@ -164,14 +186,23 @@ struct AsyncWork:
         work: NapiAsyncWork,
         msg: StringLiteral,
     ) raises:
-        var msg_val = JsString.create_literal(env, msg)
-        var null_code = NapiValue(unsafe_from_address=Int(0))
-        var error_val = NapiValue(unsafe_from_address=Int(0))
-        var error_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-            to=error_val
-        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        check_status(raw_create_error(env, null_code, msg_val.value, error_ptr))
-        check_status(raw_reject_deferred(env, deferred, error_val))
+        try:
+            var msg_val = JsString.create_literal(env, msg)
+            var null_code = NapiValue(unsafe_from_address=Int(0))
+            var error_val = NapiValue(unsafe_from_address=Int(0))
+            var error_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
+                to=error_val
+            ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+            check_status(
+                raw_create_error(env, null_code, msg_val.value, error_ptr)
+            )
+            check_status(raw_reject_deferred(env, deferred, error_val))
+        except e:
+            try:
+                check_status(raw_delete_async_work(env, work))
+            except:
+                pass  # keep the reject failure as the reported error
+            raise e^
         check_status(raw_delete_async_work(env, work))
 
     @staticmethod
@@ -182,16 +213,23 @@ struct AsyncWork:
         work: NapiAsyncWork,
         msg: StringLiteral,
     ) raises:
-        var msg_val = JsString.create_literal(b, env, msg)
-        var null_code = NapiValue(unsafe_from_address=Int(0))
-        var error_val = NapiValue(unsafe_from_address=Int(0))
-        var error_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-            to=error_val
-        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        check_status(
-            raw_create_error(b, env, null_code, msg_val.value, error_ptr)
-        )
-        check_status(raw_reject_deferred(b, env, deferred, error_val))
+        try:
+            var msg_val = JsString.create_literal(b, env, msg)
+            var null_code = NapiValue(unsafe_from_address=Int(0))
+            var error_val = NapiValue(unsafe_from_address=Int(0))
+            var error_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
+                to=error_val
+            ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+            check_status(
+                raw_create_error(b, env, null_code, msg_val.value, error_ptr)
+            )
+            check_status(raw_reject_deferred(b, env, deferred, error_val))
+        except e:
+            try:
+                check_status(raw_delete_async_work(b, env, work))
+            except:
+                pass  # keep the reject failure as the reported error
+            raise e^
         check_status(raw_delete_async_work(b, env, work))
 
     ## reject_with_error_dynamic — reject with a computed String message
@@ -204,16 +242,25 @@ struct AsyncWork:
     def reject_with_error_dynamic(
         env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork, msg: String
     ) raises:
-        var msg_copy = msg
-        var msg_val = JsString.create(env, msg_copy)
-        _ = msg_copy^
-        var null_code = NapiValue(unsafe_from_address=Int(0))
-        var error_val = NapiValue(unsafe_from_address=Int(0))
-        var error_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-            to=error_val
-        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        check_status(raw_create_error(env, null_code, msg_val.value, error_ptr))
-        check_status(raw_reject_deferred(env, deferred, error_val))
+        try:
+            var msg_copy = msg
+            var msg_val = JsString.create(env, msg_copy)
+            _ = msg_copy^
+            var null_code = NapiValue(unsafe_from_address=Int(0))
+            var error_val = NapiValue(unsafe_from_address=Int(0))
+            var error_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
+                to=error_val
+            ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+            check_status(
+                raw_create_error(env, null_code, msg_val.value, error_ptr)
+            )
+            check_status(raw_reject_deferred(env, deferred, error_val))
+        except e:
+            try:
+                check_status(raw_delete_async_work(env, work))
+            except:
+                pass  # keep the reject failure as the reported error
+            raise e^
         check_status(raw_delete_async_work(env, work))
 
     @staticmethod
@@ -224,16 +271,23 @@ struct AsyncWork:
         work: NapiAsyncWork,
         msg: String,
     ) raises:
-        var msg_copy = msg
-        var msg_val = JsString.create(b, env, msg_copy)
-        _ = msg_copy^
-        var null_code = NapiValue(unsafe_from_address=Int(0))
-        var error_val = NapiValue(unsafe_from_address=Int(0))
-        var error_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-            to=error_val
-        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        check_status(
-            raw_create_error(b, env, null_code, msg_val.value, error_ptr)
-        )
-        check_status(raw_reject_deferred(b, env, deferred, error_val))
+        try:
+            var msg_copy = msg
+            var msg_val = JsString.create(b, env, msg_copy)
+            _ = msg_copy^
+            var null_code = NapiValue(unsafe_from_address=Int(0))
+            var error_val = NapiValue(unsafe_from_address=Int(0))
+            var error_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
+                to=error_val
+            ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+            check_status(
+                raw_create_error(b, env, null_code, msg_val.value, error_ptr)
+            )
+            check_status(raw_reject_deferred(b, env, deferred, error_val))
+        except e:
+            try:
+                check_status(raw_delete_async_work(b, env, work))
+            except:
+                pass  # keep the reject failure as the reported error
+            raise e^
         check_status(raw_delete_async_work(b, env, work))
