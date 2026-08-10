@@ -2,7 +2,7 @@
 ##
 ## CbArgs centralizes the boilerplate of calling napi_get_cb_info and
 ## validating argc, so that napi_callback implementations don't repeat
-## the same InlineArray/pointer/check_status dance.
+## the same Array/pointer/check_status dance.
 ##
 ## Usage (preferred — bindings-aware, single napi_get_cb_info call):
 ##   var a   = CbArgs.get_bindings_and_one(env, info)   # a.b=bindings, a.arg0=value
@@ -119,8 +119,8 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=arg0).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=arg0).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -139,8 +139,8 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=arg0).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=arg0).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -152,21 +152,21 @@ struct CbArgs:
     ## get_two — extract exactly two callback arguments
     ##
     ## Calls napi_get_cb_info requesting 2 arguments via an
-    ## InlineArray[NapiValue, 2] argv buffer. Raises if the caller
+    ## Array[NapiValue, 2] argv buffer. Raises if the caller
     ## provided fewer than 2 arguments.
     @staticmethod
     def get_two(
         env: NapiEnv, info: NapiValue
-    ) raises -> InlineArray[NapiValue, 2]:
+    ) raises -> Array[NapiValue, 2]:
         var argc: UInt = 2
-        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
+        var args = Array[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=args[0]).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=args[0]).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -178,17 +178,17 @@ struct CbArgs:
     @staticmethod
     def get_two(
         b: Bindings, env: NapiEnv, info: NapiValue
-    ) raises -> InlineArray[NapiValue, 2]:
+    ) raises -> Array[NapiValue, 2]:
         var argc: UInt = 2
-        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
+        var args = Array[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=args[0]).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=args[0]).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -201,17 +201,17 @@ struct CbArgs:
     @staticmethod
     def get_three(
         b: Bindings, env: NapiEnv, info: NapiValue
-    ) raises -> InlineArray[NapiValue, 3]:
+    ) raises -> Array[NapiValue, 3]:
         var argc: UInt = 3
-        var args = InlineArray[NapiValue, 3](fill=NapiValue(unsafe_from_address=Int(0)))
+        var args = Array[NapiValue, 3](fill=NapiValue(unsafe_from_address=Int(0)))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=args[0]).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=args[0]).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -224,17 +224,17 @@ struct CbArgs:
     @staticmethod
     def get_four(
         b: Bindings, env: NapiEnv, info: NapiValue
-    ) raises -> InlineArray[NapiValue, 4]:
+    ) raises -> Array[NapiValue, 4]:
         var argc: UInt = 4
-        var args = InlineArray[NapiValue, 4](fill=NapiValue(unsafe_from_address=Int(0)))
+        var args = Array[NapiValue, 4](fill=NapiValue(unsafe_from_address=Int(0)))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=args[0]).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=args[0]).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
             )
@@ -255,9 +255,9 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
-                UnsafePointer(to=this_val).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=this_val).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
             )
         )
@@ -275,9 +275,9 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
-                UnsafePointer(to=this_val).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=this_val).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
             )
         )
@@ -285,11 +285,11 @@ struct CbArgs:
 
     ## get_this_and_one — extract `this` plus one argument
     ##
-    ## Returns [this, arg0] in an InlineArray[NapiValue, 2].
+    ## Returns [this, arg0] in an Array[NapiValue, 2].
     @staticmethod
     def get_this_and_one(
         env: NapiEnv, info: NapiValue
-    ) raises -> InlineArray[NapiValue, 2]:
+    ) raises -> Array[NapiValue, 2]:
         var argc: UInt = 1
         var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))
@@ -298,15 +298,15 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=arg0).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=this_val).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=arg0).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=this_val).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
             )
         )
         if argc < 1:
             raise Error("expected at least 1 argument")
-        var result = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
+        var result = Array[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         result[0] = this_val
         result[1] = arg0
         return result^
@@ -314,7 +314,7 @@ struct CbArgs:
     @staticmethod
     def get_this_and_one(
         b: Bindings, env: NapiEnv, info: NapiValue
-    ) raises -> InlineArray[NapiValue, 2]:
+    ) raises -> Array[NapiValue, 2]:
         var argc: UInt = 1
         var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))
@@ -324,15 +324,15 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=arg0).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=this_val).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=arg0).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=this_val).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
             )
         )
         if argc < 1:
             raise Error("expected at least 1 argument")
-        var result = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
+        var result = Array[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         result[0] = this_val
         result[1] = arg0
         return result^
@@ -346,7 +346,7 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=count).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
                 null,
@@ -363,7 +363,7 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=count).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
                 null,
@@ -377,7 +377,7 @@ struct CbArgs:
         env: NapiEnv,
         info: NapiValue,
         count: UInt,
-        argv_ptr: UnsafePointer[NapiValue, MutAnyOrigin],
+        argv_ptr: Pointer[NapiValue, MutAnyOrigin],
     ) raises:
         var actual = count
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -385,8 +385,8 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=actual).bitcast[NoneType]().as_unsafe_any_origin(),
-                argv_ptr.bitcast[NoneType](),
+                Pointer(to=actual).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                argv_ptr.unsafe_bitcast[NoneType](),
                 null,
                 null,
             )
@@ -398,7 +398,7 @@ struct CbArgs:
         env: NapiEnv,
         info: NapiValue,
         count: UInt,
-        argv_ptr: UnsafePointer[NapiValue, MutAnyOrigin],
+        argv_ptr: Pointer[NapiValue, MutAnyOrigin],
     ) raises:
         var actual = count
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -407,8 +407,8 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=actual).bitcast[NoneType]().as_unsafe_any_origin(),
-                argv_ptr.bitcast[NoneType](),
+                Pointer(to=actual).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                argv_ptr.unsafe_bitcast[NoneType](),
                 null,
                 null,
             )
@@ -428,10 +428,10 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
-                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return data
@@ -448,10 +448,10 @@ struct CbArgs:
                 b,
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
                 null,
-                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return data
@@ -465,7 +465,7 @@ struct CbArgs:
     @staticmethod
     def get_bindings(env: NapiEnv, info: NapiValue) raises -> Bindings:
         var data = CbArgs.get_data(env, info)
-        return data.bitcast[NapiBindings]()
+        return data.unsafe_bitcast[NapiBindings]()
 
     ## get_bindings_and_one — extract bindings + 1 arg in a single napi_get_cb_info call
     ##
@@ -484,15 +484,15 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=arg0).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=arg0).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
-                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         if argc < 1:
             raise Error("expected at least 1 argument")
-        return BindingsAndOne(data.bitcast[NapiBindings](), arg0)
+        return BindingsAndOne(data.unsafe_bitcast[NapiBindings](), arg0)
 
     ## get_bindings_and_two — extract bindings + 2 args in a single napi_get_cb_info call
     @staticmethod
@@ -500,22 +500,22 @@ struct CbArgs:
         env: NapiEnv, info: NapiValue
     ) raises -> BindingsAndTwo:
         var argc: UInt = 2
-        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
+        var args = Array[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=args[0]).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=args[0]).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
-                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         if argc < 2:
             raise Error("expected at least 2 arguments")
-        return BindingsAndTwo(data.bitcast[NapiBindings](), args[0], args[1])
+        return BindingsAndTwo(data.unsafe_bitcast[NapiBindings](), args[0], args[1])
 
     ## get_bindings_and_three — extract bindings + 3 args in a single napi_get_cb_info call
     @staticmethod
@@ -523,23 +523,23 @@ struct CbArgs:
         env: NapiEnv, info: NapiValue
     ) raises -> BindingsAndThree:
         var argc: UInt = 3
-        var args = InlineArray[NapiValue, 3](fill=NapiValue(unsafe_from_address=Int(0)))
+        var args = Array[NapiValue, 3](fill=NapiValue(unsafe_from_address=Int(0)))
         var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=args[0]).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=args[0]).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
-                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         if argc < 3:
             raise Error("expected at least 3 arguments")
         return BindingsAndThree(
-            data.bitcast[NapiBindings](), args[0], args[1], args[2]
+            data.unsafe_bitcast[NapiBindings](), args[0], args[1], args[2]
         )
 
     ## get_bindings_and_this — extract bindings + this value in a single napi_get_cb_info call
@@ -559,13 +559,13 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 null,
-                UnsafePointer(to=this_val).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=this_val).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
-        return BindingsAndThis(data.bitcast[NapiBindings](), this_val)
+        return BindingsAndThis(data.unsafe_bitcast[NapiBindings](), this_val)
 
     ## get_bindings_this_and_one — extract bindings + this + 1 arg in a single napi_get_cb_info call
     ##
@@ -584,12 +584,12 @@ struct CbArgs:
             raw_get_cb_info(
                 env,
                 info,
-                UnsafePointer(to=argc).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=arg0).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=this_val).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=data).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=argc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=arg0).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=this_val).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         if argc < 1:
             raise Error("expected at least 1 argument")
-        return BindingsThisAndOne(data.bitcast[NapiBindings](), this_val, arg0)
+        return BindingsThisAndOne(data.unsafe_bitcast[NapiBindings](), this_val, arg0)

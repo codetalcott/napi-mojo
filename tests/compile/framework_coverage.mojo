@@ -63,7 +63,7 @@
 ##   pixi run mojo build --emit shared-lib -I src \
 ##     tests/compile/framework_coverage.mojo -o /tmp/framework_coverage.so
 
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 
 from napi.types import (
     NapiEnv,
@@ -220,10 +220,10 @@ def cover_args(b: Bindings, env: NapiEnv, v: NapiValue) raises:
     _ = CbArgs.argc(env, v)
     _ = CbArgs.argc(b, env, v)
 
-    var argv = alloc[NapiValue](2).as_unsafe_any_origin()
+    var argv = unsafe_alloc[NapiValue](2).as_unsafe_any_origin()
     CbArgs.get_argv(env, v, UInt(2), argv)
     CbArgs.get_argv(b, env, v, UInt(2), argv)
-    argv.free()
+    argv.unsafe_free()
 
     _ = CbArgs.get_data(env, v)
     _ = CbArgs.get_data(b, env, v)

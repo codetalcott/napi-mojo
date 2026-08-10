@@ -1,6 +1,6 @@
 ## src/addon/value_types.mojo — BigInt, Date, Symbol, and word-level BigInt ops
 
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_BIGINT
 from napi.bindings import Bindings
 from napi.error import throw_js_error, throw_js_error_dynamic, check_status
@@ -79,7 +79,7 @@ def symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
         var key = JsString.from_napi_value(b, env, arg0)
-        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().bitcast[
+        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
         var key_len = UInt(key.byte_length())
@@ -90,7 +90,7 @@ def symbol_for_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 env,
                 key_ptr,
                 key_len,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         _ = key^  # prevent ASAP destruction before raw_symbol_for reads key_ptr
@@ -108,19 +108,19 @@ def bigint_from_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arr_val = args[1]
         var arr = JsArray(arr_val)
         var arr_len = arr.length(b, env)
-        var words_ptr = alloc[UInt64](Int(arr_len))
+        var words_ptr = unsafe_alloc[UInt64](Int(arr_len))
         for i in range(Int(arr_len)):
             var elem = arr.get(b, env, UInt32(i))
             var num = JsNumber.from_napi_value(b, env, elem)
-            words_ptr[i] = UInt64(num)
+            words_ptr[unsafe_offset=i] = UInt64(num)
         var result = JsBigInt.from_words(
             b,
             env,
             sign_bit,
-            words_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
+            words_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             UInt(arr_len),
         )
-        words_ptr.free()
+        words_ptr.unsafe_free()
         return result.value
     except:
         throw_js_error(env, "bigIntFromWords failed")
@@ -133,15 +133,15 @@ def bigint_to_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         var sign: Int32 = 0
         var count: UInt = 16
-        var words_ptr = alloc[UInt64](16)
+        var words_ptr = unsafe_alloc[UInt64](16)
         check_status(
             raw_get_value_bigint_words(
                 b,
                 env,
                 arg0,
-                UnsafePointer(to=sign).bitcast[NoneType]().as_unsafe_any_origin(),
-                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
-                words_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=sign).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=count).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                words_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         var obj = JsObject.create(b, env)
@@ -150,10 +150,10 @@ def bigint_to_words_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         )
         var arr = JsArray.create_with_length(b, env, count)
         for i in range(Int(count)):
-            var word_val = JsNumber.create(b, env, Float64(words_ptr[i]))
+            var word_val = JsNumber.create(b, env, Float64(words_ptr[unsafe_offset=i]))
             arr.set(b, env, UInt32(i), word_val.value)
         obj.set_property(b, env, "words", arr.value)
-        words_ptr.free()
+        words_ptr.unsafe_free()
         return obj.value
     except:
         throw_js_error(env, "bigIntToWords failed")

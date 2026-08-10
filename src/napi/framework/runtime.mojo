@@ -12,58 +12,27 @@
 ##   Rule of thumb: use parallelize_safe() for n >= 64 Float64 elements,
 ##   or n >= 128 Float32/Int32 elements; fall back to scalar for smaller arrays.
 
-from std.ffi import OwnedDLHandle
-from std.algorithm import parallelize
-from napi.raw import _sym
+from std.runtime import initialize_runtime
+from max.algorithm import parallelize
 
 
 def init_async_runtime() raises:
     """Initialize the Mojo async runtime for shared library addons.
 
     Must be called before parallelize() or other async primitives.
-    Safe to call multiple times — the runtime handles re-init internally.
+    Idempotent — safe to call multiple times.
+
+    As of Mojo 1.0.0 this delegates to the official
+    `std.runtime.initialize_runtime()`, which exists for exactly this
+    situation (shared-lib Mojo called from a non-Mojo host, so no Mojo
+    main() ever ran). It replaces the hand-rolled resolution of the
+    private `KGEN_CompilerRT_AsyncRT_GetOrCreateCPUDevice` symbol from
+    libKGENCompilerRTShared, which silently broke every time the KGEN
+    entry point was renamed (see git history and CLAUDE.md for that saga).
+    `raises` is kept in the signature for API stability with existing
+    callers even though the official API does not raise.
     """
-    # On Linux, Node.js loads .node addons with dlopen(RTLD_LOCAL), so
-    # dlsym(RTLD_DEFAULT, ...) via OwnedDLHandle() can't find symbols from
-    # the addon's linked libraries. Explicitly open libKGENCompilerRTShared
-    # by name — the linker finds it via the RUNPATH/rpath that `mojo build`
-    # embeds in the shared library. Try .dylib first (macOS), fall back to
-    # .so (Linux).
-    var lib: OwnedDLHandle
-    try:
-        lib = OwnedDLHandle("libKGENCompilerRTShared.dylib")
-    except:
-        lib = OwnedDLHandle("libKGENCompilerRTShared.so")
-    # dev2026072306 renamed this entry point: the old
-    # `KGEN_CompilerRT_AsyncRT_GetOrCreateRuntime` is gone, replaced by
-    # `..._GetOrCreateCPUDevice`. Do NOT be misled by the C++ symbol it
-    # forwards to —
-    #   M::AsyncRT::getOrCreateCPUDevice(CPUDeviceSource, const CPUDeviceOptions&, bool)
-    # takes three arguments, which is why this was first read as an ABI change
-    # too risky to guess at. The exported C WRAPPER is a different function:
-    # it ignores its incoming registers, stack-constructs a default
-    # CPUDeviceOptions, and calls the C++ function with (source=1, &options,
-    # false). At the C ABI it is nullary — a drop-in replacement for the old
-    # symbol, which is why the signature below is unchanged. Verified two ways:
-    # by disassembling the wrapper, and at runtime by spike/runtime_probe.mojo
-    # (non-null device, same pointer on a second call, ParallelismLevel 4,
-    # parallelize() producing correct results inside Node).
-    #
-    # To re-check the export list after a nightly bump, note that `nm -gU` on
-    # this library shows NOTHING useful — its exports live in the LC_DYLD
-    # export trie, so nm reports only undefined imports. Use
-    # `dyld_info -exports` (macOS) or `nm -D` (Linux).
-    var create_rt = _sym[def() thin abi("C") -> OpaquePointer[MutAnyOrigin]](
-        lib, "KGEN_CompilerRT_AsyncRT_GetOrCreateCPUDevice"
-    )
-    _ = create_rt()
-    # `lib` owns a NAMED library, unlike every other FFI site in this project
-    # (which use OwnedDLHandle() == dlopen(NULL) on the never-unmapped host
-    # process image). A resolved symbol pointer does NOT borrow the handle, so
-    # ASAP destruction would otherwise let `lib`'s __del__ run dlclose() at its
-    # last tracked use — the _sym call — and unmap the library out from under
-    # create_rt(). Keep it alive across the call explicitly.
-    _ = lib^
+    initialize_runtime()
 
 
 def parallelize_safe[func: def(Int) capturing -> None](n: Int):

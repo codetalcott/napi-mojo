@@ -1,6 +1,6 @@
 ## src/addon/externals.mojo — external data, external arraybuffer, finalizers
 
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 from napi.types import NapiEnv, NapiValue, NAPI_TYPE_EXTERNAL
 from napi.bindings import Bindings
 from napi.error import throw_js_error, throw_js_type_error_dynamic, check_status
@@ -33,9 +33,9 @@ def external_finalize(
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
 ):
-    var ptr = data.bitcast[ExternalData]()
+    var ptr = data.unsafe_bitcast[ExternalData]()
     ptr.unsafe_deinit_pointee()
-    ptr.free()
+    ptr.unsafe_free()
 
 
 def create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -44,14 +44,14 @@ def create_external_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var args = CbArgs.get_two(b, env, info)
         var x = JsNumber.from_napi_value(b, env, args[0])
         var y = JsNumber.from_napi_value(b, env, args[1])
-        var data_ptr = alloc[ExternalData](1)
+        var data_ptr = unsafe_alloc[ExternalData](1)
         data_ptr.unsafe_write(ExternalData(x, y))
         var fin_ref = external_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
         return JsExternal.create(
-            b, env, data_ptr.bitcast[NoneType]().as_unsafe_any_origin(), fin_ptr
+            b, env, data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), fin_ptr
         ).value
     except:
         throw_js_error(env, "createExternal requires two number arguments")
@@ -71,7 +71,7 @@ def get_external_data_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             )
             return NapiValue(unsafe_from_address=Int(0))
         var data = JsExternal.get_data(b, env, arg0)
-        var ptr = data.bitcast[ExternalData]()
+        var ptr = data.unsafe_bitcast[ExternalData]()
         var obj = JsObject.create(b, env)
         obj.set_property(b, env, "x", JsNumber.create(b, env, ptr[].x).value)
         obj.set_property(b, env, "y", JsNumber.create(b, env, ptr[].y).value)
@@ -97,8 +97,8 @@ def external_ab_finalize(
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
 ):
-    var ptr = data.bitcast[Byte]()
-    ptr.free()
+    var ptr = data.unsafe_bitcast[Byte]()
+    ptr.unsafe_free()
 
 
 def create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -107,11 +107,11 @@ def create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var arg0 = CbArgs.get_one(b, env, info)
         var size = JsNumber.from_napi_value(b, env, arg0)
         var byte_len = UInt(Int(size))
-        var data_ptr = alloc[Byte](Int(byte_len))
+        var data_ptr = unsafe_alloc[Byte](Int(byte_len))
         for i in range(Int(byte_len)):
-            data_ptr[i] = Byte(i)
+            data_ptr[unsafe_offset=i] = Byte(i)
         var fin_ref = external_ab_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
         var result = NapiValue(unsafe_from_address=Int(0))
@@ -120,15 +120,15 @@ def create_external_arraybuffer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 raw_create_external_arraybuffer(
                     b,
                     env,
-                    data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),
+                    data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                     byte_len,
                     fin_ptr,
                     OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                    UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                    Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 )
             )
         except e:
-            data_ptr.free()
+            data_ptr.unsafe_free()
             raise e^
         return result
     except:
@@ -141,18 +141,18 @@ def noop_finalize(
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
 ):
-    var ptr = data.bitcast[Byte]()
-    ptr.free()
+    var ptr = data.unsafe_bitcast[Byte]()
+    ptr.unsafe_free()
 
 
 def attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
-        var dummy = alloc[Byte](1)
-        dummy[0] = Byte(0)
+        var dummy = unsafe_alloc[Byte](1)
+        dummy[unsafe_offset=0] = Byte(0)
         var fin_ref = noop_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
         check_status(
@@ -160,7 +160,7 @@ def attach_finalizer_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 b,
                 env,
                 arg0,
-                dummy.bitcast[NoneType]().as_unsafe_any_origin(),
+                dummy.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 fin_ptr,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
@@ -181,8 +181,8 @@ def external_string_finalize(
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
 ):
-    var ptr = data.bitcast[UInt8]()
-    ptr.free()
+    var ptr = data.unsafe_bitcast[UInt8]()
+    ptr.unsafe_free()
 
 
 ## createExternalString — zero-copy JS string from a Mojo-owned Latin-1 buffer (N-API v10)
@@ -202,10 +202,10 @@ def create_external_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var buf = latin1.ptr
         var length = latin1.length
         var fin_ref = external_string_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
-        var data_ptr: OpaquePointer[ImmutAnyOrigin] = buf.bitcast[NoneType]()
+        var data_ptr: OpaquePointer[ImmutAnyOrigin] = buf.unsafe_bitcast[NoneType]()
         return JsString.create_external_latin1(
             b, env, data_ptr, length, fin_ptr, OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         ).value

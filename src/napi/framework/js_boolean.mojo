@@ -37,18 +37,18 @@ struct JsBoolean:
     @staticmethod
     def create(env: NapiEnv, bval: Bool) raises -> JsBoolean:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+        var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=result
-        ).bitcast[NoneType]().as_unsafe_any_origin()
+        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_get_boolean(env, bval, result_ptr))
         return JsBoolean(result)
 
     @staticmethod
     def create(b: Bindings, env: NapiEnv, bval: Bool) raises -> JsBoolean:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+        var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=result
-        ).bitcast[NoneType]().as_unsafe_any_origin()
+        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_get_boolean(b, env, bval, result_ptr)
         check_status(status)
         return JsBoolean(result)
@@ -64,7 +64,7 @@ struct JsBoolean:
     @staticmethod
     def from_napi_value(env: NapiEnv, val: NapiValue) raises -> Bool:
         var bval: Bool = False
-        var b_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=bval).bitcast[
+        var b_ptr: OpaquePointer[MutAnyOrigin] = Pointer(to=bval).unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
         var status = raw_get_value_bool(env, val, b_ptr)
@@ -76,7 +76,7 @@ struct JsBoolean:
         b: Bindings, env: NapiEnv, val: NapiValue
     ) raises -> Bool:
         var bval: Bool = False
-        var b_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=bval).bitcast[
+        var b_ptr: OpaquePointer[MutAnyOrigin] = Pointer(to=bval).unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
         var status = raw_get_value_bool(b, env, val, b_ptr)

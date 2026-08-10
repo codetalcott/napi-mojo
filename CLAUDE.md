@@ -204,17 +204,17 @@ def _sym[F: TrivialRegisterPassable](ref h: OwnedDLHandle, name: StaticString) r
     if opt is None:
         raise Error("napi-mojo: symbol not found: ", name)
     var addr = opt.value()
-    return UnsafePointer(to=addr).bitcast[F]()[]
+    return Pointer(to=addr).unsafe_bitcast[F]()[]
 
 # bindings.mojo — when you need a CACHE SLOT. No bitcast at all: get_symbol
 # returns the address as a value, and the slot IS that address.
-bindings.create_object = _slot(h, "napi_create_object")   # _slot = get_symbol + as_unsafe_any_origin
+bindings.create_object = _slot(h, "napi_create_object")   # _slot = get_symbol + mut/origin cast to MutAnyOrigin
 ```
 
 > **The trap that makes `_sym` mandatory — both of these compile:**
 >
-> - `UnsafePointer(to=addr).bitcast[F]()[]` — **correct.** Reinterprets the word *holding* the address.
-> - `addr.bitcast[F]()[]` — **catastrophically wrong.** Loads the function's first 8 bytes of *machine code* and calls that as a pointer. Jump to garbage, no compiler signal.
+> - `Pointer(to=addr).unsafe_bitcast[F]()[]` — **correct.** Reinterprets the word *holding* the address.
+> - `addr.unsafe_bitcast[F]()[]` — **catastrophically wrong.** Loads the function's first 8 bytes of *machine code* and calls that as a pointer. Jump to garbage, no compiler signal.
 >
 > Never spell the bitcast inline at a call site. Keeping it in one function is what made 130 edits safe.
 
@@ -232,6 +232,23 @@ bindings.create_object = _slot(h, "napi_create_object")   # _slot = get_symbol +
 
 **`ImplicitlyDestructible` → `ImplicitlyDeletable`** (dev2026062206, migrated dev2026072306): trait renamed; old name warned. Also migrated at the same time: `init_pointee_move` → **`unsafe_write`** (25 sites) and `destroy_pointee` → **`unsafe_deinit_pointee`** (22 sites). The build is now warning-clean.
 
+**dev2026080905 (26.6 cycle) — the great `unsafe_` rename.** The entire raw-pointer surface was renamed; all pure renames with unchanged semantics, safe to apply as word-boundary seds (unlike the origin migration above, which needs diagnostics-driven placement). Migrated ~1,500 textual sites:
+
+- `UnsafePointer` → **`Pointer`** (608 sites). `OpaquePointer` is unchanged. No collision: the old safe `Pointer` reference type no longer exists under that name.
+- `.bitcast[T]()` → **`.unsafe_bitcast[T]()`** (763 sites); `.free()` → **`.unsafe_free()`** (62 sites).
+- `alloc[T](n)` → **`unsafe_alloc[T](n)`**, imported **`from std.memory.alloc import unsafe_alloc`** — the `std.memory` package `__init__` does not re-export `unsafe_alloc` on this build, so the module path is required. Long-term API is the Layout-based `alloc(layout) -> Allocation[T]` with compiler-enforced dealloc; adopting it is a real refactor, deferred.
+- Pointer indexing `ptr[i]` → **`ptr[unsafe_offset=i]`**; pointer arithmetic `ptr + n` → **`ptr.unsafe_offset(n)`**. These CANNOT be sed'd — List/Array indexing is textually identical — so they were driven from compiler diagnostics by a script parsing `file:line:col` (the caret points at the `[` / the `+`). Bare deref `ptr[]` is unaffected.
+- SIMD `.load[width=w](i)` → **`.unsafe_load[width=w](i)`** (vectors example).
+- `InlineArray[T, N]` → **`Array[T, N]`** — the temporary alias was removed; `Array` has the identical API (incl. `fill=`) and is in the prelude.
+- `__del__` → **`__deinit__`**; `ImplicitlyDeletable` → **`Deinitable`**.
+- Keyword-form move ctor must name its arg `move`: `def __init__(out self, *, deinit move: Self)`. The positional `__moveinit__(out self, deinit take: Self)` form still counts as a move ctor unchanged.
+- `@export("name", ABI="C")` → `@export("name")` + `abi("C")` effect on the def. Only `examples/codegen/lib.mojo` still had the old form — it sits outside the `examples/*-addon.mojo` CI glob and had rotted (it was also still missing dev2026072306's `.as_unsafe_any_origin()`); consider widening that glob if more non-addon examples appear.
+- New warning: "assignment to 'X' was never used" **false-positives on vars captured by `capturing` closures** (3 sites in `examples/vectors-addon.mojo`, `chunk_size`). Do not delete the "dead" var — it is read inside the closure. Left as warnings.
+
+**`get_symbol` now borrows the handle** (dev2026080905): it returns `Optional[Pointer[T, origin-of-handle]]` instead of a `MutUntrackedOrigin` pointer, so inside a generic `ref h` function the mutability is symbolic and `.as_unsafe_any_origin()` no longer converts to `MutAnyOrigin` (error names `SomeUnsafeAnyOrigin`; the note says `.mut … is 'h_is_mut'`). `_slot` (in both `bindings.mojo` and `spike/ffi_probe.mojo`) now spells the widening explicitly: `opt.value().unsafe_mut_cast[True]().unsafe_origin_cast[MutAnyOrigin]()` — same soundness argument as before (a symbol address is a static code address; the handle is `dlopen(NULL)`, never unmapped). Related: **`AnyOrigin[mut]` and `UnsafeAnyOrigin[mut]` are now distinct spellings** (identical MLIR attr underneath); upstream documents `UnsafeAnyOrigin` as "slated for deprecation and removal", so expect a future forced migration of the whole `MutAnyOrigin` field/signature surface.
+
+**`parallelize` moved to `max.algorithm`** (dev2026080905): `from std.algorithm import parallelize` no longer resolves — the function now ships in the MAX package: **`from max.algorithm import parallelize`**. Probe trap that cost real time here: an *unused* `from X import name` is NOT verified (imports resolve lazily, like body elaboration) — a probe must **call** the symbol to prove anything.
+
 **Explicit `__moveinit__` fails in a main-module file** (dev2026072306): `def __moveinit__(out self, deinit take: Self)` errors with `'None' has no attributes` on `self` when the struct is declared in a file compiled as the entry module, while the identical spelling compiles inside the `napi` package (`bindings.mojo` still declares its own). `Movable` is auto-derived, so dropping the explicit move ctor is the workaround — `spike/ffi_probe.mojo` does. Don't "fix" one context to match the other without re-checking both.
 
 **Codegen moves in lockstep with the code.** `src/generated/` is checked in but `npm run build` never regenerates it, so `scripts/generate-addon.mjs` can silently drift from its own output — it did, twice, and regenerating would have regressed the build (11 templates still emitting the `unsafe_from_address=0` literal form that stopped compiling at dev2026061206, and an async data struct missing `@__allow_legacy_any_origin_fields`). Both had been hand-patched in the *output* and never fed back. Any FFI or idiom migration must patch the templates too. The gate, now in `test.yml`, is:
@@ -246,14 +263,14 @@ npm run generate:addon && git diff --exit-code src/generated/
 
 **ASAP destruction + string lifetimes**: Mojo's ASAP (eager) destruction frees a value at its last tracked use. Raw pointer derivations (`unsafe_ptr()`) are NOT tracked uses. For FFI string arguments:
 
-- **String literals** for static names: `"propname".unsafe_ptr().bitcast[NoneType]()` — static `.rodata` lifetime, never freed. Use `JsString.create_literal` and `JsObject.set_property`.
+- **String literals** for static names: `"propname".unsafe_ptr().unsafe_bitcast[NoneType]()` — static `.rodata` lifetime, never freed. Use `JsString.create_literal` and `JsObject.set_property`.
 - **Heap Strings** for dynamic content: bind to a named `var`, derive pointer after binding, keep the var alive past the FFI call. Use `throw_js_error_dynamic` for computed error messages.
 - **`StringLiteral` parameter type** on `throw_js_error` enforces compile-time that only literals are passed.
 
 **Function pointers** (confirmed in spike):
 ```mojo
 var fn_ref = my_callback
-desc.method = UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
+desc.method = Pointer(to=fn_ref).unsafe_bitcast[OpaquePointer[MutAnyOrigin]]()[]
 ```
 
 **`NapiPropertyDescriptor` struct layout**: Must exactly match the C definition (8 fields in order: `utf8name`, `name`, `method`, `getter`, `setter`, `value`, `attributes`, `data`). Wrong layout causes silent corruption in `napi_define_properties`.
@@ -270,7 +287,7 @@ desc.method = UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 **Handle scopes for loops**: When a loop creates many temporary `napi_value` handles (e.g., `mapArray`), wrap each iteration in `HandleScope.open(env)` / `hs.close(env)`. Values set on objects/arrays outside the scope survive closure. The result container (array/object) MUST be created outside the loop's handle scope. Mojo has no RAII — `close()` must be called explicitly.
 
-**Heap allocation** (Mojo 0.26.3+): Use `alloc[T](count)` from `memory` module (NOT `UnsafePointer[T].alloc(count)` — that syntax was removed). The struct must implement `Movable` with `fn __moveinit__(out self, deinit take: Self)`. Free with `ptr.destroy_pointee()` then `ptr.free()`. For destructors use `fn __del__(deinit self)` — the `owned` keyword has been removed.
+**Heap allocation** (dev2026080905): Use `unsafe_alloc[T](count)` via `from std.memory.alloc import unsafe_alloc`. The struct must implement `Movable` with `def __moveinit__(out self, deinit take: Self)`. Free with `ptr.unsafe_deinit_pointee()` then `ptr.unsafe_free()`. For destructors use `def __deinit__(deinit self)`.
 
 **Async work callbacks**: The execute callback (`fn(NapiEnv, OpaquePointer[MutAnyOrigin])`) runs on a **worker thread** and MUST NOT call any N-API functions — only pure computation on the heap-allocated data struct. The complete callback (`fn(NapiEnv, NapiStatus, OpaquePointer[MutAnyOrigin])`) runs on the **main thread** and can safely call N-API functions. Both return `None` (not `NapiValue`). The same bitcast pattern works for extracting function pointers.
 
@@ -280,7 +297,7 @@ desc.method = UnsafePointer(to=fn_ref).bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 **Class construction (napi_define_class + napi_wrap)**: Use `define_class(env, "Name", constructor_ptr)` to register a class with a bare constructor (property_count=0). Instance methods/getters go on the **prototype** — retrieve via `napi_get_named_property(env, constructor, "prototype", &proto)`, then call `napi_define_properties` on the prototype (NOT the constructor). In the constructor callback, use `CbArgs.get_this()` to get the `this` object, heap-allocate a native data struct with `alloc[T](1)`, and `napi_wrap` it onto `this` with a finalizer. In method callbacks, use `napi_unwrap` to retrieve the native pointer. The finalizer (`fn(NapiEnv, OpaquePointer, OpaquePointer)`) calls `ptr.destroy_pointee()` + `ptr.free()`.
 
-**UnsafePointer origin requirement**: In Mojo v26.2, `UnsafePointer[Byte]` cannot infer the mutability parameter in return type position. Use `UnsafePointer[Byte, MutAnyOrigin]` explicitly for data pointer return types (e.g., in Buffer/ArrayBuffer/TypedArray wrappers).
+**Pointer origin requirement**: `Pointer[Byte]` cannot infer the mutability parameter in return type position. Use `Pointer[Byte, MutAnyOrigin]` explicitly for data pointer return types (e.g., in Buffer/ArrayBuffer/TypedArray wrappers).
 
 **Jest cross-realm instanceof**: `instanceof TypeError` / `instanceof RangeError` / `instanceof Date` fails in Jest's sandboxed VM (separate realms). Use `try/catch` with `expect(e.name).toBe('TypeError')` instead of `.toThrow(TypeError)`. For Date, use `Object.prototype.toString.call(d) === '[object Date]'` or check for `typeof d.getTime === 'function'`.
 
@@ -326,14 +343,13 @@ The `gpu/` subpackage that briefly lived here was a scaffold (handle registry on
 
 **Decided 2026-07-23 — napi-mojo is an outside-facing framework, not personal infrastructure.** This settles the recurring GPU *boundary plumbing* question (distinct from kernels, which unambiguously belong downstream): the "a contributor shouldn't need to understand `DeviceContext`" argument holds, so `napi.framework.gpu` stays deferred at the threshold `docs/plan-typed-helpers.md` already records — **revisit at 6+ cached GPU addons; currently 4**. The counter-argument on file, worth re-reading before reopening this: the framework already ships `parallelize_safe()`, `MojoFloat64Array`, and `data_ptr_float64()`, so the line it actually holds is "the JS↔Mojo boundary, not the compute" — under which GPU plumbing would be in scope. What tips it is the rot risk, not the layering: napi-mojo ships source and Mojo compiles only what's imported, so an unimported `napi.framework.gpu` would never be type-checked. That is exactly how `runtime.mojo` accumulated a latent `dlclose` bug and a dead symbol lookup. **If this is ever reversed, the module ships with a CI compile-check on CPU runners from day one** (GPU builds are AOT PTX codegen — no GPU runner needed), mirroring the `examples/` build step in `test.yml`.
 
-## `parallelize()` runtime init — the AsyncRT entry point moves
+## `parallelize()` runtime init — now on the official API
 
-`parallelize()` inside a dlopen'd `.node` needs `init_async_runtime()` first (no compiler-generated `main()` runs, so the runtime is never set up). `parallelize_safe()` calls it and, on failure, runs the work **sequentially** — correct results, zero thread dispatch, no error anywhere. That silence is the hazard: dev2026072306 renamed the symbol, and the regression survived a full release with the build and the whole suite green.
+`parallelize()` inside a dlopen'd `.node` needs `init_async_runtime()` first (no compiler-generated `main()` runs, so the runtime is never set up). `parallelize_safe()` calls it and, on failure, runs the work **sequentially** — correct results, zero thread dispatch, no error anywhere. That silence is the standing hazard: dev2026072306 renamed the private init symbol and the regression survived a full release with the build and the whole suite green.
 
-- **Current symbol: `KGEN_CompilerRT_AsyncRT_GetOrCreateCPUDevice`** in `libKGENCompilerRTShared` (was `..._GetOrCreateRuntime`).
-- **Do not read the C++ symbol as the ABI.** `M::AsyncRT::getOrCreateCPUDevice(CPUDeviceSource, const CPUDeviceOptions&, bool)` takes three arguments; the exported **C wrapper** ignores its incoming registers, stack-constructs default options, and calls it with `(1, &options, false)`. At the C ABI the wrapper is **nullary**, so the existing `def() thin abi("C") -> OpaquePointer[MutAnyOrigin]` signature is unchanged. Conflating the two is what made this look like an unguessable ABI change rather than a rename.
-- **`nm -gU` on this library is useless** — its exports live in the LC_DYLD export trie, so `nm` lists only its undefined imports. Use `dyld_info -exports` (macOS) or `nm -D` (Linux). Reading `nm` output is part of how the symbol was thought to be *gone*.
-- **`asyncRuntimeInitOk()`** (`src/addon/runtime_ops.mojo`) exports the init result and `tests/runtime.test.js` asserts it is `true`, on both CI matrix OSes. A future rename fails a test instead of halving throughput in silence. `spike/runtime_probe.mojo` is the deeper probe (idempotence, `ParallelismLevel`, a real `parallelize()` result) if the assertion ever goes red.
+- **As of dev2026080905, `init_async_runtime()` delegates to `std.runtime.initialize_runtime()`** — an official, idempotent API Mojo 1.0.0 added for exactly this case (shared-lib Mojo called from a non-Mojo host). The hand-rolled resolution of `KGEN_CompilerRT_AsyncRT_GetOrCreateCPUDevice` from `libKGENCompilerRTShared` is gone from `runtime.mojo`, along with its named-library `_ = lib^` keep-alive. `parallelize` itself now comes from `max.algorithm`.
+- **`asyncRuntimeInitOk()`** (`src/addon/runtime_ops.mojo`) exports the init result and `tests/runtime.test.js` asserts it is `true`, on both CI matrix OSes. A future breakage fails a test instead of halving throughput in silence. Verified `true` under the new API from inside a real Node process.
+- **`spike/runtime_probe.mojo` still probes the raw KGEN entry point** (idempotence, `ParallelismLevel`, a real `parallelize()` result) — useful for diagnosing what the official API does underneath if `runtime.test.js` ever goes red. Its header preserves the hard-won KGEN lore: the exported C wrapper is **nullary** despite its three-argument C++ counterpart, and `nm -gU` cannot see the library's exports (LC_DYLD export trie — use `dyld_info -exports` on macOS, `nm -D` on Linux).
 
 ## Elaboration is per-method — cover every new framework method
 

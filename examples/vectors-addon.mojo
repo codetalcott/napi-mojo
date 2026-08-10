@@ -13,7 +13,7 @@
 from std.algorithm.functional import vectorize
 from std.sys import simd_width_of
 from std.math import sqrt
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 
 from napi.types import NapiEnv, NapiValue
 from napi.error import throw_js_error
@@ -43,14 +43,14 @@ comptime NUM_WORKERS = 4
 
 
 def _vectorized_dot(
-    a: UnsafePointer[Float64, MutAnyOrigin], b: UnsafePointer[Float64, MutAnyOrigin], start: Int, end: Int
+    a: Pointer[Float64, MutAnyOrigin], b: Pointer[Float64, MutAnyOrigin], start: Int, end: Int
 ) -> Float64:
     var result: Float64 = 0.0
 
     def compute[width: Int](offset: Int) {mut result, imm a, imm b, imm start}:
         result += (
-            a.load[width=width](start + offset)
-            * b.load[width=width](start + offset)
+            a.unsafe_load[width=width](start + offset)
+            * b.unsafe_load[width=width](start + offset)
         ).reduce_add()
 
     vectorize[simd_width_of[DType.float64]()](end - start, compute)
@@ -58,12 +58,12 @@ def _vectorized_dot(
 
 
 def _vectorized_euclid(
-    a: UnsafePointer[Float64, MutAnyOrigin], b: UnsafePointer[Float64, MutAnyOrigin], start: Int, end: Int
+    a: Pointer[Float64, MutAnyOrigin], b: Pointer[Float64, MutAnyOrigin], start: Int, end: Int
 ) -> Float64:
     var sum_sq: Float64 = 0.0
 
     def compute[width: Int](offset: Int) {mut sum_sq, imm a, imm b, imm start}:
-        var diff = a.load[width=width](start + offset) - b.load[width=width](
+        var diff = a.unsafe_load[width=width](start + offset) - b.unsafe_load[width=width](
             start + offset
         )
         sum_sq += (diff * diff).reduce_add()
@@ -73,28 +73,28 @@ def _vectorized_euclid(
 
 
 def dot_product(
-    a: UnsafePointer[Float64, MutAnyOrigin], b: UnsafePointer[Float64, MutAnyOrigin], size: Int
+    a: Pointer[Float64, MutAnyOrigin], b: Pointer[Float64, MutAnyOrigin], size: Int
 ) -> Float64:
     if size < PARALLEL_THRESHOLD:
         return _vectorized_dot(a, b, 0, size)
     var chunk_size = size // NUM_WORKERS
-    var partials = alloc[Float64](NUM_WORKERS)
+    var partials = unsafe_alloc[Float64](NUM_WORKERS)
 
     def worker(wid: Int) capturing:
         var s = wid * chunk_size
         var e = s + chunk_size if wid < NUM_WORKERS - 1 else size
-        partials[wid] = _vectorized_dot(a, b, s, e)
+        partials[unsafe_offset=wid] = _vectorized_dot(a, b, s, e)
 
     parallelize_safe[worker](NUM_WORKERS)
     var result: Float64 = 0.0
     for i in range(NUM_WORKERS):
-        result += partials[i]
-    partials.free()
+        result += partials[unsafe_offset=i]
+    partials.unsafe_free()
     return result
 
 
 def cosine_similarity(
-    a: UnsafePointer[Float64, MutAnyOrigin], b: UnsafePointer[Float64, MutAnyOrigin], size: Int
+    a: Pointer[Float64, MutAnyOrigin], b: Pointer[Float64, MutAnyOrigin], size: Int
 ) -> Float64:
     if size < PARALLEL_THRESHOLD:
         var dot: Float64 = 0.0
@@ -102,8 +102,8 @@ def cosine_similarity(
         var norm_b: Float64 = 0.0
 
         def compute_st[width: Int](offset: Int) {mut dot, mut norm_a, mut norm_b, imm a, imm b}:
-            var ca = a.load[width=width](offset)
-            var cb = b.load[width=width](offset)
+            var ca = a.unsafe_load[width=width](offset)
+            var cb = b.unsafe_load[width=width](offset)
             dot += (ca * cb).reduce_add()
             norm_a += (ca * ca).reduce_add()
             norm_b += (cb * cb).reduce_add()
@@ -116,9 +116,9 @@ def cosine_similarity(
 
     # Parallel path
     var chunk_size = size // NUM_WORKERS
-    var dots = alloc[Float64](NUM_WORKERS)
-    var norms_a = alloc[Float64](NUM_WORKERS)
-    var norms_b = alloc[Float64](NUM_WORKERS)
+    var dots = unsafe_alloc[Float64](NUM_WORKERS)
+    var norms_a = unsafe_alloc[Float64](NUM_WORKERS)
+    var norms_b = unsafe_alloc[Float64](NUM_WORKERS)
 
     def worker(wid: Int) capturing:
         var s = wid * chunk_size
@@ -128,16 +128,16 @@ def cosine_similarity(
         var local_nb: Float64 = 0.0
 
         def compute[width: Int](offset: Int) {mut local_dot, mut local_na, mut local_nb, imm a, imm b, imm s}:
-            var ca = a.load[width=width](s + offset)
-            var cb = b.load[width=width](s + offset)
+            var ca = a.unsafe_load[width=width](s + offset)
+            var cb = b.unsafe_load[width=width](s + offset)
             local_dot += (ca * cb).reduce_add()
             local_na += (ca * ca).reduce_add()
             local_nb += (cb * cb).reduce_add()
 
         vectorize[simd_width_of[DType.float64]()](e - s, compute)
-        dots[wid] = local_dot
-        norms_a[wid] = local_na
-        norms_b[wid] = local_nb
+        dots[unsafe_offset=wid] = local_dot
+        norms_a[unsafe_offset=wid] = local_na
+        norms_b[unsafe_offset=wid] = local_nb
 
     parallelize_safe[worker](NUM_WORKERS)
 
@@ -145,12 +145,12 @@ def cosine_similarity(
     var na: Float64 = 0.0
     var nb: Float64 = 0.0
     for i in range(NUM_WORKERS):
-        dot += dots[i]
-        na += norms_a[i]
-        nb += norms_b[i]
-    dots.free()
-    norms_a.free()
-    norms_b.free()
+        dot += dots[unsafe_offset=i]
+        na += norms_a[unsafe_offset=i]
+        nb += norms_b[unsafe_offset=i]
+    dots.unsafe_free()
+    norms_a.unsafe_free()
+    norms_b.unsafe_free()
     var denom = sqrt(na) * sqrt(nb)
     if denom > 0.0:
         return dot / denom
@@ -158,23 +158,23 @@ def cosine_similarity(
 
 
 def euclidean_distance(
-    a: UnsafePointer[Float64, MutAnyOrigin], b: UnsafePointer[Float64, MutAnyOrigin], size: Int
+    a: Pointer[Float64, MutAnyOrigin], b: Pointer[Float64, MutAnyOrigin], size: Int
 ) -> Float64:
     if size < PARALLEL_THRESHOLD:
         return sqrt(_vectorized_euclid(a, b, 0, size))
     var chunk_size = size // NUM_WORKERS
-    var partials = alloc[Float64](NUM_WORKERS)
+    var partials = unsafe_alloc[Float64](NUM_WORKERS)
 
     def worker(wid: Int) capturing:
         var s = wid * chunk_size
         var e = s + chunk_size if wid < NUM_WORKERS - 1 else size
-        partials[wid] = _vectorized_euclid(a, b, s, e)
+        partials[unsafe_offset=wid] = _vectorized_euclid(a, b, s, e)
 
     parallelize_safe[worker](NUM_WORKERS)
     var sum_sq: Float64 = 0.0
     for i in range(NUM_WORKERS):
-        sum_sq += partials[i]
-    partials.free()
+        sum_sq += partials[unsafe_offset=i]
+    partials.unsafe_free()
     return sqrt(sum_sq)
 
 
@@ -277,7 +277,7 @@ def normalize_vector_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var norm_sq: Float64 = 0.0
 
         def compute_norm[width: Int](offset: Int) {mut norm_sq, imm v_ptr}:
-            var x = v_ptr.load[width=width](offset)
+            var x = v_ptr.unsafe_load[width=width](offset)
             norm_sq += (x * x).reduce_add()
 
         vectorize[simd_width_of[DType.float64]()](n, compute_norm)
@@ -288,7 +288,7 @@ def normalize_vector_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var out = MojoFloat64Array(n)
         var inv_norm = 1.0 / norm
         for i in range(n):
-            out.ptr[i] = v_ptr[i] * inv_norm
+            out.ptr[unsafe_offset=i] = v_ptr[unsafe_offset=i] * inv_norm
         return out.to_js(env)  # __del__ frees buffer if to_js() raises
     except:
         throw_js_error(env, "normalizeVector failed")

@@ -26,10 +26,10 @@ struct Probe:
         ## Planted bug — missing `.as_unsafe_any_origin()` on the argument.
         ## Exactly the class 5161dfc fixed.
         var slot: Int = 0
-        _sink(UnsafePointer(to=slot).bitcast[NoneType]())
+        _sink(Pointer(to=slot).unsafe_bitcast[NoneType]())
 
     @staticmethod
     def fixed(env: NapiEnv):
         ## Same body, correctly widened — this is what the fix looks like.
         var slot: Int = 0
-        _sink(UnsafePointer(to=slot).bitcast[NoneType]().as_unsafe_any_origin())
+        _sink(Pointer(to=slot).unsafe_bitcast[NoneType]().as_unsafe_any_origin())

@@ -22,9 +22,9 @@ from napi.error import check_status
 ## get_napi_version — return the highest N-API version supported by this runtime
 def get_napi_version(env: NapiEnv) raises -> UInt32:
     var result: UInt32 = 0
-    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
         to=result
-    ).bitcast[NoneType]().as_unsafe_any_origin()
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_version(env, result_ptr))
     return result
 
@@ -32,19 +32,19 @@ def get_napi_version(env: NapiEnv) raises -> UInt32:
 ## get_node_version_ptr — return a pointer to the static NapiNodeVersion struct
 ##
 ## napi_get_node_version writes a const napi_node_version* into our out-param.
-## Returns the raw pointer; caller reads fields via UnsafePointer offsets.
+## Returns the raw pointer; caller reads fields via Pointer offsets.
 def get_node_version_ptr(
     env: NapiEnv,
-) raises -> UnsafePointer[UInt32, MutAnyOrigin]:
+) raises -> Pointer[UInt32, MutAnyOrigin]:
     # The API writes a pointer-to-struct into our out variable
     var ptr_val = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-    var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+    var out_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
         to=ptr_val
-    ).bitcast[NoneType]().as_unsafe_any_origin()
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_node_version(env, out_ptr))
     # The struct starts with three UInt32 fields (major, minor, patch)
     # Cast to UInt32* for direct field access
-    return ptr_val.bitcast[UInt32]()
+    return ptr_val.unsafe_bitcast[UInt32]()
 
 
 # --- Bindings-aware overloads ---
@@ -52,22 +52,22 @@ def get_node_version_ptr(
 
 def get_napi_version(b: Bindings, env: NapiEnv) raises -> UInt32:
     var result: UInt32 = 0
-    var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
         to=result
-    ).bitcast[NoneType]().as_unsafe_any_origin()
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_version(b, env, result_ptr))
     return result
 
 
 def get_node_version_ptr(
     b: Bindings, env: NapiEnv
-) raises -> UnsafePointer[UInt32, MutAnyOrigin]:
+) raises -> Pointer[UInt32, MutAnyOrigin]:
     var ptr_val = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-    var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+    var out_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
         to=ptr_val
-    ).bitcast[NoneType]().as_unsafe_any_origin()
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_node_version(b, env, out_ptr))
-    return ptr_val.bitcast[UInt32]()
+    return ptr_val.unsafe_bitcast[UInt32]()
 
 
 ## add_async_cleanup_hook — register an async cleanup hook (N-API v8)
@@ -82,9 +82,9 @@ def add_async_cleanup_hook(
     arg: OpaquePointer[MutAnyOrigin],
 ) raises -> OpaquePointer[MutAnyOrigin]:
     var handle = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-    var handle_out: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+    var handle_out: OpaquePointer[MutAnyOrigin] = Pointer(
         to=handle
-    ).bitcast[NoneType]().as_unsafe_any_origin()
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_add_async_cleanup_hook(b, env, hook_cb, arg, handle_out))
     return handle
 
@@ -108,8 +108,8 @@ def get_uv_event_loop(
     env: NapiEnv,
 ) raises -> OpaquePointer[MutAnyOrigin]:
     var loop_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-    var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+    var out_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
         to=loop_ptr
-    ).bitcast[NoneType]().as_unsafe_any_origin()
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_uv_event_loop(b, env, out_ptr))
     return loop_ptr

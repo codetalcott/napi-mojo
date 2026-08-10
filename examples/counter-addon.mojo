@@ -10,7 +10,7 @@
 ##         c.value = 99        // setter
 ##         Counter.isCounter(c) // true
 
-from std.memory import alloc
+from std.memory.alloc import unsafe_alloc
 from napi.types import (
     NapiEnv,
     NapiValue,
@@ -39,7 +39,7 @@ from napi.framework.register import fn_ptr, ModuleBuilder
 
 # --- Native data struct ------------------------------------------------------
 # Heap-allocated and wrapped onto the JS object via napi_wrap.
-# Must implement Movable so alloc[T] + unsafe_write works.
+# Must implement Movable so unsafe_alloc[T] + unsafe_write works.
 
 
 struct CounterData(Movable):
@@ -62,9 +62,9 @@ def counter_finalize(
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
 ):
-    var ptr = data.bitcast[CounterData]()
+    var ptr = data.unsafe_bitcast[CounterData]()
     ptr.unsafe_deinit_pointee()
-    ptr.free()
+    ptr.unsafe_free()
 
 
 # --- Constructor -------------------------------------------------------------
@@ -84,11 +84,11 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var initial = JsNumber.from_napi_value(env, arg0)
 
         # Heap-allocate native data and wrap onto `this`
-        var data_ptr = alloc[CounterData](1)
+        var data_ptr = unsafe_alloc[CounterData](1)
         data_ptr.unsafe_write(CounterData(initial))
 
         var fin_ref = counter_finalize
-        var fin_ptr = UnsafePointer(to=fin_ref).bitcast[
+        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
 
@@ -96,7 +96,7 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             raw_wrap(
                 env,
                 this_val,
-                data_ptr.bitcast[NoneType]().as_unsafe_any_origin(),  # native_object
+                data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),  # native_object
                 fin_ptr,  # finalize_cb
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint (NULL)
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # result ref (NULL)

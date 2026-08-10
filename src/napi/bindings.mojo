@@ -609,12 +609,12 @@ struct NapiBindings(Movable):
         self.registry = take.registry
 
 
-comptime Bindings = UnsafePointer[NapiBindings, MutAnyOrigin]
+comptime Bindings = Pointer[NapiBindings, MutAnyOrigin]
 
 
 ## _slot — resolve a host-process symbol straight into a cache slot.
 ##
-## Note there is deliberately NO `UnsafePointer(to=...)` + bitcast here.
+## Note there is deliberately NO `Pointer(to=...)` + bitcast here.
 ## `get_symbol` hands back the symbol's address as a value, and a cache slot
 ## IS that address, so the assignment is direct. The address-of-local
 ## reinterpret is only needed when you want a *callable* — see `_sym` in
@@ -628,12 +628,14 @@ comptime Bindings = UnsafePointer[NapiBindings, MutAnyOrigin]
 ## failure mode no longer exists here. (`_sym` still needs the reinterpret, so
 ## `assert_fn_ptr_is_one_word` below keeps guarding it.)
 ##
-## `.as_unsafe_any_origin()` is the explicit spelling of the
-## MutUntrackedOrigin -> MutAnyOrigin widening the slot type requires. It is
-## sound here for a reason specific to symbols: a symbol address is a static
-## code address with no lifetime. This is NOT precedent for using
-## UntrackedOrigin at the transient slot-cast sites elsewhere — see the
-## AnyOrigin rule in CLAUDE.md.
+## The mut+origin cast is the explicit spelling of the widening the slot type
+## requires (as of dev2026080905, `get_symbol` borrows the handle, so the
+## returned pointer's origin/mutability follow `h` and must be cast to the
+## slot's `MutAnyOrigin`). It is sound here for a reason specific to symbols:
+## a symbol address is a static code address with no lifetime, and the handle
+## is `dlopen(NULL)` — the host process image is never unmapped. This is NOT
+## precedent for origin-casting the transient slot-cast sites elsewhere — see
+## the AnyOrigin rule in CLAUDE.md.
 @always_inline
 def _slot(ref h: OwnedDLHandle, name: StaticString) raises -> OpaquePointer[
     MutAnyOrigin
@@ -641,7 +643,9 @@ def _slot(ref h: OwnedDLHandle, name: StaticString) raises -> OpaquePointer[
     var opt = h.get_symbol[NoneType](name)
     if opt is None:
         raise Error("napi-mojo: symbol not found: ", name)
-    return opt.value().as_unsafe_any_origin()
+    return opt.value().unsafe_mut_cast[True]().unsafe_origin_cast[
+        MutAnyOrigin
+    ]()
 
 
 ## Compile-time guard for the whole cache design: 142 function pointers are
@@ -1122,8 +1126,8 @@ def get_bindings(env: NapiEnv) raises -> Bindings:
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ](h, "napi_get_instance_data")
     var data_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-    var out_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+    var out_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
         to=data_ptr
-    ).bitcast[NoneType]()
+    ).unsafe_bitcast[NoneType]()
     _ = f(env, out_ptr)
-    return data_ptr.bitcast[NapiBindings]()
+    return data_ptr.unsafe_bitcast[NapiBindings]()

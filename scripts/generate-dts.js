@@ -159,7 +159,7 @@ for (let i = 0; i < lines.length; i++) {
       continue;
     }
     // Fallback: check for UnsafePointer(to=xxx_ref) pattern (old style)
-    const refMatch = combined.match(/UnsafePointer\(to=(\w+_ref)\)/);
+    const refMatch = combined.match(/(?:Unsafe)?Pointer\(to=(\w+_ref)\)/);
     if (refMatch && refToFn[refMatch[1]]) {
       jsFnToCallback[jsName] = refToFn[refMatch[1]];
     }
@@ -324,7 +324,7 @@ for (let i = 0; i < lines.length; i++) {
       if (!callbackName) {
         // Fallback: check next line for UnsafePointer(to=xxx_ref) (old style)
         const nextLine = lines[i + 1] || '';
-        const refMatch = nextLine.match(/UnsafePointer\(to=(\w+_ref)\)/);
+        const refMatch = nextLine.match(/(?:Unsafe)?Pointer\(to=(\w+_ref)\)/);
         callbackName = refMatch ? refToFn[refMatch[1]] : null;
       }
       classes[currentClass].instanceMethods.push({
@@ -340,7 +340,7 @@ for (let i = 0; i < lines.length; i++) {
       let callbackName = fnPtrMatch ? refToFn[fnPtrMatch[1]] : null;
       if (!callbackName) {
         const nextLine = lines[i + 1] || '';
-        const refMatch = nextLine.match(/UnsafePointer\(to=(\w+_ref)\)/);
+        const refMatch = nextLine.match(/(?:Unsafe)?Pointer\(to=(\w+_ref)\)/);
         callbackName = refMatch ? refToFn[refMatch[1]] : null;
       }
       classes[currentClass].staticMethods.push({

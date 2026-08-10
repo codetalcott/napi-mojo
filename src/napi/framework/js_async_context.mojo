@@ -47,7 +47,7 @@ struct JsAsyncContext:
                 env,
                 async_resource,
                 async_resource_name,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsAsyncContext(result)
@@ -77,7 +77,7 @@ struct JsAsyncContext:
                 func,
                 0,
                 OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0)),
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result
@@ -92,9 +92,9 @@ struct JsAsyncContext:
         arg0: NapiValue,
     ) raises -> NapiValue:
         var result = NapiValue(unsafe_from_address=Int(0))
-        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
+        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = Pointer(
             to=arg0
-        ).bitcast[NoneType]().as_unsafe_any_origin()
+        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_make_callback(
                 b,
@@ -104,7 +104,7 @@ struct JsAsyncContext:
                 func,
                 1,
                 argv_ptr,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result
@@ -120,12 +120,12 @@ struct JsAsyncContext:
         arg1: NapiValue,
     ) raises -> NapiValue:
         var result = NapiValue(unsafe_from_address=Int(0))
-        var args = InlineArray[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
+        var args = Array[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         args[0] = arg0
         args[1] = arg1
-        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = UnsafePointer(
+        var argv_ptr: OpaquePointer[ImmutAnyOrigin] = Pointer(
             to=args[0]
-        ).bitcast[NoneType]().as_unsafe_any_origin()
+        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         check_status(
             raw_make_callback(
                 b,
@@ -135,7 +135,7 @@ struct JsAsyncContext:
                 func,
                 2,
                 argv_ptr,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result

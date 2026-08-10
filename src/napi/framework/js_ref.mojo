@@ -37,7 +37,7 @@ struct JsRef:
                 env,
                 value,
                 initial_refcount,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsRef(result)
@@ -51,7 +51,7 @@ struct JsRef:
             raw_reference_ref(
                 env,
                 self.handle,
-                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=count).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return count
@@ -62,7 +62,7 @@ struct JsRef:
             raw_reference_unref(
                 env,
                 self.handle,
-                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=count).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return count
@@ -71,7 +71,7 @@ struct JsRef:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_get_reference_value(
-                env, self.handle, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
+                env, self.handle, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return result
@@ -95,7 +95,7 @@ struct JsRef:
                 env,
                 value,
                 initial_refcount,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsRef(result)
@@ -110,7 +110,7 @@ struct JsRef:
                 b,
                 env,
                 self.handle,
-                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=count).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return count
@@ -122,7 +122,7 @@ struct JsRef:
                 b,
                 env,
                 self.handle,
-                UnsafePointer(to=count).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=count).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return count
@@ -134,7 +134,7 @@ struct JsRef:
                 b,
                 env,
                 self.handle,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return result

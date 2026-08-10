@@ -34,8 +34,8 @@
 ##     TrivialRegisterPassable); `abi("C")` makes argument passing correct.
 ##   - get_symbol returns the symbol's ADDRESS AS A VALUE. To call it you must
 ##     reinterpret the machine word, NOT dereference the pointer:
-##         UnsafePointer(to=addr).bitcast[F]()[]   # correct
-##         addr.bitcast[F]()[]                     # WRONG — loads the first 8
+##         Pointer(to=addr).unsafe_bitcast[F]()[]   # correct
+##         addr.unsafe_bitcast[F]()[]                     # WRONG — loads the first 8
 ##                                                 # bytes of machine code and
 ##                                                 # calls THAT as a pointer
 ##     Both compile. Only the first is right. This is why `_sym[F]` exists and
@@ -108,7 +108,7 @@ def _sym[F: TrivialRegisterPassable](
         raise Error("napi-mojo: symbol not found: ", name)
     var addr = opt.value()
     # Reinterpret the word holding the address — do NOT deref `addr` itself.
-    return UnsafePointer(to=addr).bitcast[F]()[]
+    return Pointer(to=addr).unsafe_bitcast[F]()[]
 
 
 # ---------------------------------------------------------------------------
@@ -137,12 +137,14 @@ struct ProbeBindings(Movable):
 
 ## Resolve a symbol straight into a cache slot.
 ##
-## Note there is NO UnsafePointer(to=...) here: get_symbol already hands back
+## Note there is NO Pointer(to=...) here: get_symbol already hands back
 ## the address as a value, and the slot IS that address. The address-of-local
 ## reinterpret is only needed when you want a *callable* (see _sym above).
-## `.as_unsafe_any_origin()` is the explicit spelling of the MutUntrackedOrigin
-## -> MutAnyOrigin widening; it is sound here specifically because a symbol
-## address is a static code address with no lifetime.
+## The mut+origin cast is the explicit spelling of the widening the slot type
+## requires (as of dev2026080905, get_symbol borrows the handle, so the
+## returned pointer's origin/mutability follow `h`); it is sound here
+## specifically because a symbol address is a static code address with no
+## lifetime, and the handle is dlopen(NULL) — never unmapped.
 @always_inline
 def _slot(ref h: OwnedDLHandle, name: StaticString) raises -> OpaquePointer[
     MutAnyOrigin
@@ -150,7 +152,9 @@ def _slot(ref h: OwnedDLHandle, name: StaticString) raises -> OpaquePointer[
     var opt = h.get_symbol[NoneType](name)
     if opt is None:
         raise Error("napi-mojo: symbol not found: ", name)
-    return opt.value().as_unsafe_any_origin()
+    return opt.value().unsafe_mut_cast[True]().unsafe_origin_cast[
+        MutAnyOrigin
+    ]()
 
 
 def probe_bindings() raises -> ProbeBindings:
@@ -211,14 +215,14 @@ def hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = probe_bindings()
 
         var msg = StaticString("FFI probe OK: get_symbol + thin abi(C) + cache")
-        var create = UnsafePointer(to=b.create_string_utf8).bitcast[
+        var create = Pointer(to=b.create_string_utf8).unsafe_bitcast[
             CreateStringFn
         ]()[]
         var status = create(
             env,
-            msg.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+            msg.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             UInt(msg.byte_length()),
-            UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+            Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
         if status != NAPI_OK:
             return NapiValue(unsafe_from_address=Int(0))
@@ -239,7 +243,7 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         var undef = NapiValue(unsafe_from_address=Int(0))
         var st = get_undefined(
             env,
-            UnsafePointer(to=undef).bitcast[NoneType]().as_unsafe_any_origin(),
+            Pointer(to=undef).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
         _ = undef
         if st != NAPI_OK:
@@ -249,8 +253,8 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         var cb = hello_fn
         var desc = NapiPropertyDescriptor()
         var name = StaticString("hello")
-        desc.utf8name = name.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin()
-        desc.method = UnsafePointer(to=cb).bitcast[
+        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+        desc.method = Pointer(to=cb).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
         desc.attributes = 0
@@ -260,7 +264,7 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
             env,
             exports,
             UInt(1),
-            UnsafePointer(to=desc).bitcast[NoneType]().as_unsafe_any_origin(),
+            Pointer(to=desc).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
         _ = desc
         _ = cb

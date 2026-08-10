@@ -42,9 +42,9 @@ struct JsNumber:
     @staticmethod
     def create(env: NapiEnv, n: Float64) raises -> JsNumber:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+        var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=result
-        ).bitcast[NoneType]().as_unsafe_any_origin()
+        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_double(env, n, result_ptr)
         check_status(status)
         return JsNumber(result)
@@ -52,9 +52,9 @@ struct JsNumber:
     @staticmethod
     def create(b: Bindings, env: NapiEnv, n: Float64) raises -> JsNumber:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
-        var result_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(
+        var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=result
-        ).bitcast[NoneType]().as_unsafe_any_origin()
+        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         var status = raw_create_double(b, env, n, result_ptr)
         check_status(status)
         return JsNumber(result)
@@ -67,7 +67,7 @@ struct JsNumber:
     @staticmethod
     def from_napi_value(env: NapiEnv, val: NapiValue) raises -> Float64:
         var n: Float64 = 0.0
-        var n_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=n).bitcast[
+        var n_ptr: OpaquePointer[MutAnyOrigin] = Pointer(to=n).unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
         var status = raw_get_value_double(env, val, n_ptr)
@@ -79,7 +79,7 @@ struct JsNumber:
         b: Bindings, env: NapiEnv, val: NapiValue
     ) raises -> Float64:
         var n: Float64 = 0.0
-        var n_ptr: OpaquePointer[MutAnyOrigin] = UnsafePointer(to=n).bitcast[
+        var n_ptr: OpaquePointer[MutAnyOrigin] = Pointer(to=n).unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
         var status = raw_get_value_double(b, env, val, n_ptr)
@@ -92,7 +92,7 @@ struct JsNumber:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_int64(
-                env, Int64(n), UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
+                env, Int64(n), Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsNumber(result)
@@ -102,7 +102,7 @@ struct JsNumber:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_int64(
-                b, env, Int64(n), UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
+                b, env, Int64(n), Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsNumber(result)
@@ -115,7 +115,7 @@ struct JsNumber:
             raw_get_value_int64(
                 env,
                 val,
-                UnsafePointer(to=n).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=n).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return Int(n)
@@ -128,7 +128,7 @@ struct JsNumber:
                 b,
                 env,
                 val,
-                UnsafePointer(to=n).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=n).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return Int(n)

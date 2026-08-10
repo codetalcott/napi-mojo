@@ -25,7 +25,7 @@ struct JsSymbol:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_symbol(
-                env, description, UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin()
+                env, description, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsSymbol(result)
@@ -37,9 +37,9 @@ struct JsSymbol:
         check_status(
             raw_symbol_for(
                 env,
-                key.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+                key.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 UInt(key.byte_length()),
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsSymbol(result)
@@ -56,7 +56,7 @@ struct JsSymbol:
                 b,
                 env,
                 description,
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsSymbol(result)
@@ -70,9 +70,9 @@ struct JsSymbol:
             raw_symbol_for(
                 b,
                 env,
-                key.unsafe_ptr().bitcast[NoneType]().as_unsafe_any_origin(),
+                key.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 UInt(key.byte_length()),
-                UnsafePointer(to=result).bitcast[NoneType]().as_unsafe_any_origin(),
+                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
         return JsSymbol(result)
