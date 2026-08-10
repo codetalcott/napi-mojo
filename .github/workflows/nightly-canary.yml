@@ -67,6 +67,14 @@ jobs:
         id: mojo-version
         run: echo "version=$(pixi run mojo --version 2>/dev/null || echo 'unknown')" >> "$GITHUB_OUTPUT"
 
+      # Same gate as test.yml: proves the generator still emits what is
+      # checked in on the new nightly (an idiom migration that touches only
+      # src/ but not the templates fails here, not at the next release).
+      - name: Verify generated sources are up to date
+        run: |
+          npm run generate:addon
+          git diff --exit-code src/generated/
+
       - name: Build Mojo addon
         run: pixi run bash build.sh
 
@@ -75,6 +83,26 @@ jobs:
       # actual call is what dereferences the NapiBindings cache.
       - name: Smoke test
         run: node -e "const a=require('./build/index.node'); console.log(a.hello())"
+
+      # These two are the gates built specifically for nightly breakage, so
+      # the canary must run them: Mojo elaborates imported-package bodies
+      # lazily, and a nightly can break dozens of framework methods with
+      # build.sh AND the whole Jest suite green (0.5.1 shipped exactly that
+      # way). Without these steps the canary is blind to the dominant nightly
+      # regression class it exists to catch.
+      - name: Build examples
+        run: |
+          for ex in examples/*-addon.mojo; do
+            echo "::group::$ex"
+            pixi run mojo build --emit shared-lib -I src "$ex" -o "/tmp/$(basename "$ex" .mojo).so"
+            echo "::endgroup::"
+          done
+
+      - name: Compile framework coverage (compile-only)
+        run: |
+          pixi run mojo build --emit shared-lib -I src \
+            tests/compile/framework_coverage.mojo -o /tmp/framework_coverage.so
+          node scripts/check-compile-coverage.mjs
 
       - name: Run tests
         run: npm test

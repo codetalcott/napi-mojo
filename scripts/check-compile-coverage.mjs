@@ -20,13 +20,31 @@ import { readFileSync, readdirSync } from 'node:fs';
 const FRAMEWORK_DIR = 'src/napi/framework';
 const COVERAGE_FILE = 'tests/compile/framework_coverage.mojo';
 
+// Beyond framework/, these top-level src/napi files carry public defs that
+// are just as lazily elaborated. They were originally outside this gate's
+// scope, which is how a dead get_bindings() with a broken body sat in
+// bindings.mojo unchecked for months. NOT scanned, with reasons:
+//   - raw.mojo: its 270+ raw_* wrappers elaborate transitively through the
+//     framework methods (and addon except-blocks) that call them; listing
+//     them here would demand 270 redundant cover calls.
+//   - bindings.mojo: init_bindings is called from src/lib.mojo, which is the
+//     eagerly-checked main module — everything live in that file is rooted.
+//   - types.mojo: type aliases and constants, no def bodies worth rooting.
+const EXTRA_FILES = ['src/napi/error.mojo', 'src/napi/module.mojo'];
+
 const defined = new Map(); // name -> Set of files declaring it
-for (const file of readdirSync(FRAMEWORK_DIR).filter((f) => f.endsWith('.mojo'))) {
-  const src = readFileSync(`${FRAMEWORK_DIR}/${file}`, 'utf8');
+function scanFile(displayName, srcPath) {
+  const src = readFileSync(srcPath, 'utf8');
   for (const m of src.matchAll(/^\s*def ([a-z][a-z0-9_]*)\s*[[(]/gm)) {
     if (!defined.has(m[1])) defined.set(m[1], new Set());
-    defined.get(m[1]).add(file);
+    defined.get(m[1]).add(displayName);
   }
+}
+for (const file of readdirSync(FRAMEWORK_DIR).filter((f) => f.endsWith('.mojo'))) {
+  scanFile(file, `${FRAMEWORK_DIR}/${file}`);
+}
+for (const path of EXTRA_FILES) {
+  scanFile(path, path);
 }
 
 const coverage = readFileSync(COVERAGE_FILE, 'utf8');

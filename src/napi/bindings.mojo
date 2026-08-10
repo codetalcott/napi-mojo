@@ -7,7 +7,10 @@
 ## Usage:
 ##   var bindings = NapiBindings()
 ##   init_bindings(bindings)
-##   # Store via napi_set_instance_data, retrieve via get_bindings()
+##   # The pointer travels through NapiPropertyDescriptor.data to every
+##   # registered callback; retrieve it there via CbArgs.get_bindings(env, info).
+##   # (Instance data is NOT used — that slot belongs to addon users via
+##   # set_instance_data/get_instance_data.)
 
 from std.ffi import OwnedDLHandle
 from std.sys.info import size_of
@@ -17,6 +20,7 @@ from napi.types import (
     NapiStatus,
     NapiAsyncContext,
     NapiCallbackScope,
+    NapiPropertyDescriptor,
 )
 
 
@@ -662,9 +666,38 @@ def assert_fn_ptr_is_one_word():
     )
 
 
+## Compile-time guards for the two C-ABI layout assumptions the framework
+## makes silently everywhere:
+##
+## 1. Optional[OpaquePointer] must be one word (niche layout, None == null).
+##    Several wrappers pass a Pointer(to=Optional-local) as a void** out-param
+##    (js_class.mojo unwrap sites, instance_data.mojo) and detect a written
+##    NULL via `is None`. If a nightly ever gives Optional a discriminant
+##    word, those out-params silently corrupt the neighbouring stack slot.
+## 2. NapiPropertyDescriptor must exactly match the C struct: 7 pointer-sized
+##    fields + UInt32 attributes padded to pointer size = 8 words. The comment
+##    on the struct says "wrong layout causes silent corruption in
+##    napi_define_properties" — this turns that into a build failure.
+@always_inline
+def assert_abi_layouts():
+    comptime assert size_of[Optional[OpaquePointer[MutAnyOrigin]]]() == size_of[
+        OpaquePointer[MutAnyOrigin]
+    ](), (
+        "Optional[OpaquePointer] is no longer one word (niche layout lost) —"
+        " every Optional-as-void** out-param in the framework is now unsound"
+    )
+    comptime assert size_of[NapiPropertyDescriptor]() == 8 * size_of[
+        OpaquePointer[MutAnyOrigin]
+    ](), (
+        "NapiPropertyDescriptor no longer matches the 8-word C layout —"
+        " napi_define_properties would silently corrupt memory"
+    )
+
+
 def init_bindings(mut bindings: NapiBindings) raises:
     """Resolve all 142 N-API symbols from the host process once."""
     assert_fn_ptr_is_one_word()
+    assert_abi_layouts()
     var h = OwnedDLHandle()
 
     # 1. napi_create_string_utf8
@@ -1118,16 +1151,10 @@ def init_bindings(mut bindings: NapiBindings) raises:
     # Same signature as napi_get_value_string_utf8 but output is single-byte Latin-1.
     bindings.get_value_string_latin1 = _slot(h, "napi_get_value_string_latin1")
 
-
-def get_bindings(env: NapiEnv) raises -> Bindings:
-    """Retrieve the NapiBindings pointer stored as instance data."""
-    var h = OwnedDLHandle()
-    var f = _sym[
-        def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ](h, "napi_get_instance_data")
-    var data_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-    var out_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-        to=data_ptr
-    ).unsafe_bitcast[NoneType]()
-    _ = f(env, out_ptr)
-    return data_ptr.unsafe_bitcast[NapiBindings]()
+# NOTE: an env-level `get_bindings(env)` used to live here, reading the
+# bindings pointer out of napi instance data. That design was abandoned —
+# bindings travel through NapiPropertyDescriptor.data and are retrieved with
+# CbArgs.get_bindings(env, info) — and instance data now belongs to addon
+# users (set_instance_data/get_instance_data), so the old function would have
+# bitcast USER data into NapiBindings. It had zero callers and, per Mojo's
+# lazy elaboration, was never even type-checked. Do not reintroduce it.

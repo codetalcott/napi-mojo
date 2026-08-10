@@ -11,6 +11,9 @@
     "examples/",
     "!examples/codegen/build",
     "!examples/codegen/generated",
+    "scripts/generate-addon.mjs",
+    "scripts/generate-dts.js",
+    "scripts/toml-lite.js",
     "README.md",
     "LICENSE"
   ],
@@ -32,7 +35,7 @@
     "version": "node scripts/sync-versions.mjs"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.12.0"
   },
   "license": "MIT",
   "author": "Wm Talcott <wtalcott@gmail.com>",

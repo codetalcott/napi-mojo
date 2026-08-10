@@ -8,8 +8,10 @@
 ##   # ... make synchronous N-API calls here ...
 ##   scope.close(b, env)
 ##
-## IMPORTANT: Mojo has no RAII — close() must be called explicitly.
-## Call close() even if an exception is raised, or the scope will leak.
+## IMPORTANT: close() must be called explicitly, and that is DELIBERATE — Mojo
+## has destructors, but ASAP destruction runs them at last USE, so an
+## auto-closing scope would close mid-body (see handle_scope.mojo for the full
+## rationale). Call close() even if an exception is raised, or the scope leaks.
 
 from napi.types import NapiEnv, NapiValue, NapiAsyncContext, NapiCallbackScope
 from napi.bindings import Bindings

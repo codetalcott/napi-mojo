@@ -196,7 +196,9 @@ def throw_js_range_error_dynamic(env: NapiEnv, msg: String):
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
         var msg_ptr: OpaquePointer[
             ImmutAnyOrigin
-        ] = msg_copy.unsafe_ptr().unsafe_bitcast[NoneType]()
+        ] = msg_copy.unsafe_ptr().unsafe_bitcast[
+            NoneType
+        ]().as_unsafe_any_origin()
         _ = raw_throw_range_error(env, null_code, msg_ptr)
         _ = msg_copy^
     except:
@@ -255,7 +257,7 @@ def throw_js_range_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().unsafe_bitcast[
         NoneType
-    ]()
+    ]().as_unsafe_any_origin()
     _ = raw_throw_range_error(b, env, null_code, msg_ptr)
     _ = msg_copy^
 
@@ -282,7 +284,9 @@ def throw_js_syntax_error_dynamic(env: NapiEnv, msg: String):
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
         var msg_ptr: OpaquePointer[
             ImmutAnyOrigin
-        ] = msg_copy.unsafe_ptr().unsafe_bitcast[NoneType]()
+        ] = msg_copy.unsafe_ptr().unsafe_bitcast[
+            NoneType
+        ]().as_unsafe_any_origin()
         _ = raw_throw_syntax_error(env, null_code, msg_ptr)
         _ = msg_copy^
     except:
@@ -302,6 +306,6 @@ def throw_js_syntax_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().unsafe_bitcast[
         NoneType
-    ]()
+    ]().as_unsafe_any_origin()
     _ = raw_throw_syntax_error(b, env, null_code, msg_ptr)
     _ = msg_copy^

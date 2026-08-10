@@ -62,6 +62,13 @@ trait FromJsValue:
 
 
 ## _check_type — validate that a NapiValue has the expected type, throw TypeError if not
+##
+## Error-signalling convention (applies to every validation helper here): on
+## mismatch we BOTH set a pending JS TypeError (so JS sees a typed error with
+## a real message) AND raise a Mojo error (so Mojo execution unwinds to the
+## callback's except block, which returns null). Callers that catch the Mojo
+## error must NOT make further N-API calls other than returning — the pending
+## exception makes any subsequent call report napi_pending_exception.
 def _check_type(
     env: NapiEnv,
     val: NapiValue,
@@ -72,6 +79,23 @@ def _check_type(
     if actual != expected:
         throw_js_type_error_dynamic(
             env, "expected " + expected_name + ", got " + js_type_name(actual)
+        )
+        raise Error("type mismatch")
+
+
+def _check_type(
+    b: Bindings,
+    env: NapiEnv,
+    val: NapiValue,
+    expected: NapiValueType,
+    expected_name: StringLiteral,
+) raises:
+    var actual = js_typeof(b, env, val)
+    if actual != expected:
+        throw_js_type_error_dynamic(
+            b,
+            env,
+            "expected " + expected_name + ", got " + js_type_name(actual),
         )
         raise Error("type mismatch")
 
@@ -103,7 +127,7 @@ struct JsF64(Copyable, FromJsValue, ToJsValue):
 
     @staticmethod
     def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
-        _check_type(env, val, NAPI_TYPE_NUMBER, "number")
+        _check_type(b, env, val, NAPI_TYPE_NUMBER, "number")
         var n: Float64 = JsNumber.from_napi_value(b, env, val)
         return JsF64(n)
 
@@ -128,7 +152,7 @@ struct JsI32(FromJsValue, ToJsValue):
 
     @staticmethod
     def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
-        _check_type(env, val, NAPI_TYPE_NUMBER, "number")
+        _check_type(b, env, val, NAPI_TYPE_NUMBER, "number")
         return JsI32(JsInt32.from_napi_value(b, env, val))
 
 
@@ -152,7 +176,7 @@ struct JsBool(FromJsValue, ToJsValue):
 
     @staticmethod
     def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
-        _check_type(env, val, NAPI_TYPE_BOOLEAN, "boolean")
+        _check_type(b, env, val, NAPI_TYPE_BOOLEAN, "boolean")
         return JsBool(JsBoolean.from_napi_value(b, env, val))
 
 
@@ -183,7 +207,7 @@ struct JsStr(Copyable, FromJsValue, ToJsValue):
 
     @staticmethod
     def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
-        _check_type(env, val, NAPI_TYPE_STRING, "string")
+        _check_type(b, env, val, NAPI_TYPE_STRING, "string")
         var s: String = JsString.from_napi_value(b, env, val)
         return JsStr(s)
 
@@ -237,7 +261,9 @@ def from_js_array_f64(
     b: Bindings, env: NapiEnv, val: NapiValue
 ) raises -> List[Float64]:
     if not js_is_array(b, env, val):
-        throw_js_type_error_dynamic(env, "from_js_array_f64: expected array")
+        throw_js_type_error_dynamic(
+            b, env, "from_js_array_f64: expected array"
+        )
         raise Error("type mismatch")
     var arr = JsArray(val)
     var n = Int(arr.length(b, env))
@@ -267,7 +293,9 @@ def from_js_array_str(
     b: Bindings, env: NapiEnv, val: NapiValue
 ) raises -> List[String]:
     if not js_is_array(b, env, val):
-        throw_js_type_error_dynamic(env, "from_js_array_str: expected array")
+        throw_js_type_error_dynamic(
+            b, env, "from_js_array_str: expected array"
+        )
         raise Error("type mismatch")
     var arr = JsArray(val)
     var n = Int(arr.length(b, env))
@@ -309,7 +337,7 @@ def from_js_array[
     T: FromJsValue & Copyable & Deinitable
 ](b: Bindings, env: NapiEnv, val: NapiValue) raises -> List[T]:
     if not js_is_array(b, env, val):
-        throw_js_type_error_dynamic(env, "from_js_array: expected array")
+        throw_js_type_error_dynamic(b, env, "from_js_array: expected array")
         raise Error("type mismatch")
     var arr = JsArray(val)
     var n = Int(arr.length(b, env))

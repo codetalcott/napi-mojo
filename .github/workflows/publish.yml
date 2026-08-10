@@ -182,6 +182,15 @@ jobs:
       - name: Sync versions from root package.json
         run: node scripts/sync-versions.mjs
 
+      # package.json declares "types": "build/index.d.ts", but build/ is
+      # gitignored — so unless this step runs, the root package publishes
+      # WITHOUT its TypeScript definitions. That is exactly what happened to
+      # every release through 0.6.0: the registry tarballs contain no .d.ts
+      # and the "types" field dangles. generate-dts.js is a pure-Node source
+      # scan, so it runs fine here without a Mojo toolchain.
+      - name: Generate TypeScript definitions
+        run: node scripts/generate-dts.js
+
       # Verify the TARBALL, not the build directory.
       #
       # The previous check loaded build/index.node in the build job, which
@@ -229,6 +238,25 @@ jobs:
             }
             console.log('packed linux-x64 tarball loads standalone:', greeting);
           "
+
+      # The platform tarballs above are verified meticulously; until now the
+      # ROOT tarball had no gate at all — which is how every release through
+      # 0.6.0 shipped without index.d.ts. Same principle as above: verify the
+      # exact bytes that get published.
+      - name: Verify root tarball
+        run: |
+          set -euo pipefail
+          tgz="$(npm pack --silent)"
+          mkdir -p /tmp/packed/root
+          tar xzf "$tgz" -C /tmp/packed/root --strip-components=1
+          for f in build/index.d.ts index.js \
+                   scripts/generate-addon.mjs scripts/generate-dts.js scripts/toml-lite.js \
+                   src/napi/bindings.mojo src/napi/framework/register.mojo \
+                   src/exports.toml examples/codegen/build.sh; do
+            test -f "/tmp/packed/root/$f" \
+              || { echo "::error::root tarball is missing $f"; exit 1; }
+          done
+          echo "root tarball contains index.d.ts, generators, and framework source"
 
       # No NODE_AUTH_TOKEN on any publish step, deliberately. These packages
       # authenticate via npm trusted publishing (OIDC), which is why the job

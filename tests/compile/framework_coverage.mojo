@@ -74,9 +74,24 @@ from napi.types import (
     NapiRef,
     NapiThreadsafeFunction,
     NapiValueType,
+    NapiStatus,
+    NapiPropertyDescriptor,
     NAPI_TYPE_OBJECT,
 )
 from napi.bindings import NapiBindings, Bindings
+from napi.error import (
+    napi_status_name,
+    check_status,
+    throw_js_error,
+    throw_js_error_dynamic,
+    throw_js_type_error,
+    throw_js_type_error_dynamic,
+    throw_js_range_error,
+    throw_js_range_error_dynamic,
+    throw_js_syntax_error,
+    throw_js_syntax_error_dynamic,
+)
+from napi.module import define_property, register_method
 
 from napi.framework.args import CbArgs
 from napi.framework.async_work import AsyncWork
@@ -585,11 +600,13 @@ def cover_js_int32(b: Bindings, env: NapiEnv, v: NapiValue) raises:
 
 
 def cover_js_int64(b: Bindings, env: NapiEnv, v: NapiValue) raises:
+    _ = JsInt64.create(env, Int64(0))
     _ = JsInt64.create(b, env, Int64(0))
     _ = JsInt64.from_napi_value(b, env, v)
 
 
 def cover_js_uint32(b: Bindings, env: NapiEnv, v: NapiValue) raises:
+    _ = JsUInt32.create(env, UInt32(0))
     _ = JsUInt32.create(b, env, UInt32(0))
     _ = JsUInt32.from_napi_value(b, env, v)
 
@@ -895,6 +912,45 @@ def cover_threadsafe_function(b: Bindings, env: NapiEnv, v: NapiValue) raises:
     tsfn.abort(b)
 
 
+# --- error.mojo (src/napi/, not framework/ — same lazy-elaboration rules) -----
+
+
+def cover_error(b: Bindings, env: NapiEnv) raises:
+    _ = napi_status_name(NapiStatus(0))
+    check_status(NapiStatus(0))
+    # env-only forms
+    throw_js_error(env, "x")
+    throw_js_error_dynamic(env, String("x"))
+    throw_js_type_error(env, "x")
+    throw_js_type_error_dynamic(env, String("x"))
+    throw_js_range_error(env, "x")
+    throw_js_range_error_dynamic(env, String("x"))
+    throw_js_syntax_error(env, "x")
+    throw_js_syntax_error_dynamic(env, String("x"))
+    # Bindings forms
+    throw_js_error(b, env, "x")
+    throw_js_error_dynamic(b, env, String("x"))
+    throw_js_type_error(b, env, "x")
+    throw_js_type_error_dynamic(b, env, String("x"))
+    throw_js_range_error(b, env, "x")
+    throw_js_range_error_dynamic(b, env, String("x"))
+    throw_js_syntax_error(b, env, "x")
+    throw_js_syntax_error_dynamic(b, env, String("x"))
+
+
+# --- module.mojo --------------------------------------------------------------
+
+
+def cover_module(b: Bindings, env: NapiEnv, exports: NapiValue) raises:
+    var desc = NapiPropertyDescriptor()
+    define_property(env, exports, desc)
+    var desc2 = NapiPropertyDescriptor()
+    define_property(b, env, exports, desc2)
+    var null_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+    register_method(env, exports, "x", null_ptr)
+    register_method(b, env, exports, "x", null_ptr)
+
+
 # --- anchor -------------------------------------------------------------------
 
 
@@ -944,6 +1000,8 @@ def coverage_anchor(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         cover_register(b, env, exports)
         cover_runtime()
         cover_threadsafe_function(b, env, exports)
+        cover_error(b, env)
+        cover_module(b, env, exports)
     except:
         pass
     return exports

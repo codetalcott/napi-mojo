@@ -125,25 +125,54 @@ struct ModuleBuilder(Movable):
         self._descs.unsafe_offset(self._count).unsafe_write(desc^)
         self._count += 1
 
+    ## _free_descs — free the descriptor array exactly once
+    ##
+    ## Nulls the pointer afterwards so a second flush() (or __deinit__ after
+    ## flush) is a no-op instead of a double-free. Pointers can't be
+    ## null-checked with `if not ptr` anymore — use Int(ptr) == 0.
+    def _free_descs(mut self):
+        if Int(self._descs) != 0:
+            self._descs.unsafe_free()
+            self._descs = Pointer[NapiPropertyDescriptor, MutAnyOrigin](
+                unsafe_from_address=Int(0)
+            )
+
     ## flush — register all accumulated method descriptors in one N-API call
     ##
-    ## Must be called exactly once after all method() calls. Frees the internal
-    ## heap array. The fn_ref vars in the caller must remain alive until after
-    ## flush() returns (ASAP safety — StringLiteral names are static lifetime).
+    ## Safe to call at most once meaningfully; a repeat call is a no-op.
+    ## The descriptor array is freed on every exit path (including a failed
+    ## napi_define_properties), and __deinit__ backstops the case where a
+    ## register_* call raises before flush() is ever reached. The fn_ref vars
+    ## in the caller must remain alive until after flush() returns (ASAP
+    ## safety — StringLiteral names are static lifetime).
     def flush(mut self) raises:
+        if Int(self._descs) == 0:
+            return  # already flushed
         if self._count == 0:
-            self._descs.unsafe_free()
+            self._free_descs()
             return
-        check_status(
-            raw_define_properties(
-                self.env,
-                self.exports,
-                UInt(self._count),
-                Pointer(to=self._descs[unsafe_offset=0]).unsafe_bitcast[NoneType](),
+        try:
+            check_status(
+                raw_define_properties(
+                    self.env,
+                    self.exports,
+                    UInt(self._count),
+                    Pointer(to=self._descs[unsafe_offset=0]).unsafe_bitcast[NoneType](),
+                )
             )
-        )
-        self._descs.unsafe_free()
+        except e:
+            self._free_descs()
+            raise e^
+        self._free_descs()
         self._count = 0
+
+    ## __deinit__ — backstop: free the descriptor array if flush() never ran
+    ## (e.g. a register_* call raised during module init). Descriptors are
+    ## trivial (pointers + UInt32), so freeing without per-element deinit is
+    ## correct.
+    def __deinit__(deinit self):
+        if Int(self._descs) != 0:
+            self._descs.unsafe_free()
 
     ## class_def — define a class and attach it to exports, returns ClassBuilder
     def class_def(

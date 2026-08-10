@@ -9,7 +9,16 @@
 ##       # ... create napi_values ...
 ##       hs.close(env)
 ##
-## IMPORTANT: Mojo has no RAII destructors. You MUST call close() explicitly.
+## IMPORTANT: close() must be called explicitly, and that is DELIBERATE — not
+## a missing-language-feature workaround. Mojo does have destructors
+## (__deinit__), but ASAP destruction runs them at the value's LAST USE, not
+## at end of scope: an auto-closing HandleScope would close right after
+## open() (or mid-body) and invalidate every handle created after it. Keeping
+## close() explicit is the only ordering that is correct under ASAP semantics.
+## Consequence: a `raise` between open() and close() leaks the scope, and a
+## leaked inner scope makes the outer close() fail with
+## napi_handle_scope_mismatch — wrap raising bodies in try/except and close in
+## both paths.
 ## Values set on objects/arrays outside the scope survive scope closure
 ## (they are referenced by the parent object, not the scope).
 

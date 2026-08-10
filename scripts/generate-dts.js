@@ -46,6 +46,10 @@ const OVERRIDES = {
   getExternalData: '(ext: unknown): { x: number; y: number }',
   doubleFloat64Array: '(arr: Float64Array): Float64Array',
   sumBuffer: '(buf: Buffer): number',
+  // Inference sees the JsNull.create on the miss path and would emit `: null`;
+  // the hit path returns the raw property value, which inference can't see.
+  getOptValue: '(obj: object): any | null',
+  bufferFromArrayBuffer: '(buffer: ArrayBuffer, byteOffset: number, byteLength: number): Buffer',
   createArrayBuffer: '(size: number): ArrayBuffer',
   createBuffer: '(size: number): Buffer',
   arrayBufferLength: '(buf: ArrayBuffer): number',
@@ -198,6 +202,12 @@ function inferReturnType(body) {
   // Check for promise (async patterns)
   if (body.includes('JsPromise.create(')) return 'Promise<any>';
 
+  // Array-returning helpers first: a body that converts a Mojo List back to
+  // a JS array (to_js_array_*) is returning that array, even if it also
+  // touches scalar creates along the way.
+  if (body.includes('to_js_array_f64(')) return 'number[]';
+  if (body.includes('to_js_array_str(')) return 'string[]';
+
   // Check specific return types
   if (body.includes('JsString.create_literal(') || body.includes('JsString.create(')) return 'string';
   if (body.includes('JsBigInt.from_int64(') || body.includes('JsBigInt.from_uint64(')) return 'bigint';
@@ -208,7 +218,10 @@ function inferReturnType(body) {
   if (body.includes('JsNull.create(')) return 'null';
   if (body.includes('JsUndefined.create(')) return 'undefined';
   if (body.includes('JsArrayBuffer.create(')) return 'ArrayBuffer';
-  if (body.includes('JsBuffer.create(')) return 'Buffer';
+  // create_copy / from_arraybuffer do not contain the substring
+  // "JsBuffer.create(" — without these two checks they fell through to the
+  // throw-based "never" rule below (createBufferCopy used to emit `: never`).
+  if (body.includes('JsBuffer.create(') || body.includes('JsBuffer.create_copy(') || body.includes('JsBuffer.from_arraybuffer(')) return 'Buffer';
   if (body.includes('JsExternal.create(')) return 'unknown';
   if (body.includes('JsArray.create_with_length(')) return 'any[]';
   if (body.includes('JsObject.create(')) return 'object';
@@ -239,7 +252,7 @@ function inferParamTypes(body, count) {
   if (count === -1) return [{ name: 'args', type: 'number', rest: true }]; // sumArgs pattern
 
   const params = [];
-  const paramNames = count === 1 ? ['arg'] : ['a', 'b'];
+  const paramNames = count === 1 ? ['arg'] : ['a', 'b', 'c', 'd'];
 
   for (let i = 0; i < Math.abs(count); i++) {
     let type = 'any';
@@ -256,8 +269,9 @@ function inferParamTypes(body, count) {
       // Infer from usage
       else if (body.includes('JsNumber.from_napi_value(')) type = 'number';
       else if (body.includes('JsString.from_napi_value(') || body.includes('JsString.read_arg_0(')) type = 'string';
-    } else if (count === 2) {
-      // For two-arg functions, check common patterns
+    } else if (count >= 2) {
+      // For multi-arg functions, check common patterns (crude: assigns the
+      // same inferred type to every param — OVERRIDES is the escape hatch)
       if (body.includes('JsNumber.from_napi_value(')) type = 'number';
       else if (body.includes('JsInt32.from_napi_value(')) type = 'number';
       else if (body.includes('JsUInt32.from_napi_value(')) type = 'number';
@@ -635,50 +649,9 @@ for (const [className, info] of Object.entries(classes)) {
 }
 
 // --- TOML-defined classes (from src/exports.toml) ---
-function parseTOML(text) {
-  const result = {};
-  let current = result;
-  const lines2 = text.split('\n');
-  let i = 0;
-  while (i < lines2.length) {
-    const line = lines2[i].trim();
-    i++;
-    if (!line || line.startsWith('#')) continue;
-    const sectionMatch = line.match(/^\[([^\]]+)\]$/);
-    if (sectionMatch) {
-      const parts = sectionMatch[1].split('.');
-      current = result;
-      for (const part of parts) {
-        if (!current[part]) current[part] = {};
-        current = current[part];
-      }
-      continue;
-    }
-    const kvMatch = line.match(/^(\w+)\s*=\s*(.*)$/);
-    if (kvMatch) {
-      const key = kvMatch[1];
-      let value = kvMatch[2].trim();
-      if (value.startsWith('"""')) {
-        value = value.slice(3);
-        const bodyLines = [value];
-        while (i < lines2.length) {
-          const nextLine = lines2[i]; i++;
-          if (nextLine.trim().endsWith('"""')) { bodyLines.push(nextLine.trim().slice(0, -3)); break; }
-          bodyLines.push(nextLine);
-        }
-        current[key] = bodyLines.join('\n').trim();
-        continue;
-      }
-      if (value.startsWith('"') && value.endsWith('"')) { current[key] = value.slice(1, -1); continue; }
-      if (value.startsWith('[')) {
-        current[key] = value.slice(1, -1).split(',').map(s => s.trim().replace(/"/g, '')).filter(Boolean);
-        continue;
-      }
-      current[key] = value;
-    }
-  }
-  return result;
-}
+// Shared parser — this file used to carry its own hand-rolled copy, which had
+// already diverged from generate-addon.mjs's copy (no integer branch here).
+const { parseTOML } = require('./toml-lite.js');
 
 const TOML_TYPE_TO_TS = {
   number: 'number', string: 'string', boolean: 'boolean', bool: 'boolean',
@@ -691,6 +664,17 @@ function tomlTokenToTs(token) {
   // Handle typed array tokens (number[], string[]) before looking up
   if (noQ.endsWith('[]')) return TOML_TYPE_TO_TS[noQ] || 'any[]';
   return TOML_TYPE_TO_TS[noQ] || 'any';
+}
+
+// Argument position: a '?' token means the generated callback skips type
+// validation, so null/undefined are accepted — say so in the types instead
+// of silently stripping the '?'.
+function tomlArgToTs(token) {
+  const base = tomlTokenToTs(token);
+  if (String(token || '').endsWith('?') && base !== 'any') {
+    return `${base} | null`;
+  }
+  return base;
 }
 
 const TOML_PATH = path.join(__dirname, '..', 'src', 'exports.toml');
@@ -722,7 +706,7 @@ for (const [sName, sDecl] of Object.entries(tomlStructs)) {
 for (const [, fn] of Object.entries(toml.functions || {})) {
   const jsName = fn.js_name;
   if (!jsName) continue;
-  const fnArgs = (fn.args || []).map((t, i) => `arg${i}: ${tomlTokenToTs(t)}`).join(', ');
+  const fnArgs = (fn.args || []).map((t, i) => `arg${i}: ${tomlArgToTs(t)}`).join(', ');
   const rawRet = fn.returns || 'any';
   const retNullable = rawRet.endsWith('?');
   const retToken = rawRet.replace(/\?$/, '');

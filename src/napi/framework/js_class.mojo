@@ -438,7 +438,7 @@ def unwrap_native[
 ](b: Bindings, env: NapiEnv, info: NapiValue) raises -> Pointer[
     T, MutAnyOrigin
 ]:
-    var this_val = CbArgs.get_this(env, info)
+    var this_val = CbArgs.get_this(b, env, info)
     var data: Optional[OpaquePointer[MutAnyOrigin]] = None
     check_status(
         raw_unwrap(
