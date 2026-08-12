@@ -29,12 +29,16 @@ classes, 648 tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
   complete, ergonomic framework for building Node.js native addons in Mojo.
-  We're not there yet; reaching that bar requires exhaustive real-world testing,
-  community feedback, and a stable Mojo language release.
-- **Mojo compatibility:** Tracks the latest Mojo nightly (pinned in
-  [`pixi.toml`](pixi.toml)). As Mojo approaches v1.0, this project aims to stay
-  current with each nightly release. Expect occasional build breakage during
-  Mojo language transitions.
+  We're not there yet; reaching that bar requires exhaustive real-world testing
+  and community feedback. The third prerequisite — a stable Mojo language
+  release — arrived with Mojo 1.0.0, which this project now builds against.
+- **Mojo compatibility:** Builds against **Mojo 1.0.0** (stable), pinned in
+  [`pixi.toml`](pixi.toml) as `max = "==26.5.0"`. napi-mojo ships Mojo source
+  that your addon compiles against, so the framework tracks *stable* language
+  releases rather than nightlies — pinning a nightly would force every consumer
+  onto that exact nightly. A twice-weekly Nightly Canary builds and tests
+  against the newest nightly to catch breaking changes ahead of the next
+  release.
 - **What works:** Core N-API bindings, type wrappers, async work, classes, error
   handling, TypeScript definition generation, and a TOML-driven code generator
   with `mojo_fn` auto-trampolines, nullable returns, and struct-to-object
@@ -104,8 +108,9 @@ The install gives you:
   platforms the demo throws on load; the framework itself works anywhere Mojo
   does.
 
-Building your own addon requires the [Mojo nightly](https://mojolang.org/install/)
-toolchain — see [Building from source](#building-from-source) below.
+Building your own addon requires the [Mojo](https://mojolang.org/install/)
+toolchain (1.0.0 or newer) — see [Building from source](#building-from-source)
+below.
 
 See [`examples/`](examples/) for runnable scripts.
 
@@ -119,9 +124,9 @@ npm run build    # compiles Mojo → build/index.node + generates TypeScript def
 npm test         # 641 tests, 82 suites (7 GC tests need `npm run test:gc`)
 ```
 
-**Prerequisites:** [Mojo nightly](https://mojolang.org/install/) via
+**Prerequisites:** [Mojo 1.0.0](https://mojolang.org/install/) via
 [pixi](https://pixi.sh) (exact version pinned in [`pixi.toml`](pixi.toml);
-`npm run build` provisions it from the `max-nightly` conda channel
+`npm run build` provisions it from the stable `max` conda channel
 automatically), Node.js 22.12+ (N-API v10)
 
 **pixi 0.73 or newer is required** — `pixi.lock` is lockfile format v7, which
