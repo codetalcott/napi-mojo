@@ -46,6 +46,17 @@ jobs:
       - name: Install Node.js dependencies
         run: npm ci
 
+      # The release surface spans five files (root package.json + its
+      # optionalDependencies, two platform package.jsons, package-lock.json,
+      # pixi.toml) and only sync-versions.mjs keeps them equal. Drift is silent
+      # by construction — every consumer just reads the string back out — and
+      # has shipped: a lockfile reading 0.6.0 with `resolved` still pointing at
+      # the 0.2.10 tarball had three suites testing a stale registry binary.
+      # grail.yaml carries the same condition, but it is gitignored and local,
+      # so this is the copy that actually gates a merge.
+      - name: Verify package versions are in sync
+        run: node scripts/sync-versions.mjs --check
+
       # src/generated/ is checked in but `npm run build` never regenerates it,
       # so the generator can silently drift from its own output — it did, twice,
       # and a regeneration would have regressed the build. Any idiom migration

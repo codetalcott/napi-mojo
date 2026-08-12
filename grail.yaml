@@ -1,0 +1,108 @@
+version: "1.0"
+domain:
+  name: "napi-mojo"
+  description: "Mojo N-API bridge — build, test, generate types, publish"
+
+conditions:
+  - name: project.build.passing
+    description: "Mojo compiles to index.node and TypeScript defs generated"
+    eval:
+      type: shell
+      cmd: "test -f build/index.node && test -f build/index.d.ts"
+      cwd: "{cwd}"
+
+  # No test count in the description — it was 561 here while the suite was well
+  # past 640, because nothing updates a number embedded in prose.
+  - name: project.tests.passing
+    description: "Jest suite passes"
+    eval:
+      type: shell
+      cmd: "npx jest --silent"
+      cwd: "{cwd}"
+
+  - name: project.mojo.compiles
+    description: "Mojo shared lib compiles without errors"
+    eval:
+      type: shell
+      cmd: "bash build.sh"
+      cwd: "{cwd}"
+
+  # `safety: readonly` for the same reason as project.versions.synced below:
+  # LOOKS_MUTATING matches the script name, and this invocation genuinely does
+  # not write. The old `|| test -f build/index.d.ts` fallback is gone — a file
+  # existing says nothing about whether it is current.
+  - name: project.types.generated
+    description: "build/index.d.ts matches what generate-dts.js produces from current source"
+    safety: readonly
+    eval:
+      type: shell
+      cmd: "node scripts/generate-dts.js --check"
+      cwd: "{cwd}"
+
+  # `safety: readonly` is load-bearing: check-domain's LOOKS_MUTATING matches the
+  # script's name unconditionally, so without it this condition is skipped as a
+  # writer — a quieter way of never running than the `|| true` it replaced.
+  - name: project.versions.synced
+    description: "One version across package.json, both platform packages, package-lock.json and pixi.toml"
+    safety: readonly
+    eval:
+      type: shell
+      cmd: "node scripts/sync-versions.mjs --check"
+      cwd: "{cwd}"
+
+  - name: project.clean.workdir
+    description: "No uncommitted changes"
+    eval:
+      type: shell
+      cmd: "test -z \"$(git status --porcelain)\""
+      cwd: "{cwd}"
+
+affordances:
+  - name: build
+    title: "Build Native Addon"
+    preconditions: []
+    effects: [project.mojo.compiles, project.build.passing]
+    action:
+      type: shell
+      cmd: "npm run build"
+      cwd: "{cwd}"
+    cost: 3
+
+  - name: run-tests
+    title: "Run Tests"
+    preconditions: [project.build.passing]
+    effects: [project.tests.passing]
+    action:
+      type: shell
+      cmd: "npm test"
+      cwd: "{cwd}"
+    cost: 2
+
+  - name: generate-types
+    title: "Generate TypeScript Definitions"
+    preconditions: [project.mojo.compiles]
+    effects: [project.types.generated]
+    action:
+      type: shell
+      cmd: "npm run generate:dts"
+      cwd: "{cwd}"
+    cost: 1
+
+  - name: publish
+    title: "Publish to npm"
+    preconditions:
+      - project.tests.passing
+      - project.build.passing
+      - project.types.generated
+      # Publishing is exactly the moment version drift becomes permanent: the
+      # root package.json names the tag, but the optionalDependencies ranges
+      # decide which platform binaries a consumer resolves. Now that
+      # versions.synced actually verifies something, it belongs here.
+      - project.versions.synced
+      - project.clean.workdir
+    effects: []
+    action:
+      type: shell
+      cmd: "npm publish"
+      cwd: "{cwd}"
+    cost: 5
