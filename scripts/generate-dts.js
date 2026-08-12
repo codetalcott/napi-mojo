@@ -768,8 +768,46 @@ for (const [, cls] of Object.entries(toml.classes || {})) {
   output.push('');
 }
 
+const rendered = output.join('\n');
+const tomlClassCount = Object.keys(toml.classes || {}).length;
+
+// `--check` reports whether build/index.d.ts already matches what this run
+// would produce, and writes nothing. grail.yaml's `project.types.generated`
+// used to spell this `generate-dts.js --check 2>/dev/null || test -f
+// build/index.d.ts`, which was wrong twice over: argv was ignored entirely, so
+// the "check" regenerated the file and made itself true; and the fallback
+// passed on any error as long as some file existed. Everything above this line
+// is pure analysis — no writes happen before the mode is decided.
+if (process.argv.includes('--check')) {
+  if (!fs.existsSync(OUT)) {
+    console.error(
+      `error: ${OUT} has not been generated.\n` +
+      `       Run \`npm run generate:dts\`.`,
+    );
+    process.exit(1);
+  }
+  const current = fs.readFileSync(OUT, 'utf8');
+  if (current !== rendered) {
+    // Point at the first divergence — "the file differs" alone sends you
+    // diffing a 700-line generated artifact by hand.
+    const a = current.split('\n');
+    const b = rendered.split('\n');
+    const i = a.findIndex((line, n) => line !== b[n]);
+    const at = i === -1 ? Math.min(a.length, b.length) : i;
+    console.error(
+      `error: ${OUT} is stale — it does not match what the generator produces now.\n` +
+      `       First difference at line ${at + 1}:\n` +
+      `         on disk:   ${JSON.stringify(a[at] ?? '<end of file>')}\n` +
+      `         generated: ${JSON.stringify(b[at] ?? '<end of file>')}\n` +
+      `       Run \`npm run generate:dts\`. Nothing was written.`,
+    );
+    process.exit(1);
+  }
+  console.log(`${OUT} is up to date (${registeredFunctions.length} functions, ${Object.keys(classes).length + tomlClassCount} class(es))`);
+  process.exit(0);
+}
+
 // Write output
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
-fs.writeFileSync(OUT, output.join('\n'));
-const tomlClassCount = Object.keys(toml.classes || {}).length;
+fs.writeFileSync(OUT, rendered);
 console.log(`Generated ${OUT} (${registeredFunctions.length} functions, ${Object.keys(classes).length + tomlClassCount} class(es))`);

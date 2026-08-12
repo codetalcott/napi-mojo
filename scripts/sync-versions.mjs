@@ -6,6 +6,10 @@
  * Usage: node scripts/sync-versions.mjs [version]
  *   If version is provided, sets it everywhere.
  *   If omitted, reads from root package.json and propagates.
+ *
+ *        node scripts/sync-versions.mjs --check
+ *   Writes nothing; verifies every manifest already agrees with the root
+ *   package.json version. Exit 1 (with a list of the drifted files) if not.
  */
 import { readFileSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
@@ -19,10 +23,31 @@ const platformPkgs = [
   'npm/linux-x64/package.json',
 ];
 
+const lockPath = join(root, 'package-lock.json');
+const pixiPath = join(root, 'pixi.toml');
+
+// Anchored to the [workspace] table's `version` key: `^version =` with the `m`
+// flag would also match a `version` key in any later table. Group 1 is the
+// prefix (so the write path can substitute), group 2 the current value (so the
+// check path can compare) — one definition, so the two modes cannot drift.
+const PIXI_VERSION_RE = /(\[workspace\][\s\S]*?^version\s*=\s*)"([^"]*)"/m;
+
 const rootPkgPath = join(root, 'package.json');
 const rootPkg = JSON.parse(readFileSync(rootPkgPath, 'utf8'));
 
-const version = process.argv[2] || rootPkg.version;
+// `--check` is a read-only audit of exactly the invariants the write path
+// establishes. It exists because grail.yaml's `project.versions.synced` needs
+// one: that condition ran `--check 2>/dev/null || true`, which was a no-op that
+// could only ever report PASS — and, before the argv validation below landed,
+// was the very invocation that stamped the literal string "--check" into every
+// manifest as the version. Parsed before the flag guard, since a real flag now
+// has to survive it.
+const argv = process.argv.slice(2);
+const checkIdx = argv.indexOf('--check');
+const checkOnly = checkIdx !== -1;
+if (checkOnly) argv.splice(checkIdx, 1);
+
+const version = argv[0] || rootPkg.version;
 
 // VALIDATE BEFORE WRITING ANYTHING.
 //
@@ -40,7 +65,7 @@ if (/^-/.test(version)) {
   console.error(
     `error: refusing to use ${JSON.stringify(version)} as a version — it looks like a flag.\n` +
     `       This script takes a bare version: node scripts/sync-versions.mjs 0.7.0\n` +
-    `       It accepts no options.`,
+    `       The only option is --check.`,
   );
   process.exit(1);
 }
@@ -56,6 +81,73 @@ if (!SEMVER.test(version)) {
     `       -prerelease and/or +build suffix. Nothing was written.`,
   );
   process.exit(1);
+}
+
+if (checkOnly) {
+  // Note that the semver guard above has already run against rootPkg.version,
+  // so a root package.json holding garbage fails here rather than being taken
+  // as the standard everything else is measured against.
+  const drift = [];
+  const expect = (label, actual) => {
+    if (actual !== version) {
+      drift.push(`${label}: ${JSON.stringify(actual ?? null)} (expected ${JSON.stringify(version)})`);
+    }
+  };
+
+  for (const [dep, range] of Object.entries(rootPkg.optionalDependencies ?? {})) {
+    expect(`package.json optionalDependencies["${dep}"]`, range);
+  }
+
+  for (const rel of platformPkgs) {
+    expect(rel, JSON.parse(readFileSync(join(root, rel), 'utf8')).version);
+  }
+
+  const lockDoc = JSON.parse(readFileSync(lockPath, 'utf8'));
+  expect('package-lock.json version', lockDoc.version);
+  if (lockDoc.packages?.['']) {
+    expect('package-lock.json packages[""].version', lockDoc.packages[''].version);
+    for (const [dep, range] of Object.entries(lockDoc.packages[''].optionalDependencies ?? {})) {
+      expect(`package-lock.json packages[""].optionalDependencies["${dep}"]`, range);
+    }
+  }
+
+  for (const dep of Object.keys(rootPkg.optionalDependencies ?? {})) {
+    const key = `node_modules/${dep}`;
+    const entry = lockDoc.packages?.[key];
+    if (!entry) continue;
+    expect(`package-lock.json ${key}.version`, entry.version);
+    // A `resolved` URL naming a different version than the entry's `version` is
+    // the exact defect the write path deletes these fields to avoid: `npm ci`
+    // fetches the URL, not the version, so three suites once ran against a
+    // v0.2.10 registry binary while the lockfile read 0.6.0. Absent is fine, and
+    // so is a URL that agrees — npm legitimately re-adds both once the version
+    // is actually published, and failing on that would make a healthy repo dirty
+    // after every `npm install`.
+    const resolvedVersion = /-(\d[^/]*)\.tgz$/.exec(entry.resolved ?? '')?.[1];
+    if (resolvedVersion !== undefined && resolvedVersion !== version) {
+      drift.push(
+        `package-lock.json ${key}.resolved points at ${JSON.stringify(resolvedVersion)} ` +
+        `(expected ${JSON.stringify(version)}) — \`npm ci\` would install that tarball`,
+      );
+    }
+  }
+
+  const pixiMatch = PIXI_VERSION_RE.exec(readFileSync(pixiPath, 'utf8'));
+  if (pixiMatch === null) {
+    drift.push('pixi.toml: no `version` key found in the [workspace] table');
+  } else {
+    expect('pixi.toml [workspace] version', pixiMatch[2]);
+  }
+
+  if (drift.length > 0) {
+    console.error(`error: ${drift.length} version(s) out of sync with package.json (${version}):`);
+    for (const d of drift) console.error(`  - ${d}`);
+    console.error('\nRun `node scripts/sync-versions.mjs` to fix. Nothing was written.');
+    process.exit(1);
+  }
+
+  console.log(`All packages in sync at v${version}`);
+  process.exit(0);
 }
 
 // Update root version + optionalDependencies
@@ -78,7 +170,6 @@ for (const rel of platformPkgs) {
 }
 
 // Update package-lock.json
-const lockPath = join(root, 'package-lock.json');
 const lock = JSON.parse(readFileSync(lockPath, 'utf8'));
 lock.version = version;
 if (lock.packages?.['']) {
@@ -110,22 +201,17 @@ console.log(`package-lock.json → ${version}`);
 // breaks when it drifts — which is exactly why it does: at v0.5.0 it still read
 // 0.1.0 while every npm package said 0.5.0. Sync it here so the repo has one
 // answer to "what version is this?" rather than two.
-//
-// Deliberately anchored to the [workspace] table's `version` key: `^version =`
-// with the `m` flag would also match a `version` key in any later table.
-const pixiPath = join(root, 'pixi.toml');
 const pixi = readFileSync(pixiPath, 'utf8');
-const pixiVersionRe = /(\[workspace\][\s\S]*?^version\s*=\s*)"[^"]*"/m;
 // Test for the match separately from comparing the result: on a re-run the
 // replacement is identical to the input, so `next === pixi` means "already
 // correct", not "pattern missing". Conflating the two makes a no-op re-run
 // print a warning that is simply false.
-if (!pixiVersionRe.test(pixi)) {
+if (!PIXI_VERSION_RE.test(pixi)) {
   console.error(
     `WARNING: pixi.toml [workspace] version not updated — pattern did not match.`,
   );
 } else {
-  writeFileSync(pixiPath, pixi.replace(pixiVersionRe, `$1"${version}"`));
+  writeFileSync(pixiPath, pixi.replace(PIXI_VERSION_RE, `$1"${version}"`));
   console.log(`pixi.toml → ${version}`);
 }
 
