@@ -119,7 +119,15 @@ tests/compile/framework_coverage.mojo    # compile-only: forces elaboration of e
 
 ## Critical Mojo FFI rules
 
-> **Mojo nightly changelog:** <https://mojolang.org/releases/nightly/> — consult this when a build breaks after a nightly bump, before reverse-engineering the diagnostic. Each rule below is dated to the nightly that introduced it; cross-reference there for the upstream rationale.
+> **Current pin: Mojo 1.0.0 (stable), `max = "==26.5.0"` from the stable `https://conda.modular.com/max/` channel.** Adopted 2026-08-12, moving off the `26.6.0.dev2026080905` nightly.
+>
+> **The framework tracks STABLE Mojo releases, not nightlies.** napi-mojo ships source that downstream packages compile against (`@qkstat/rag` builds with `-I node_modules/napi-mojo/src`), so the pin is part of the public contract: a nightly pin forces every consumer onto that exact nightly. The Nightly Canary keeps its job — early warning for the *next* release — and is now the only thing in the repo that touches the nightly channel.
+>
+> **The canary must repoint the CHANNEL, not just the version.** pixi uses strict channel priority, so with only the stable channel listed, `max = "*"` resolves to the newest *stable* build: the canary would keep reporting green while testing nothing new. `nightly-canary.yml` swaps the channel first and then hard-fails if `max-nightly` is not present in `pixi.toml`.
+>
+> **Rules below are dated to the nightly that introduced them.** That dating is a history of *when we adopted the change*, not a claim about which release ships it — most of the "dev2026080905 era" rules (the `unsafe_` rename, `get_symbol` borrowing the handle, `as_unsafe_any_origin()`, `Deinitable`/`__deinit__`, `InlineArray`→`Array`, `initialize_runtime()`) are in fact **Mojo 1.0.0 content**. See the changelog-rotation note below for why that is easy to get backwards.
+>
+> **Mojo nightly changelog:** <https://mojolang.org/releases/nightly/> — consult this when a build breaks after a nightly bump, before reverse-engineering the diagnostic. Cross-reference there for the upstream rationale.
 >
 > **Diff the changelog, don't read it.** The web page is a single cumulative section for the whole release cycle, so it can't tell you what changed *since your pin*. The same file lives in the modular monorepo at `modular/modular:mojo/docs/nightly-changelog.md` and is diffable — this is the single highest-value step in a nightly upgrade:
 >
@@ -133,8 +141,17 @@ tests/compile/framework_coverage.mojo    # compile-only: forces elaboration of e
 > ```
 >
 > The stdlib source is in the same repo (`mojo/stdlib/std/…`), so you can read the *actual* new signature of anything the changelog mentions — and check whether the replacement API already exists on your current pin. That last check is what let the dev2026072306 upgrade land its 274-site FFI rewrite before bumping.
+>
+> **Diff BOTH changelogs — content ROTATES OUT of the nightly file at release close.** `nightly-changelog.md` only holds the *current, unreleased* cycle; when a release ships, its entries move to `mojo/docs/releases/vX.Y.Z.md` and the nightly file is truncated to near-empty. So a `nightly-changelog.md` that does not mention a change is **not** evidence the change is unreleased — it is usually evidence the change *shipped*. Grep the release file too:
+>
+> ```bash
+> gh api 'repos/modular/modular/contents/mojo/docs/releases?ref=main' --jq '.[].name' | tail
+> gh api "repos/modular/modular/contents/mojo/docs/releases/v1.0.0.md?ref=main" --jq .content | base64 -d > v1.0.0.md
+> ```
+>
+> This is exactly what settled the 1.0.0 adoption: every API this codebase had migrated for under "dev2026080905" turned out to live in `releases/v1.0.0.md`, while the 26.6 nightly file held only a handful of *later* changes (`@parameter`→`@__parameter` on parametric closures, `memcmp`→`unsafe_memcmp`, removal of the temporary `InlineArray` alias — **none of which this codebase uses**). That is what made moving from a 26.6 nightly *back* to 1.0.0 stable a zero-source-change operation instead of a 1,500-site revert.
 
-**Nightly upgrade runbook** (learned from the dev2026062306 → dev2026072306 jump, which spanned a month and landed with 618 tests green):
+**Toolchain upgrade runbook** — applies to a stable-release bump and a nightly probe alike (learned from the dev2026062306 → dev2026072306 jump, which spanned a month and landed with 618 tests green; re-validated on the 1.0.0 stable adoption, which landed with 641 tests green and **zero source changes**):
 
 1. **Land the previous good state first.** Never start an upgrade on top of an unmerged/unverified pin. Merge the last known-good nightly to `main` so you have a clean base and a rollback point.
 2. **Diff the changelog** (above) to get the actual breaking-change list. You are not flying blind after this, which is what makes a single big jump safer than stepping through every intermediate nightly (intermediates carry transient breakage a later one repairs).

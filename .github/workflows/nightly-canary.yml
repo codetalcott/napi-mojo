@@ -39,15 +39,24 @@ jobs:
       # MUST run before setup-pixi. setup-pixi's default `pixi install --locked`
       # would otherwise fail on the (deliberately) stale lock, before we ever
       # get to unpin. sed -i.bak is portable across BSD (macOS) and GNU (Linux).
-      - name: Repoint Mojo/MAX version
+      #
+      # The CHANNEL swap is not optional. pixi.toml pins the stable channel
+      # (Mojo 1.0.0), and pixi uses strict channel priority: with only the
+      # stable channel listed, `max = "*"` resolves to the newest STABLE build
+      # and the canary silently stops testing nightlies while still reporting
+      # green. Repoint the channel first, then the version.
+      - name: Repoint Mojo/MAX channel + version
         run: |
+          sed -i.bak 's|https://conda.modular.com/max/|https://conda.modular.com/max-nightly/|' pixi.toml && rm pixi.toml.bak
           if [ -n "${{ inputs.max_version }}" ]; then
             SPEC='max = "==${{ inputs.max_version }}"'
           else
             SPEC='max = "*"'
           fi
           sed -i.bak "s/^max = \".*/${SPEC}/" pixi.toml && rm pixi.toml.bak
-          grep '^max = ' pixi.toml
+          grep -E '^channels|^max = ' pixi.toml
+          # Fail loudly rather than testing stable-under-the-name-nightly.
+          grep -q 'max-nightly' pixi.toml || { echo "::error::channel repoint failed — canary would test stable, not nightly"; exit 1; }
 
       # run-install:false + cache:false — the pin we just wrote is intentionally
       # out of sync with pixi.lock, so neither a locked install nor a restored

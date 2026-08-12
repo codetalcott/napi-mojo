@@ -1,12 +1,22 @@
 [workspace]
 authors = ["Wm Talcott <wtalcott@gmail.com>"]
-channels = ["conda-forge", "https://conda.modular.com/max-nightly/"]
+channels = ["conda-forge", "https://conda.modular.com/max/"]
 name = "napi-mojo"
 platforms = ["osx-arm64", "linux-64"]
 version = "0.6.0"
 
 [tasks]
-nightly-update = { cmd = "bash ../mojo-nightly-updater/bump-nightly.sh --project .", description = "Update to latest Mojo/MAX nightly" }
+# WARNING: this rewrites only the `max = ` line, NOT the channel. Since the
+# workspace now pins the stable channel, running it alone writes a nightly
+# version that the stable channel cannot resolve. To test a nightly locally,
+# repoint `channels` to https://conda.modular.com/max-nightly/ first — the same
+# two-step the Nightly Canary does. The framework itself pins stable releases.
+nightly-update = { cmd = "bash ../mojo-nightly-updater/bump-nightly.sh --project .", description = "Update to latest Mojo/MAX nightly (repoint channels to max-nightly first)" }
 
 [dependencies]
-max = "==26.6.0.dev2026080905"
+# Mojo 1.0.0 (stable). napi-mojo ships source that downstream packages compile
+# against, so the framework pins a STABLE language release, not a nightly —
+# a nightly pin forces every consumer onto that exact nightly. The Nightly
+# Canary still tests the next release ahead of time; it repoints both this pin
+# and the channel above (see .github/workflows/nightly-canary.yml).
+max = "==26.5.0"
