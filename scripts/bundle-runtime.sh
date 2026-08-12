@@ -20,13 +20,114 @@
 # own dependency graph. Walking the graph can.
 set -euo pipefail
 
-PIXI_LIB="$(cd "$(dirname "$(which mojo)")/../lib" && pwd)"
-
 if [ "$(uname -s)" = "Darwin" ]; then
     EXT=dylib
 else
     EXT=so
 fi
+
+# THE TOOLCHAIN LIBRARY DIRECTORY IS DISCOVERED, NOT ASSUMED.
+#
+# This used to be `dirname(which mojo)/../lib`, which silently encodes the
+# conda/pixi layout (<env>/bin/mojo next to <env>/lib). That is not the only
+# layout Modular ships. Under a uv/pip install the same toolchain lands as:
+#
+#   .venv/bin/mojo                                  <- a POSIX SHELL SHIM
+#   .venv/lib/python3.13/site-packages/modular/lib  <- the actual libraries
+#
+# There, `../lib` resolves to .venv/lib, which contains zero Mojo libraries.
+# Worse, the shim is not a symlink, so realpath() does not rescue it either.
+# The old expression would have "succeeded" and then found nothing to bundle.
+#
+# Candidates are tried in order and each is VALIDATED by requiring it to
+# actually contain a library the built addon depends on, so a wrong guess is
+# rejected rather than silently producing an empty bundle.
+#
+# The first candidate is the strongest: the compiler stamps the library
+# directory into the binary itself as LC_RPATH (macOS) / RUNPATH (Linux). That
+# is by definition where the loader looks, so it cannot disagree with reality
+# the way a path convention can.
+mojo_lib_candidates() {
+    if [ "$EXT" = "dylib" ]; then
+        otool -l build/index.node 2>/dev/null \
+            | awk '/LC_RPATH/{r=1} r && /path /{print $2; r=0}'
+    else
+        patchelf --print-rpath build/index.node 2>/dev/null | tr ':' '\n'
+    fi
+
+    # The toolchain root reached from the `mojo` on PATH. Covers conda/pixi
+    # directly, and uv once the shim is followed to the real binary.
+    local m
+    m="$(command -v mojo || true)"
+    if [ -n "$m" ]; then
+        echo "$(dirname "$m")/../lib"
+        # A uv shim is a shell script that execs the real binary out of
+        # site-packages; recover the path it points at.
+        if [ -f "$m" ] && head -c2 "$m" 2>/dev/null | grep -q '#!'; then
+            grep -oE '/[^"'"'"' ]*/modular/bin/mojo' "$m" 2>/dev/null \
+                | head -1 | sed 's|/bin/mojo|/lib|'
+        fi
+    fi
+}
+
+# The addon's own DIRECT dependency basenames. Validating against these rather
+# than a generic lib*.EXT glob matters: a conda env's lib/ holds hundreds of
+# unrelated libraries, so the glob would accept a directory that cannot
+# actually satisfy the addon.
+# `|| true` is load-bearing: under `set -o pipefail` a failing otool/patchelf
+# (missing file) makes the whole command substitution non-zero, and `set -e`
+# would then kill the script BEFORE the diagnostics below ever print.
+needed_basenames() {
+    if [ "$EXT" = "dylib" ]; then
+        { otool -L build/index.node 2>/dev/null || true; } | tail -n +2 \
+            | awk '{print $1}' | sed -n 's|^@rpath/||p'
+    else
+        patchelf --print-needed build/index.node 2>/dev/null || true
+    fi
+}
+
+if [ ! -f build/index.node ]; then
+    echo "error: build/index.node not found — run build.sh first." >&2
+    exit 1
+fi
+
+NEEDED="$(needed_basenames)"
+if [ -z "$NEEDED" ]; then
+    # Distinguish "already bundled" from "genuinely broken". Once this script
+    # has run, the addon's load paths are rewritten from @rpath/$ORIGIN to
+    # @loader_path, so there are no @rpath entries left to key on — which looks
+    # identical to a broken binary unless we say otherwise.
+    if ls build/*."$EXT" >/dev/null 2>&1; then
+        echo "error: build/ already contains bundled libraries — this script has" >&2
+        echo "       already run against this build. Re-run build.sh first." >&2
+    else
+        echo "error: build/index.node has no Mojo runtime dependencies to key on." >&2
+        echo "       Expected @rpath/RUNPATH entries; run build.sh first." >&2
+    fi
+    exit 1
+fi
+
+PIXI_LIB=""
+for cand in $(mojo_lib_candidates); do
+    [ -d "$cand" ] || continue
+    cand="$(cd "$cand" && pwd)"
+    for name in $NEEDED; do
+        if [ -f "$cand/$name" ]; then
+            PIXI_LIB="$cand"
+            break 2
+        fi
+    done
+done
+
+if [ -z "$PIXI_LIB" ]; then
+    echo "error: could not locate the Mojo runtime library directory." >&2
+    echo "       Tried, in order:" >&2
+    mojo_lib_candidates | sed 's/^/         /' >&2
+    echo "       Is a Mojo toolchain on PATH, and has build.sh run?" >&2
+    exit 1
+fi
+
+echo "Mojo runtime libraries: $PIXI_LIB"
 
 # deps_of FILE — print basenames of FILE's dependencies that live in the pixi
 # environment. Libraries that resolve outside it (libc, libSystem, …) belong to
