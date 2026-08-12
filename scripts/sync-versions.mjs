@@ -24,6 +24,40 @@ const rootPkg = JSON.parse(readFileSync(rootPkgPath, 'utf8'));
 
 const version = process.argv[2] || rootPkg.version;
 
+// VALIDATE BEFORE WRITING ANYTHING.
+//
+// argv[2] used to be trusted verbatim, and this script writes it into the root
+// package.json, both platform package.jsons, package-lock.json and pixi.toml.
+// So a single stray argument silently stamped a garbage "version" across the
+// whole release surface — observed for real: every manifest ended up with
+// `"version": "--check"`. Nothing downstream noticed, because every consumer
+// just reads the string back out.
+//
+// A flag is called out separately from generic junk: it is the likeliest
+// mistake (a mistyped `npm version`-style invocation landing here), and
+// "looks like a flag" is a far more useful message than "not valid semver".
+if (/^-/.test(version)) {
+  console.error(
+    `error: refusing to use ${JSON.stringify(version)} as a version — it looks like a flag.\n` +
+    `       This script takes a bare version: node scripts/sync-versions.mjs 0.7.0\n` +
+    `       It accepts no options.`,
+  );
+  process.exit(1);
+}
+
+// Deliberately strict (semver core + optional prerelease/build). This script
+// only ever sets release versions for this package; anything else is a typo,
+// and being permissive here is what makes the failure silent and wide.
+const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+if (!SEMVER.test(version)) {
+  console.error(
+    `error: ${JSON.stringify(version)} is not a valid semver version.\n` +
+    `       Expected MAJOR.MINOR.PATCH (e.g. 0.7.0), optionally with a\n` +
+    `       -prerelease and/or +build suffix. Nothing was written.`,
+  );
+  process.exit(1);
+}
+
 // Update root version + optionalDependencies
 rootPkg.version = version;
 if (rootPkg.optionalDependencies) {
