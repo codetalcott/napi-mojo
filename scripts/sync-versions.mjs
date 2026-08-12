@@ -72,4 +72,27 @@ for (const dep of Object.keys(rootPkg.optionalDependencies || {})) {
 writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
 console.log(`package-lock.json → ${version}`);
 
+// pixi.toml carries its own workspace version. It is not published, so nothing
+// breaks when it drifts — which is exactly why it does: at v0.5.0 it still read
+// 0.1.0 while every npm package said 0.5.0. Sync it here so the repo has one
+// answer to "what version is this?" rather than two.
+//
+// Deliberately anchored to the [workspace] table's `version` key: `^version =`
+// with the `m` flag would also match a `version` key in any later table.
+const pixiPath = join(root, 'pixi.toml');
+const pixi = readFileSync(pixiPath, 'utf8');
+const pixiVersionRe = /(\[workspace\][\s\S]*?^version\s*=\s*)"[^"]*"/m;
+// Test for the match separately from comparing the result: on a re-run the
+// replacement is identical to the input, so `next === pixi` means "already
+// correct", not "pattern missing". Conflating the two makes a no-op re-run
+// print a warning that is simply false.
+if (!pixiVersionRe.test(pixi)) {
+  console.error(
+    `WARNING: pixi.toml [workspace] version not updated — pattern did not match.`,
+  );
+} else {
+  writeFileSync(pixiPath, pixi.replace(pixiVersionRe, `$1"${version}"`));
+  console.log(`pixi.toml → ${version}`);
+}
+
 console.log(`\nAll packages synced to v${version}`);
