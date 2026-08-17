@@ -24,9 +24,19 @@ from napi.types import (
 )
 
 
+# Sentinel proving a callback data pointer really is a NapiBindings.
+# CbArgs.get_bindings* bitcast caller-controlled data: an addon can register
+# a callback with arbitrary data (JsFunction.create_with_data, ClassBuilder
+# data fields) and still call get_bindings in it, which without this check
+# hands back 143 garbage function pointers — a jump to garbage inside Node on
+# first use, with no diagnostic. The value spells "MOJONAPI" in ASCII.
+comptime BINDINGS_MAGIC: UInt64 = 0x4D4F4A4F4E415049
+
+
 struct NapiBindings(Movable):
-    # --- 143 fields: 142 resolved N-API symbols + the ClassRegistry pointer
-    # (`registry`, below) which is not a symbol and is set after class setup ---
+    # --- 144 fields: 142 resolved N-API symbols + the ClassRegistry pointer
+    # (`registry`, below) which is not a symbol and is set after class setup,
+    # + the `magic` sentinel checked by CbArgs.get_bindings* ---
     @__allow_legacy_any_origin_fields
     var create_string_utf8: OpaquePointer[MutAnyOrigin]
     @__allow_legacy_any_origin_fields
@@ -319,6 +329,8 @@ struct NapiBindings(Movable):
     # Non-function-pointer slot: ClassRegistry pointer (set after module init)
     @__allow_legacy_any_origin_fields
     var registry: OpaquePointer[MutAnyOrigin]
+    # Sentinel checked by CbArgs.get_bindings* before trusting the bitcast
+    var magic: UInt64
 
     def __init__(out self):
         self.create_string_utf8 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -464,6 +476,7 @@ struct NapiBindings(Movable):
         self.create_buffer_from_arraybuffer = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         self.get_value_string_latin1 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         self.registry = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        self.magic = BINDINGS_MAGIC
 
     def __moveinit__(out self, deinit take: Self):
         self.create_string_utf8 = take.create_string_utf8
@@ -611,6 +624,7 @@ struct NapiBindings(Movable):
         )
         self.get_value_string_latin1 = take.get_value_string_latin1
         self.registry = take.registry
+        self.magic = take.magic
 
 
 comptime Bindings = Pointer[NapiBindings, MutAnyOrigin]

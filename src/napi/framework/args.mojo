@@ -18,7 +18,27 @@
 from napi.types import NapiEnv, NapiValue
 from napi.raw import raw_get_cb_info
 from napi.error import check_status
-from napi.bindings import NapiBindings, Bindings
+from napi.bindings import NapiBindings, Bindings, BINDINGS_MAGIC
+
+
+## _verified_bindings — bitcast callback data to Bindings, checking the magic
+##
+## The data pointer is caller-controlled: an addon can register a callback
+## with arbitrary data (JsFunction.create_with_data, ClassBuilder data) and
+## still call a get_bindings* helper here, which would otherwise hand back
+## 143 garbage function pointers — a jump to garbage inside Node on first
+## use. The sentinel (written by NapiBindings.__init__, see bindings.mojo)
+## turns that mistake into a raised Mojo error for one extra word read; the
+## callback's except block then throws a normal JS error.
+def _verified_bindings(data: OpaquePointer[MutAnyOrigin]) raises -> Bindings:
+    if Int(data) == 0:
+        raise Error("get_bindings: callback data is NULL, not NapiBindings")
+    var b = data.unsafe_bitcast[NapiBindings]()
+    if b[].magic != BINDINGS_MAGIC:
+        raise Error(
+            "get_bindings: callback data is not a NapiBindings pointer"
+        )
+    return b
 
 
 ## BindingsAndOne — bindings pointer + one argument (single napi_get_cb_info call)
@@ -371,14 +391,21 @@ struct CbArgs:
         )
         return count
 
-    ## get_argv — read `count` arguments into a caller-provided buffer
+    ## get_argv — read up to `count` arguments into a caller-provided buffer
+    ##
+    ## Returns the invocation's ACTUAL argument count as reported by
+    ## napi_get_cb_info. N-API pads argv with `undefined` when the caller
+    ## supplied fewer than `count` arguments and silently drops extras when
+    ## it supplied more, so compare the return value against `count` to
+    ## detect either case. Callers that pre-sized the buffer via argc() can
+    ## discard the result with `_ =`.
     @staticmethod
     def get_argv(
         env: NapiEnv,
         info: NapiValue,
         count: UInt,
         argv_ptr: Pointer[NapiValue, MutAnyOrigin],
-    ) raises:
+    ) raises -> UInt:
         var actual = count
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
@@ -391,6 +418,7 @@ struct CbArgs:
                 null,
             )
         )
+        return actual
 
     @staticmethod
     def get_argv(
@@ -399,7 +427,7 @@ struct CbArgs:
         info: NapiValue,
         count: UInt,
         argv_ptr: Pointer[NapiValue, MutAnyOrigin],
-    ) raises:
+    ) raises -> UInt:
         var actual = count
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
@@ -413,6 +441,7 @@ struct CbArgs:
                 null,
             )
         )
+        return actual
 
     ## get_data — extract the data pointer from a callback
     ##
@@ -465,7 +494,7 @@ struct CbArgs:
     @staticmethod
     def get_bindings(env: NapiEnv, info: NapiValue) raises -> Bindings:
         var data = CbArgs.get_data(env, info)
-        return data.unsafe_bitcast[NapiBindings]()
+        return _verified_bindings(data)
 
     ## get_bindings_and_one — extract bindings + 1 arg in a single napi_get_cb_info call
     ##
@@ -492,7 +521,7 @@ struct CbArgs:
         )
         if argc < 1:
             raise Error("expected at least 1 argument")
-        return BindingsAndOne(data.unsafe_bitcast[NapiBindings](), arg0)
+        return BindingsAndOne(_verified_bindings(data), arg0)
 
     ## get_bindings_and_two — extract bindings + 2 args in a single napi_get_cb_info call
     @staticmethod
@@ -515,7 +544,7 @@ struct CbArgs:
         )
         if argc < 2:
             raise Error("expected at least 2 arguments")
-        return BindingsAndTwo(data.unsafe_bitcast[NapiBindings](), args[0], args[1])
+        return BindingsAndTwo(_verified_bindings(data), args[0], args[1])
 
     ## get_bindings_and_three — extract bindings + 3 args in a single napi_get_cb_info call
     @staticmethod
@@ -539,7 +568,7 @@ struct CbArgs:
         if argc < 3:
             raise Error("expected at least 3 arguments")
         return BindingsAndThree(
-            data.unsafe_bitcast[NapiBindings](), args[0], args[1], args[2]
+            _verified_bindings(data), args[0], args[1], args[2]
         )
 
     ## get_bindings_and_this — extract bindings + this value in a single napi_get_cb_info call
@@ -565,7 +594,7 @@ struct CbArgs:
                 Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
-        return BindingsAndThis(data.unsafe_bitcast[NapiBindings](), this_val)
+        return BindingsAndThis(_verified_bindings(data), this_val)
 
     ## get_bindings_this_and_one — extract bindings + this + 1 arg in a single napi_get_cb_info call
     ##
@@ -592,4 +621,4 @@ struct CbArgs:
         )
         if argc < 1:
             raise Error("expected at least 1 argument")
-        return BindingsThisAndOne(data.unsafe_bitcast[NapiBindings](), this_val, arg0)
+        return BindingsThisAndOne(_verified_bindings(data), this_val, arg0)
