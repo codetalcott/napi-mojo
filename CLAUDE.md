@@ -36,7 +36,14 @@ All 142 N-API function pointers are resolved once at module init via a single `O
 
 - `except:` blocks (fallback when bindings retrieval itself fails)
 - Dynamically created inner callbacks (`inner_callback_fn`, `inner_adder_fn`) — their data pointer holds captured values, not bindings
-- HANDWRITTEN async complete/TSFN/finalizer callbacks — fixed signatures without `info` parameter. GENERATED async completes are the exception: the generated data struct carries `bindings_addr: Int` (written by the entry callback, read by complete — both main thread), so the whole generated settle path runs on cached pointers with zero dlsym. Handwritten async data structs can adopt the same field.
+
+**Callbacks that DO get cached bindings through a side channel** (each has a designated carrier; `bindings_from_context()` in `args.mojo` is the magic-checked accessor):
+
+- **TSFN `call_js_cb`**: `ThreadsafeFunction.create(b, …)` registers the bindings pointer as the TSFN *context*, which N-API hands to `call_js_cb` as its 3rd parameter — and to the TSFN `finalize_cb` as `finalize_hint`. (The env-only `create` overload keeps context NULL; its callbacks stay on the env-only path.)
+- **`wrap_native` class finalizers**: the bindings pointer is the `finalize_hint` (alive for the env's whole lifetime — the bindings heap allocation is never freed).
+- **Async complete callbacks**: the data struct carries `bindings_addr: Int` (written by the entry callback, read by complete — both main thread). GENERATED async completes have this built in; handwritten ones adopt the same field (`AsyncProgressData` does — its worker-thread execute also uses it, but only for `napi_call_threadsafe_function`, the one any-thread-safe N-API call, avoiding the per-iteration `dlopen(NULL)` loader-lock).
+
+Remaining genuinely env-only contexts after this: `except:` fallbacks, inner callbacks whose data slot carries captured values, and finalizers registered through channels whose hint already carries other data.
 
 **A process-global bindings cache is impossible: Mojo has no module-level `var`** (hard error "global variables are not supported", verified dev2026080905 — see the VERDICT header in `spike/global_probe.mojo`). The env-only/Bindings dual-overload surface therefore cannot be collapsed via a global. Viable alternatives, in preference order: (a) thread the bindings address through whatever payload the context already carries (the async-struct pattern above); (b) claim `napi_set_instance_data` for a framework EnvSlot {bindings, user_data} and layer the user-facing instance-data API over it — works for except-blocks too at one bootstrap dlsym per call, but refactors `instance_data.mojo`'s finalizer path; deferred. Re-run the probe if a nightly changelog ever mentions global variables.
 

@@ -464,6 +464,11 @@ def check_object_type_tag(
 ## tagging then fails the wrap is removed again (napi_remove_wrap) before
 ## raising, so the caller's cleanup path cannot double-free against the
 ## finalizer.
+##
+## The finalize_hint passed to the finalizer is the cached-bindings pointer
+## (alive for the env's whole lifetime — allocated at module init, never
+## freed), so a finalizer that needs N-API can recover cached bindings via
+## bindings_from_context(hint) instead of the per-call OwnedDLHandle path.
 def wrap_native(
     b: Bindings,
     env: NapiEnv,
@@ -479,7 +484,7 @@ def wrap_native(
             this_val,
             data_ptr,
             finalize_ptr,
-            OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+            b.unsafe_bitcast[NoneType](),  # finalize_hint = cached bindings
             OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
         )
     )
