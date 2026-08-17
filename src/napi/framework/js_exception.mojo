@@ -28,43 +28,6 @@ from napi.framework.js_object import JsObject
 from napi.framework.js_string import JsString
 
 
-## js_throw — throw any JavaScript value as an exception
-##
-## Unlike throw_js_error (which creates a new Error from a string message),
-## this throws the value directly. Can throw strings, numbers, objects,
-## Error instances, null, undefined, etc.
-## The callback MUST return NapiValue(unsafe_from_address=Int(0)) immediately after calling this.
-def js_throw(env: NapiEnv, error: NapiValue) raises:
-    check_status(raw_throw(env, error))
-
-
-## js_is_exception_pending — check if a JavaScript exception is pending
-##
-## Returns True if an exception is currently pending (set by napi_throw,
-## napi_throw_error, or a failed N-API call that sets a pending exception).
-def js_is_exception_pending(env: NapiEnv) raises -> Bool:
-    var result: Bool = False
-    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-        to=result
-    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-    check_status(raw_is_exception_pending(env, result_ptr))
-    return result
-
-
-## js_get_and_clear_last_exception — retrieve and clear the pending exception
-##
-## Returns the pending exception value and clears the pending state,
-## allowing the callback to continue executing N-API calls normally.
-## Must only be called when an exception IS pending.
-def js_get_and_clear_last_exception(env: NapiEnv) raises -> NapiValue:
-    var result = NapiValue(unsafe_from_address=Int(0))
-    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-        to=result
-    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-    check_status(raw_get_and_clear_last_exception(env, result_ptr))
-    return result
-
-
 # --- Bindings-aware overloads ---
 
 
@@ -90,26 +53,6 @@ def js_get_and_clear_last_exception(
     ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_get_and_clear_last_exception(b, env, result_ptr))
     return result
-
-
-## js_get_error_message — read the .message property from a JS Error object
-##
-## Returns the error message as a Mojo String. Works on any JS object
-## with a "message" property. Typically called after
-## js_get_and_clear_last_exception() to inspect a caught exception.
-def js_get_error_message(env: NapiEnv, err: NapiValue) raises -> String:
-    return JsString.from_napi_value(
-        env, JsObject(err).get_property(env, "message")
-    )
-
-
-## js_get_error_stack — read the .stack property from a JS Error object
-##
-## Returns the stack trace as a Mojo String.
-def js_get_error_stack(env: NapiEnv, err: NapiValue) raises -> String:
-    return JsString.from_napi_value(
-        env, JsObject(err).get_property(env, "stack")
-    )
 
 
 def js_get_error_message(

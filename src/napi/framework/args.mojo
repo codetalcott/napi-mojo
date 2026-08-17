@@ -12,8 +12,11 @@
 ##   var _b  = CbArgs.get_bindings(env, info)
 ##   var arg = CbArgs.get_one(_b, env, info)             # raises if argc < 1
 ##
-## No-bindings overloads — get_one(env, info) etc. — are kept for
-## standalone addons that use ModuleBuilder(env, exports) without NapiBindings.
+## This file is (with error.mojo) the surviving env-only surface: every
+## method here bottoms out in the ONE kept per-call-dlsym symbol,
+## napi_get_cb_info — the bootstrap that runs before bindings are available.
+## The env-only get_one/get_two/... overloads cost nothing extra to keep and
+## serve callbacks that only need raw argv without touching other N-API.
 
 from napi.types import NapiEnv, NapiValue
 from napi.raw import raw_get_cb_info

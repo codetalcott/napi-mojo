@@ -28,31 +28,11 @@ struct JsBigInt:
         self.value = value
 
     @staticmethod
-    def from_int64(env: NapiEnv, n: Int64) raises -> JsBigInt:
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_bigint_int64(
-                env, n, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            )
-        )
-        return JsBigInt(result)
-
-    @staticmethod
     def from_int64(b: Bindings, env: NapiEnv, n: Int64) raises -> JsBigInt:
         var result = NapiValue(unsafe_from_address=Int(0))
         check_status(
             raw_create_bigint_int64(
                 b, env, n, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            )
-        )
-        return JsBigInt(result)
-
-    @staticmethod
-    def from_uint64(env: NapiEnv, n: UInt64) raises -> JsBigInt:
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_bigint_uint64(
-                env, n, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
             )
         )
         return JsBigInt(result)
@@ -66,22 +46,6 @@ struct JsBigInt:
             )
         )
         return JsBigInt(result)
-
-    @staticmethod
-    def to_int64(env: NapiEnv, val: NapiValue) raises -> Int64:
-        var result: Int64 = 0
-        var lossless: Bool = False
-        check_status(
-            raw_get_value_bigint_int64(
-                env,
-                val,
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                Pointer(to=lossless).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        if not lossless:
-            raise Error("BigInt value exceeds Int64 range")
-        return result
 
     @staticmethod
     def to_int64(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Int64:
@@ -101,22 +65,6 @@ struct JsBigInt:
         return result
 
     @staticmethod
-    def to_uint64(env: NapiEnv, val: NapiValue) raises -> UInt64:
-        var result: UInt64 = 0
-        var lossless: Bool = False
-        check_status(
-            raw_get_value_bigint_uint64(
-                env,
-                val,
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                Pointer(to=lossless).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        if not lossless:
-            raise Error("BigInt value exceeds UInt64 range")
-        return result
-
-    @staticmethod
     def to_uint64(b: Bindings, env: NapiEnv, val: NapiValue) raises -> UInt64:
         var result: UInt64 = 0
         var lossless: Bool = False
@@ -132,26 +80,6 @@ struct JsBigInt:
         if not lossless:
             raise Error("BigInt value exceeds UInt64 range")
         return result
-
-    ## from_words — create BigInt from sign bit and array of UInt64 words
-    @staticmethod
-    def from_words(
-        env: NapiEnv,
-        sign_bit: Int32,
-        words_ptr: OpaquePointer[MutAnyOrigin],
-        word_count: UInt,
-    ) raises -> JsBigInt:
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_bigint_words(
-                env,
-                sign_bit,
-                word_count,
-                words_ptr,
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return JsBigInt(result)
 
     @staticmethod
     def from_words(
@@ -174,22 +102,6 @@ struct JsBigInt:
         )
         return JsBigInt(result)
 
-    ## word_count — query number of 64-bit words needed to represent a BigInt
-    @staticmethod
-    def word_count(env: NapiEnv, val: NapiValue) raises -> UInt:
-        var sign: Int32 = 0
-        var count: UInt = 0
-        check_status(
-            raw_get_value_bigint_words(
-                env,
-                val,
-                Pointer(to=sign).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                Pointer(to=count).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-            )
-        )
-        return count
-
     @staticmethod
     def word_count(b: Bindings, env: NapiEnv, val: NapiValue) raises -> UInt:
         var sign: Int32 = 0
@@ -205,19 +117,6 @@ struct JsBigInt:
             )
         )
         return count
-
-    ## to_words — extract sign and words from a BigInt into pre-allocated buffers
-    @staticmethod
-    def to_words(
-        env: NapiEnv,
-        val: NapiValue,
-        sign_ptr: OpaquePointer[MutAnyOrigin],
-        words_ptr: OpaquePointer[MutAnyOrigin],
-        count_ptr: OpaquePointer[MutAnyOrigin],
-    ) raises:
-        check_status(
-            raw_get_value_bigint_words(env, val, sign_ptr, count_ptr, words_ptr)
-        )
 
     @staticmethod
     def to_words(

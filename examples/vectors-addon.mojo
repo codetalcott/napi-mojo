@@ -16,6 +16,7 @@ from std.math import sqrt
 from std.memory.alloc import unsafe_alloc
 
 from napi.types import NapiEnv, NapiValue
+from napi.bindings import NapiBindings, init_bindings
 from napi.error import throw_js_error
 from napi.framework.js_number import JsNumber
 from napi.framework.js_typedarray import JsTypedArray
@@ -24,13 +25,6 @@ from napi.framework.args import CbArgs
 from napi.framework.register import fn_ptr, ModuleBuilder
 from napi.framework.runtime import init_async_runtime, parallelize_safe
 
-
-# Note on API style: this example uses ModuleBuilder(env, exports) without a
-# NapiBindings pointer, so callbacks use the no-bindings CbArgs overloads
-# (get_one(env, info), get_two(env, info), etc.). This is intentional for a
-# minimal example. Production addons should pass NapiBindings through
-# ModuleBuilder to enable cached function pointers (zero per-call dlsym).
-# See src/lib.mojo and the "Cached NapiBindings" section of CLAUDE.md.
 
 # --- SIMD + parallel core ----------------------------------------------------
 # Operates directly on raw Float64 pointers from TypedArray memory.
@@ -183,22 +177,23 @@ def euclidean_distance(
 
 def dot_product_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
         if not JsTypedArray.is_typedarray(
-            env, args[0]
-        ) or not JsTypedArray.is_typedarray(env, args[1]):
+            b, env, args[0]
+        ) or not JsTypedArray.is_typedarray(b, env, args[1]):
             throw_js_error(env, "dotProduct requires two TypedArray arguments")
             return NapiValue(unsafe_from_address=Int(0))
         var ta_a = JsTypedArray(args[0])
         var ta_b = JsTypedArray(args[1])
-        var len_a = Int(ta_a.length(env))
-        var len_b = Int(ta_b.length(env))
+        var len_a = Int(ta_a.length(b, env))
+        var len_b = Int(ta_b.length(b, env))
         if len_a != len_b:
             throw_js_error(env, "vectors must have equal length")
             return NapiValue(unsafe_from_address=Int(0))
-        var ptr_a = ta_a.data_ptr_float64(env)
-        var ptr_b = ta_b.data_ptr_float64(env)
-        return JsNumber.create(env, dot_product(ptr_a, ptr_b, len_a)).value
+        var ptr_a = ta_a.data_ptr_float64(b, env)
+        var ptr_b = ta_b.data_ptr_float64(b, env)
+        return JsNumber.create(b, env, dot_product(ptr_a, ptr_b, len_a)).value
     except:
         throw_js_error(env, "dotProduct failed")
         return NapiValue(unsafe_from_address=Int(0))
@@ -206,25 +201,26 @@ def dot_product_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 def cosine_similarity_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
         if not JsTypedArray.is_typedarray(
-            env, args[0]
-        ) or not JsTypedArray.is_typedarray(env, args[1]):
+            b, env, args[0]
+        ) or not JsTypedArray.is_typedarray(b, env, args[1]):
             throw_js_error(
                 env, "cosineSimilarity requires two TypedArray arguments"
             )
             return NapiValue(unsafe_from_address=Int(0))
         var ta_a = JsTypedArray(args[0])
         var ta_b = JsTypedArray(args[1])
-        var len_a = Int(ta_a.length(env))
-        var len_b = Int(ta_b.length(env))
+        var len_a = Int(ta_a.length(b, env))
+        var len_b = Int(ta_b.length(b, env))
         if len_a != len_b:
             throw_js_error(env, "vectors must have equal length")
             return NapiValue(unsafe_from_address=Int(0))
-        var ptr_a = ta_a.data_ptr_float64(env)
-        var ptr_b = ta_b.data_ptr_float64(env)
+        var ptr_a = ta_a.data_ptr_float64(b, env)
+        var ptr_b = ta_b.data_ptr_float64(b, env)
         return JsNumber.create(
-            env, cosine_similarity(ptr_a, ptr_b, len_a)
+            b, env, cosine_similarity(ptr_a, ptr_b, len_a)
         ).value
     except:
         throw_js_error(env, "cosineSimilarity failed")
@@ -233,25 +229,26 @@ def cosine_similarity_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 def euclidean_distance_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var args = CbArgs.get_two(env, info)
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
         if not JsTypedArray.is_typedarray(
-            env, args[0]
-        ) or not JsTypedArray.is_typedarray(env, args[1]):
+            b, env, args[0]
+        ) or not JsTypedArray.is_typedarray(b, env, args[1]):
             throw_js_error(
                 env, "euclideanDistance requires two TypedArray arguments"
             )
             return NapiValue(unsafe_from_address=Int(0))
         var ta_a = JsTypedArray(args[0])
         var ta_b = JsTypedArray(args[1])
-        var len_a = Int(ta_a.length(env))
-        var len_b = Int(ta_b.length(env))
+        var len_a = Int(ta_a.length(b, env))
+        var len_b = Int(ta_b.length(b, env))
         if len_a != len_b:
             throw_js_error(env, "vectors must have equal length")
             return NapiValue(unsafe_from_address=Int(0))
-        var ptr_a = ta_a.data_ptr_float64(env)
-        var ptr_b = ta_b.data_ptr_float64(env)
+        var ptr_a = ta_a.data_ptr_float64(b, env)
+        var ptr_b = ta_b.data_ptr_float64(b, env)
         return JsNumber.create(
-            env, euclidean_distance(ptr_a, ptr_b, len_a)
+            b, env, euclidean_distance(ptr_a, ptr_b, len_a)
         ).value
     except:
         throw_js_error(env, "euclideanDistance failed")
@@ -262,16 +259,17 @@ def normalize_vector_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     # Compute L2-normalized copy of a Float64Array (zero-copy output via MojoFloat64Array).
     # Raises if input is not a Float64Array. Output is owned by JS GC.
     try:
-        var arg0 = CbArgs.get_one(env, info)
-        if not JsTypedArray.is_typedarray(env, arg0):
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        if not JsTypedArray.is_typedarray(b, env, arg0):
             throw_js_error(
                 env, "normalizeVector requires a Float64Array argument"
             )
             return NapiValue(unsafe_from_address=Int(0))
         var ta = JsTypedArray(arg0)
-        var n = Int(ta.length(env))
+        var n = Int(ta.length(b, env))
         var v_ptr = ta.data_ptr_float64(
-            env
+            b, env
         )  # validates Float64Array + gets ptr in one call
         # Compute L2 norm via SIMD vectorize
         var norm_sq: Float64 = 0.0
@@ -289,7 +287,7 @@ def normalize_vector_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var inv_norm = 1.0 / norm
         for i in range(n):
             out.ptr[unsafe_offset=i] = v_ptr[unsafe_offset=i] * inv_norm
-        return out.to_js(env)  # __del__ frees buffer if to_js() raises
+        return out.to_js(b, env)  # __del__ frees buffer if to_js() raises
     except:
         throw_js_error(env, "normalizeVector failed")
         return NapiValue(unsafe_from_address=Int(0))
@@ -306,13 +304,24 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
     except:
         pass
 
+    var bindings_ptr = unsafe_alloc[NapiBindings](1)
+    try:
+        var bindings = NapiBindings()
+        init_bindings(bindings)
+        bindings_ptr.unsafe_write(bindings^)
+    except:
+        bindings_ptr.unsafe_free()
+        throw_js_error(env, "vectors-addon: failed to resolve N-API symbols")
+        return exports
+    var cb_data = bindings_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+
     var dot_ref = dot_product_fn
     var cos_ref = cosine_similarity_fn
     var euc_ref = euclidean_distance_fn
     var norm_ref = normalize_vector_fn
 
     try:
-        var m = ModuleBuilder(env, exports)
+        var m = ModuleBuilder(env, exports, cb_data)
         m.method("dotProduct", fn_ptr(dot_ref))
         m.method("cosineSimilarity", fn_ptr(cos_ref))
         m.method("euclideanDistance", fn_ptr(euc_ref))

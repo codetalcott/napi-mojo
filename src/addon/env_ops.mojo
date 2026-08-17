@@ -23,7 +23,7 @@ from napi.framework.js_coerce import (
     js_coerce_to_string,
     js_coerce_to_object,
 )
-from napi.framework.args import CbArgs
+from napi.framework.args import CbArgs, bindings_from_context
 from napi.framework.js_version import (
     add_async_cleanup_hook,
     remove_async_cleanup_hook,
@@ -166,11 +166,16 @@ def remove_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 ## process). Without this call, jest workers hang on exit and get killed with
 ## SIGSEGV/SIGTRAP/SIGABRT depending on what state libuv is in when SIGKILL
 ## arrives. Synchronous removal is fine — the hook does no real async work.
+##
+## `arg` carries the cached-bindings pointer (registered at add time) so the
+## removal runs on the cached fn pointer; the bindings allocation outlives
+## env teardown (never freed).
 def async_cleanup_hook_noop(
     handle: OpaquePointer[MutAnyOrigin], arg: OpaquePointer[MutAnyOrigin]
 ):
     try:
-        _ = raw_remove_async_cleanup_hook(handle)
+        var b = bindings_from_context(arg)
+        _ = raw_remove_async_cleanup_hook(b, handle)
     except:
         pass
 
@@ -182,9 +187,7 @@ def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var hook_ptr = Pointer(to=hook_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
-        _ = add_async_cleanup_hook(
-            b, env, hook_ptr, OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        )
+        _ = add_async_cleanup_hook(b, env, hook_ptr, b.unsafe_bitcast[NoneType]())
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "addAsyncCleanupHook failed")
@@ -199,7 +202,7 @@ def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             OpaquePointer[MutAnyOrigin]
         ]()[]
         var handle = add_async_cleanup_hook(
-            b, env, hook_ptr, OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+            b, env, hook_ptr, b.unsafe_bitcast[NoneType]()
         )
         remove_async_cleanup_hook(b, handle)
         return JsBoolean.create(b, env, True).value

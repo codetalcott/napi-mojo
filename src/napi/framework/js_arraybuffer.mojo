@@ -24,21 +24,6 @@ struct JsArrayBuffer:
     def __init__(out self, value: NapiValue):
         self.value = value
 
-    ## create — allocate a new ArrayBuffer with `byte_length` bytes.
-    @staticmethod
-    def create(env: NapiEnv, byte_length: UInt) raises -> JsArrayBuffer:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_arraybuffer(
-                env,
-                byte_length,
-                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return JsArrayBuffer(result)
-
     @staticmethod
     def create(
         b: Bindings, env: NapiEnv, byte_length: UInt
@@ -56,26 +41,6 @@ struct JsArrayBuffer:
         )
         return JsArrayBuffer(result)
 
-    ## create_and_fill — allocate and fill with incrementing byte values
-    @staticmethod
-    def create_and_fill(
-        env: NapiEnv, byte_length: UInt
-    ) raises -> JsArrayBuffer:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_arraybuffer(
-                env,
-                byte_length,
-                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        var ptr = data.unsafe_bitcast[Byte]()
-        for i in range(Int(byte_length)):
-            ptr[unsafe_offset=i] = Byte(i)
-        return JsArrayBuffer(result)
-
     @staticmethod
     def create_and_fill(
         b: Bindings, env: NapiEnv, byte_length: UInt
@@ -96,19 +61,6 @@ struct JsArrayBuffer:
             ptr[unsafe_offset=i] = Byte(i)
         return JsArrayBuffer(result)
 
-    ## byte_length — get the ArrayBuffer's byte length
-    def byte_length(self, env: NapiEnv) raises -> UInt:
-        var length: UInt = 0
-        check_status(
-            raw_get_arraybuffer_info(
-                env,
-                self.value,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                Pointer(to=length).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return length
-
     def byte_length(self, b: Bindings, env: NapiEnv) raises -> UInt:
         var length: UInt = 0
         check_status(
@@ -121,21 +73,6 @@ struct JsArrayBuffer:
             )
         )
         return length
-
-    ## data_ptr — get a raw pointer to the backing store
-    def data_ptr(
-        self, env: NapiEnv
-    ) raises -> Pointer[Byte, MutAnyOrigin]:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        check_status(
-            raw_get_arraybuffer_info(
-                env,
-                self.value,
-                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-            )
-        )
-        return data.unsafe_bitcast[Byte]()
 
     def data_ptr(
         self, b: Bindings, env: NapiEnv
@@ -152,17 +89,6 @@ struct JsArrayBuffer:
         )
         return data.unsafe_bitcast[Byte]()
 
-    ## is_arraybuffer — check if a napi_value is an ArrayBuffer
-    @staticmethod
-    def is_arraybuffer(env: NapiEnv, val: NapiValue) raises -> Bool:
-        var result: Bool = False
-        check_status(
-            raw_is_arraybuffer(
-                env, val, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            )
-        )
-        return result
-
     @staticmethod
     def is_arraybuffer(
         b: Bindings, env: NapiEnv, val: NapiValue
@@ -175,23 +101,8 @@ struct JsArrayBuffer:
         )
         return result
 
-    ## detach — detach the ArrayBuffer (its data becomes inaccessible from JS)
-    def detach(self, env: NapiEnv) raises:
-        check_status(raw_detach_arraybuffer(env, self.value))
-
     def detach(self, b: Bindings, env: NapiEnv) raises:
         check_status(raw_detach_arraybuffer(b, env, self.value))
-
-    ## is_detached — check if an ArrayBuffer has been detached (N-API v7)
-    @staticmethod
-    def is_detached(env: NapiEnv, val: NapiValue) raises -> Bool:
-        var result: Bool = False
-        check_status(
-            raw_is_detached_arraybuffer(
-                env, val, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            )
-        )
-        return result
 
     @staticmethod
     def is_detached(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:

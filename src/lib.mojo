@@ -83,17 +83,20 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         register_runtime_ops(m)
         m.flush()
     except:
+        # Registration failed AFTER init_bindings succeeded, so cached
+        # bindings are available for the error report.
         try:
+            var b = bindings_ptr.as_unsafe_any_origin()
             var null_code = NapiValue(unsafe_from_address=Int(0))
             var err_msg = JsString.create_literal(
-                env, "napi-mojo: register_module failed"
+                b, env, "napi-mojo: register_module failed"
             )
             var err_val = NapiValue(unsafe_from_address=Int(0))
             var err_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
                 to=err_val
             ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            _ = raw_create_error(env, null_code, err_msg.value, err_ptr)
-            _ = raw_fatal_exception(env, err_val)
+            _ = raw_create_error(b, env, null_code, err_msg.value, err_ptr)
+            _ = raw_fatal_exception(b, env, err_val)
         except:
             pass
 

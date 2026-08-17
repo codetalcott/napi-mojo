@@ -19,31 +19,6 @@ struct JsSymbol:
     def __init__(out self, value: NapiValue):
         self.value = value
 
-    ## create — create a new unique Symbol with the given description
-    @staticmethod
-    def create(env: NapiEnv, description: NapiValue) raises -> JsSymbol:
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_symbol(
-                env, description, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            )
-        )
-        return JsSymbol(result)
-
-    ## create_for — return the global Symbol for the given key (Symbol.for())
-    @staticmethod
-    def create_for(env: NapiEnv, key: StringLiteral) raises -> JsSymbol:
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_symbol_for(
-                env,
-                key.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                UInt(key.byte_length()),
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return JsSymbol(result)
-
     # --- Bindings-aware overloads ---
 
     @staticmethod

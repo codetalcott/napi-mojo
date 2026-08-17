@@ -17,6 +17,7 @@
 from napi.types import NapiEnv, NapiValue
 from napi.framework.js_boolean import JsBoolean
 from napi.framework.runtime import init_async_runtime
+from napi.framework.args import CbArgs
 from napi.framework.register import fn_ptr, ModuleBuilder
 
 
@@ -33,7 +34,8 @@ def async_runtime_init_ok_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     except:
         ok = False
     try:
-        return JsBoolean.create(env, ok).value
+        var b = CbArgs.get_bindings(env, info)
+        return JsBoolean.create(b, env, ok).value
     except:
         return NapiValue(unsafe_from_address=Int(0))
 

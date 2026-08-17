@@ -24,24 +24,6 @@ struct JsBuffer:
     def __init__(out self, value: NapiValue):
         self.value = value
 
-    ## create — allocate a new Buffer with `length` bytes (env-only)
-    ##
-    ## env-only: for async complete, TSFN, finalizer, and except-block callbacks
-    ## where NapiBindings is unavailable. Use create(b, env, length) in hot paths.
-    @staticmethod
-    def create(env: NapiEnv, length: UInt) raises -> JsBuffer:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_buffer(
-                env,
-                length,
-                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return JsBuffer(result)
-
     @staticmethod
     def create(b: Bindings, env: NapiEnv, length: UInt) raises -> JsBuffer:
         var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -55,24 +37,6 @@ struct JsBuffer:
                 Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
-        return JsBuffer(result)
-
-    ## create_and_fill — allocate and fill with incrementing byte values
-    @staticmethod
-    def create_and_fill(env: NapiEnv, length: UInt) raises -> JsBuffer:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_buffer(
-                env,
-                length,
-                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        var ptr = data.unsafe_bitcast[Byte]()
-        for i in range(Int(length)):
-            ptr[unsafe_offset=i] = Byte(i)
         return JsBuffer(result)
 
     @staticmethod
@@ -95,25 +59,6 @@ struct JsBuffer:
             ptr[unsafe_offset=i] = Byte(i)
         return JsBuffer(result)
 
-    ## data_ptr — get a raw pointer to the backing store
-    ##
-    ## Raises with a descriptive error if self.value is not a Buffer.
-    def data_ptr(
-        self, env: NapiEnv
-    ) raises -> Pointer[Byte, MutAnyOrigin]:
-        if not JsBuffer.is_buffer(env, self.value):
-            raise Error("expected a Buffer")
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        check_status(
-            raw_get_buffer_info(
-                env,
-                self.value,
-                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-            )
-        )
-        return data.unsafe_bitcast[Byte]()
-
     def data_ptr(
         self, b: Bindings, env: NapiEnv
     ) raises -> Pointer[Byte, MutAnyOrigin]:
@@ -130,23 +75,6 @@ struct JsBuffer:
             )
         )
         return data.unsafe_bitcast[Byte]()
-
-    ## length — get the Buffer's byte length
-    ##
-    ## Raises with a descriptive error if self.value is not a Buffer.
-    def length(self, env: NapiEnv) raises -> UInt:
-        if not JsBuffer.is_buffer(env, self.value):
-            raise Error("expected a Buffer")
-        var len: UInt = 0
-        check_status(
-            raw_get_buffer_info(
-                env,
-                self.value,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                Pointer(to=len).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return len
 
     def length(self, b: Bindings, env: NapiEnv) raises -> UInt:
         if not JsBuffer.is_buffer(b, env, self.value):
@@ -213,17 +141,6 @@ struct JsBuffer:
             )
         )
         return JsBuffer(result)
-
-    ## is_buffer — check if a napi_value is a Buffer
-    @staticmethod
-    def is_buffer(env: NapiEnv, val: NapiValue) raises -> Bool:
-        var result: Bool = False
-        check_status(
-            raw_is_buffer(
-                env, val, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            )
-        )
-        return result
 
     @staticmethod
     def is_buffer(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:

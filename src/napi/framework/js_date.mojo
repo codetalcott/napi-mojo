@@ -20,37 +20,6 @@ struct JsDate:
     def __init__(out self, value: NapiValue):
         self.value = value
 
-    @staticmethod
-    def create(env: NapiEnv, timestamp_ms: Float64) raises -> JsDate:
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_date(
-                env, timestamp_ms, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            )
-        )
-        return JsDate(result)
-
-    def timestamp_ms(self, env: NapiEnv) raises -> Float64:
-        var result: Float64 = 0.0
-        check_status(
-            raw_get_date_value(
-                env, self.value, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            )
-        )
-        return result
-
-    @staticmethod
-    def is_date(env: NapiEnv, val: NapiValue) raises -> Bool:
-        var result: Bool = False
-        check_status(
-            raw_is_date(
-                env,
-                val,
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return result
-
     # --- Bindings-aware overloads ---
 
     @staticmethod

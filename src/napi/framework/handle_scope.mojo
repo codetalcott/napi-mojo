@@ -36,16 +36,6 @@ struct HandleScope:
     def __init__(out self, scope: NapiHandleScope):
         self.scope = scope
 
-    ## open — create a new handle scope
-    @staticmethod
-    def open(env: NapiEnv) raises -> HandleScope:
-        var scope: NapiHandleScope = NapiHandleScope(unsafe_from_address=Int(0))
-        var scope_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-            to=scope
-        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        check_status(raw_open_handle_scope(env, scope_ptr))
-        return HandleScope(scope)
-
     @staticmethod
     def open(b: Bindings, env: NapiEnv) raises -> HandleScope:
         var scope: NapiHandleScope = NapiHandleScope(unsafe_from_address=Int(0))
@@ -54,10 +44,6 @@ struct HandleScope:
         ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_open_handle_scope(b, env, scope_ptr))
         return HandleScope(scope)
-
-    ## close — destroy this handle scope, releasing all handles within it
-    def close(self, env: NapiEnv) raises:
-        check_status(raw_close_handle_scope(env, self.scope))
 
     def close(self, b: Bindings, env: NapiEnv) raises:
         check_status(raw_close_handle_scope(b, env, self.scope))

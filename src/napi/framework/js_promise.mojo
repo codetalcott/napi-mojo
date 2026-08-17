@@ -33,42 +33,6 @@ struct JsPromise:
         self.value = value
         self.deferred = deferred
 
-    ## create — construct a new JavaScript Promise (env-only)
-    ##
-    ## env-only: for async complete, TSFN, finalizer, and except-block callbacks
-    ## where NapiBindings is unavailable. Use create(b, env) in hot paths.
-    ##
-    ## Calls napi_create_promise. Returns a JsPromise holding both the promise
-    ## napi_value (to return to JS) and the deferred handle (to settle it).
-    @staticmethod
-    def create(env: NapiEnv) raises -> JsPromise:
-        var deferred = NapiDeferred(unsafe_from_address=Int(0))
-        var promise = NapiValue(unsafe_from_address=Int(0))
-        var deferred_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-            to=deferred
-        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        var promise_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-            to=promise
-        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        var status = raw_create_promise(env, deferred_ptr, promise_ptr)
-        check_status(status)
-        return JsPromise(promise, deferred)
-
-    ## resolve — resolve the promise with a value
-    ##
-    ## Calls napi_resolve_deferred. After this, the deferred is consumed.
-    def resolve(self, env: NapiEnv, resolution: NapiValue) raises:
-        var status = raw_resolve_deferred(env, self.deferred, resolution)
-        check_status(status)
-
-    ## reject — reject the promise with a value
-    ##
-    ## Calls napi_reject_deferred. After this, the deferred is consumed.
-    ## Typically `rejection` should be a JavaScript Error object.
-    def reject(self, env: NapiEnv, rejection: NapiValue) raises:
-        var status = raw_reject_deferred(env, self.deferred, rejection)
-        check_status(status)
-
     # --- Bindings-aware overloads ---
 
     @staticmethod
