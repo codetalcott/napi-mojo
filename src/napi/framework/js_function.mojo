@@ -247,9 +247,12 @@ struct JsFunction:
     ## computed at runtime. `length` sets fn.length (the arity hint) via a
     ## napi_define_properties call after creation.
     ##
-    ## Note: pass NAPI_AUTO_LENGTH (~UInt(0)) as the string-length argument to
-    ## raw_create_function so that N-API uses strlen() on the null-terminated
-    ## name. The `length` Int parameter is the JavaScript arity, not the string
+    ## Note: the name's byte length is passed explicitly. NAPI_AUTO_LENGTH
+    ## would make N-API strlen() the pointer, but a heap Mojo String's buffer
+    ## has no guaranteed NUL terminator — strlen would read out of bounds.
+    ## (The StringLiteral overloads of create/create_with_data may keep
+    ## NAPI_AUTO_LENGTH: literals are static, NUL-terminated .rodata.)
+    ## The `length` Int parameter is the JavaScript arity, not the string
     ## byte-count.
     @staticmethod
     def create_named(
@@ -259,7 +262,6 @@ struct JsFunction:
         cb_ptr: OpaquePointer[MutAnyOrigin],
     ) raises -> JsFunction:
         var result = NapiValue(unsafe_from_address=Int(0))
-        var auto_length: UInt = ~UInt(0)
         var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
@@ -267,7 +269,7 @@ struct JsFunction:
             raw_create_function(
                 env,
                 name_ptr,
-                auto_length,
+                UInt(name.byte_length()),
                 cb_ptr,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
                 Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
@@ -307,7 +309,8 @@ struct JsFunction:
         data_ptr: OpaquePointer[MutAnyOrigin],
     ) raises -> JsFunction:
         var result = NapiValue(unsafe_from_address=Int(0))
-        var auto_length: UInt = ~UInt(0)
+        # Explicit byte length: a heap String has no guaranteed NUL
+        # terminator, so NAPI_AUTO_LENGTH (strlen) would read out of bounds.
         var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
@@ -316,7 +319,7 @@ struct JsFunction:
                 b,
                 env,
                 name_ptr,
-                auto_length,
+                UInt(name.byte_length()),
                 cb_ptr,
                 data_ptr,
                 Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),

@@ -12,10 +12,12 @@
 ##   var key = String("message")
 ##   obj.set_named_property(env, key, msg.value)
 ##
-## String lifetime: property name strings passed to set_named_property must
-## remain alive for the duration of the call. Use named `var` bindings.
-## set_property takes a StringLiteral (static lifetime), so no lifetime
-## management is needed on the caller side.
+## Heap String keys are converted to a length-delimited JS string key
+## internally (napi_create_string_utf8 + napi_set/get_property), never
+## handed to the C-string napi_*_named_property API: a heap Mojo String has
+## no guaranteed NUL terminator, so strlen-based APIs would read out of
+## bounds. set_property takes a StringLiteral (static, NUL-terminated
+## .rodata), which the C-string API handles safely.
 
 from std.collections import Optional
 from napi.types import (
@@ -29,6 +31,7 @@ from napi.types import (
 from napi.bindings import Bindings
 from napi.raw import (
     raw_create_object,
+    raw_create_string_utf8,
     raw_set_named_property,
     raw_get_named_property,
     raw_has_named_property,
@@ -45,6 +48,42 @@ from napi.raw import (
     raw_get_prototype,
 )
 from napi.error import check_status
+
+
+## _named_key — build a JS string key from a heap Mojo String
+##
+## napi_set/get_named_property require a NUL-terminated C string, which a
+## heap Mojo String does not guarantee. Instead of relying on a terminator,
+## create a length-delimited JS string (explicit byte count) to use as a
+## napi_value key with napi_set/get_property — semantically identical.
+def _named_key(env: NapiEnv, name: String) raises -> NapiValue:
+    var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
+    var str_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().unsafe_bitcast[
+        NoneType
+    ]().as_unsafe_any_origin()
+    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
+        to=result
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+    var status = raw_create_string_utf8(
+        env, str_ptr, UInt(name.byte_length()), result_ptr
+    )
+    check_status(status)
+    return result
+
+
+def _named_key(b: Bindings, env: NapiEnv, name: String) raises -> NapiValue:
+    var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
+    var str_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().unsafe_bitcast[
+        NoneType
+    ]().as_unsafe_any_origin()
+    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
+        to=result
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+    var status = raw_create_string_utf8(
+        b, env, str_ptr, UInt(name.byte_length()), result_ptr
+    )
+    check_status(status)
+    return result
 
 
 ## JsObject — typed wrapper for a JavaScript object napi_value
@@ -88,16 +127,14 @@ struct JsObject:
 
     ## set_named_property — set a named property using a heap String key
     ##
-    ## Use when the property name is computed at runtime. `name` is borrowed —
-    ## the caller's String must remain alive for the duration of this call
-    ## (use a named `var`).
+    ## Use when the property name is computed at runtime. The name is read
+    ## with an explicit byte length into a JS string key — it is never
+    ## strlen'd, so no NUL terminator is required.
     def set_named_property(
         self, env: NapiEnv, name: String, val: NapiValue
     ) raises:
-        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().unsafe_bitcast[
-            NoneType
-        ]().as_unsafe_any_origin()
-        var status = raw_set_named_property(env, self.value, name_ptr, val)
+        var key = _named_key(env, name)
+        var status = raw_set_property(env, self.value, key, val)
         check_status(status)
 
     ## set — set a property using a napi_value key (string, symbol, etc.)
@@ -157,21 +194,18 @@ struct JsObject:
 
     ## get_named_property — read a named property using a heap String key
     ##
-    ## Use when the property name is computed at runtime. `name` is borrowed —
-    ## the caller's String must remain alive for the duration of this call.
+    ## Use when the property name is computed at runtime. The name is read
+    ## with an explicit byte length into a JS string key — it is never
+    ## strlen'd, so no NUL terminator is required.
     def get_named_property(
         self, env: NapiEnv, name: String
     ) raises -> NapiValue:
-        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().unsafe_bitcast[
-            NoneType
-        ]().as_unsafe_any_origin()
+        var key = _named_key(env, name)
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=result
         ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        var status = raw_get_named_property(
-            env, self.value, name_ptr, result_ptr
-        )
+        var status = raw_get_property(env, self.value, key, result_ptr)
         check_status(status)
         return result
 
@@ -310,10 +344,8 @@ struct JsObject:
     def set_named_property(
         self, b: Bindings, env: NapiEnv, name: String, val: NapiValue
     ) raises:
-        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().unsafe_bitcast[
-            NoneType
-        ]().as_unsafe_any_origin()
-        var status = raw_set_named_property(b, env, self.value, name_ptr, val)
+        var key = _named_key(b, env, name)
+        var status = raw_set_property(b, env, self.value, key, val)
         check_status(status)
 
     def set(
@@ -361,16 +393,12 @@ struct JsObject:
     def get_named_property(
         self, b: Bindings, env: NapiEnv, name: String
     ) raises -> NapiValue:
-        var name_ptr: OpaquePointer[ImmutAnyOrigin] = name.unsafe_ptr().unsafe_bitcast[
-            NoneType
-        ]().as_unsafe_any_origin()
+        var key = _named_key(b, env, name)
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=result
         ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        var status = raw_get_named_property(
-            b, env, self.value, name_ptr, result_ptr
-        )
+        var status = raw_get_property(b, env, self.value, key, result_ptr)
         check_status(status)
         return result
 

@@ -143,15 +143,22 @@ struct JsString:
     ## from_napi_value — read a NapiValue as a Mojo String
     ##
     ## Optimistic single-pass: tries reading into a 256-byte stack buffer first.
-    ## If the string fits (actual < 255), returns immediately — 1 N-API call.
-    ## If truncated (actual == 255), falls back to the two-pass heap approach.
+    ## If the string definitely fit (actual < 252), returns immediately — 1
+    ## N-API call. Otherwise falls back to the two-pass heap approach.
     ## Uses String(from_utf8=Span[Byte]) for correct UTF-8 validation.
+    ##
+    ## Why 252, not 255: napi_get_value_string_utf8 truncates on a codepoint
+    ## boundary, so a longer string can report any actual in 252..255 (a
+    ## trailing multi-byte codepoint that didn't fit leaves up to 3 bytes
+    ## unused). Those values are ambiguous — could be a complete 252..255-byte
+    ## string or a truncated longer one — so they take the fallback, which
+    ## re-reads at the exact size either way.
     ##
     ## The NapiValue must hold a JS string; raises otherwise.
     @staticmethod
     def from_napi_value(env: NapiEnv, val: NapiValue) raises -> String:
         # Optimistic single-pass: read into a 256-byte stack buffer.
-        # If actual < 255, the full string fit — return immediately.
+        # actual < 252 proves the full string fit (see docstring) — return.
         var buf = Array[UInt8, 256](fill=0)
         var actual: UInt = 0
         var buf_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
@@ -163,13 +170,14 @@ struct JsString:
         check_status(
             raw_get_value_string_utf8(env, val, buf_ptr, 256, actual_ptr)
         )
-        if actual < 255:
+        if actual < 252:
             var span = Span[Byte](
                 unsafe_ptr=Pointer(to=buf[0]), length=Int(actual)
             )
             return String(from_utf8=span)
 
-        # Fallback: string >= 255 bytes. Two-pass with size query + read.
+        # Fallback: possibly truncated (actual in 252..255). Two-pass with
+        # size query + read at the exact size.
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         var needed: UInt = 0
         var needed_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
@@ -223,6 +231,8 @@ struct JsString:
         b: Bindings, env: NapiEnv, val: NapiValue
     ) raises -> String:
         # Optimistic single-pass: read into a 256-byte stack buffer.
+        # actual < 252 proves the full string fit — 252..255 is ambiguous
+        # under codepoint-boundary truncation (see env-only overload).
         var buf = Array[UInt8, 256](fill=0)
         var actual: UInt = 0
         var buf_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
@@ -234,13 +244,14 @@ struct JsString:
         check_status(
             raw_get_value_string_utf8(b, env, val, buf_ptr, 256, actual_ptr)
         )
-        if actual < 255:
+        if actual < 252:
             var span = Span[Byte](
                 unsafe_ptr=Pointer(to=buf[0]), length=Int(actual)
             )
             return String(from_utf8=span)
 
-        # Fallback: string >= 255 bytes. Two-pass with size query + read.
+        # Fallback: possibly truncated (actual in 252..255). Two-pass with
+        # size query + read at the exact size.
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         var needed: UInt = 0
         var needed_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
