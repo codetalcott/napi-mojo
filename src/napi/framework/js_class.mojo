@@ -5,15 +5,19 @@
 ## constructor napi_value. Instance properties go on the prototype (retrieved
 ## via constructor.prototype).
 
-from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor
+from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor, NapiTypeTag
 from napi.bindings import Bindings
 from napi.raw import (
     raw_define_class,
     raw_define_properties,
     raw_get_named_property,
     raw_unwrap,
+    raw_wrap,
+    raw_remove_wrap,
+    raw_type_tag_object,
+    raw_check_object_type_tag,
 )
-from napi.error import check_status
+from napi.error import check_status, throw_js_type_error
 from napi.framework.args import CbArgs
 from napi.module import define_property
 from napi.framework.js_value import js_get_global
@@ -407,6 +411,91 @@ def register_static_getter_setter(
     define_property(b, env, constructor, desc)
 
 
+## type_tag_object — stamp an object with a 128-bit type tag (N-API v8)
+##
+## An object can carry exactly ONE tag: napi_type_tag_object fails with
+## napi_invalid_arg if the object is already tagged. Inheritance is therefore
+## expressed as an accept-set of tags at the unwrap site (see class_animal),
+## never by tagging an object twice.
+def type_tag_object(
+    b: Bindings, env: NapiEnv, value: NapiValue, tag: NapiTypeTag
+) raises:
+    var t = NapiTypeTag(tag.lower, tag.upper)
+    var tag_ptr: OpaquePointer[ImmutAnyOrigin] = Pointer(
+        to=t
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+    check_status(raw_type_tag_object(b, env, value, tag_ptr))
+
+
+## check_object_type_tag — does the object carry exactly this tag?
+##
+## Returns False for untagged objects and objects tagged with a different
+## tag. Raises (napi_object_expected) if `value` is not an object.
+def check_object_type_tag(
+    b: Bindings, env: NapiEnv, value: NapiValue, tag: NapiTypeTag
+) raises -> Bool:
+    var t = NapiTypeTag(tag.lower, tag.upper)
+    var tag_ptr: OpaquePointer[ImmutAnyOrigin] = Pointer(
+        to=t
+    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+    var result: Bool = False
+    check_status(
+        raw_check_object_type_tag(
+            b,
+            env,
+            value,
+            tag_ptr,
+            Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+        )
+    )
+    return result
+
+
+## wrap_native — napi_wrap a native pointer onto `this` and type-tag it
+##
+## The tag is what makes unwrap_native[T](..., tag) safe: napi_unwrap alone
+## only proves "some native pointer is wrapped here", so a method borrowed
+## onto a foreign wrapped object (Counter.prototype.increment.call(anAnimal))
+## would reinterpret the wrong struct type — memory corruption reachable from
+## pure JS. Tag on wrap, verify on unwrap.
+##
+## `data_ptr` ownership: on success the finalizer owns it. On raise the
+## CALLER still owns it and must free — the wrap happens first, and if
+## tagging then fails the wrap is removed again (napi_remove_wrap) before
+## raising, so the caller's cleanup path cannot double-free against the
+## finalizer.
+def wrap_native(
+    b: Bindings,
+    env: NapiEnv,
+    this_val: NapiValue,
+    data_ptr: OpaquePointer[MutAnyOrigin],
+    finalize_ptr: OpaquePointer[MutAnyOrigin],
+    tag: NapiTypeTag,
+) raises:
+    check_status(
+        raw_wrap(
+            b,
+            env,
+            this_val,
+            data_ptr,
+            finalize_ptr,
+            OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+            OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+        )
+    )
+    try:
+        type_tag_object(b, env, this_val, tag)
+    except e:
+        var removed = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        _ = raw_remove_wrap(
+            b,
+            env,
+            this_val,
+            Pointer(to=removed).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+        )
+        raise e^
+
+
 ## unwrap_native — extract the wrapped native pointer from `this` and cast it
 ##
 ## Replaces the 4-line unwrap dance in every class method callback:
@@ -418,6 +507,14 @@ def register_static_getter_setter(
 ## Usage:
 ##   var ptr = unwrap_native[CounterData](env, info)
 ##   return JsNumber.create(env, ptr[].count).value
+##
+## UNVERIFIED: this overload does not check WHICH class wrapped the pointer —
+## napi_unwrap succeeds for any wrapped object, so a method borrowed onto a
+## foreign instance reinterprets the wrong struct. Prefer the tag-verified
+## overloads (wrap with wrap_native, unwrap with the NapiTypeTag-taking
+## overloads below). Use this form only after an explicit
+## check_object_type_tag accept-set test, e.g. for inherited methods where
+## `this` may legitimately carry one of several layout-compatible tags.
 def unwrap_native[
     T: AnyType
 ](env: NapiEnv, info: NapiValue) raises -> Pointer[T, MutAnyOrigin]:
@@ -467,3 +564,33 @@ def unwrap_native_from_this[
     if data is None:
         raise Error("unwrap failed: NULL native pointer")
     return data.value().unsafe_bitcast[T]()
+
+
+## Tag-verified unwrap overloads
+##
+## Verify the object carries `tag` (stamped by wrap_native) before casting
+## the wrapped pointer to T. On mismatch, follows the dual-signal convention
+## (see convert.mojo _check_type): sets a pending JS TypeError for the JS
+## caller AND raises a Mojo error for control flow — the callback's except
+## block returns null and its own generic throw is swallowed by the already-
+## pending TypeError.
+def unwrap_native[
+    T: AnyType
+](b: Bindings, env: NapiEnv, info: NapiValue, tag: NapiTypeTag) raises -> Pointer[
+    T, MutAnyOrigin
+]:
+    var this_val = CbArgs.get_this(b, env, info)
+    return unwrap_native_from_this[T](b, env, this_val, tag)
+
+
+def unwrap_native_from_this[
+    T: AnyType
+](
+    b: Bindings, env: NapiEnv, this_val: NapiValue, tag: NapiTypeTag
+) raises -> Pointer[T, MutAnyOrigin]:
+    if not check_object_type_tag(b, env, this_val, tag):
+        throw_js_type_error(
+            b, env, "native type mismatch: object was not created by this class"
+        )
+        raise Error("unwrap: type tag mismatch")
+    return unwrap_native_from_this[T](b, env, this_val)
