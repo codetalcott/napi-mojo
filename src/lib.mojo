@@ -6,6 +6,7 @@
 from std.memory.alloc import unsafe_alloc
 from napi.types import NapiEnv, NapiValue
 from napi.bindings import NapiBindings, Bindings, init_bindings
+from napi.error import throw_js_error
 from napi.raw import raw_create_error, raw_fatal_exception
 from napi.framework.js_string import JsString
 from napi.framework.register import ModuleBuilder
@@ -40,6 +41,16 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         bindings_ptr.unsafe_write(bindings^)
     except:
         bindings_ptr.unsafe_free()
+        # Symbol resolution is all-or-nothing, so a single missing symbol
+        # (e.g. a Node.js older than the N-API v10 surface) lands here.
+        # Leave a pending JS error so require() throws with a real message
+        # instead of silently returning an empty exports object.
+        # throw_js_error uses the env-only OwnedDLHandle path — safe even
+        # with no bindings, and napi_throw_error is a base (v1) symbol.
+        throw_js_error(
+            env,
+            "napi-mojo: failed to resolve N-API symbols (Node.js >= 22.12 required)",
+        )
         return exports
     # as_unsafe_any_origin() spells out the widening that used to happen
     # implicitly: the heap pointer's concrete origin is discarded to reach the
