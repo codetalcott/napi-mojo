@@ -60,45 +60,6 @@ struct AsyncWorkResult:
 
 
 struct AsyncWork:
-    ## queue — create promise, create async work, queue it
-    ##
-    ## The caller must:
-    ##   1. Heap-allocate their data struct with alloc[T](1) + unsafe_write()
-    ##   2. Pass data_ptr.unsafe_bitcast[NoneType]() as data_opaque
-    ##   3. After this call, patch deferred and work into their data struct
-    ##
-    ## Returns AsyncWorkResult with {value, deferred, work}.
-    @staticmethod
-    def queue(
-        env: NapiEnv,
-        name: StringLiteral,
-        data_opaque: OpaquePointer[MutAnyOrigin],
-        execute_ptr: OpaquePointer[MutAnyOrigin],
-        complete_ptr: OpaquePointer[MutAnyOrigin],
-    ) raises -> AsyncWorkResult:
-        var p = JsPromise.create(env)
-        var resource_name = JsString.create_literal(env, name)
-
-        var work = NapiAsyncWork(unsafe_from_address=Int(0))
-        var work_out: OpaquePointer[MutAnyOrigin] = Pointer(
-            to=work
-        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        var null_resource = NapiValue(unsafe_from_address=Int(0))
-
-        check_status(
-            raw_create_async_work(
-                env,
-                null_resource,
-                resource_name.value,
-                execute_ptr,
-                complete_ptr,
-                data_opaque,
-                work_out,
-            )
-        )
-
-        check_status(raw_queue_async_work(env, work))
-        return AsyncWorkResult(p.value, p.deferred, work)
 
     @staticmethod
     def queue(
@@ -134,29 +95,6 @@ struct AsyncWork:
         check_status(raw_queue_async_work(b, env, work))
         return AsyncWorkResult(p.value, p.deferred, work)
 
-    ## resolve — resolve deferred + delete async work
-    ##
-    ## The work handle must be deleted on EVERY path: settling first and
-    ## deleting second used to mean a failed settle leaked the napi_async_work
-    ## handle (and the promise stays pending — nothing can fix that once the
-    ## settle itself has failed, but the handle leak is avoidable).
-    @staticmethod
-    def resolve(
-        env: NapiEnv,
-        deferred: NapiDeferred,
-        work: NapiAsyncWork,
-        result: NapiValue,
-    ) raises:
-        try:
-            check_status(raw_resolve_deferred(env, deferred, result))
-        except e:
-            try:
-                check_status(raw_delete_async_work(env, work))
-            except:
-                pass  # keep the settle failure as the reported error
-            raise e^
-        check_status(raw_delete_async_work(env, work))
-
     @staticmethod
     def resolve(
         b: Bindings,
@@ -174,36 +112,6 @@ struct AsyncWork:
                 pass  # keep the settle failure as the reported error
             raise e^
         check_status(raw_delete_async_work(b, env, work))
-
-    ## reject_with_error — create Error, reject deferred, delete async work
-    ##
-    ## Same invariant as resolve(): the work handle is deleted on every path,
-    ## including when creating the Error value or the reject itself fails.
-    @staticmethod
-    def reject_with_error(
-        env: NapiEnv,
-        deferred: NapiDeferred,
-        work: NapiAsyncWork,
-        msg: StringLiteral,
-    ) raises:
-        try:
-            var msg_val = JsString.create_literal(env, msg)
-            var null_code = NapiValue(unsafe_from_address=Int(0))
-            var error_val = NapiValue(unsafe_from_address=Int(0))
-            var error_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-                to=error_val
-            ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            check_status(
-                raw_create_error(env, null_code, msg_val.value, error_ptr)
-            )
-            check_status(raw_reject_deferred(env, deferred, error_val))
-        except e:
-            try:
-                check_status(raw_delete_async_work(env, work))
-            except:
-                pass  # keep the reject failure as the reported error
-            raise e^
-        check_status(raw_delete_async_work(env, work))
 
     @staticmethod
     def reject_with_error(
@@ -231,37 +139,6 @@ struct AsyncWork:
                 pass  # keep the reject failure as the reported error
             raise e^
         check_status(raw_delete_async_work(b, env, work))
-
-    ## reject_with_error_dynamic — reject with a computed String message
-    ##
-    ## Use when the error message is known only at runtime (e.g., includes
-    ## a file path or status code). Mirrors throw_js_error_dynamic pattern:
-    ## msg_copy owns the bytes; explicit transfer keeps them alive past the
-    ## napi_create_string_utf8 call inside JsString.create.
-    @staticmethod
-    def reject_with_error_dynamic(
-        env: NapiEnv, deferred: NapiDeferred, work: NapiAsyncWork, msg: String
-    ) raises:
-        try:
-            var msg_copy = msg
-            var msg_val = JsString.create(env, msg_copy)
-            _ = msg_copy^
-            var null_code = NapiValue(unsafe_from_address=Int(0))
-            var error_val = NapiValue(unsafe_from_address=Int(0))
-            var error_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-                to=error_val
-            ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            check_status(
-                raw_create_error(env, null_code, msg_val.value, error_ptr)
-            )
-            check_status(raw_reject_deferred(env, deferred, error_val))
-        except e:
-            try:
-                check_status(raw_delete_async_work(env, work))
-            except:
-                pass  # keep the reject failure as the reported error
-            raise e^
-        check_status(raw_delete_async_work(env, work))
 
     @staticmethod
     def reject_with_error_dynamic(

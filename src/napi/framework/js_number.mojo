@@ -32,23 +32,6 @@ struct JsNumber:
     def __init__(out self, value: NapiValue):
         self.value = value
 
-    ## create — construct a JsNumber from a Mojo Float64
-    ##
-    ## Calls napi_create_double and checks the status.
-    ##
-    ## bootstrap-safe: the no-bindings overload is retained for async complete
-    ## and TSFN callbacks that lack an `info` parameter and cannot retrieve
-    ## cached bindings. Use create(b, env, n) in all hot-path callbacks.
-    @staticmethod
-    def create(env: NapiEnv, n: Float64) raises -> JsNumber:
-        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
-        var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-            to=result
-        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        var status = raw_create_double(env, n, result_ptr)
-        check_status(status)
-        return JsNumber(result)
-
     @staticmethod
     def create(b: Bindings, env: NapiEnv, n: Float64) raises -> JsNumber:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
@@ -58,21 +41,6 @@ struct JsNumber:
         var status = raw_create_double(b, env, n, result_ptr)
         check_status(status)
         return JsNumber(result)
-
-    ## from_napi_value — read a NapiValue as a Mojo Float64
-    ##
-    ## Calls napi_get_value_double and checks the status.
-    ## The NapiValue must hold a JS number; raises `napi_number_expected`
-    ## otherwise.
-    @staticmethod
-    def from_napi_value(env: NapiEnv, val: NapiValue) raises -> Float64:
-        var n: Float64 = 0.0
-        var n_ptr: OpaquePointer[MutAnyOrigin] = Pointer(to=n).unsafe_bitcast[
-            NoneType
-        ]().as_unsafe_any_origin()
-        var status = raw_get_value_double(env, val, n_ptr)
-        check_status(status)
-        return n
 
     @staticmethod
     def from_napi_value(
@@ -86,17 +54,6 @@ struct JsNumber:
         check_status(status)
         return n
 
-    ## create_int — construct a JS number from a Mojo Int via napi_create_int64
-    @staticmethod
-    def create_int(env: NapiEnv, n: Int) raises -> JsNumber:
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_int64(
-                env, Int64(n), Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            )
-        )
-        return JsNumber(result)
-
     @staticmethod
     def create_int(b: Bindings, env: NapiEnv, n: Int) raises -> JsNumber:
         var result = NapiValue(unsafe_from_address=Int(0))
@@ -106,19 +63,6 @@ struct JsNumber:
             )
         )
         return JsNumber(result)
-
-    ## to_int — read a NapiValue as a Mojo Int via napi_get_value_int64
-    @staticmethod
-    def to_int(env: NapiEnv, val: NapiValue) raises -> Int:
-        var n: Int64 = 0
-        check_status(
-            raw_get_value_int64(
-                env,
-                val,
-                Pointer(to=n).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return Int(n)
 
     @staticmethod
     def to_int(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Int:

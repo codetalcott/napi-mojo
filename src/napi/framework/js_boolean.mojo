@@ -32,17 +32,6 @@ struct JsBoolean:
     ## Calls napi_get_boolean (returns the JS true/false singleton) and checks
     ## the status.
 
-    ## env-only: required by callbacks that have no NapiBindings pointer —
-    ## e.g. addons built with ModuleBuilder(env, exports). Not deprecated.
-    @staticmethod
-    def create(env: NapiEnv, bval: Bool) raises -> JsBoolean:
-        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
-        var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-            to=result
-        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        check_status(raw_get_boolean(env, bval, result_ptr))
-        return JsBoolean(result)
-
     @staticmethod
     def create(b: Bindings, env: NapiEnv, bval: Bool) raises -> JsBoolean:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
@@ -58,18 +47,6 @@ struct JsBoolean:
     ## Calls napi_get_value_bool and checks the status.
     ## The NapiValue must hold a JS boolean; raises `napi_boolean_expected`
     ## otherwise.
-
-    ## env-only: required by convert.mojo's JsBool.from_js(env), which serves
-    ## callbacks that cannot reach cached bindings.
-    @staticmethod
-    def from_napi_value(env: NapiEnv, val: NapiValue) raises -> Bool:
-        var bval: Bool = False
-        var b_ptr: OpaquePointer[MutAnyOrigin] = Pointer(to=bval).unsafe_bitcast[
-            NoneType
-        ]().as_unsafe_any_origin()
-        var status = raw_get_value_bool(env, val, b_ptr)
-        check_status(status)
-        return bval
 
     @staticmethod
     def from_napi_value(

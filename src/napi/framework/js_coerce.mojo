@@ -22,53 +22,6 @@ from napi.error import check_status
 ## Use the bindings overloads (b, env, val) in hot paths.
 
 
-def js_coerce_to_bool(env: NapiEnv, val: NapiValue) raises -> NapiValue:
-    """Equivalent to Boolean(value) in JavaScript."""
-    var result = NapiValue(unsafe_from_address=Int(0))
-    check_status(
-        raw_coerce_to_bool(
-            env, val, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        )
-    )
-    return result
-
-
-def js_coerce_to_number(env: NapiEnv, val: NapiValue) raises -> NapiValue:
-    """Equivalent to Number(value) in JavaScript.
-    Throws TypeError on Symbol values."""
-    var result = NapiValue(unsafe_from_address=Int(0))
-    check_status(
-        raw_coerce_to_number(
-            env, val, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        )
-    )
-    return result
-
-
-def js_coerce_to_string(env: NapiEnv, val: NapiValue) raises -> NapiValue:
-    """Equivalent to String(value) in JavaScript.
-    Throws TypeError on Symbol values."""
-    var result = NapiValue(unsafe_from_address=Int(0))
-    check_status(
-        raw_coerce_to_string(
-            env, val, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        )
-    )
-    return result
-
-
-def js_coerce_to_object(env: NapiEnv, val: NapiValue) raises -> NapiValue:
-    """Equivalent to Object(value) in JavaScript.
-    Wraps primitives in their object wrappers."""
-    var result = NapiValue(unsafe_from_address=Int(0))
-    check_status(
-        raw_coerce_to_object(
-            env, val, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        )
-    )
-    return result
-
-
 # --- Bindings-aware overloads ---
 
 

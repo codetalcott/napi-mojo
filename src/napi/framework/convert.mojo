@@ -5,10 +5,7 @@
 ## type validation in from_js(), throwing a TypeError on mismatch.
 ##
 ## Usage:
-##   # Convert Mojo → JS (env-only):
-##   var result = JsF64(42.0).to_js(env)
-##
-##   # Convert Mojo → JS (Bindings-aware, preferred):
+##   # Convert Mojo → JS:
 ##   var result = JsF64(42.0).to_js(b, env)
 ##
 ##   # Convert JS → Mojo (with type validation):
@@ -41,23 +38,22 @@ from napi.error import throw_js_type_error_dynamic
 
 ## ToJsValue — convert a Mojo value to a JavaScript NapiValue
 ##
-## Concrete types also provide to_js(b, env) Bindings-aware overloads,
-## but those are not part of the trait (Mojo traits don't support overloads).
-## Parametric helpers (to_js_array[T]) call the env-only trait method.
+## The trait method is Bindings-first, so generic code (to_js_array[T]) runs
+## on cached function pointers — the env-only trait method that used to live
+## here forced one dlopen(NULL)+dlsym PER ELEMENT in the parametric helpers.
 trait ToJsValue:
-    def to_js(self, env: NapiEnv) raises -> NapiValue:
+    def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         ...
 
 
 ## FromJsValue — extract a Mojo value from a JavaScript NapiValue
 ##
 ## Implementations should validate the JS type and throw a TypeError
-## if the value is not the expected type.
-## Concrete types also provide from_js(b, env, val) Bindings-aware overloads,
-## but those are not part of the trait (Mojo traits don't support overloads).
+## if the value is not the expected type. Bindings-first for the same
+## reason as ToJsValue.
 trait FromJsValue:
     @staticmethod
-    def from_js(env: NapiEnv, val: NapiValue) raises -> Self:
+    def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
         ...
 
 
@@ -69,20 +65,6 @@ trait FromJsValue:
 ## callback's except block, which returns null). Callers that catch the Mojo
 ## error must NOT make further N-API calls other than returning — the pending
 ## exception makes any subsequent call report napi_pending_exception.
-def _check_type(
-    env: NapiEnv,
-    val: NapiValue,
-    expected: NapiValueType,
-    expected_name: StringLiteral,
-) raises:
-    var actual = js_typeof(env, val)
-    if actual != expected:
-        throw_js_type_error_dynamic(
-            env, "expected " + expected_name + ", got " + js_type_name(actual)
-        )
-        raise Error("type mismatch")
-
-
 def _check_type(
     b: Bindings,
     env: NapiEnv,
@@ -113,17 +95,8 @@ struct JsF64(Copyable, FromJsValue, ToJsValue):
     def __init__(out self, *, deinit move: Self):
         self.val = move.val
 
-    def to_js(self, env: NapiEnv) raises -> NapiValue:
-        return JsNumber.create(env, self.val).value
-
     def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         return JsNumber.create(b, env, self.val).value
-
-    @staticmethod
-    def from_js(env: NapiEnv, val: NapiValue) raises -> Self:
-        _check_type(env, val, NAPI_TYPE_NUMBER, "number")
-        var n: Float64 = JsNumber.from_napi_value(env, val)
-        return JsF64(n)
 
     @staticmethod
     def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
@@ -139,16 +112,8 @@ struct JsI32(FromJsValue, ToJsValue):
     def __init__(out self, val: Int32):
         self.val = val
 
-    def to_js(self, env: NapiEnv) raises -> NapiValue:
-        return JsInt32.create(env, self.val).value
-
     def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         return JsInt32.create(b, env, self.val).value
-
-    @staticmethod
-    def from_js(env: NapiEnv, val: NapiValue) raises -> Self:
-        _check_type(env, val, NAPI_TYPE_NUMBER, "number")
-        return JsI32(JsInt32.from_napi_value(env, val))
 
     @staticmethod
     def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
@@ -163,16 +128,8 @@ struct JsBool(FromJsValue, ToJsValue):
     def __init__(out self, val: Bool):
         self.val = val
 
-    def to_js(self, env: NapiEnv) raises -> NapiValue:
-        return JsBoolean.create(env, self.val).value
-
     def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         return JsBoolean.create(b, env, self.val).value
-
-    @staticmethod
-    def from_js(env: NapiEnv, val: NapiValue) raises -> Self:
-        _check_type(env, val, NAPI_TYPE_BOOLEAN, "boolean")
-        return JsBool(JsBoolean.from_napi_value(env, val))
 
     @staticmethod
     def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
@@ -193,17 +150,8 @@ struct JsStr(Copyable, FromJsValue, ToJsValue):
     def __init__(out self, *, deinit move: Self):
         self.val = move.val^
 
-    def to_js(self, env: NapiEnv) raises -> NapiValue:
-        return JsString.create(env, self.val).value
-
     def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         return JsString.create(b, env, self.val).value
-
-    @staticmethod
-    def from_js(env: NapiEnv, val: NapiValue) raises -> Self:
-        _check_type(env, val, NAPI_TYPE_STRING, "string")
-        var s: String = JsString.from_napi_value(env, val)
-        return JsStr(s)
 
     @staticmethod
     def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
@@ -220,15 +168,8 @@ struct JsRaw(FromJsValue, ToJsValue):
     def __init__(out self, val: NapiValue):
         self.val = val
 
-    def to_js(self, env: NapiEnv) raises -> NapiValue:
-        return self.val
-
     def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         return self.val
-
-    @staticmethod
-    def from_js(env: NapiEnv, val: NapiValue) raises -> Self:
-        return JsRaw(val)
 
     @staticmethod
     def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
@@ -316,23 +257,22 @@ def from_js_array_str(
 # ---------------------------------------------------------------------------
 
 
-## to_js_array — convert List[T] to a JavaScript Array using T.to_js(env)
+## to_js_array — convert List[T] to a JavaScript Array using T.to_js(b, env)
 ##
-## Array create/set operations use cached Bindings; element conversion uses
-## the env-only trait method (Mojo traits don't support overloads).
+## Fully on cached Bindings — the trait method is Bindings-first, so element
+## conversion costs zero dlsym per element.
 def to_js_array[
     T: ToJsValue & Copyable
 ](b: Bindings, env: NapiEnv, items: List[T]) raises -> NapiValue:
     var arr = JsArray.create_with_length(b, env, UInt(len(items)))
     for i in range(len(items)):
-        arr.set(b, env, UInt32(i), items[i].to_js(env))
+        arr.set(b, env, UInt32(i), items[i].to_js(b, env))
     return arr.value
 
 
-## from_js_array — convert a JavaScript Array to List[T] using T.from_js(env, val)
+## from_js_array — convert a JavaScript Array to List[T] using T.from_js(b, env, val)
 ##
-## Raises TypeError if val is not an array. Array get/length use cached Bindings;
-## element conversion uses the env-only trait method.
+## Raises TypeError if val is not an array. Fully on cached Bindings.
 def from_js_array[
     T: FromJsValue & Copyable & Deinitable
 ](b: Bindings, env: NapiEnv, val: NapiValue) raises -> List[T]:
@@ -343,5 +283,5 @@ def from_js_array[
     var n = Int(arr.length(b, env))
     var result = List[T]()
     for i in range(n):
-        result.append(T.from_js(env, arr.get(b, env, UInt32(i))))
+        result.append(T.from_js(b, env, arr.get(b, env, UInt32(i))))
     return result^

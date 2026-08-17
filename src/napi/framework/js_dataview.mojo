@@ -18,26 +18,6 @@ struct JsDataView:
     def __init__(out self, value: NapiValue):
         self.value = value
 
-    ## create — create a DataView over an existing ArrayBuffer
-    @staticmethod
-    def create(
-        env: NapiEnv,
-        byte_length: UInt,
-        arraybuffer: NapiValue,
-        byte_offset: UInt,
-    ) raises -> JsDataView:
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_dataview(
-                env,
-                byte_length,
-                arraybuffer,
-                byte_offset,
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return JsDataView(result)
-
     @staticmethod
     def create(
         b: Bindings,
@@ -59,21 +39,6 @@ struct JsDataView:
         )
         return JsDataView(result)
 
-    ## byte_length — get the DataView's byte length
-    def byte_length(self, env: NapiEnv) raises -> UInt:
-        var length: UInt = 0
-        check_status(
-            raw_get_dataview_info(
-                env,
-                self.value,
-                Pointer(to=length).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-            )
-        )
-        return length
-
     def byte_length(self, b: Bindings, env: NapiEnv) raises -> UInt:
         var length: UInt = 0
         check_status(
@@ -89,21 +54,6 @@ struct JsDataView:
         )
         return length
 
-    ## byte_offset — get the DataView's byte offset into the ArrayBuffer
-    def byte_offset(self, env: NapiEnv) raises -> UInt:
-        var offset: UInt = 0
-        check_status(
-            raw_get_dataview_info(
-                env,
-                self.value,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                Pointer(to=offset).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return offset
-
     def byte_offset(self, b: Bindings, env: NapiEnv) raises -> UInt:
         var offset: UInt = 0
         check_status(
@@ -118,23 +68,6 @@ struct JsDataView:
             )
         )
         return offset
-
-    ## data_ptr — get a raw pointer to the DataView's data
-    def data_ptr(
-        self, env: NapiEnv
-    ) raises -> Pointer[Byte, MutAnyOrigin]:
-        var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        check_status(
-            raw_get_dataview_info(
-                env,
-                self.value,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-            )
-        )
-        return data.unsafe_bitcast[Byte]()
 
     def data_ptr(
         self, b: Bindings, env: NapiEnv
@@ -153,21 +86,6 @@ struct JsDataView:
         )
         return data.unsafe_bitcast[Byte]()
 
-    ## arraybuffer — get the underlying ArrayBuffer
-    def arraybuffer(self, env: NapiEnv) raises -> NapiValue:
-        var ab = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_get_dataview_info(
-                env,
-                self.value,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                Pointer(to=ab).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-            )
-        )
-        return ab
-
     def arraybuffer(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
         var ab = NapiValue(unsafe_from_address=Int(0))
         check_status(
@@ -182,17 +100,6 @@ struct JsDataView:
             )
         )
         return ab
-
-    ## is_dataview — check if a napi_value is a DataView
-    @staticmethod
-    def is_dataview(env: NapiEnv, val: NapiValue) raises -> Bool:
-        var result: Bool = False
-        check_status(
-            raw_is_dataview(
-                env, val, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            )
-        )
-        return result
 
     @staticmethod
     def is_dataview(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:

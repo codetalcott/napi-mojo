@@ -40,21 +40,28 @@ struct TypedPayload(Movable):
     var counter: Pointer[Int64, MutAnyOrigin]
     @__allow_legacy_any_origin_fields
     var ab_ref: NapiRef
+    # Cached NapiBindings address so the finalizer can release ab_ref on
+    # cached pointers (the bindings allocation is never freed, so this
+    # cannot dangle at GC time).
+    var bindings_addr: Int
 
     def __init__(
         out self,
         value: Float64,
         counter: Pointer[Int64, MutAnyOrigin],
         ab_ref: NapiRef,
+        bindings_addr: Int,
     ):
         self.value = value
         self.counter = counter
         self.ab_ref = ab_ref
+        self.bindings_addr = bindings_addr
 
     def __moveinit__(out self, deinit take: Self):
         self.value = take.value
         self.counter = take.counter
         self.ab_ref = take.ab_ref
+        self.bindings_addr = take.bindings_addr
 
     def __deinit__(deinit self):
         # Safe: typed_payload_finalize keeps ab_ref alive across this increment
@@ -77,11 +84,14 @@ def typed_payload_finalize(
     hint: OpaquePointer[MutAnyOrigin],
 ):
     var ptr = data.unsafe_bitcast[TypedPayload]()
-    var ab_ref = ptr[].ab_ref  # copy handle out before the struct is destroyed
+    # Copy handle + bindings out before the struct is destroyed
+    var ab_ref = ptr[].ab_ref
+    var b_addr = ptr[].bindings_addr
     ptr.unsafe_deinit_pointee()  # __del__: counter[] += 1 (ArrayBuffer still pinned)
     ptr.unsafe_free()
     try:
-        JsRef(ab_ref).delete(env)  # release the ArrayBuffer (env-only overload)
+        var b = Bindings(unsafe_from_address=b_addr)
+        JsRef(ab_ref).delete(b, env)  # release the ArrayBuffer
     except:
         pass
 
@@ -107,7 +117,9 @@ def create_typed_payload_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         # stays valid until the finalizer is done with it (released there).
         var ab_ref = JsRef.create(b, env, args[1], 1)
         var data_ptr = unsafe_alloc[TypedPayload](1)
-        data_ptr.unsafe_write(TypedPayload(v, counter_ptr, ab_ref.handle))
+        data_ptr.unsafe_write(
+            TypedPayload(v, counter_ptr, ab_ref.handle, Int(b))
+        )
         var fin_ref = typed_payload_finalize
         var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]

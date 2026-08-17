@@ -3,11 +3,11 @@
 ## ThreadsafeFunction enables calling JavaScript functions from Mojo worker threads.
 ## The key N-API primitive for streaming, progress reporting, and event-driven patterns.
 ##
-##   var tsfn = ThreadsafeFunction.create(env, js_func, resource_name, 0, call_js_ptr)
-##   # on worker thread:
-##   tsfn.call_blocking(data_ptr)
+##   var tsfn = ThreadsafeFunction.create(b, env, js_func, resource_name, 0, call_js_ptr, ...)
+##   # on worker thread (cached pointer — no loader lock):
+##   tsfn.call_blocking(b, data_ptr)
 ##   # when done (on main thread):
-##   tsfn.release()
+##   tsfn.release(b)
 
 from napi.types import (
     NapiEnv,
@@ -44,43 +44,10 @@ struct ThreadsafeFunction:
     ## `finalize_data`:     data pointer passed to finalize_cb (NULL if none)
     ## `finalize_cb`:       cleanup callback — fires AFTER all call_js_cb invocations (NULL if none)
     ##
-    ## Context: the Bindings overload registers the cached-bindings pointer
-    ## as the TSFN context. N-API hands that context to call_js_cb as its
-    ## third parameter AND to finalize_cb as `finalize_hint`, so both
-    ## callbacks can recover cached bindings via bindings_from_context()
-    ## instead of the per-call OwnedDLHandle path. This env-only overload has
-    ## no bindings to register — context stays NULL and its callbacks must
-    ## use the env-only N-API path.
-    @staticmethod
-    def create(
-        env: NapiEnv,
-        func: NapiValue,
-        resource_name_val: NapiValue,
-        max_queue_size: UInt,
-        call_js_cb: OpaquePointer[MutAnyOrigin],
-        finalize_data: OpaquePointer[MutAnyOrigin],
-        finalize_cb: OpaquePointer[MutAnyOrigin],
-    ) raises -> ThreadsafeFunction:
-        var tsfn = NapiThreadsafeFunction(unsafe_from_address=Int(0))
-        var null_resource = NapiValue(unsafe_from_address=Int(0))
-        var null_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        check_status(
-            raw_create_threadsafe_function(
-                env,
-                func,
-                null_resource,  # async_resource (NULL)
-                resource_name_val,
-                max_queue_size,
-                UInt(1),  # initial_thread_count
-                finalize_data,
-                finalize_cb,
-                null_ptr,  # context
-                call_js_cb,
-                Pointer(to=tsfn).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return ThreadsafeFunction(tsfn)
-
+    ## The cached-bindings pointer is registered as the TSFN context. N-API
+    ## hands that context to call_js_cb as its third parameter AND to
+    ## finalize_cb as `finalize_hint`, so both callbacks recover cached
+    ## bindings via bindings_from_context().
     @staticmethod
     def create(
         b: Bindings,
@@ -116,18 +83,6 @@ struct ThreadsafeFunction:
         )
         return ThreadsafeFunction(tsfn)
 
-    ## call_blocking — queue data, block if queue is full
-    ##
-    ## Can be called from ANY thread. The data pointer is passed to call_js_cb.
-    def call_blocking(self, data: OpaquePointer[MutAnyOrigin]) raises:
-        check_status(
-            raw_call_threadsafe_function(
-                self.tsfn,
-                data,
-                NAPI_TSFN_BLOCKING,
-            )
-        )
-
     def call_blocking(
         self, b: Bindings, data: OpaquePointer[MutAnyOrigin]
     ) raises:
@@ -137,16 +92,6 @@ struct ThreadsafeFunction:
                 self.tsfn,
                 data,
                 NAPI_TSFN_BLOCKING,
-            )
-        )
-
-    ## call_nonblocking — queue data, return napi_queue_full if queue is full
-    def call_nonblocking(self, data: OpaquePointer[MutAnyOrigin]) raises:
-        check_status(
-            raw_call_threadsafe_function(
-                self.tsfn,
-                data,
-                NAPI_TSFN_NONBLOCKING,
             )
         )
 
@@ -162,30 +107,12 @@ struct ThreadsafeFunction:
             )
         )
 
-    ## acquire — increment the TSFN thread reference count
-    def acquire(self) raises:
-        check_status(raw_acquire_threadsafe_function(self.tsfn))
-
     def acquire(self, b: Bindings) raises:
         check_status(raw_acquire_threadsafe_function(b, self.tsfn))
-
-    ## release — decrement the thread reference count (normal release)
-    ##
-    ## When the count reaches 0, the TSFN is destroyed.
-    def release(self) raises:
-        check_status(
-            raw_release_threadsafe_function(self.tsfn, NAPI_TSFN_RELEASE)
-        )
 
     def release(self, b: Bindings) raises:
         check_status(
             raw_release_threadsafe_function(b, self.tsfn, NAPI_TSFN_RELEASE)
-        )
-
-    ## abort — immediately close the TSFN, discard pending items
-    def abort(self) raises:
-        check_status(
-            raw_release_threadsafe_function(self.tsfn, NAPI_TSFN_ABORT)
         )
 
     def abort(self, b: Bindings) raises:

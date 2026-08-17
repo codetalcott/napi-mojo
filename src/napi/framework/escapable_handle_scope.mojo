@@ -29,16 +29,6 @@ struct EscapableHandleScope:
         self.scope = scope
 
     @staticmethod
-    def open(env: NapiEnv) raises -> EscapableHandleScope:
-        var scope = NapiEscapableHandleScope(unsafe_from_address=Int(0))
-        check_status(
-            raw_open_escapable_handle_scope(
-                env, Pointer(to=scope).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            )
-        )
-        return EscapableHandleScope(scope)
-
-    @staticmethod
     def open(b: Bindings, env: NapiEnv) raises -> EscapableHandleScope:
         var scope = NapiEscapableHandleScope(unsafe_from_address=Int(0))
         check_status(
@@ -47,18 +37,6 @@ struct EscapableHandleScope:
             )
         )
         return EscapableHandleScope(scope)
-
-    def escape(self, env: NapiEnv, value: NapiValue) raises -> NapiValue:
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_escape_handle(
-                env,
-                self.scope,
-                value,
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return result
 
     def escape(
         self, b: Bindings, env: NapiEnv, value: NapiValue
@@ -74,9 +52,6 @@ struct EscapableHandleScope:
             )
         )
         return result
-
-    def close(self, env: NapiEnv) raises:
-        check_status(raw_close_escapable_handle_scope(env, self.scope))
 
     def close(self, b: Bindings, env: NapiEnv) raises:
         check_status(raw_close_escapable_handle_scope(b, env, self.scope))

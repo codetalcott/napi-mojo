@@ -27,60 +27,7 @@ struct JsRef:
     def __init__(out self, handle: NapiRef):
         self.handle = handle
 
-    @staticmethod
-    def create(
-        env: NapiEnv, value: NapiValue, initial_refcount: UInt32
-    ) raises -> JsRef:
-        var result = NapiRef(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_reference(
-                env,
-                value,
-                initial_refcount,
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return JsRef(result)
-
-    def delete(self, env: NapiEnv) raises:
-        check_status(raw_delete_reference(env, self.handle))
-
-    def inc(self, env: NapiEnv) raises -> UInt32:
-        var count: UInt32 = 0
-        check_status(
-            raw_reference_ref(
-                env,
-                self.handle,
-                Pointer(to=count).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return count
-
-    def dec(self, env: NapiEnv) raises -> UInt32:
-        var count: UInt32 = 0
-        check_status(
-            raw_reference_unref(
-                env,
-                self.handle,
-                Pointer(to=count).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return count
-
-    def get(self, env: NapiEnv) raises -> NapiValue:
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_get_reference_value(
-                env, self.handle, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            )
-        )
-        return result
-
     # --- Bindings-aware overloads ---
-
-    @staticmethod
-    def create_weak(env: NapiEnv, value: NapiValue) raises -> JsRef:
-        return JsRef.create(env, value, 0)
 
     # --- Bindings-aware overloads ---
 

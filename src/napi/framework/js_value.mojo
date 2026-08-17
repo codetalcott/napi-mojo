@@ -42,23 +42,6 @@ from napi.error import check_status
 from napi.framework.js_object import JsObject
 
 
-## js_typeof — return the napi_valuetype of a JavaScript value (env-only)
-##
-## env-only: for async complete, TSFN, finalizer, and except-block callbacks
-## where NapiBindings is unavailable. Use js_typeof(b, env, val) in hot paths.
-##
-## Calls napi_typeof and returns the result as a NapiValueType (Int32).
-## Compare the result against the NAPI_TYPE_* constants from napi.types.
-## Raises on N-API failure.
-def js_typeof(env: NapiEnv, val: NapiValue) raises -> NapiValueType:
-    var t: NapiValueType = 0
-    var t_ptr: OpaquePointer[MutAnyOrigin] = Pointer(to=t).unsafe_bitcast[
-        NoneType
-    ]().as_unsafe_any_origin()
-    check_status(raw_typeof(env, val, t_ptr))
-    return t
-
-
 ## js_type_name — human-readable name for a napi_valuetype code
 ##
 ## Returns the JavaScript type name as it would appear in `typeof` expressions
@@ -87,42 +70,6 @@ def js_type_name(t: NapiValueType) -> String:
     if t == NAPI_TYPE_BIGINT:
         return "bigint"
     return "unknown"
-
-
-## js_is_array — check whether a JavaScript value is an Array
-##
-## napi_typeof returns NAPI_TYPE_OBJECT for arrays, so this function uses
-## napi_is_array to distinguish arrays from plain objects.
-def js_is_array(env: NapiEnv, val: NapiValue) raises -> Bool:
-    var result: Bool = False
-    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-        to=result
-    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-    check_status(raw_is_array(env, val, result_ptr))
-    return result
-
-
-## js_strict_equals — check strict equality (===) between any two JS values
-##
-## Works on all value types (primitives, objects, etc.).
-def js_strict_equals(
-    env: NapiEnv, lhs: NapiValue, rhs: NapiValue
-) raises -> Bool:
-    var result: Bool = False
-    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-        to=result
-    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-    check_status(raw_strict_equals(env, lhs, rhs, result_ptr))
-    return result
-
-
-## js_get_global — return the global object (globalThis)
-def js_get_global(env: NapiEnv) raises -> JsObject:
-    var result = NapiValue(unsafe_from_address=Int(0))
-    check_status(
-        raw_get_global(env, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin())
-    )
-    return JsObject(result)
 
 
 # --- Bindings-aware overloads ---
@@ -167,36 +114,12 @@ def js_get_global(b: Bindings, env: NapiEnv) raises -> JsObject:
     return JsObject(result)
 
 
-## js_is_error — check whether a JavaScript value is an Error object
-def js_is_error(env: NapiEnv, val: NapiValue) raises -> Bool:
-    var result: Bool = False
-    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-        to=result
-    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-    check_status(raw_is_error(env, val, result_ptr))
-    return result
-
-
 def js_is_error(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Bool:
     var result: Bool = False
     var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
         to=result
     ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_is_error(b, env, val, result_ptr))
-    return result
-
-
-## js_adjust_external_memory — inform V8 about native memory allocations
-##
-## Returns the adjusted external memory value.
-def js_adjust_external_memory(
-    env: NapiEnv, change_in_bytes: Int64
-) raises -> Int64:
-    var result: Int64 = 0
-    var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-        to=result
-    ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-    check_status(raw_adjust_external_memory(env, change_in_bytes, result_ptr))
     return result
 
 
@@ -209,19 +132,6 @@ def js_adjust_external_memory(
     ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(
         raw_adjust_external_memory(b, env, change_in_bytes, result_ptr)
-    )
-    return result
-
-
-## js_run_script — evaluate a JavaScript string (like eval())
-##
-## Takes a napi_value containing the script string, returns the result.
-def js_run_script(env: NapiEnv, script: NapiValue) raises -> NapiValue:
-    var result = NapiValue(unsafe_from_address=Int(0))
-    check_status(
-        raw_run_script(
-            env, script, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        )
     )
     return result
 

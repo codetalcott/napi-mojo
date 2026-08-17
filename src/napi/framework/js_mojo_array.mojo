@@ -5,13 +5,10 @@
 ## Node.js GC owns the memory after to_js() and frees it via finalizer when
 ## the Float64Array is collected.
 ##
-## Usage (with bindings — production addons):
+## Usage:
 ##   var arr = MojoFloat64Array(n)
 ##   arr.ptr[i] = some_value   # scalar, or vectorize() over arr.ptr
 ##   return arr.to_js(b, env)  # returns Float64Array NapiValue
-##
-## Usage (no-bindings — simple/example addons):
-##   return arr.to_js(env)
 ##
 ## After to_js() is called, do NOT call arr.ptr.unsafe_free() — GC owns the memory.
 ## If to_js() is never reached (error path), __del__ automatically frees the buffer.
@@ -88,26 +85,3 @@ struct MojoFloat64Array(Movable):
         return JsTypedArray.create_float64(
             b, env, ab, 0, UInt(self.length)
         ).value
-
-    ## to_js — transfer ownership to JS as a Float64Array (env-only overload)
-    def to_js(mut self, env: NapiEnv) raises -> NapiValue:
-        """Wrap buffer as Float64Array (zero-copy). GC finalizer owns memory after this.
-        """
-        var byte_len = UInt(self.length * 8)
-        var fin_ref = _mojo_float64_finalizer
-        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
-        var ab = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_external_arraybuffer(
-                env,
-                self.ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                byte_len,
-                fin_ptr,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                Pointer(to=ab).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        self._transferred = True  # GC finalizer now owns memory
-        return JsTypedArray.create_float64(env, ab, 0, UInt(self.length)).value

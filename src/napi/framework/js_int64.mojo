@@ -20,19 +20,6 @@ struct JsInt64:
     def __init__(out self, value: NapiValue):
         self.value = value
 
-    ## env-only: for async complete, TSFN, finalizer, and except-block callbacks
-    ## where NapiBindings is unavailable. Use create(b, env, n) in hot paths.
-    ## (Generated async completes for `returns = "int64"` call this form.)
-    @staticmethod
-    def create(env: NapiEnv, n: Int64) raises -> JsInt64:
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_int64(
-                env, n, Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            )
-        )
-        return JsInt64(result)
-
     @staticmethod
     def create(b: Bindings, env: NapiEnv, n: Int64) raises -> JsInt64:
         var result = NapiValue(unsafe_from_address=Int(0))

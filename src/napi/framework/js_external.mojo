@@ -21,25 +21,6 @@ struct JsExternal:
 
     @staticmethod
     def create(
-        env: NapiEnv,
-        data: OpaquePointer[MutAnyOrigin],
-        finalize_cb: OpaquePointer[MutAnyOrigin],
-    ) raises -> JsExternal:
-        """Create an external with a finalize callback (called on GC)."""
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_external(
-                env,
-                data,
-                finalize_cb,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint = NULL
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return JsExternal(result)
-
-    @staticmethod
-    def create(
         b: Bindings,
         env: NapiEnv,
         data: OpaquePointer[MutAnyOrigin],
@@ -53,24 +34,6 @@ struct JsExternal:
                 env,
                 data,
                 finalize_cb,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint = NULL
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return JsExternal(result)
-
-    @staticmethod
-    def create_no_release(
-        env: NapiEnv,
-        data: OpaquePointer[MutAnyOrigin],
-    ) raises -> JsExternal:
-        """Create an external with no finalize callback."""
-        var result = NapiValue(unsafe_from_address=Int(0))
-        check_status(
-            raw_create_external(
-                env,
-                data,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_cb = NULL
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # finalize_hint = NULL
                 Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
@@ -96,21 +59,6 @@ struct JsExternal:
             )
         )
         return JsExternal(result)
-
-    @staticmethod
-    def get_data(
-        env: NapiEnv, val: NapiValue
-    ) raises -> OpaquePointer[MutAnyOrigin]:
-        """Retrieve the opaque data pointer from an external value."""
-        var result = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        check_status(
-            raw_get_value_external(
-                env,
-                val,
-                Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            )
-        )
-        return result
 
     @staticmethod
     def get_data(

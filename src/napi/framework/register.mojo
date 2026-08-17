@@ -19,6 +19,7 @@
 from std.memory.alloc import unsafe_alloc
 from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor, NapiRef
 from napi.bindings import Bindings
+from napi.framework.args import bindings_from_context
 from napi.module import register_method, define_property
 from napi.framework.js_class import (
     define_class,
@@ -51,9 +52,12 @@ def fn_ptr[T: AnyType](func: T) -> OpaquePointer[MutAnyOrigin]:
 
 ## ModuleBuilder — chainable module registration with batched flush
 ##
-## Wraps env + exports + optional data pointer. When data is set (e.g., to
-## a NapiBindings pointer), it is attached to every property descriptor so
-## callbacks can retrieve it via CbArgs.get_bindings(env, info).
+## Wraps env + exports + the NapiBindings data pointer. `data` MUST be the
+## bindings pointer: it is attached to every property descriptor so callbacks
+## can retrieve it via CbArgs.get_bindings(env, info), and flush()/class_def()
+## and every ClassBuilder member derive cached bindings from it via
+## bindings_from_context() (magic-checked; registration is init-time, so the
+## one extra word read per call is free).
 ##
 ## method() accumulates NapiPropertyDescriptors into a heap array instead of
 ## calling napi_define_properties immediately. Call flush() once after all
@@ -75,14 +79,6 @@ struct ModuleBuilder(Movable):
     var _descs: Pointer[NapiPropertyDescriptor, MutAnyOrigin]
     var _count: Int
     var _capacity: Int
-
-    def __init__(out self, env: NapiEnv, exports: NapiValue):
-        self.env = env
-        self.exports = exports
-        self.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self._descs = unsafe_alloc[NapiPropertyDescriptor](MAX_DESCRIPTORS).as_unsafe_any_origin()
-        self._count = 0
-        self._capacity = MAX_DESCRIPTORS
 
     def __init__(
         out self,
@@ -152,8 +148,10 @@ struct ModuleBuilder(Movable):
             self._free_descs()
             return
         try:
+            var b = bindings_from_context(self.data)
             check_status(
                 raw_define_properties(
+                    b,
                     self.env,
                     self.exports,
                     UInt(self._count),
@@ -178,18 +176,9 @@ struct ModuleBuilder(Movable):
     def class_def(
         self, name: StringLiteral, ctor_ptr: OpaquePointer[MutAnyOrigin]
     ) raises -> ClassBuilder:
-        var ctor = define_class(self.env, name, ctor_ptr, self.data)
-        JsObject(self.exports).set_property(self.env, name, ctor)
-        return ClassBuilder(self.env, ctor, self.data)
-
-    def class_def(
-        self,
-        b: Bindings,
-        name: StringLiteral,
-        ctor_ptr: OpaquePointer[MutAnyOrigin],
-    ) raises -> ClassBuilder:
+        var b = bindings_from_context(self.data)
         var ctor = define_class(b, self.env, name, ctor_ptr, self.data)
-        JsObject(self.exports).set_property(self.env, name, ctor)
+        JsObject(self.exports).set_property(b, self.env, name, ctor)
         return ClassBuilder(self.env, ctor, self.data)
 
 
@@ -206,11 +195,6 @@ struct ClassBuilder:
     @__allow_legacy_any_origin_fields
     var data: OpaquePointer[MutAnyOrigin]
 
-    def __init__(out self, env: NapiEnv, ctor: NapiValue):
-        self.env = env
-        self.ctor = ctor
-        self.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-
     def __init__(
         out self,
         env: NapiEnv,
@@ -225,17 +209,7 @@ struct ClassBuilder:
     def instance_method(
         self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
     ) raises:
-        var proto = _get_prototype(self.env, self.ctor)
-        var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        desc.method = ptr
-        desc.data = self.data
-        desc.attributes = 0
-        define_property(self.env, proto, desc)
-
-    def instance_method(
-        self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
-    ) raises:
+        var b = bindings_from_context(self.data)
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
@@ -248,17 +222,7 @@ struct ClassBuilder:
     def getter(
         self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
     ) raises:
-        var proto = _get_prototype(self.env, self.ctor)
-        var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        desc.getter = ptr
-        desc.data = self.data
-        desc.attributes = 0
-        define_property(self.env, proto, desc)
-
-    def getter(
-        self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
-    ) raises:
+        var b = bindings_from_context(self.data)
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
@@ -274,22 +238,7 @@ struct ClassBuilder:
         get_ptr: OpaquePointer[MutAnyOrigin],
         set_ptr: OpaquePointer[MutAnyOrigin],
     ) raises:
-        var proto = _get_prototype(self.env, self.ctor)
-        var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        desc.getter = get_ptr
-        desc.setter = set_ptr
-        desc.data = self.data
-        desc.attributes = 0
-        define_property(self.env, proto, desc)
-
-    def getter_setter(
-        self,
-        b: Bindings,
-        name: StringLiteral,
-        get_ptr: OpaquePointer[MutAnyOrigin],
-        set_ptr: OpaquePointer[MutAnyOrigin],
-    ) raises:
+        var b = bindings_from_context(self.data)
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
@@ -303,16 +252,7 @@ struct ClassBuilder:
     def static_method(
         self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
     ) raises:
-        var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        desc.method = ptr
-        desc.data = self.data
-        desc.attributes = 0
-        define_property(self.env, self.ctor, desc)
-
-    def static_method(
-        self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
-    ) raises:
+        var b = bindings_from_context(self.data)
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         desc.method = ptr
@@ -324,16 +264,7 @@ struct ClassBuilder:
     def static_getter(
         self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
     ) raises:
-        var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        desc.getter = ptr
-        desc.data = self.data
-        desc.attributes = 0
-        define_property(self.env, self.ctor, desc)
-
-    def static_getter(
-        self, b: Bindings, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
-    ) raises:
+        var b = bindings_from_context(self.data)
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         desc.getter = ptr
@@ -348,21 +279,7 @@ struct ClassBuilder:
         get_ptr: OpaquePointer[MutAnyOrigin],
         set_ptr: OpaquePointer[MutAnyOrigin],
     ) raises:
-        var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        desc.getter = get_ptr
-        desc.setter = set_ptr
-        desc.data = self.data
-        desc.attributes = 0
-        define_property(self.env, self.ctor, desc)
-
-    def static_getter_setter(
-        self,
-        b: Bindings,
-        name: StringLiteral,
-        get_ptr: OpaquePointer[MutAnyOrigin],
-        set_ptr: OpaquePointer[MutAnyOrigin],
-    ) raises:
+        var b = bindings_from_context(self.data)
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         desc.getter = get_ptr
@@ -373,9 +290,7 @@ struct ClassBuilder:
 
     ## inherits — set up prototype chain inheritance from parent class
     def inherits(self, parent: ClassBuilder) raises:
-        set_class_prototype(self.env, self.ctor, parent.ctor)
-
-    def inherits(self, b: Bindings, parent: ClassBuilder) raises:
+        var b = bindings_from_context(self.data)
         set_class_prototype(b, self.env, self.ctor, parent.ctor)
 
 

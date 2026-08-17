@@ -63,7 +63,7 @@ def reject_with_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var error_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=error_val
         ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        check_status(raw_create_error(env, null_code, arg0, error_ptr))
+        check_status(raw_create_error(b, env, null_code, arg0, error_ptr))
         var p = JsPromise.create(b, env)
         p.reject(b, env, error_val)
         return p.value
@@ -82,18 +82,24 @@ struct AsyncDoubleData(Movable):
     var deferred: NapiDeferred
     @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
+    # Cached NapiBindings address: written by the entry callback (main
+    # thread), read by the complete callback (main thread). The worker-thread
+    # execute never touches it.
+    var bindings_addr: Int
     var input: Float64
     var result: Float64
 
     def __init__(out self, input: Float64):
         self.deferred = NapiDeferred(unsafe_from_address=Int(0))
         self.work = NapiAsyncWork(unsafe_from_address=Int(0))
+        self.bindings_addr = 0
         self.input = input
         self.result = 0.0
 
     def __moveinit__(out self, deinit take: Self):
         self.deferred = take.deferred
         self.work = take.work
+        self.bindings_addr = take.bindings_addr
         self.input = take.input
         self.result = take.result
 
@@ -108,12 +114,15 @@ def async_double_complete(
 ):
     var ptr = data.unsafe_bitcast[AsyncDoubleData]()
     try:
+        var b = Bindings(unsafe_from_address=ptr[].bindings_addr)
         if status == NAPI_OK:
-            var result_val = JsNumber.create(env, ptr[].result)
-            AsyncWork.resolve(env, ptr[].deferred, ptr[].work, result_val.value)
+            var result_val = JsNumber.create(b, env, ptr[].result)
+            AsyncWork.resolve(
+                b, env, ptr[].deferred, ptr[].work, result_val.value
+            )
         else:
             AsyncWork.reject_with_error(
-                env, ptr[].deferred, ptr[].work, "async work failed"
+                b, env, ptr[].deferred, ptr[].work, "async work failed"
             )
     except:
         pass
@@ -128,6 +137,7 @@ def async_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = unsafe_alloc[AsyncDoubleData](1)
         data_ptr.unsafe_write(AsyncDoubleData(n))
+        data_ptr[].bindings_addr = Int(b)
         var exec_ref = async_double_execute
         var comp_ref = async_double_complete
         var aw = AsyncWork.queue(
@@ -156,18 +166,22 @@ struct AsyncTripleData(Movable):
     var deferred: NapiDeferred
     @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
+    # Cached NapiBindings address (see AsyncDoubleData)
+    var bindings_addr: Int
     var input: Float64
     var result: Float64
 
     def __init__(out self, input: Float64):
         self.deferred = NapiDeferred(unsafe_from_address=Int(0))
         self.work = NapiAsyncWork(unsafe_from_address=Int(0))
+        self.bindings_addr = 0
         self.input = input
         self.result = 0.0
 
     def __moveinit__(out self, deinit take: Self):
         self.deferred = take.deferred
         self.work = take.work
+        self.bindings_addr = take.bindings_addr
         self.input = take.input
         self.result = take.result
 
@@ -182,12 +196,15 @@ def async_triple_complete(
 ):
     var ptr = data.unsafe_bitcast[AsyncTripleData]()
     try:
+        var b = Bindings(unsafe_from_address=ptr[].bindings_addr)
         if status == NAPI_OK:
-            var result_val = JsNumber.create(env, ptr[].result)
-            AsyncWork.resolve(env, ptr[].deferred, ptr[].work, result_val.value)
+            var result_val = JsNumber.create(b, env, ptr[].result)
+            AsyncWork.resolve(
+                b, env, ptr[].deferred, ptr[].work, result_val.value
+            )
         else:
             AsyncWork.reject_with_error(
-                env, ptr[].deferred, ptr[].work, "asyncTriple failed"
+                b, env, ptr[].deferred, ptr[].work, "asyncTriple failed"
             )
     except:
         pass
@@ -202,6 +219,7 @@ def async_triple_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var n = JsNumber.from_napi_value(b, env, arg0)
         var data_ptr = unsafe_alloc[AsyncTripleData](1)
         data_ptr.unsafe_write(AsyncTripleData(n))
+        data_ptr[].bindings_addr = Int(b)
         var exec_ref = async_triple_execute
         var comp_ref = async_triple_complete
         var aw = AsyncWork.queue(
@@ -444,14 +462,18 @@ struct CancelAsyncData(Movable):
     var deferred: NapiDeferred
     @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
+    # Cached NapiBindings address (see AsyncDoubleData)
+    var bindings_addr: Int
 
     def __init__(out self, deferred: NapiDeferred):
         self.deferred = deferred
         self.work = NapiAsyncWork(unsafe_from_address=Int(0))
+        self.bindings_addr = 0
 
     def __moveinit__(out self, deinit take: Self):
         self.deferred = take.deferred
         self.work = take.work
+        self.bindings_addr = take.bindings_addr
 
 
 def cancel_async_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
@@ -463,19 +485,20 @@ def cancel_async_complete(
 ):
     var ptr = data.unsafe_bitcast[CancelAsyncData]()
     try:
-        _ = raw_delete_async_work(env, ptr[].work)
+        var b = Bindings(unsafe_from_address=ptr[].bindings_addr)
+        _ = raw_delete_async_work(b, env, ptr[].work)
         if status == NAPI_OK:
-            var result_val = JsString.create_literal(env, "completed")
-            _ = raw_resolve_deferred(env, ptr[].deferred, result_val.value)
+            var result_val = JsString.create_literal(b, env, "completed")
+            _ = raw_resolve_deferred(b, env, ptr[].deferred, result_val.value)
         else:
-            var msg = JsString.create_literal(env, "cancelled")
+            var msg = JsString.create_literal(b, env, "cancelled")
             var null_code = NapiValue(unsafe_from_address=Int(0))
             var error_val = NapiValue(unsafe_from_address=Int(0))
             var error_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
                 to=error_val
             ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-            _ = raw_create_error(env, null_code, msg.value, error_ptr)
-            _ = raw_reject_deferred(env, ptr[].deferred, error_val)
+            _ = raw_create_error(b, env, null_code, msg.value, error_ptr)
+            _ = raw_reject_deferred(b, env, ptr[].deferred, error_val)
     except:
         pass
     ptr.unsafe_deinit_pointee()
@@ -488,6 +511,7 @@ def cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var p = JsPromise.create(b, env)
         var data_ptr = unsafe_alloc[CancelAsyncData](1)
         data_ptr.unsafe_write(CancelAsyncData(p.deferred))
+        data_ptr[].bindings_addr = Int(b)
         var exec_ref = cancel_async_execute
         var complete_ref = cancel_async_complete
         var exec_ptr = Pointer(to=exec_ref).unsafe_bitcast[
