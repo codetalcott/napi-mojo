@@ -45,7 +45,7 @@ def ks_double_f64_list(xs: List[Float64]) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(xs)):
         out.append(xs[i] * 2.0)
-    return out
+    return out^
 
 
 def ks_join_str_list(xs: List[String]) -> String:
@@ -58,7 +58,7 @@ def ks_join_str_list(xs: List[String]) -> String:
 def ks_wrap_str_list(s: String) -> List[String]:
     var out = List[String]()
     out.append(s)
-    return out
+    return out^
 
 
 def ks_maybe_number(v: Float64) -> Optional[Float64]:
