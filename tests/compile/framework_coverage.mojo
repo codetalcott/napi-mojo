@@ -76,6 +76,7 @@ from napi.types import (
     NapiValueType,
     NapiStatus,
     NapiPropertyDescriptor,
+    NapiTypeTag,
     NAPI_TYPE_OBJECT,
 )
 from napi.bindings import NapiBindings, Bindings
@@ -129,6 +130,9 @@ from napi.framework.js_class import (
     set_class_prototype,
     unwrap_native,
     unwrap_native_from_this,
+    wrap_native,
+    type_tag_object,
+    check_object_type_tag,
 )
 from napi.framework.js_coerce import (
     js_coerce_to_bool,
@@ -481,6 +485,13 @@ def cover_js_class(b: Bindings, env: NapiEnv, v: NapiValue) raises:
     _ = unwrap_native[CoverPayload](env, v)
     _ = unwrap_native[CoverPayload](b, env, v)
     _ = unwrap_native_from_this[CoverPayload](b, env, v)
+
+    # Type-tagged wrap/unwrap (one cover call per overload)
+    type_tag_object(b, env, v, NapiTypeTag(1, 2))
+    _ = check_object_type_tag(b, env, v, NapiTypeTag(1, 2))
+    wrap_native(b, env, v, _null(), p, NapiTypeTag(1, 2))
+    _ = unwrap_native[CoverPayload](b, env, v, NapiTypeTag(1, 2))
+    _ = unwrap_native_from_this[CoverPayload](b, env, v, NapiTypeTag(1, 2))
 
     _ = cb_ref
 

@@ -4,21 +4,33 @@ from std.memory.alloc import unsafe_alloc
 from napi.types import (
     NapiEnv,
     NapiValue,
+    NapiTypeTag,
     NAPI_TYPE_NUMBER,
     NAPI_TYPE_OBJECT,
     NAPI_TYPE_FUNCTION,
 )
 from napi.bindings import NapiBindings, Bindings
 from napi.error import throw_js_error, throw_js_type_error, check_status
-from napi.raw import raw_wrap, raw_new_instance
+from napi.raw import raw_new_instance
 from napi.framework.js_number import JsNumber
 from napi.framework.js_boolean import JsBoolean
 from napi.framework.js_undefined import JsUndefined
 from napi.framework.js_object import JsObject
-from napi.framework.js_class import unwrap_native, unwrap_native_from_this
+from napi.framework.js_class import (
+    unwrap_native,
+    unwrap_native_from_this,
+    wrap_native,
+)
 from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof
 from napi.framework.register import fn_ptr, ModuleBuilder, ClassRegistry
+
+
+# 128-bit type tag stamped on every Counter instance by wrap_native and
+# verified by every tagged unwrap. Fixed random constants — any change is a
+# (deliberate) break of native-pointer compatibility with older instances.
+comptime COUNTER_TAG_LOWER: UInt64 = 0x5AF1D2C39B7E4A10
+comptime COUNTER_TAG_UPPER: UInt64 = 0x3D84C6F2A1B50E97
 
 
 struct CounterData(Movable):
@@ -59,20 +71,20 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var data_ptr = unsafe_alloc[CounterData](1)
         data_ptr.unsafe_write(CounterData(initial))
         var fin_ref = counter_finalize
-        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
-        check_status(
-            raw_wrap(
+        try:
+            wrap_native(
                 b,
                 env,
                 this_val,
                 data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                fin_ptr,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                fn_ptr(fin_ref),
+                NapiTypeTag(COUNTER_TAG_LOWER, COUNTER_TAG_UPPER),
             )
-        )
+        except e:
+            # wrap_native raises with ownership returned to the caller
+            data_ptr.unsafe_deinit_pointee()
+            data_ptr.unsafe_free()
+            raise e^
         return this_val
     except:
         throw_js_error(env, "Counter constructor failed")
@@ -82,7 +94,9 @@ def counter_constructor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 def counter_get_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
-        var ptr = unwrap_native_from_this[CounterData](a.b, env, a.this_val)
+        var ptr = unwrap_native_from_this[CounterData](
+            a.b, env, a.this_val, NapiTypeTag(COUNTER_TAG_LOWER, COUNTER_TAG_UPPER)
+        )
         return JsNumber.create(a.b, env, ptr[].count).value
     except:
         throw_js_error(env, "Counter.value getter failed")
@@ -99,7 +113,9 @@ def counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             )
             return NapiValue(unsafe_from_address=Int(0))
         var new_val = JsNumber.from_napi_value(a.b, env, a.arg0)
-        var ptr = unwrap_native_from_this[CounterData](a.b, env, a.this_val)
+        var ptr = unwrap_native_from_this[CounterData](
+            a.b, env, a.this_val, NapiTypeTag(COUNTER_TAG_LOWER, COUNTER_TAG_UPPER)
+        )
         ptr[].count = new_val
         return JsUndefined.create(a.b, env).value
     except:
@@ -110,7 +126,9 @@ def counter_set_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 def counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
-        var ptr = unwrap_native_from_this[CounterData](a.b, env, a.this_val)
+        var ptr = unwrap_native_from_this[CounterData](
+            a.b, env, a.this_val, NapiTypeTag(COUNTER_TAG_LOWER, COUNTER_TAG_UPPER)
+        )
         ptr[].count += 1.0
         return JsUndefined.create(a.b, env).value
     except:
@@ -121,7 +139,9 @@ def counter_increment_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 def counter_reset_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var a = CbArgs.get_bindings_and_this(env, info)
-        var ptr = unwrap_native_from_this[CounterData](a.b, env, a.this_val)
+        var ptr = unwrap_native_from_this[CounterData](
+            a.b, env, a.this_val, NapiTypeTag(COUNTER_TAG_LOWER, COUNTER_TAG_UPPER)
+        )
         ptr[].count = ptr[].initial
         return JsUndefined.create(a.b, env).value
     except:
