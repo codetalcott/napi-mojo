@@ -41,6 +41,24 @@ def _verified_bindings(data: OpaquePointer[MutAnyOrigin]) raises -> Bindings:
     return b
 
 
+## bindings_from_context — recover cached Bindings from an opaque pointer
+##
+## For callbacks that receive the bindings pointer through a channel other
+## than napi_callback data:
+##   - TSFN call_js_cb: ThreadsafeFunction.create(b, ...) registers the
+##     bindings pointer as the TSFN context, which N-API hands to call_js_cb
+##     as its `context` parameter.
+##   - TSFN finalize_cb: N-API passes the same context as `finalize_hint`.
+##   - wrap_native finalizers: the bindings pointer is the finalize_hint.
+## Verifies the BINDINGS_MAGIC sentinel and raises if the pointer is null or
+## not a NapiBindings — check Int(ptr) first in teardown paths where a null
+## is expected and the call should be silently dropped.
+def bindings_from_context(
+    context: OpaquePointer[MutAnyOrigin],
+) raises -> Bindings:
+    return _verified_bindings(context)
+
+
 ## BindingsAndOne — bindings pointer + one argument (single napi_get_cb_info call)
 struct BindingsAndOne:
     @__allow_legacy_any_origin_fields

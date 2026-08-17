@@ -33,7 +33,7 @@ from napi.framework.js_number import JsNumber
 from napi.framework.js_function import JsFunction
 from napi.framework.js_promise import JsPromise
 from napi.framework.threadsafe_function import ThreadsafeFunction
-from napi.framework.args import CbArgs
+from napi.framework.args import CbArgs, bindings_from_context
 from napi.framework.async_work import AsyncWork
 from napi.framework.register import fn_ptr, ModuleBuilder
 
@@ -234,6 +234,14 @@ struct AsyncProgressData(Movable):
     var tsfn: NapiThreadsafeFunction
     var count: Int
     var status: NapiStatus
+    # Cached NapiBindings address (same pattern as the generated async data
+    # structs): written by the entry callback on the main thread. The worker-
+    # thread execute uses it only for napi_call_threadsafe_function — the one
+    # N-API call that is any-thread-safe by design — and complete (main
+    # thread) uses it for the release. A cached fn-pointer call is
+    # thread-agnostic; what this removes is the per-iteration dlopen(NULL)
+    # loader-lock the env-only path took on the worker thread.
+    var bindings_addr: Int
 
     def __init__(
         out self,
@@ -247,6 +255,7 @@ struct AsyncProgressData(Movable):
         self.tsfn = tsfn
         self.count = count
         self.status = NAPI_OK
+        self.bindings_addr = 0
 
     def __moveinit__(out self, deinit take: Self):
         self.deferred = take.deferred
@@ -254,6 +263,7 @@ struct AsyncProgressData(Movable):
         self.tsfn = take.tsfn
         self.count = take.count
         self.status = take.status
+        self.bindings_addr = take.bindings_addr
 
 
 def progress_call_js_cb(
@@ -266,13 +276,19 @@ def progress_call_js_cb(
     var value = val_ptr[]
     val_ptr.unsafe_deinit_pointee()
     val_ptr.unsafe_free()
+    # Teardown safety: during Node shutdown env and/or js_callback are NULL —
+    # free the data (above) and return without touching N-API.
     if Int(env) == 0:
         return
     if Int(js_callback) == 0:
         return
     try:
-        var js_val = JsNumber.create(env, value)
-        _ = JsFunction(js_callback).call1(env, js_val.value)
+        # context = the cached-bindings pointer registered by
+        # ThreadsafeFunction.create(b, ...) — whole callback on cached
+        # pointers, zero dlsym.
+        var b = bindings_from_context(context)
+        var js_val = JsNumber.create(b, env, value)
+        _ = JsFunction(js_callback).call1(b, env, js_val.value)
     except:
         pass
 
@@ -285,21 +301,26 @@ def progress_finalize_cb(
     var ptr = finalize_data.unsafe_bitcast[AsyncProgressData]()
     if Int(env) != 0:
         try:
+            # N-API passes the TSFN context as finalize_hint — the cached
+            # bindings registered by ThreadsafeFunction.create(b, ...).
+            var b = bindings_from_context(finalize_hint)
             if ptr[].status == NAPI_OK:
-                var result_val = JsNumber.create(env, Float64(ptr[].count))
-                _ = raw_resolve_deferred(env, ptr[].deferred, result_val.value)
+                var result_val = JsNumber.create(b, env, Float64(ptr[].count))
+                _ = raw_resolve_deferred(
+                    b, env, ptr[].deferred, result_val.value
+                )
             else:
                 var msg = JsString.create_literal(
-                    env, "async progress work failed"
+                    b, env, "async progress work failed"
                 )
                 var null_code = NapiValue(unsafe_from_address=Int(0))
                 var error_val = NapiValue(unsafe_from_address=Int(0))
                 var error_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
                     to=error_val
                 ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-                _ = raw_create_error(env, null_code, msg.value, error_ptr)
-                _ = raw_reject_deferred(env, ptr[].deferred, error_val)
-            _ = raw_delete_async_work(env, ptr[].work)
+                _ = raw_create_error(b, env, null_code, msg.value, error_ptr)
+                _ = raw_reject_deferred(b, env, ptr[].deferred, error_val)
+            _ = raw_delete_async_work(b, env, ptr[].work)
         except:
             pass
     ptr.unsafe_deinit_pointee()
@@ -310,14 +331,22 @@ def async_progress_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
     var ptr = data.unsafe_bitcast[AsyncProgressData]()
     var count = ptr[].count
     var tsfn = ptr[].tsfn
+    # napi_call_threadsafe_function is the one N-API call designed for any
+    # thread; the cached fn pointer is a static address, so calling through
+    # it here avoids the per-iteration dlopen(NULL) loader-lock of the
+    # env-only path.
+    var b = Bindings(unsafe_from_address=ptr[].bindings_addr)
     for i in range(count):
         var val_ptr = unsafe_alloc[Float64](1)
         val_ptr.unsafe_write(Float64(i))
-        try:
-            _ = raw_call_threadsafe_function(
-                tsfn, val_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), NAPI_TSFN_BLOCKING
-            )
-        except:
+        var st = raw_call_threadsafe_function(
+            b,
+            tsfn,
+            val_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            NAPI_TSFN_BLOCKING,
+        )
+        if st != NAPI_OK:
+            # Not queued — call_js_cb will never free it, so we must.
             val_ptr.unsafe_deinit_pointee()
             val_ptr.unsafe_free()
 
@@ -327,10 +356,8 @@ def async_progress_complete(
 ):
     var ptr = data.unsafe_bitcast[AsyncProgressData]()
     ptr[].status = status
-    try:
-        _ = raw_release_threadsafe_function(ptr[].tsfn, NAPI_TSFN_RELEASE)
-    except:
-        pass
+    var b = Bindings(unsafe_from_address=ptr[].bindings_addr)
+    _ = raw_release_threadsafe_function(b, ptr[].tsfn, NAPI_TSFN_RELEASE)
 
 
 def async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -373,6 +400,7 @@ def async_progress_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             finalize_ptr,
         )
         data_ptr[].tsfn = tsfn.tsfn
+        data_ptr[].bindings_addr = Int(b)
         var exec_ref = async_progress_execute
         var comp_ref = async_progress_complete
         var exec_ptr = Pointer(to=exec_ref).unsafe_bitcast[

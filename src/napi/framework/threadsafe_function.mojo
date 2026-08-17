@@ -43,6 +43,14 @@ struct ThreadsafeFunction:
     ## `call_js_cb`:        fn(env, js_callback, context, data) — invoked on main thread
     ## `finalize_data`:     data pointer passed to finalize_cb (NULL if none)
     ## `finalize_cb`:       cleanup callback — fires AFTER all call_js_cb invocations (NULL if none)
+    ##
+    ## Context: the Bindings overload registers the cached-bindings pointer
+    ## as the TSFN context. N-API hands that context to call_js_cb as its
+    ## third parameter AND to finalize_cb as `finalize_hint`, so both
+    ## callbacks can recover cached bindings via bindings_from_context()
+    ## instead of the per-call OwnedDLHandle path. This env-only overload has
+    ## no bindings to register — context stays NULL and its callbacks must
+    ## use the env-only N-API path.
     @staticmethod
     def create(
         env: NapiEnv,
@@ -86,7 +94,6 @@ struct ThreadsafeFunction:
     ) raises -> ThreadsafeFunction:
         var tsfn = NapiThreadsafeFunction(unsafe_from_address=Int(0))
         var null_resource = NapiValue(unsafe_from_address=Int(0))
-        var null_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
             raw_create_threadsafe_function(
                 b,
@@ -98,7 +105,11 @@ struct ThreadsafeFunction:
                 UInt(1),  # initial_thread_count
                 finalize_data,
                 finalize_cb,
-                null_ptr,  # context
+                # context = the cached-bindings pointer. N-API passes it to
+                # call_js_cb (3rd param) and to finalize_cb (finalize_hint),
+                # so both can run on cached pointers via
+                # bindings_from_context() — no per-call dlsym.
+                b.unsafe_bitcast[NoneType](),
                 call_js_cb,
                 Pointer(to=tsfn).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )

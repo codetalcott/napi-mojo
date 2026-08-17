@@ -94,7 +94,7 @@ from napi.error import (
 )
 from napi.module import define_property, register_method
 
-from napi.framework.args import CbArgs
+from napi.framework.args import CbArgs, bindings_from_context
 from napi.framework.async_work import AsyncWork
 from napi.framework.callback_scope import CallbackScope
 from napi.framework.convert import (
@@ -247,6 +247,7 @@ def cover_args(b: Bindings, env: NapiEnv, v: NapiValue) raises:
     _ = CbArgs.get_data(env, v)
     _ = CbArgs.get_data(b, env, v)
     _ = CbArgs.get_bindings(env, v)
+    _ = bindings_from_context(_null())
     _ = CbArgs.get_bindings_and_one(env, v)
     _ = CbArgs.get_bindings_and_two(env, v)
     _ = CbArgs.get_bindings_and_three(env, v)
