@@ -240,8 +240,8 @@ def cover_args(b: Bindings, env: NapiEnv, v: NapiValue) raises:
     _ = CbArgs.argc(b, env, v)
 
     var argv = unsafe_alloc[NapiValue](2).as_unsafe_any_origin()
-    CbArgs.get_argv(env, v, UInt(2), argv)
-    CbArgs.get_argv(b, env, v, UInt(2), argv)
+    _ = CbArgs.get_argv(env, v, UInt(2), argv)
+    _ = CbArgs.get_argv(b, env, v, UInt(2), argv)
     argv.unsafe_free()
 
     _ = CbArgs.get_data(env, v)

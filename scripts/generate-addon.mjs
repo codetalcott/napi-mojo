@@ -256,7 +256,9 @@ function generateCallback(name, decl) {
     // N >= 5: heap-allocate argv, copy to locals, free immediately before body
     const n = args.length;
     lines.push(`        var _argv = unsafe_alloc[NapiValue](${n})`);
-    lines.push(`        CbArgs.get_argv(_b, env, info, ${n}, _argv)`);
+    // get_argv returns the actual argc (discarded — argv is napi-padded with
+    // undefined) and needs the explicit origin widening on the alloc'd buffer.
+    lines.push(`        _ = CbArgs.get_argv(_b, env, info, ${n}, _argv.as_unsafe_any_origin())`);
     for (let i = 0; i < n; i++) lines.push(`        var _a${i} = _argv[unsafe_offset=${i}]`);
     lines.push(`        _argv.unsafe_free()`);
     for (let i = 0; i < n; i++) emitTypeCheck(lines, jsName, args[i], `_a${i}`, `arg ${i+1}`);

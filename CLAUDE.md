@@ -56,7 +56,7 @@ src/addon/*.mojo                         # 17 callback implementation files (pri
 src/addon/user_fns.mojo                  # pure Mojo functions for mojo_fn trampolines (no N-API deps)
 src/addon/struct_fns.mojo                # pure Mojo functions that use generated struct types
 src/napi/types.mojo                      # NapiEnv, NapiValue, NapiStatus, NapiDeferred, NapiAsyncWork, NapiPropertyDescriptor, NapiValueType constants, TypedArray type constants, property attribute constants
-src/napi/bindings.mojo                   # NapiBindings struct (142 cached fn ptrs + registry = 143 fields), init_bindings(), Bindings type alias
+src/napi/bindings.mojo                   # NapiBindings struct (142 cached fn ptrs + registry + magic sentinel = 144 fields), init_bindings(), Bindings type alias, BINDINGS_MAGIC
 src/napi/raw.mojo                        # OwnedDLHandle symbol resolution + bindings-accepting overloads
 src/napi/error.mojo                      # napi_status_name(), check_status(), throw_js_error(), throw_js_error_dynamic(), throw_js_type_error(), throw_js_range_error()
 src/napi/module.mojo                     # define_property(), register_method()
@@ -332,7 +332,7 @@ desc.method = Pointer(to=fn_ref).unsafe_bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 **napi_create_reference supports all value types at N-API v10+**: At N-API v9 and earlier, only objects, functions, and symbols could be stored in napi_ref. At N-API v10+ (Node.js 22.12+ / 24+), primitives (numbers, strings, booleans) also work — but they do not support weak reference semantics (count reaching 0 releases the value). No wrapping in an object is needed on modern Node.js.
 
-**Variable-length arguments**: Use `CbArgs.argc(env, info)` to query count, `alloc[NapiValue](count)` for the buffer, `CbArgs.get_argv(env, info, count, argv_ptr)` to fill it. The argv_ptr parameter requires `UnsafePointer[NapiValue, MutAnyOrigin]` (explicit origin).
+**Variable-length arguments**: Use `CbArgs.argc(env, info)` to query count, `alloc[NapiValue](count)` for the buffer, `CbArgs.get_argv(env, info, count, argv_ptr)` to fill it. The argv_ptr parameter requires `UnsafePointer[NapiValue, MutAnyOrigin]` (explicit origin). `get_argv` returns the invocation's actual argument count — N-API pads argv with `undefined` when fewer were supplied and drops extras when more were, so compare the return value against `count` to detect either; discard with `_ =` when the buffer was pre-sized via `argc()`.
 
 **Function creation with closure data**: `JsFunction.create_with_data(env, name, cb_ptr, data_ptr)` passes an arbitrary data pointer to the callback. Retrieve in the callback via `CbArgs.get_data(env, info)`. Heap-allocated data leaks unless manually freed (no destructor hook on plain functions).
 

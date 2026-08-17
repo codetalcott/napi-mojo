@@ -147,7 +147,7 @@ def create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         var argc = CbArgs.argc(b, env, info)
         var argv = unsafe_alloc[NapiValue](Int(argc))
-        CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
+        _ = CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
         if argc < 4:
             throw_js_error(b, env, "createTypedArrayView requires 4 arguments")
             argv.unsafe_free()
@@ -247,7 +247,7 @@ def create_dataview_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             throw_js_type_error(b, env, "createDataView requires 3 arguments")
             return NapiValue(unsafe_from_address=Int(0))
         var argv_ptr = unsafe_alloc[NapiValue](Int(argc))
-        CbArgs.get_argv(b, env, info, argc, argv_ptr.as_unsafe_any_origin())
+        _ = CbArgs.get_argv(b, env, info, argc, argv_ptr.as_unsafe_any_origin())
         var ab = argv_ptr[unsafe_offset=0]
         var byte_offset = JsNumber.from_napi_value(b, env, argv_ptr[unsafe_offset=1])
         var byte_length = JsNumber.from_napi_value(b, env, argv_ptr[unsafe_offset=2])

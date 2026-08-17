@@ -317,7 +317,7 @@ def set_property_by_key_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         var argc = CbArgs.argc(b, env, info)
         var argv = unsafe_alloc[NapiValue](Int(argc))
-        CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
+        _ = CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
         var obj = argv[unsafe_offset=0]
         var key = argv[unsafe_offset=1]
         var val = argv[unsafe_offset=2]

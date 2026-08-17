@@ -89,7 +89,7 @@ def sum_args_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         if count == 0:
             return JsNumber.create(b, env, 0.0).value
         var argv = unsafe_alloc[NapiValue](Int(count))
-        CbArgs.get_argv(b, env, info, count, argv.as_unsafe_any_origin())
+        _ = CbArgs.get_argv(b, env, info, count, argv.as_unsafe_any_origin())
         var total: Float64 = 0.0
         for i in range(Int(count)):
             var t = js_typeof(b, env, argv[unsafe_offset=i])
@@ -134,6 +134,14 @@ def new_counter_from_registry_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
+        # The registry slot is written by register_counter (see lib.mojo's
+        # registration order) — dereferencing it unchecked would segfault
+        # Node if that order ever changed. Fail as a JS error instead.
+        if Int(b[].registry) == 0:
+            throw_js_error(
+                env, "newCounterFromRegistry: ClassRegistry not initialized"
+            )
+            return NapiValue(unsafe_from_address=Int(0))
         var registry = b[].registry.unsafe_bitcast[ClassRegistry]()
         var argv_ptr: OpaquePointer[ImmutAnyOrigin] = Pointer(
             to=arg0

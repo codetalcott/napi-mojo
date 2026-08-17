@@ -149,7 +149,7 @@ def type_tag_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         var argc = CbArgs.argc(b, env, info)
         var argv = unsafe_alloc[NapiValue](Int(argc))
-        CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
+        _ = CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
         var obj = argv[unsafe_offset=0]
         var lower = UInt64(Int(JsNumber.from_napi_value(b, env, argv[unsafe_offset=1])))
         var upper = UInt64(Int(JsNumber.from_napi_value(b, env, argv[unsafe_offset=2])))
@@ -170,7 +170,7 @@ def check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         var argc = CbArgs.argc(b, env, info)
         var argv = unsafe_alloc[NapiValue](Int(argc))
-        CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
+        _ = CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
         var obj = argv[unsafe_offset=0]
         var lower = UInt64(Int(JsNumber.from_napi_value(b, env, argv[unsafe_offset=1])))
         var upper = UInt64(Int(JsNumber.from_napi_value(b, env, argv[unsafe_offset=2])))
@@ -200,7 +200,7 @@ def get_all_property_names_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         var argc: UInt = 4
         var argv = unsafe_alloc[NapiValue](4)
-        CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
+        _ = CbArgs.get_argv(b, env, info, argc, argv.as_unsafe_any_origin())
         var obj = argv[unsafe_offset=0]
         var mode = Int32(Int(JsNumber.from_napi_value(b, env, argv[unsafe_offset=1])))
         var filter = Int32(Int(JsNumber.from_napi_value(b, env, argv[unsafe_offset=2])))
