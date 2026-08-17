@@ -99,6 +99,17 @@ jobs:
             tests/compile/framework_coverage.mojo -o /tmp/framework_coverage.so
           node scripts/check-compile-coverage.mjs
 
+      # The drift gate above only proves the templates src/exports.toml
+      # happens to instantiate. Three latent template bugs shipped through
+      # branches nothing instantiates (two Int(0)-literal-era rots, one bare
+      # `_argv` missing .as_unsafe_any_origin() in the >=5-arg path).
+      # kitchen-sink.toml instantiates every emitter branch — every token in
+      # every position, every arity per emitter — and this step generates
+      # from it and COMPILES the result: the same lazy-elaboration insight as
+      # the framework coverage target, applied to the code generator.
+      - name: Compile codegen kitchen sink (compile-only)
+        run: bash tests/codegen/build.sh
+
       # No retry wrapper, deliberately. These steps used to retry 3×, blamed
       # on a Mojo `def` function-pointer gap at finalizer registration sites.
       # That diagnosis was wrong: the intermittent macOS SIGABRT/SIGSEGV was a

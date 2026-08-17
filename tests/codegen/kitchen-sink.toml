@@ -1,0 +1,360 @@
+# kitchen-sink.toml — instantiate EVERY generator template branch, for compile-only CI
+#
+# The drift gate (generate:addon + git diff src/generated/) only proves the
+# templates that src/exports.toml happens to instantiate. Three latent template
+# bugs shipped through branches nothing instantiates (two Int(0)-literal-era
+# rots, one bare `_argv` missing .as_unsafe_any_origin() in the >=5-arg path).
+# This file is the codegen analogue of tests/compile/framework_coverage.mojo:
+# tests/codegen/build.sh generates from it into a scratch dir and COMPILES the
+# result, so every emitter branch is type-checked on every CI run.
+#
+# Coverage map (each line names the branch it exists to instantiate):
+#   - sync arity 0,1,2,3,4 (get_one/two/three/FOUR), 5 and 6 (heap get_argv path)
+#   - every TYPE_MAP token as arg and return: number,string,boolean,bool,
+#     int32,uint32,int64,object,array,number[],string[],any + struct names
+#   - nullable returns (number?/string? -> JsNull branch), nullable arg (any?/
+#     number? skip-check branch), body-only functions
+#   - async arity 0,1,3,4 and every ASYNC_TYPE_MAP return (number,int32,
+#     uint32,int64), nested execute_body indentation
+#   - struct with every STRUCT_FIELD_MAP field type
+#   - class ctor arity 0,1,3,4; instance methods arity 0-4 (+ number[] member,
+#     which exercises the classMember convert-import scan); getter+setter pair;
+#     static methods arity 0-4 with a camelCase name (camelToSnake path)
+#
+# When adding a generator feature, add its instantiation here IN THE SAME
+# COMMIT — a template branch this file does not reach is unverified.
+
+extra_imports = ["from fns import ks_zero, ks_echo_string, ks_not, ks_neg_i32, ks_inc_u32, ks_neg_i64, ks_object_passthrough, ks_sum_f64_list, ks_double_f64_list, ks_join_str_list, ks_wrap_str_list, ks_maybe_number, ks_maybe_string, ks_sum2, ks_sum3, ks_sum4, ks_sum5, ks_sum6, ks_config_roundtrip"]
+
+# --- Struct: every STRUCT_FIELD_MAP field type ---
+# (No field named `obj` — that shadows a generated local; a known generator
+# limitation this file deliberately does not step on.)
+
+[structs.ks_config]
+js_name = "KsConfig"
+[structs.ks_config.fields]
+label = "string"
+ratio = "number"
+flag = "boolean"
+enabled = "bool"
+small = "int32"
+index = "uint32"
+big = "int64"
+
+# --- Sync arity ladder (mojo_fn trampolines) ---
+
+[functions.ks_zero_args]
+js_name = "ksZeroArgs"
+args = []
+returns = "number"
+mojo_fn = "ks_zero"
+
+[functions.ks_sum2]
+js_name = "ksSum2"
+args = ["number", "number"]
+returns = "number"
+mojo_fn = "ks_sum2"
+
+[functions.ks_sum3]
+js_name = "ksSum3"
+args = ["number", "number", "number"]
+returns = "number"
+mojo_fn = "ks_sum3"
+
+[functions.ks_sum4]
+js_name = "ksSum4"
+args = ["number", "number", "number", "number"]
+returns = "number"
+mojo_fn = "ks_sum4"
+
+[functions.ks_sum5]
+js_name = "ksSum5"
+args = ["number", "number", "number", "number", "number"]
+returns = "number"
+mojo_fn = "ks_sum5"
+
+[functions.ks_sum6]
+js_name = "ksSum6"
+args = ["number", "number", "number", "number", "number", "number"]
+returns = "number"
+mojo_fn = "ks_sum6"
+
+# --- Every scalar token as arg and return ---
+
+[functions.ks_echo_string]
+js_name = "ksEchoString"
+args = ["string"]
+returns = "string"
+mojo_fn = "ks_echo_string"
+
+[functions.ks_not_boolean]
+js_name = "ksNotBoolean"
+args = ["boolean"]
+returns = "boolean"
+mojo_fn = "ks_not"
+
+[functions.ks_not_bool_alias]
+js_name = "ksNotBoolAlias"
+args = ["bool"]
+returns = "bool"
+mojo_fn = "ks_not"
+
+[functions.ks_neg_i32]
+js_name = "ksNegI32"
+args = ["int32"]
+returns = "int32"
+mojo_fn = "ks_neg_i32"
+
+[functions.ks_inc_u32]
+js_name = "ksIncU32"
+args = ["uint32"]
+returns = "uint32"
+mojo_fn = "ks_inc_u32"
+
+[functions.ks_neg_i64]
+js_name = "ksNegI64"
+args = ["int64"]
+returns = "int64"
+mojo_fn = "ks_neg_i64"
+
+[functions.ks_object_pass]
+js_name = "ksObjectPass"
+args = ["object"]
+returns = "object"
+mojo_fn = "ks_object_passthrough"
+
+[functions.ks_any_pass]
+js_name = "ksAnyPass"
+args = ["any"]
+returns = "any"
+mojo_fn = "ks_object_passthrough"
+
+[functions.ks_array_pass]
+js_name = "ksArrayPass"
+args = ["array"]
+returns = "any"
+mojo_fn = "ks_object_passthrough"
+
+# --- Parametric array tokens ---
+
+[functions.ks_sum_f64_array]
+js_name = "ksSumF64Array"
+args = ["number[]"]
+returns = "number"
+mojo_fn = "ks_sum_f64_list"
+
+[functions.ks_double_f64_array]
+js_name = "ksDoubleF64Array"
+args = ["number[]"]
+returns = "number[]"
+mojo_fn = "ks_double_f64_list"
+
+[functions.ks_join_str_array]
+js_name = "ksJoinStrArray"
+args = ["string[]"]
+returns = "string"
+mojo_fn = "ks_join_str_list"
+
+[functions.ks_wrap_str_array]
+js_name = "ksWrapStrArray"
+args = ["string"]
+returns = "string[]"
+mojo_fn = "ks_wrap_str_list"
+
+# --- Nullable returns (JsNull branch) ---
+
+[functions.ks_maybe_number]
+js_name = "ksMaybeNumber"
+args = ["number"]
+returns = "number?"
+mojo_fn = "ks_maybe_number"
+
+[functions.ks_maybe_string]
+js_name = "ksMaybeString"
+args = ["number"]
+returns = "string?"
+mojo_fn = "ks_maybe_string"
+
+# --- Nullable arg (skip-check branch) + body-style functions ---
+
+[functions.ks_opt_arg]
+js_name = "ksOptArg"
+args = ["any?"]
+returns = "any"
+body = """
+return arg0
+"""
+
+[functions.ks_body_only]
+js_name = "ksBodyOnly"
+args = []
+returns = "number"
+body = """
+return JsNumber.create(_b, env, 7.0).value
+"""
+
+# --- Struct as arg and return ---
+
+[functions.ks_config_roundtrip]
+js_name = "ksConfigRoundtrip"
+args = ["ks_config"]
+returns = "ks_config"
+mojo_fn = "ks_config_roundtrip"
+
+# --- Async: arity 0,1,3,4 and every ASYNC_TYPE_MAP return type ---
+# (arity 2 + number return is instantiated by src/exports.toml's asyncSum)
+
+[functions.ks_async_zero]
+js_name = "ksAsyncZero"
+args = []
+returns = "int32"
+async = true
+execute_body = """
+ptr[].result = 41
+"""
+
+[functions.ks_async_one]
+js_name = "ksAsyncOne"
+args = ["uint32"]
+returns = "uint32"
+async = true
+execute_body = """
+ptr[].result = ptr[].input0 + 1
+"""
+
+[functions.ks_async_three]
+js_name = "ksAsyncThree"
+args = ["int64", "int64", "int64"]
+returns = "int64"
+async = true
+execute_body = """
+ptr[].result = ptr[].input0 + ptr[].input1 + ptr[].input2
+"""
+
+[functions.ks_async_four]
+js_name = "ksAsyncFour"
+args = ["number", "number", "number", "number"]
+returns = "number"
+async = true
+execute_body = """
+if ptr[].input0 > 0.0:
+    ptr[].result = ptr[].input0 + ptr[].input1
+else:
+    ptr[].result = ptr[].input2 + ptr[].input3
+"""
+
+# --- Classes: ctor arity 0,1,3,4; member arity 0-4; getter/setter; statics ---
+
+[classes.ks_bare]
+js_name = "KsBare"
+constructor_args = []
+constructor_body = """
+pass
+"""
+
+[classes.ks_bare.instance_methods.ping]
+returns = "number"
+body = """
+return JsNumber.create(_b, env, 5.0).value
+"""
+
+[classes.ks_widget]
+js_name = "KsWidget"
+constructor_args = ["number"]
+constructor_body = """
+JsObject(this_val).set_named_property(_b, env, "_v", arg0)
+"""
+
+[classes.ks_widget.getters.v]
+returns = "number"
+body = """
+return JsObject(this_val).get_named_property(_b, env, "_v")
+"""
+
+[classes.ks_widget.setters.v]
+body = """
+JsObject(this_val).set_named_property(_b, env, "_v", val)
+return val
+"""
+
+[classes.ks_widget.instance_methods.m0]
+returns = "number"
+body = """
+return JsObject(this_val).get_named_property(_b, env, "_v")
+"""
+
+[classes.ks_widget.instance_methods.echo_f64_array]
+args = ["number[]"]
+returns = "number[]"
+body = """
+return to_js_array_f64(_b, env, from_js_array_f64(_b, env, arg0))
+"""
+
+[classes.ks_widget.instance_methods.m2]
+args = ["number", "string"]
+returns = "any"
+body = """
+return args[0]
+"""
+
+[classes.ks_widget.instance_methods.m3]
+args = ["int64", "uint32", "bool"]
+returns = "any"
+body = """
+return args[1]
+"""
+
+[classes.ks_widget.instance_methods.m4]
+args = ["number", "boolean", "int32", "any"]
+returns = "any"
+body = """
+return args[3]
+"""
+
+[classes.ks_widget.static_methods.s0]
+returns = "number"
+body = """
+return JsNumber.create(_b, env, 1.0).value
+"""
+
+[classes.ks_widget.static_methods.s1]
+args = ["string"]
+returns = "any"
+body = """
+return arg0
+"""
+
+[classes.ks_widget.static_methods.s2]
+args = ["number", "number"]
+returns = "any"
+body = """
+return args[1]
+"""
+
+[classes.ks_widget.static_methods.s3]
+args = ["number", "number", "number"]
+returns = "any"
+body = """
+return args[2]
+"""
+
+[classes.ks_widget.static_methods.makeDefaultThing]
+args = ["number", "boolean", "string", "any"]
+returns = "any"
+body = """
+return args[0]
+"""
+
+[classes.ks_trio]
+js_name = "KsTrio"
+constructor_args = ["string", "number", "boolean"]
+constructor_body = """
+JsObject(this_val).set_named_property(_b, env, "_name", args[0])
+"""
+
+[classes.ks_quad]
+js_name = "KsQuad"
+constructor_args = ["number", "number", "number", "number"]
+constructor_body = """
+JsObject(this_val).set_named_property(_b, env, "_a", args[0])
+"""

@@ -16,5 +16,7 @@ skills-lock.json
 # Generated example build artifacts
 examples/codegen/generated/
 examples/codegen/build/
+# Kitchen-sink codegen compile target scratch output (regenerated every run)
+tests/codegen/generated/
 # Personal pinned-nightly note
 .last-good-nightly

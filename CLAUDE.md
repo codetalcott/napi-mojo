@@ -111,6 +111,7 @@ scripts/benchmark.mjs                   # per-call overhead benchmark (node scri
 scripts/check-compile-coverage.mjs      # drift guard: every framework def name must be called by the coverage target
 tests/                                   # Jest tests — TDD outside-in
 tests/compile/framework_coverage.mojo    # compile-only: forces elaboration of every public framework method
+tests/codegen/                           # compile-only kitchen sink: every generator template branch (kitchen-sink.toml + build.sh)
 ```
 
 ### Exported addon functions
@@ -275,6 +276,8 @@ bindings.create_object = _slot(h, "napi_create_object")   # _slot = get_symbol +
 ```bash
 npm run generate:addon && git diff --exit-code src/generated/
 ```
+
+**The drift gate only proves templates that `src/exports.toml` instantiates.** A third latent template bug (bare `_argv` missing `.as_unsafe_any_origin()` in the ≥5-arg path — could never have compiled) shipped through a branch nothing instantiates. `tests/codegen/kitchen-sink.toml` + `tests/codegen/build.sh` close that class: the TOML instantiates every emitter branch (every token in every position, every arity per emitter — the coverage map is in its header), and the CI step "Compile codegen kitchen sink" generates from it into a scratch dir and compiles the result. **A new generator feature gets its kitchen-sink instantiation in the same commit** — a template branch that file does not reach is unverified, exactly like an uncovered framework method.
 
 **`pixi.toml` and `pixi.lock` always move together.** Commit `92bc2d4` bumped the toml alone; `pixi install --locked` then hard-failed on `main`, which took the Nightly Canary down for two weeks (`setup-pixi` runs `--locked` *before* the workflow's own unpin step) and made two open nightly PRs conflict. A lock-less bump is never "just a version string".
 
