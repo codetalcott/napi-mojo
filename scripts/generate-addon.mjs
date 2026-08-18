@@ -111,6 +111,7 @@ const TYPE_MAP = {
   // object: pass raw NapiValue, validate type is object
   object: {
     napi_type: 'NAPI_TYPE_OBJECT',
+    passthrough: true,
     type_name: 'object',
     extract: (varName, argExpr) =>
       `        var ${varName} = ${argExpr}`,
@@ -119,6 +120,7 @@ const TYPE_MAP = {
   // array: validate with js_is_array (typeof returns 'object' for arrays)
   array: {
     napi_type: '__IS_ARRAY__', // special sentinel — emits js_is_array check
+    passthrough: true,
     type_name: 'array',
     extract: (varName, argExpr) =>
       `        var ${varName} = ${argExpr}`,
@@ -142,6 +144,7 @@ const TYPE_MAP = {
   },
   any: {
     napi_type: null, // no type check
+    passthrough: true,
     type_name: 'any',
     extract: (varName, argExpr) =>
       `        var ${varName} = ${argExpr}`,
@@ -200,6 +203,22 @@ function getArgExpr(i, totalArgs) {
 // uses js_typeof. Skips all checks when nullable=true.
 function emitTypeCheck(lines, jsName, rawType, argExpr, argDesc) {
   const { typeInfo, nullable } = resolveType(rawType);
+  // '?' in argument position only suppresses the type CHECK — it does not make
+  // the extraction null-safe. For a converting token the extract still calls
+  // Js*.from_napi_value / <struct>_from_js on the value, which raises on null,
+  // while toml-dts.js faithfully advertises `| null`. That combination is a
+  // lie the caller can only discover at runtime, so it is rejected here.
+  // Pass-through tokens (any/object/array) hand the raw napi_value straight to
+  // the Mojo fn, so for those `| null` is the truth and '?' stays supported.
+  if (nullable && !typeInfo.passthrough) {
+    const base = rawType.slice(0, -1);
+    fail(
+      `${jsName}: nullable argument type "${rawType}"${argDesc ? ` (${argDesc})` : ''} is not supported — ` +
+      `'?' skips the type check but the generated extract still converts the value as ${base}, ` +
+      `so passing the null the .d.ts advertises would raise. Declare it as "${base}" and reject null ` +
+      `in your Mojo function, or use "any?" if the argument really may be null. ` +
+      `('?' on a RETURN type is unaffected — that maps Optional[T] to null.)`);
+  }
   if (nullable || !typeInfo.napi_type) return;
   if (typeInfo.napi_type === '__IS_ARRAY__') {
     lines.push(`        if not js_is_array(_b, env, ${argExpr}):`);
@@ -736,6 +755,15 @@ function generateStruct(name, sDecl) {
 
   validateIdentifier(name, `[structs.${name}]`);
 
+  // A struct with no fields emits `def __init__(out self, ):` plus a
+  // __moveinit__ and a copy ctor with EMPTY bodies — three hard syntax errors
+  // the generator used to happily write out. The usual cause is a missing or
+  // misspelled [structs.<name>.fields] table, which otherwise fails much later
+  // and much less legibly, at `mojo build`.
+  if (fieldEntries.length === 0) {
+    fail(`struct "${name}" declares no fields — add a [structs.${name}.fields] table (or drop the struct and use the "object" token for an untyped object).`);
+  }
+
   // --- Struct definition ---
   out.push(`struct ${structName}(Movable, Copyable):`);
   for (const [fName, fType] of fieldEntries) {
@@ -786,14 +814,19 @@ function generateStruct(name, sDecl) {
   out.push('');
 
   // --- from_js converter ---
+  // Field locals carry a `_f_` prefix. Emitting them under the bare field name
+  // meant a field called `obj` redeclared this function's own `var obj` and
+  // then read the next field's property off a Float64; `val`, `b` and `env`
+  // shadowed the parameters the same way. The prefix is injective, so no field
+  // name can collide with the converter's own identifiers or with each other.
   out.push(`def ${name}_from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> ${structName}:`);
   out.push('    var obj = JsObject(val)');
   for (const [fName, fType] of fieldEntries) {
     const baseType = fType.replace(/\?$/, '');
     const info = STRUCT_FIELD_MAP[baseType];
-    out.push(`    var ${fName} = ${info.fromJs('b', 'env', `obj.get_named_property(b, env, "${fName}")`)}`);
+    out.push(`    var _f_${fName} = ${info.fromJs('b', 'env', `obj.get_named_property(b, env, "${fName}")`)}`);
   }
-  const ctorArgs = fieldEntries.map(([fName]) => fName).join(', ');
+  const ctorArgs = fieldEntries.map(([fName]) => `_f_${fName}`).join(', ');
   out.push(`    return ${structName}(${ctorArgs})`);
   out.push('');
 

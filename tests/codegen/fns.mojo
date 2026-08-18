@@ -99,5 +99,6 @@ def ks_config_roundtrip(c: KsConfigData) -> KsConfigData:
     # Construct fresh (field order = TOML declaration order) rather than
     # relying on implicit struct copy of a borrowed param.
     return KsConfigData(
-        c.label, c.ratio, c.flag, c.enabled, c.small, c.index, c.big
+        c.label, c.ratio, c.flag, c.enabled, c.small, c.index, c.big,
+        c.obj, c.val, c.b, c.env,
     )

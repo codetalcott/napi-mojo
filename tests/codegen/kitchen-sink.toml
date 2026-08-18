@@ -12,11 +12,13 @@
 #   - sync arity 0,1,2,3,4 (get_one/two/three/FOUR), 5 and 6 (heap get_argv path)
 #   - every TYPE_MAP token as arg and return: number,string,boolean,bool,
 #     int32,uint32,int64,object,array,number[],string[],any + struct names
-#   - nullable returns (number?/string? -> JsNull branch), nullable arg (any?/
-#     number? skip-check branch), body-only functions
+#   - nullable returns (number?/string? -> JsNull branch), nullable arg on
+#     every pass-through token (any?/object?/array? skip-check branch),
+#     body-only functions
 #   - async arity 0,1,3,4 and every ASYNC_TYPE_MAP return (number,int32,
 #     uint32,int64), nested execute_body indentation
-#   - struct with every STRUCT_FIELD_MAP field type
+#   - struct with every STRUCT_FIELD_MAP field type, plus fields named
+#     obj/val/b/env (they collide with the converter's own identifiers)
 #   - class ctor arity 0,1,3,4; instance methods arity 0-4 (+ number[] member,
 #     which exercises the classMember convert-import scan); getter+setter pair;
 #     static methods arity 0-4 with a camelCase name (camelToSnake path)
@@ -26,9 +28,11 @@
 
 extra_imports = ["from fns import ks_zero, ks_echo_string, ks_not, ks_neg_i32, ks_inc_u32, ks_neg_i64, ks_object_passthrough, ks_sum_f64_list, ks_double_f64_list, ks_join_str_list, ks_wrap_str_list, ks_maybe_number, ks_maybe_string, ks_sum2, ks_sum3, ks_sum4, ks_sum5, ks_sum6, ks_config_roundtrip"]
 
-# --- Struct: every STRUCT_FIELD_MAP field type ---
-# (No field named `obj` — that shadows a generated local; a known generator
-# limitation this file deliberately does not step on.)
+# --- Struct: every STRUCT_FIELD_MAP field type, plus the field names that
+# collide with the converter's own identifiers. `obj` used to redeclare
+# from_js's `var obj` and then read the NEXT field off a Float64; `val`, `b`
+# and `env` shadowed its parameters. Field locals are `_f_`-prefixed now, and
+# these four fields are what proves it.
 
 [structs.ks_config]
 js_name = "KsConfig"
@@ -40,6 +44,10 @@ enabled = "bool"
 small = "int32"
 index = "uint32"
 big = "int64"
+obj = "number"
+val = "string"
+b = "int32"
+env = "boolean"
 
 # --- Sync arity ladder (mojo_fn trampolines) ---
 
@@ -183,6 +191,18 @@ args = ["any?"]
 returns = "any"
 body = """
 return arg0
+"""
+
+# The other two pass-through tokens that may carry '?'. A converting token
+# (number?, string?, a struct) is REJECTED in argument position — the generator
+# errors, so that branch cannot be instantiated here; tests/codegen_guards.test.js
+# asserts the rejection instead.
+[functions.ks_opt_passthrough]
+js_name = "ksOptPassthrough"
+args = ["object?", "array?"]
+returns = "any"
+body = """
+return args[0]
 """
 
 [functions.ks_body_only]
