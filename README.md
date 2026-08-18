@@ -8,7 +8,7 @@ equivalent of Rust's [napi-rs](https://napi.rs).
 napi-mojo is a **source framework**, the way `node-addon-api` is for C++: your
 addon compiles against it with `mojo build -I <include>`. The package's JS
 entry exposes the paths your build needs; the compiled demonstration addon
-(the binary this repo's 641-test suite runs against) lives behind a subpath:
+(the binary this repo's 650+-test suite runs against) lives behind a subpath:
 
 ```js
 const napiMojo = require("napi-mojo");
@@ -25,7 +25,7 @@ demo.greet("world"); // "Hello, world!"
 
 **Alpha** — napi-mojo is under active development and not yet proven in
 production. The API covers the full N-API v10 surface (141 exported functions, 4
-classes, 648 tests). Expect breaking changes as the project matures.
+classes, 650+ tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
   complete, ergonomic framework for building Node.js native addons in Mojo.
@@ -121,7 +121,7 @@ git clone https://github.com/codetalcott/napi-mojo.git
 cd napi-mojo
 npm install
 npm run build    # compiles Mojo → build/index.node + generates TypeScript defs
-npm test         # 641 tests, 82 suites (7 GC tests need `npm run test:gc`)
+npm test         # full Jest suite (7 GC tests need `npm run test:gc`)
 ```
 
 **Prerequisites:** [Mojo 1.0.0](https://mojolang.org/install/) via
@@ -331,7 +331,7 @@ build, works in any TypeScript-aware IDE.
 
 ```bash
 npm run build        # compile + generate TypeScript defs
-npm test             # run Jest test suite (641 tests)
+npm test             # run the full Jest suite
 npm run test:gc      # run the 7 GC finalizer tests (needs --expose-gc)
 npm run generate:addon  # regenerate src/generated/ from src/exports.toml
 npx jest tests/basic.test.js   # run a single test file

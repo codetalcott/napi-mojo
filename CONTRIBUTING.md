@@ -22,30 +22,43 @@ Standards and rules for all contributions to `napi-mojo`, including LLM agents a
 
 - **Status Checks**: Every N-API call returning `napi_status` **must** be immediately passed to `check_status()`.
 - **FFI Isolation**: Only `src/napi/raw.mojo` may use `OwnedDLHandle` directly. All other code calls through the `raw_*` wrapper functions.
+- **Cached Bindings**: Everything runs on cached function pointers (`b: Bindings` first parameter). The only env-only surface is the `raw_get_cb_info` bootstrap (`CbArgs`) and the `throw_js_*` except-block fallbacks — do not add new env-only overloads. See "Cached NapiBindings" in CLAUDE.md.
 - **Struct Layout**: `NapiPropertyDescriptor` must match the C struct layout exactly (8 fields, no reordering).
 
-### Import Paths (2026 nightly)
+### Coverage Rules (the two that bite)
+
+- **Every new or changed public framework method gets a cover call in `tests/compile/framework_coverage.mojo` — one per overload — in the same commit.** Mojo elaborates imported-package `def` bodies lazily, so an uncovered method can ship broken with the build green. `scripts/check-compile-coverage.mjs` fails CI on a missing name but cannot see a missing overload; that part is on you.
+- **Every new code-generator feature gets an instantiation in `tests/codegen/kitchen-sink.toml` in the same commit.** The drift gate only proves templates that `src/exports.toml` happens to use; the kitchen sink compiles every emitter branch in CI.
+
+### Toolchain and Imports (Mojo 1.0.0 stable)
+
+The pin lives in `pixi.toml` and is part of the public contract (downstream packages compile against the published `src/`). Stdlib imports use the `std.` prefix:
 
 ```mojo
-from ffi import OwnedDLHandle   # Correct: top-level ffi module
-# NOT: from sys.ffi import ...  # Wrong: deprecated path
+from std.ffi import OwnedDLHandle
+from std.memory.alloc import unsafe_alloc
+from std.collections import Optional
 ```
 
 ### Build Flag
 
 ```bash
-mojo build --emit shared-lib src/lib.mojo -o build/lib.dylib  # Correct
-# NOT: mojo build -shared ...                                   # Wrong flag
+pixi run mojo build --emit shared-lib -I src src/lib.mojo -o build/index.node  # Correct
+# NOT: mojo build -shared ...                                                  # Wrong flag
 ```
+
+(or just `pixi run bash build.sh`; standalone addons compile with `-I <path-to-napi-mojo>/src`).
 
 ### Module Entry Point
 
 ```mojo
-@export("napi_register_module_v1", ABI="C")
-fn register_module(env: NapiEnv, exports: NapiValue) -> NapiValue:
+@export("napi_register_module_v1")
+def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
     ...
     return exports
 ```
+
+See `examples/hello-addon.mojo` for the full pattern, including the `NapiBindings` allocation that must precede `ModuleBuilder`.
 
 ## Interaction Protocol (for LLM Agents)
 
