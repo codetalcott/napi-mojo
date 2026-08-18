@@ -112,6 +112,18 @@ def cleanup_hook_noop(arg: OpaquePointer[MutAnyOrigin]):
     pass
 
 
+## observable_cleanup_hook — env-exit hook with an OBSERVABLE effect
+##
+## Cleanup hooks run at env teardown with no napi_env, so N-API calls are off
+## the table — but plain stdio is not. Printing a marker is what lets a child
+## process assert the hook actually RAN: the registration-returns-true tests
+## in cleanup_hook.test.js would all still pass if hooks silently never fired,
+## which is the same trap finalizer_gc.test.js documents for finalizers.
+## Asserted by tests/cleanup_hook_observed.test.js.
+def observable_cleanup_hook(arg: OpaquePointer[MutAnyOrigin]):
+    print("napi-mojo-cleanup-hook-ran")
+
+
 def add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -129,6 +141,27 @@ def add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "addCleanupHook failed")
+        return NapiValue(unsafe_from_address=Int(0))
+
+
+def add_observable_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var hook_ref = observable_cleanup_hook
+        var hook_ptr = Pointer(to=hook_ref).unsafe_bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
+        check_status(
+            raw_add_env_cleanup_hook(
+                b,
+                env,
+                hook_ptr,
+                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+            )
+        )
+        return JsBoolean.create(b, env, True).value
+    except:
+        throw_js_error(env, "addObservableCleanupHook failed")
         return NapiValue(unsafe_from_address=Int(0))
 
 
@@ -264,6 +297,7 @@ def register_env(mut m: ModuleBuilder) raises:
     var set_instance_data_ref = set_instance_data_fn
     var get_instance_data_ref = get_instance_data_fn
     var add_cleanup_hook_ref = add_cleanup_hook_fn
+    var add_observable_cleanup_hook_ref = add_observable_cleanup_hook_fn
     var remove_cleanup_hook_ref = remove_cleanup_hook_fn
     var add_async_cleanup_hook_fn_ref = add_async_cleanup_hook_fn
     var remove_async_cleanup_hook_fn_ref = remove_async_cleanup_hook_fn
@@ -275,6 +309,7 @@ def register_env(mut m: ModuleBuilder) raises:
     m.method("setInstanceData", fn_ptr(set_instance_data_ref))
     m.method("getInstanceData", fn_ptr(get_instance_data_ref))
     m.method("addCleanupHook", fn_ptr(add_cleanup_hook_ref))
+    m.method("addObservableCleanupHook", fn_ptr(add_observable_cleanup_hook_ref))
     m.method("removeCleanupHook", fn_ptr(remove_cleanup_hook_ref))
     m.method("addAsyncCleanupHook", fn_ptr(add_async_cleanup_hook_fn_ref))
     m.method("removeAsyncCleanupHook", fn_ptr(remove_async_cleanup_hook_fn_ref))

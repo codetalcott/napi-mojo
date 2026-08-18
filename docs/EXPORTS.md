@@ -81,6 +81,7 @@
 | `setInstanceData(n)` | `set_instance_data_fn` | Stores a number as per-env instance data |
 | `getInstanceData()` | `get_instance_data_fn` | Retrieves the per-env instance data number |
 | `addCleanupHook()` | `add_cleanup_hook_fn` | Registers an env cleanup hook, returns true |
+| `addObservableCleanupHook()` | `add_observable_cleanup_hook_fn` | Registers a cleanup hook that prints a marker at env teardown (observability test) |
 | `removeCleanupHook()` | `remove_cleanup_hook_fn` | Registers and removes a cleanup hook, returns true |
 | `cancelAsyncWork()` | `cancel_async_work_fn` | Queues then cancels async work, returns rejected promise |
 | `new Animal(name)` | `animal_constructor_fn` | Class: constructor, `.name` getter, `.speak()`, `Animal.isAnimal()` |

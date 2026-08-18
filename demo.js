@@ -1,7 +1,7 @@
 // napi-mojo/demo — the compiled demonstration addon.
 //
 // This is NOT the framework. It is the addon the napi-mojo test suite is
-// built against (141 functions + 4 classes exercising the full N-API v10
+// built against (142 functions + 4 classes exercising the full N-API v10
 // surface), shipped as prebuilt binaries so you can poke at what a
 // napi-mojo-built addon looks like without a Mojo toolchain:
 //
