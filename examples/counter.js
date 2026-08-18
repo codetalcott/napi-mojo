@@ -1,5 +1,7 @@
 // Classes: Counter with methods, getters, static methods, and Dog inheritance
-const m = require('../build/index.node');
+// Resolves the prebuilt platform package when installed from npm, or the
+// local build/index.node in a development checkout.
+const m = require('../demo');
 
 const counter = new m.Counter(10);
 console.log(counter.value);              // 10

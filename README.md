@@ -96,21 +96,36 @@ npm install napi-mojo
 
 The install gives you:
 
+- **The `napi-mojo` CLI** — scaffold, generate, and build addons (below).
 - **The framework source** (`require('napi-mojo').include`) — compile your
   addon against it: `mojo build --emit shared-lib -I <include> lib.mojo -o addon.node`
 - **The code generators** (`require('napi-mojo').generator`) — declare your
   exports in TOML, generate the N-API trampolines. See
-  [`examples/codegen/`](examples/codegen/) for the complete workflow — it is
-  the recommended starting point for a new addon.
+  [`examples/codegen/`](examples/codegen/) for a worked example.
 - **The demo addon** (`require('napi-mojo/demo')`) — prebuilt for
   **darwin-arm64** and **linux-x64** (Node.js 22.12+ / N-API v10) so you can
   poke at a napi-mojo-built binary without a Mojo toolchain. On other
   platforms the demo throws on load; the framework itself works anywhere Mojo
   does.
 
-Building your own addon requires the [Mojo](https://mojolang.org/install/)
-toolchain (1.0.0 or newer) — see [Building from source](#building-from-source)
-below.
+### Build your own addon (CLI)
+
+Requires the [Mojo](https://mojolang.org/install/) toolchain (1.0.0 or newer);
+the CLI uses `pixi run mojo` when a `pixi.toml` is in scope, `mojo` on PATH
+otherwise, or whatever you pass via `--mojo "<command>"`.
+
+```bash
+npx napi-mojo init my-addon && cd my-addon
+npx napi-mojo generate --dts index.d.ts   # exports.toml → generated/ + index.d.ts
+npx napi-mojo build                       # lib.mojo → build/index.node
+node -e "console.log(require('./build/index.node').greet('world'))"
+```
+
+Declare functions in `exports.toml`, implement them as pure Mojo in
+`fns.mojo`, rerun `generate`. `napi-mojo build --bundle` additionally copies
+the Mojo runtime libraries next to the `.node` and rewrites its load paths, so
+the result runs on machines with no Mojo installation (this is how the demo
+packages on npm are produced).
 
 See [`examples/`](examples/) for runnable scripts.
 

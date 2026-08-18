@@ -652,30 +652,10 @@ for (const [className, info] of Object.entries(classes)) {
 // Shared parser — this file used to carry its own hand-rolled copy, which had
 // already diverged from generate-addon.mjs's copy (no integer branch here).
 const { parseTOML } = require('./toml-lite.js');
-
-const TOML_TYPE_TO_TS = {
-  number: 'number', string: 'string', boolean: 'boolean', bool: 'boolean',
-  int32: 'number', uint32: 'number', int64: 'number',
-  object: 'object', array: 'any[]', any: 'any',
-  'number[]': 'number[]', 'string[]': 'string[]',
-};
-function tomlTokenToTs(token) {
-  const noQ = (token || 'any').replace(/\?$/, '');
-  // Handle typed array tokens (number[], string[]) before looking up
-  if (noQ.endsWith('[]')) return TOML_TYPE_TO_TS[noQ] || 'any[]';
-  return TOML_TYPE_TO_TS[noQ] || 'any';
-}
-
-// Argument position: a '?' token means the generated callback skips type
-// validation, so null/undefined are accepted — say so in the types instead
-// of silently stripping the '?'.
-function tomlArgToTs(token) {
-  const base = tomlTokenToTs(token);
-  if (String(token || '').endsWith('?') && base !== 'any') {
-    return `${base} | null`;
-  }
-  return base;
-}
+// The TOML→TS emitter lives in toml-dts.js so the napi-mojo CLI can produce
+// .d.ts for consumer addons from their exports.toml alone. One emitter, two
+// callers — do not fork it back in here.
+const { emitTomlDts } = require('./toml-dts.js');
 
 const TOML_PATH = path.join(__dirname, '..', 'src', 'exports.toml');
 let toml = {};
@@ -685,88 +665,9 @@ try {
   console.log(`Note: ${TOML_PATH} not found or unreadable — skipping TOML-declared exports.`);
 }
 
-// Register struct types and emit TypeScript interfaces
-const tomlStructs = toml.structs || {};
-for (const [sName, sDecl] of Object.entries(tomlStructs)) {
-  const jsName = sDecl.js_name || sName;
-  // Register the TOML struct name as a TS type mapping
-  TOML_TYPE_TO_TS[sName] = jsName;
-  // Emit interface
-  const fields = sDecl.fields || {};
-  output.push(`export interface ${jsName} {`);
-  for (const [fName, fType] of Object.entries(fields)) {
-    const tsType = tomlTokenToTs(fType);
-    output.push(`  ${fName}: ${tsType};`);
-  }
-  output.push('}');
-  output.push('');
-}
-
-// Emit DTS for TOML-declared functions (sync + async)
-for (const [, fn] of Object.entries(toml.functions || {})) {
-  const jsName = fn.js_name;
-  if (!jsName) continue;
-  const fnArgs = (fn.args || []).map((t, i) => `arg${i}: ${tomlArgToTs(t)}`).join(', ');
-  const rawRet = fn.returns || 'any';
-  const retNullable = rawRet.endsWith('?');
-  const retToken = rawRet.replace(/\?$/, '');
-  const isAsync = fn.async === 'true' || fn.async === true;
-  const baseRetTs = tomlTokenToTs(retToken);
-  const retTs = isAsync
-    ? `Promise<${retNullable ? baseRetTs + ' | null' : baseRetTs}>`
-    : (retNullable ? `${baseRetTs} | null` : baseRetTs);
-  output.push(`export function ${jsName}(${fnArgs}): ${retTs};`);
-}
-
-output.push('');
-
-for (const [, cls] of Object.entries(toml.classes || {})) {
-  const jsName = cls.js_name;
-  if (!jsName) continue;
-  output.push(`export class ${jsName} {`);
-
-  // Constructor
-  const ctorArgs = cls.constructor_args || [];
-  const ctorParams = ctorArgs.map((t, i) => `arg${i}: ${tomlTokenToTs(t)}`).join(', ');
-  output.push(`  constructor(${ctorParams});`);
-
-  // Instance methods
-  for (const [mName, mDecl] of Object.entries(cls.instance_methods || {})) {
-    const ret = tomlTokenToTs(mDecl.returns);
-    const mArgs = (mDecl.args || []).map((t, i) => `arg${i}: ${tomlTokenToTs(t)}`).join(', ');
-    output.push(`  ${mName}(${mArgs}): ${ret};`);
-  }
-
-  // Setters paired with getters (Phase 30: tracked via setters map)
-  const setterNames = new Set(Object.keys(cls.setters || {}));
-
-  // Getters
-  for (const [gName, gDecl] of Object.entries(cls.getters || {})) {
-    const ret = tomlTokenToTs(gDecl.returns);
-    if (setterNames.has(gName)) {
-      output.push(`  ${gName}: ${ret};`);
-    } else {
-      output.push(`  readonly ${gName}: ${ret};`);
-    }
-  }
-
-  // Setter-only (no paired getter — unusual but possible)
-  for (const sName of setterNames) {
-    if (!(cls.getters || {})[sName]) {
-      output.push(`  ${sName}: any;`);
-    }
-  }
-
-  // Static methods
-  for (const [smName, smDecl] of Object.entries(cls.static_methods || {})) {
-    const ret = tomlTokenToTs(smDecl.returns);
-    const smArgs = (smDecl.args || []).map((t, i) => `arg${i}: ${tomlTokenToTs(t)}`).join(', ');
-    output.push(`  static ${smName}(${smArgs}): ${ret};`);
-  }
-
-  output.push('}');
-  output.push('');
-}
+// Struct interfaces, functions, and classes declared in the TOML — one shared
+// emitter with the CLI (see toml-dts.js).
+output.push(...emitTomlDts(toml));
 
 const rendered = output.join('\n');
 const tomlClassCount = Object.keys(toml.classes || {}).length;
