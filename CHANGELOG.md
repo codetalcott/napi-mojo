@@ -57,12 +57,34 @@ recommended path.
 
 ### Added
 
+- **`napi-mojo` CLI** (#44) — the consumer toolchain, previously a set of
+  copy-the-repo-layout instructions:
+
+  ```bash
+  npx napi-mojo init my-addon        # scaffold exports.toml + lib.mojo + package.json
+  npx napi-mojo generate --dts       # exports.toml -> generated Mojo + index.d.ts
+  npx napi-mojo build --bundle       # compile, optionally with the Mojo runtime alongside
+  ```
+
+  `build` resolves the compiler as `--mojo` > `$NAPI_MOJO_MOJO` > `pixi run mojo`
+  (when a `pixi.toml` is found above the entry) > `mojo`, and defaults its
+  include path to this package's `src/`, so an installed addon needs no
+  knowledge of where the framework lives. CI runs the whole path end to end —
+  scaffold, generate, compile, call from Node — on macOS and Linux.
 - `bindings_from_context()` — magic-checked recovery of cached bindings from
   TSFN contexts, finalize hints, and cleanup-hook args (#41).
 - `type_tag_object` / `check_object_type_tag` / `wrap_native` framework
   wrappers (#39).
+- `addObservableCleanupHook()` — a cleanup hook with an observable effect, so
+  a child process can assert hooks actually *run* at env teardown rather than
+  only that registration returned true (#45).
 - `tests/codegen/` kitchen-sink compile target: every generator template
   branch is generated and compiled in CI (#41).
+- `tests/worker_threads.test.js` — the framework under a second `napi_env`:
+  per-env instance data, classes and type tags, TSFN callbacks, and async work
+  in a Worker while the main env also works (#45).
+- Node 24 CI coverage on both platforms, as a separate non-required job so
+  adding it could not rename — and thereby strand — the required checks (#45).
 
 ### Removed
 
