@@ -1,6 +1,8 @@
 // Basic usage: strings, numbers
 // Runs against the full library build (npm run build), not hello-addon.mojo alone.
-const m = require('../build/index.node');
+// Resolves the prebuilt platform package when installed from npm, or the
+// local build/index.node in a development checkout.
+const m = require('../demo');
 
 console.log(m.hello());                  // "Hello from Mojo!"
 console.log(m.greet('world'));           // "Hello, world!"

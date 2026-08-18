@@ -1,6 +1,8 @@
 // Binary data: ArrayBuffer, Buffer, TypedArray, DataView
 // Runs against the full library build (npm run build), not a standalone addon.
-const m = require('../build/index.node');
+// Resolves the prebuilt platform package when installed from npm, or the
+// local build/index.node in a development checkout.
+const m = require('../demo');
 
 // ArrayBuffer
 const ab = m.createArrayBuffer(8);

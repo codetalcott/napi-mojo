@@ -3,8 +3,8 @@
 // Demonstrates Mojo's SIMD vectorize() vs pure JavaScript on
 // dot product, cosine similarity, and Euclidean distance.
 //
-// Build:  pixi run mojo build --emit shared-lib -I src examples/vectors-addon.mojo -o build/vectors.dylib
-//         mv build/vectors.dylib build/vectors.node
+// Build:  pixi run mojo build --emit shared-lib -I src examples/vectors-addon.mojo -o build/vectors.node
+//         (or: node bin/napi-mojo.mjs build examples/vectors-addon.mojo -o build/vectors.node)
 // Run:    node examples/vectors.js
 
 const addon = require('../build/vectors.node');

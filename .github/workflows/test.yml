@@ -110,6 +110,28 @@ jobs:
       - name: Compile codegen kitchen sink (compile-only)
         run: bash tests/codegen/build.sh
 
+      # The consumer path end-to-end: scaffold a fresh addon with the CLI,
+      # generate its trampolines and .d.ts, compile it against this checkout's
+      # src/, and call it from Node. tests/cli.test.js covers the toolchain-free
+      # half; this is the half that needs mojo. Run from the repo root so the
+      # CLI's pixi.toml discovery resolves `pixi run mojo` in this environment.
+      - name: CLI end-to-end (scaffold, generate, build, smoke)
+        run: |
+          node bin/napi-mojo.mjs init "$RUNNER_TEMP/cli-e2e"
+          node bin/napi-mojo.mjs generate \
+            --toml "$RUNNER_TEMP/cli-e2e/exports.toml" \
+            --out "$RUNNER_TEMP/cli-e2e/generated" \
+            --dts "$RUNNER_TEMP/cli-e2e/index.d.ts"
+          node bin/napi-mojo.mjs build "$RUNNER_TEMP/cli-e2e/lib.mojo" \
+            -o "$RUNNER_TEMP/cli-e2e/build/addon.node"
+          node -e "
+            const assert = require('assert');
+            const m = require(process.env.RUNNER_TEMP + '/cli-e2e/build/addon.node');
+            assert.strictEqual(m.greet('CLI'), 'Hello, CLI!');
+            assert.strictEqual(m.add(2, 3), 5);
+            console.log('CLI e2e OK');
+          "
+
       # No retry wrapper, deliberately. These steps used to retry 3×, blamed
       # on a Mojo `def` function-pointer gap at finalizer registration sites.
       # That diagnosis was wrong: the intermittent macOS SIGABRT/SIGSEGV was a

@@ -114,7 +114,9 @@ src/addon/runtime_ops.mojo               # asyncRuntimeInitOk() — makes a sile
 spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
 spike/elaboration_probe.mojo             # throwaway: proves per-method lazy elaboration (+ spike/elab_pkg/)
 spike/runtime_probe.mojo                 # throwaway: AsyncRT init + parallelize, run from inside Node
+bin/napi-mojo.mjs                        # CLI: init / generate (--dts) / build (--bundle) — wraps the generators + bundle-runtime.sh; e2e-tested in CI
 scripts/generate-dts.js                  # auto-generate build/index.d.ts from lib.mojo
+scripts/toml-dts.js                      # TOML → .d.ts emitter shared by generate-dts.js and the CLI (one emitter, two callers)
 scripts/generate-addon.mjs              # auto-generate callback trampolines from src/exports.toml (bindings-aware)
 scripts/benchmark.mjs                   # per-call overhead benchmark (node scripts/benchmark.mjs)
 scripts/check-compile-coverage.mjs      # drift guard: every framework def name must be called by the coverage target

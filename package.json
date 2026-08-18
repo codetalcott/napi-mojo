@@ -4,6 +4,9 @@
   "description": "Build Node.js native addons in Mojo — the Mojo equivalent of napi-rs",
   "main": "index.js",
   "types": "index.d.ts",
+  "bin": {
+    "napi-mojo": "./bin/napi-mojo.mjs"
+  },
   "exports": {
     ".": {
       "types": "./index.d.ts",
@@ -28,9 +31,12 @@
     "examples/",
     "!examples/codegen/build",
     "!examples/codegen/generated",
+    "bin/",
     "scripts/generate-addon.mjs",
     "scripts/generate-dts.js",
     "scripts/toml-lite.js",
+    "scripts/toml-dts.js",
+    "scripts/bundle-runtime.sh",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"

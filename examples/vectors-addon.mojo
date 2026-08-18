@@ -6,8 +6,7 @@
 ## vectors > 4096 elements.
 ##
 ## Build:  cd /path/to/napi-mojo
-##         mojo build --emit shared-lib -I src examples/vectors-addon.mojo -o build/vectors.dylib
-##         mv build/vectors.dylib build/vectors.node   # macOS
+##         pixi run mojo build --emit shared-lib -I src examples/vectors-addon.mojo -o build/vectors.node
 ## Run:    node examples/vectors.js
 
 from std.algorithm.functional import vectorize

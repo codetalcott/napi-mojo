@@ -20,6 +20,13 @@
 # own dependency graph. Walking the graph can.
 set -euo pipefail
 
+# Usage: bundle-runtime.sh [path/to/addon.node]
+# Default keeps the historical publish.yml invocation working unchanged.
+# The napi-mojo CLI (`napi-mojo build --bundle`) passes an explicit path.
+NODE_BIN="${1:-build/index.node}"
+OUT_DIR="$(dirname "$NODE_BIN")"
+NODE_BASE="$(basename "$NODE_BIN")"
+
 if [ "$(uname -s)" = "Darwin" ]; then
     EXT=dylib
 else
@@ -49,10 +56,10 @@ fi
 # the way a path convention can.
 mojo_lib_candidates() {
     if [ "$EXT" = "dylib" ]; then
-        otool -l build/index.node 2>/dev/null \
+        otool -l "$NODE_BIN" 2>/dev/null \
             | awk '/LC_RPATH/{r=1} r && /path /{print $2; r=0}'
     else
-        patchelf --print-rpath build/index.node 2>/dev/null | tr ':' '\n'
+        patchelf --print-rpath "$NODE_BIN" 2>/dev/null | tr ':' '\n'
     fi
 
     # The toolchain root reached from the `mojo` on PATH. Covers conda/pixi
@@ -79,15 +86,15 @@ mojo_lib_candidates() {
 # would then kill the script BEFORE the diagnostics below ever print.
 needed_basenames() {
     if [ "$EXT" = "dylib" ]; then
-        { otool -L build/index.node 2>/dev/null || true; } | tail -n +2 \
+        { otool -L "$NODE_BIN" 2>/dev/null || true; } | tail -n +2 \
             | awk '{print $1}' | sed -n 's|^@rpath/||p'
     else
-        patchelf --print-needed build/index.node 2>/dev/null || true
+        patchelf --print-needed "$NODE_BIN" 2>/dev/null || true
     fi
 }
 
-if [ ! -f build/index.node ]; then
-    echo "error: build/index.node not found — run build.sh first." >&2
+if [ ! -f "$NODE_BIN" ]; then
+    echo "error: $NODE_BIN not found — build the addon first." >&2
     exit 1
 fi
 
@@ -97,12 +104,12 @@ if [ -z "$NEEDED" ]; then
     # has run, the addon's load paths are rewritten from @rpath/$ORIGIN to
     # @loader_path, so there are no @rpath entries left to key on — which looks
     # identical to a broken binary unless we say otherwise.
-    if ls build/*."$EXT" >/dev/null 2>&1; then
-        echo "error: build/ already contains bundled libraries — this script has" >&2
-        echo "       already run against this build. Re-run build.sh first." >&2
+    if ls "$OUT_DIR"/*."$EXT" >/dev/null 2>&1; then
+        echo "error: $OUT_DIR/ already contains bundled libraries — this script has" >&2
+        echo "       already run against this build. Rebuild the addon first." >&2
     else
-        echo "error: build/index.node has no Mojo runtime dependencies to key on." >&2
-        echo "       Expected @rpath/RUNPATH entries; run build.sh first." >&2
+        echo "error: $NODE_BIN has no Mojo runtime dependencies to key on." >&2
+        echo "       Expected @rpath/RUNPATH entries; build the addon first." >&2
     fi
     exit 1
 fi
@@ -156,18 +163,18 @@ deps_of() {
     fi
 }
 
-# Breadth-first walk from index.node until no new pixi-env library appears.
+# Breadth-first walk from the addon until no new pixi-env library appears.
 bundled=""
-worklist="build/index.node"
+worklist="$NODE_BIN"
 while [ -n "$worklist" ]; do
     next=""
     for f in $worklist; do
         for name in $(deps_of "$f"); do
             case " $bundled " in *" $name "*) continue ;; esac
             [ -f "$PIXI_LIB/$name" ] || continue
-            cp "$PIXI_LIB/$name" "build/$name"
+            cp "$PIXI_LIB/$name" "$OUT_DIR/$name"
             bundled="$bundled $name"
-            next="$next build/$name"
+            next="$next $OUT_DIR/$name"
         done
     done
     worklist="$next"
@@ -178,9 +185,9 @@ if [ -z "$bundled" ]; then
     # environment is not where we think it is". Re-running against an
     # already-bundled build finds nothing, because the load paths it looks for
     # have already been rewritten to @loader_path/$ORIGIN.
-    if ls build/*."$EXT" >/dev/null 2>&1; then
-        echo "error: build/ already contains bundled libraries — this script has" >&2
-        echo "       already run against this build. Re-run build.sh first." >&2
+    if ls "$OUT_DIR"/*."$EXT" >/dev/null 2>&1; then
+        echo "error: $OUT_DIR/ already contains bundled libraries — this script has" >&2
+        echo "       already run against this build. Rebuild the addon first." >&2
     else
         echo "error: no Mojo runtime libraries found under $PIXI_LIB" >&2
     fi
@@ -191,7 +198,7 @@ fi
 # drop silently out of the walk above, since it never matches PIXI_LIB. Say so
 # here rather than letting a consumer's require() be the thing that finds out.
 if [ "$EXT" = "so" ]; then
-    for f in build/index.node $(printf 'build/%s\n' $bundled); do
+    for f in "$NODE_BIN" $(for n in $bundled; do echo "$OUT_DIR/$n"; done); do
         if ldd "$f" 2>/dev/null | grep -q "not found"; then
             echo "error: unresolved dependencies in $f:" >&2
             ldd "$f" | grep "not found" >&2
@@ -203,28 +210,31 @@ fi
 # --- rewrite load paths so everything resolves next to index.node ------------
 if [ "$EXT" = "dylib" ]; then
     for name in $bundled; do
-        install_name_tool -id "@loader_path/${name}" "build/${name}"
+        install_name_tool -id "@loader_path/${name}" "$OUT_DIR/${name}"
         for dep in $bundled; do
-            install_name_tool -change "@rpath/${dep}" "@loader_path/${dep}" "build/${name}" 2>/dev/null || true
+            install_name_tool -change "@rpath/${dep}" "@loader_path/${dep}" "$OUT_DIR/${name}" 2>/dev/null || true
         done
     done
-    # Fix index.node: self-reference, rpath, and sibling lib references
-    install_name_tool -id @loader_path/index.node build/index.node
-    install_name_tool -change "build/libnapi_mojo.dylib" "@loader_path/index.node" build/index.node 2>/dev/null || true
-    install_name_tool -delete_rpath "$PIXI_LIB" build/index.node 2>/dev/null || true
-    install_name_tool -add_rpath @loader_path build/index.node 2>/dev/null || true
+    # Fix the addon: self-reference, rpath, and sibling lib references.
+    # The self-reference can be recorded under the pre-rename dylib path
+    # (build.sh output) or the addon's own path (CLI direct -o); change both.
+    install_name_tool -id "@loader_path/${NODE_BASE}" "$NODE_BIN"
+    install_name_tool -change "build/libnapi_mojo.dylib" "@loader_path/${NODE_BASE}" "$NODE_BIN" 2>/dev/null || true
+    install_name_tool -change "$NODE_BIN" "@loader_path/${NODE_BASE}" "$NODE_BIN" 2>/dev/null || true
+    install_name_tool -delete_rpath "$PIXI_LIB" "$NODE_BIN" 2>/dev/null || true
+    install_name_tool -add_rpath @loader_path "$NODE_BIN" 2>/dev/null || true
     for dep in $bundled; do
-        install_name_tool -change "@rpath/${dep}" "@loader_path/${dep}" build/index.node 2>/dev/null || true
+        install_name_tool -change "@rpath/${dep}" "@loader_path/${dep}" "$NODE_BIN" 2>/dev/null || true
     done
     # Re-sign all modified binaries (required on macOS arm64)
-    codesign --force --sign - build/index.node
+    codesign --force --sign - "$NODE_BIN"
     for name in $bundled; do
-        codesign --force --sign - "build/${name}"
+        codesign --force --sign - "$OUT_DIR/${name}"
     done
 else
-    patchelf --set-rpath '$ORIGIN' build/index.node
+    patchelf --set-rpath '$ORIGIN' "$NODE_BIN"
     for name in $bundled; do
-        patchelf --set-rpath '$ORIGIN' "build/${name}"
+        patchelf --set-rpath '$ORIGIN' "$OUT_DIR/${name}"
     done
 fi
 
@@ -232,7 +242,7 @@ fi
 # this manifest rather than re-deriving it from a glob, because a glob is how
 # libstdc++.so.6 and libgcc_s.so.1 went missing: `build/*.so` does not match a
 # versioned soname, and neither does an npm `files` entry of "*.so".
-printf '%s\n' $bundled > build/bundled-libs.txt
+printf '%s\n' $bundled > "$OUT_DIR/bundled-libs.txt"
 
 echo "Runtime bundled ($(printf '%s\n' $bundled | wc -w | tr -d ' ') libraries):"
 for name in $bundled; do
