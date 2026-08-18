@@ -573,6 +573,7 @@ const DOCS = {
   removeCleanupHook: 'Registers then removes an env cleanup hook; returns true.',
   addAsyncCleanupHook:    'Registers an async env cleanup hook; returns true.',
   removeAsyncCleanupHook: 'Registers then removes an async env cleanup hook; returns true.',
+  addObservableCleanupHook: 'Registers a cleanup hook that prints a marker at env teardown; returns true.',
   // Runtime introspection
   getNapiVersion: 'Returns the highest N-API version supported by this Node.js runtime.',
   getNodeVersion: 'Returns { major, minor, patch } of the running Node.js version.',

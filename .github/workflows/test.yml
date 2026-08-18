@@ -149,3 +149,42 @@ jobs:
       # through CI.
       - name: Run GC finalizer tests
         run: npm run test:gc
+
+  # Node 24 coverage is a SEPARATE job, deliberately — not a node-version
+  # matrix dimension on `test`. The required status checks on main are pinned
+  # by NAME (`test (macos-latest)`, `test (ubuntu-latest)`); adding a matrix
+  # dimension would rename them (`test (macos-latest, 22)`), and every PR
+  # would sit unmergeable until branch protection is hand-edited. This job is
+  # additional signal, not a required check, so a Node-24-only regression is
+  # visible without being able to strand a PR.
+  test-node24:
+    if: github.event_name == 'pull_request'
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install pixi
+        uses: prefix-dev/setup-pixi@v0.10.1
+        with:
+          pixi-version: latest
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Build Mojo addon
+        run: pixi run bash build.sh
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run GC finalizer tests
+        run: npm run test:gc
