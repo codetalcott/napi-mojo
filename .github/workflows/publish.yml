@@ -59,9 +59,9 @@ jobs:
       - name: Run tests
         run: npm test
 
-      # GC finalizer suite is gated on --expose-gc, so `npm test` skips all 6
-      # tests by design. Run them explicitly so finalizer regressions can't
-      # ship in a release.
+      # GC finalizer suite is gated on --expose-gc, so `npm test` skips it by
+      # design. Run it explicitly so finalizer regressions can't ship in a
+      # release.
       - name: Run GC finalizer tests
         run: npm run test:gc
 

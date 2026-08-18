@@ -116,8 +116,8 @@ jobs:
       - name: Run tests
         run: npm test
 
-      # npm test skips these six — they need --expose-gc. GC-time finalizer bugs
-      # are exactly the class a canary should be catching.
+      # npm test skips the GC finalizer suite — it needs --expose-gc. GC-time
+      # finalizer bugs are exactly the class a canary should be catching.
       - name: Run GC finalizer tests
         run: npm run test:gc
 
