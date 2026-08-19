@@ -247,34 +247,74 @@ jobs:
       - name: Build Mojo addon
         run: pixi run bash build.sh
 
-      # jest is invoked DIRECTLY, not through npx: npx re-execs and drops
-      # DYLD_INSERT_LIBRARIES, so the suite would run under the normal
-      # allocator while appearing to be checked. --runInBand keeps every
-      # allocation in one process where the checker can see it.
-      - name: Async stress under Guard Malloc (macOS)
+      # Guard Malloc only engages if DYLD_INSERT_LIBRARIES survives exec, and
+      # macOS strips it for hardened binaries. A stripped insertion does not
+      # error — the suite just runs on the normal allocator while the step goes
+      # green, which is the same placebo as running it through npx. So probe
+      # for the banner and record which mode is real, rather than assuming.
+      - name: Probe Guard Malloc availability (macOS)
         if: runner.os == 'macOS'
+        id: gmalloc
+        run: |
+          if [ -e /usr/lib/libgmalloc.dylib ] && \
+             DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib node -e '0' 2>&1 | grep -q GuardMalloc; then
+            echo "active=true" >> "$GITHUB_OUTPUT"
+            echo "Guard Malloc engages on this runner."
+          else
+            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Guard Malloc did not engage (DYLD_INSERT_LIBRARIES stripped, or libgmalloc absent). The libmalloc-checks step below still runs."
+          fi
+
+      # jest is invoked DIRECTLY, not through npx: npx re-execs and drops
+      # DYLD_INSERT_LIBRARIES. --runInBand keeps every allocation in one
+      # process where the checker can see it.
+      - name: Async stress under Guard Malloc (macOS)
+        if: runner.os == 'macOS' && steps.gmalloc.outputs.active == 'true'
+        env:
+          NAPI_MOJO_STRESS_ROUNDS: '40'
+          NAPI_MOJO_STRESS_WIDTH: '80'
         run: |
           DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib \
           MALLOC_STRICT_SIZE=1 \
             node ./node_modules/jest/bin/jest.js tests/async_stress.test.js --runInBand
 
-      # No libgmalloc here. MALLOC_PERTURB_ fills freed memory with a poison
-      # byte, so a use-after-free reads garbage instead of plausible data, and
-      # MALLOC_CHECK_=3 aborts on heap inconsistency. Weaker than Guard Malloc
-      # — it catches the corruption later, not at the access — but it is the
-      # cheap half of the same signal.
+      # These are read by the system allocator itself, so no library insertion
+      # is involved and nothing can strip them: MallocScribble poisons freed
+      # memory (a UAF reads 0x55, not plausible data), MallocGuardEdges puts
+      # guard pages around large allocations, MallocErrorAbort turns an
+      # allocator complaint into a crash instead of a log line, and
+      # MallocNanoZone=0 stops small allocations bypassing all of it. Weaker
+      # than Guard Malloc, but it always actually runs — which is the property
+      # the first version of this job lacked.
+      - name: Async stress with libmalloc checks (macOS)
+        if: runner.os == 'macOS'
+        env:
+          MallocScribble: '1'
+          MallocGuardEdges: '1'
+          MallocErrorAbort: '1'
+          MallocNanoZone: '0'
+          NAPI_MOJO_STRESS_ROUNDS: '40'
+          NAPI_MOJO_STRESS_WIDTH: '80'
+        run: node ./node_modules/jest/bin/jest.js tests/async_stress.test.js --runInBand
+
+      # glibc's equivalents, honoured by the allocator with no insertion.
       - name: Async stress with glibc malloc checks (Linux)
         if: runner.os == 'Linux'
-        run: |
-          MALLOC_PERTURB_=165 MALLOC_CHECK_=3 \
-            node ./node_modules/jest/bin/jest.js tests/async_stress.test.js --runInBand
+        env:
+          MALLOC_PERTURB_: '165'
+          MALLOC_CHECK_: '3'
+          NAPI_MOJO_STRESS_ROUNDS: '40'
+          NAPI_MOJO_STRESS_WIDTH: '80'
+        run: node ./node_modules/jest/bin/jest.js tests/async_stress.test.js --runInBand
 
-      # A second pass with GC forced between rounds, so a premature free of a
-      # string already handed to JS has a chance to surface.
+      # A pass with GC forced between rounds, so a premature free of a string
+      # already handed to JS has a chance to surface.
       - name: Async stress with forced GC
-        run: |
-          NODE_OPTIONS='--expose-gc' \
-            node ./node_modules/jest/bin/jest.js tests/async_stress.test.js --runInBand
+        env:
+          NODE_OPTIONS: '--expose-gc'
+          NAPI_MOJO_STRESS_ROUNDS: '40'
+          NAPI_MOJO_STRESS_WIDTH: '80'
+        run: node ./node_modules/jest/bin/jest.js tests/async_stress.test.js --runInBand
 
   # Node 24 coverage is a SEPARATE job, deliberately — not a node-version
   # matrix dimension on `test`. The required status checks on main are pinned

@@ -25,9 +25,13 @@ evidence the async string result was owed.
 - **A concurrent-async stress suite, run under a checking allocator in CI.**
   `tests/async_stress.test.js` puts many string-returning async calls in
   flight at once — mixed sizes, interleaved with numeric async, with forced GC
-  between rounds — and a new non-required `async-stress` job runs it under
-  Guard Malloc on macOS (`MALLOC_STRICT_SIZE=1`, which faults at the bad
-  access rather than later inside V8) and glibc's malloc checks on Linux. This
+  between rounds — and a new non-required `async-stress` job runs it under a
+  checking allocator: Guard Malloc on macOS when `DYLD_INSERT_LIBRARIES`
+  survives (probed, because macOS strips it for hardened binaries and a
+  stripped insertion checks nothing while the step goes green), always the
+  libmalloc knobs `MallocScribble`/`MallocGuardEdges`/`MallocErrorAbort` which
+  the system allocator honours directly, and `MALLOC_PERTURB_`/`MALLOC_CHECK_`
+  on Linux. This
   is the evidence the async `string` result was missing: the reasoning for why
   a Mojo String may cross to a worker thread was sound, but nothing had run the
   allocator in checking mode against it. jest is invoked directly rather than
