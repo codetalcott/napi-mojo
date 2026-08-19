@@ -316,42 +316,6 @@ jobs:
           NAPI_MOJO_STRESS_WIDTH: '80'
         run: node ./node_modules/jest/bin/jest.js tests/async_stress.test.js --runInBand
 
-  # TEMPORARY — remove once read. docs/plan-api-reference.md leaves one
-  # question open: does the pinned Mojo toolchain ship a doc extractor? It
-  # decides the renderer half of that plan, and cannot be answered from the
-  # dev sandbox (no local toolchain, and docs.modular.com is egress-blocked).
-  # Every command is || true: this job reports, it does not gate.
-  probe-mojo-doc:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: prefix-dev/setup-pixi@v0.10.1
-        with:
-          pixi-version: latest
-      - name: Which `mojo doc` invocation actually works?
-        run: |
-          echo "::group::A. bare file, no -I (known to fail: treated as a main module)"
-          pixi run mojo doc src/napi/framework/js_object.mojo -o /tmp/a.json 2>&1 | tail -5 || true
-          [ -f /tmp/a.json ] && echo "A OK: $(wc -c < /tmp/a.json) bytes" || echo "A: no output"
-          echo "::endgroup::"
-          echo "::group::B. file with -I src"
-          pixi run mojo doc -I src src/napi/framework/js_object.mojo -o /tmp/b.json 2>&1 | tail -5 || true
-          [ -f /tmp/b.json ] && echo "B OK: $(wc -c < /tmp/b.json) bytes" || echo "B: no output"
-          echo "::endgroup::"
-          echo "::group::C. the whole package directory"
-          pixi run mojo doc -I src src/napi/ -o /tmp/c.json 2>&1 | tail -5 || true
-          [ -f /tmp/c.json ] && echo "C OK: $(wc -c < /tmp/c.json) bytes" || echo "C: no output"
-          echo "::endgroup::"
-          echo "::group::D. --diagnose-missing-doc-strings (the coverage signal)"
-          pixi run mojo doc --diagnose-missing-doc-strings -I src src/napi/framework/js_object.mojo -o /tmp/d.json 2>&1 | head -25 || true
-          echo "::endgroup::"
-          echo "::group::E. shape of the JSON, if any was produced"
-          for f in /tmp/b.json /tmp/c.json; do
-            [ -f "$f" ] && { echo "--- $f ---"; head -c 700 "$f"; echo; }
-          done
-          echo "::endgroup::"
-
   # Node 24 coverage is a SEPARATE job, deliberately — not a node-version
   # matrix dimension on `test`. The required status checks on main are pinned
   # by NAME (`test (macos-latest)`, `test (ubuntu-latest)`); adding a matrix
