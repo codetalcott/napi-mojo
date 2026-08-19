@@ -31,6 +31,18 @@ Standards and rules for all contributions to `napi-mojo`, including LLM agents a
 - **Every new code-generator feature gets an instantiation in `tests/codegen/kitchen-sink.toml` in the same commit.** The drift gate only proves templates that `src/exports.toml` happens to use; the kitchen sink compiles every emitter branch in CI.
 - **Every new public `def` in `src/napi/framework/`, `src/napi/error.mojo` or `src/napi/module.mojo` gets a `"""` docstring in the same commit.** `scripts/check-docstring-coverage.mjs` ratchets against a committed floor, so the undocumented count can fall but never rise. See the docstring convention below.
 
+### Performance
+
+`npm run check:benchmark` measures per-call overhead and compares the median against per-platform ceilings in `scripts/benchmark-ceilings.json`. CI runs it as a non-required `benchmark` job.
+
+Be clear about what it is for. It carries 4x headroom and runs on shared runners, so it catches a *structural* regression — a per-call `OwnedDLHandle()` + dlsym back on the hot path, costing 10-100x — and will not see a 10% one. A gate tuned tighter than the noise floor gets ignored, which is worse than one that admits its limits.
+
+If you add or rename a benchmark, reseed the ceilings **on each platform** (they are not comparable) and commit the result:
+
+```bash
+node scripts/check-benchmark.mjs --update
+```
+
 ### Docstrings
 
 Public framework symbols use Mojo `"""` docstrings — not the `##`-above-the-def comments found in older code. Only `"""` is a language feature: it is what `mojo doc` extracts, what an editor hover shows, and what the coverage gate counts. Convert a `##` block opportunistically when you touch the method; there is no sweep planned.
