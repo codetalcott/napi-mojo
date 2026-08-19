@@ -188,7 +188,7 @@ it can hold only types that are safe to move there.
 js_name = "Counter"
 constructor_args = ["number"]
 constructor_body = """
-JsObject(this_val).set_named_property(_b, env, "_n", args[0])
+JsObject(this_val).set_named_property(_b, env, "_n", arg0)
 """
 
 [classes.counter.getters.value]
@@ -202,7 +202,7 @@ args = ["number"]
 returns = "number"
 body = """
 var current = JsNumber.from_napi_value(_b, env, JsObject(this_val).get_named_property(_b, env, "_n"))
-var addend = JsNumber.from_napi_value(_b, env, args[0])
+var addend = JsNumber.from_napi_value(_b, env, arg0)
 return JsNumber.create(_b, env, current + addend).value
 """
 ```
@@ -214,10 +214,16 @@ c.plus(5)  // 15
 ```
 
 Class members use `body` rather than `mojo_fn`: the body is spliced into the
-generated callback, where `this_val` is the instance, `args[i]` are the
-arguments, `env` is the N-API environment, and `_b` is the cached bindings
-pointer that every framework call takes as its first argument. Getters,
-setters, static methods and inheritance are all available — see the README.
+generated callback, where `this_val` is the instance, `env` is the N-API
+environment, and `_b` is the cached bindings pointer that every framework call
+takes as its first argument. Getters, setters, static methods and inheritance
+are all available — see the README.
+
+**Argument names depend on arity.** With exactly one argument the generated
+local is `arg0`; with two to four it is `args[0]`…`args[3]`. Using the wrong
+one is a compile error (`use of unknown declaration 'args'`), not a silent
+bug — which is why the tutorial's addon is compiled by CI rather than
+transcribed by hand.
 
 ## 8. Ship it
 

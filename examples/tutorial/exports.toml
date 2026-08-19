@@ -61,7 +61,7 @@ ptr[].result = ptr[].input0 * ptr[].input1
 js_name = "Counter"
 constructor_args = ["number"]
 constructor_body = """
-JsObject(this_val).set_named_property(_b, env, "_n", args[0])
+JsObject(this_val).set_named_property(_b, env, "_n", arg0)
 """
 
 [classes.counter.getters.value]
@@ -75,6 +75,6 @@ args = ["number"]
 returns = "number"
 body = """
 var current = JsNumber.from_napi_value(_b, env, JsObject(this_val).get_named_property(_b, env, "_n"))
-var addend = JsNumber.from_napi_value(_b, env, args[0])
+var addend = JsNumber.from_napi_value(_b, env, arg0)
 return JsNumber.create(_b, env, current + addend).value
 """
