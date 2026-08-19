@@ -27,6 +27,14 @@ Worst concentrations: `raw.mojo` (130 of 147 undocumented), `args.mojo` (22 of
 23), `js_typedarray.mojo` (20 of 20), `error.mojo` (18 of 18), `js_object.mojo`
 (17 of 18).
 
+**Measured precisely, 2026-08-19**, once the gate existed: **351 undocumented
+public symbols across the 38 consumer-facing modules** `mojo doc` can open
+(`scripts/docstring-floor.json`). The heaviest are `args.mojo` (48),
+`convert.mojo` (39), `js_typedarray.mojo` (23), `js_object.mojo` (21) and
+`error.mojo` (18). Five modules are already at zero — `js_coerce.mojo`,
+`instance_data.mojo`, `runtime.mojo` and the two `__init__` shims — so the
+convention is not starting from nothing.
+
 **A pipeline run today would emit a reference that is 87% bare signatures** —
 worse than none, because it looks complete and says nothing. The bottleneck is
 content, not tooling. Note also that the documented 11% use `##` comments,
