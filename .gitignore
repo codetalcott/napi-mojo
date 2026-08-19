@@ -14,6 +14,7 @@ build/
 skills/
 skills-lock.json
 # Generated example build artifacts
+docs/api-demo-addon/
 examples/codegen/generated/
 examples/codegen/build/
 # Tutorial addon: generated/ and build/ are derived, CI regenerates them

@@ -388,7 +388,9 @@ npm test             # run the full Jest suite
 npm run test:gc      # run the 7 GC finalizer tests (needs --expose-gc)
 npm run generate:addon  # regenerate src/generated/ from src/exports.toml
 npx jest tests/basic.test.js   # run a single test file
-npm run generate:docs  # generate HTML API docs → docs/api/ (requires: npm i -D typedoc)
+npm run generate:docs  # HTML API docs for the DEMO ADDON → docs/api-demo-addon/
+                       # (requires: npm i -D typedoc). A reference for the
+                       # framework itself is scoped in docs/plan-api-reference.md
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for coding standards and
