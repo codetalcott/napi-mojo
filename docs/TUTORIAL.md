@@ -107,11 +107,30 @@ def safe_divide_pure(a: Float64, b: Float64) -> Optional[Float64]:
 `safeDivide(9, 3)` returns `3`; `safeDivide(1, 0)` returns `null`, and the
 generated `.d.ts` says `number | null`.
 
-`?` on an *argument* is only accepted where the value reaches your Mojo
-function unconverted (`any?`, `object?`, `array?`). On a converting token the
-generator rejects it and tells you why: skipping the type check would not make
-the conversion null-safe, so the types would promise a `null` that raises at
-runtime.
+`?` works on an **argument** too, and means what it says:
+
+```toml
+[functions.greet_maybe]
+js_name = "greetMaybe"
+args = ["string?"]
+returns = "string"
+mojo_fn = "greet_maybe"
+```
+
+```mojo
+def greet_maybe(name: Optional[String]) -> String:
+    if name:
+        return "Hello, " + name.value() + "!"
+    return "Hello, whoever you are!"
+```
+
+JS `null` and `undefined` both arrive as `None`; anything else is converted,
+and a wrong type still gets the descriptive `TypeError` — the check sits
+inside the null test rather than replacing it. Works for `number`, `string`,
+`boolean`, the integer tokens and declared structs. `number[]`,
+`float64array` and `buffer` are refused, because an absent array is just an
+empty one and an absent zero-copy view has no buffer. `any?`, `object?` and
+`array?` keep passing the raw value straight through.
 
 ## 5. Objects, both directions
 

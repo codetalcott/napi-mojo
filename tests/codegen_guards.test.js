@@ -43,26 +43,46 @@ describe('generator input guards', () => {
     expect(r.stderr).toMatch(/\[structs\.empty\.fields\]/);
   });
 
-  test('a converting token cannot be nullable in argument position', () => {
+  test('a nullable converting arg becomes Optional[T], checked inside the null test', () => {
     const r = generate(
       '[functions.maybe_add]\njs_name = "maybeAdd"\nmojo_fn = "maybe_add"\n' +
         'args = ["number", "number?"]\nreturns = "number"\n'
     );
-    // Was: .d.ts advertised `arg1: number | null` while the callback called
-    // JsNumber.from_napi_value on it unconditionally, so the advertised null
-    // raised at runtime.
-    expect(r.code).toBe(1);
-    expect(r.stderr).toMatch(/nullable argument type "number\?" .*is not supported/);
+    expect(r.code).toBe(0);
+    const out = fs.readFileSync(path.join(r.dir, 'generated', 'callbacks.mojo'), 'utf8');
+    expect(out).toContain('from napi.types import NAPI_TYPE_NULL, NAPI_TYPE_UNDEFINED');
+    expect(out).toContain('var mojo_arg1: Optional[Float64] = None');
+    expect(out).toContain('if _n_mojo_arg1 != NAPI_TYPE_NULL and _n_mojo_arg1 != NAPI_TYPE_UNDEFINED:');
+    // The typed check lives INSIDE the null test: null passes, a wrong type
+    // still gets the descriptive TypeError rather than the generic catch.
+    expect(out).toMatch(/if _n_mojo_arg1 != NAPI_TYPE_NUMBER:/);
+    expect(out).toContain('expected number or null for arg 2');
+    // arg 0 is not nullable, so it keeps the plain unconditional extract.
+    expect(out).toContain('var mojo_arg0 = JsNumber.from_napi_value(_b, env, args[0])');
   });
 
-  test("a struct type is a converting token too, so it cannot be a nullable arg", () => {
+  test('a struct can be a nullable arg too', () => {
     const r = generate(
       '[structs.cfg]\njs_name = "Cfg"\n[structs.cfg.fields]\nhost = "string"\n\n' +
         '[functions.take_cfg]\njs_name = "takeCfg"\nmojo_fn = "take_cfg"\n' +
         'args = ["cfg?"]\nreturns = "number"\n'
     );
-    expect(r.code).toBe(1);
-    expect(r.stderr).toMatch(/nullable argument type "cfg\?"/);
+    expect(r.code).toBe(0);
+    const out = fs.readFileSync(path.join(r.dir, 'generated', 'callbacks.mojo'), 'utf8');
+    expect(out).toContain('var mojo_arg0: Optional[CfgData] = None');
+    expect(out).toContain('var _v_mojo_arg0 = cfg_from_js(_b, env, arg0)');
+  });
+
+  test('tokens with no meaningful Optional form are still refused', () => {
+    // An absent array is an empty one; an absent zero-copy view has no buffer.
+    for (const tok of ['number[]', 'float64array']) {
+      const r = generate(
+        '[functions.f]\njs_name = "f"\nmojo_fn = "f"\n' +
+          `args = ["${tok}?"]\nreturns = "number"\n`
+      );
+      expect(r.code).toBe(1);
+      expect(r.stderr).toMatch(/has no meaningful Optional form/);
+    }
   });
 
   test("'?' stays supported on pass-through args and on return types", () => {

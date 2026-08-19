@@ -64,3 +64,11 @@ def tally_add(mut s: TallyStateData, n: Float64) -> Float64:
 
 def tally_total(s: TallyStateData) -> Float64:
     return s.total
+
+
+## A nullable argument arrives as Optional[T]: None for JS null or undefined,
+## a converted value otherwise. A wrong type never reaches here.
+def greet_maybe(name: Optional[String]) -> String:
+    if name:
+        return "Hello, " + name.value() + "!"
+    return "Hello, whoever you are!"

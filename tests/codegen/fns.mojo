@@ -147,3 +147,16 @@ def ks_acc_add(mut s: KsAccStateData, n: Float64) -> Float64:
 
 def ks_acc_total(s: KsAccStateData) -> Float64:
     return s.total
+
+
+## --- Nullable converting arguments arrive as Optional[T] ---
+def ks_opt_scalar(n: Float64, label: Optional[String]) -> Float64:
+    if label:
+        return n + Float64(label.value().byte_length())
+    return n
+
+
+def ks_opt_struct(c: Optional[KsConfigData]) -> Float64:
+    if c:
+        return c.value().ratio
+    return -1.0
