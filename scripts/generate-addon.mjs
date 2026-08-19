@@ -198,6 +198,50 @@ function getArgExpr(i, totalArgs) {
   return `_a${i}`;
 }
 
+// --- Emit the argument-fetch + type-check preamble ---
+// Every emitter (sync, async, class ctor, instance method, static method) used
+// to carry its own copy of this chain — five copies that had to be edited in
+// lockstep for any new token or arity, and which had already drifted: the
+// >=5-arg heap-argv branch exists only in the sync shape, and its `_argv` was
+// missing an origin widening for long enough to ship, because nothing
+// instantiated it.
+//
+// `allowVarargs` is the only real difference between the copies. The async and
+// class emitters cap at 4 and fail() with their own message before reaching
+// here, because their data structs and callback shapes are fixed at that arity.
+//
+// Arg expressions are deliberately NOT returned: call sites ask
+// getArgExpr(i, n), which stays the single definition of the naming rule
+// (arg0 at arity 1, args[i] at 2-4, _ai at >=5).
+function emitArgPreamble(lines, jsName, args, { allowVarargs = false } = {}) {
+  const n = args.length;
+  if (n === 0) return;
+
+  if (n === 1) {
+    lines.push(`        var arg0 = CbArgs.get_one(_b, env, info)`);
+  } else if (n <= 4) {
+    const fetch = { 2: 'get_two', 3: 'get_three', 4: 'get_four' }[n];
+    lines.push(`        var args = CbArgs.${fetch}(_b, env, info)`);
+  } else {
+    if (!allowVarargs) {
+      fail(`${jsName}: ${n} args declared, but this callback shape supports at most 4`);
+    }
+    // N >= 5: heap-allocate argv, copy to locals, free immediately before body
+    lines.push(`        var _argv = unsafe_alloc[NapiValue](${n})`);
+    // get_argv returns the actual argc (discarded — argv is napi-padded with
+    // undefined) and needs the explicit origin widening on the alloc'd buffer.
+    lines.push(`        _ = CbArgs.get_argv(_b, env, info, ${n}, _argv.as_unsafe_any_origin())`);
+    for (let i = 0; i < n; i++) lines.push(`        var _a${i} = _argv[unsafe_offset=${i}]`);
+    lines.push(`        _argv.unsafe_free()`);
+  }
+
+  // At arity 1 the message reads "expected string, got X" with no position:
+  // there is only one argument it could mean. Preserved exactly.
+  for (let i = 0; i < n; i++) {
+    emitTypeCheck(lines, jsName, args[i], getArgExpr(i, n), n === 1 ? null : `arg ${i + 1}`);
+  }
+}
+
 // --- Emit type check lines for a single argument ---
 // Returns an array of lines. For 'array' type uses js_is_array; for others
 // uses js_typeof. Skips all checks when nullable=true.
@@ -256,32 +300,7 @@ function generateCallback(name, decl) {
   lines.push(`    try:`);
   lines.push(`        var _b = CbArgs.get_bindings(env, info)`);
 
-  if (args.length === 0) {
-    // No args — just run body
-  } else if (args.length === 1) {
-    lines.push(`        var arg0 = CbArgs.get_one(_b, env, info)`);
-    emitTypeCheck(lines, jsName, args[0], 'arg0', null);
-  } else if (args.length === 2) {
-    lines.push(`        var args = CbArgs.get_two(_b, env, info)`);
-    emitTypeCheck(lines, jsName, args[0], 'args[0]', 'arg 1');
-    emitTypeCheck(lines, jsName, args[1], 'args[1]', 'arg 2');
-  } else if (args.length === 3) {
-    lines.push(`        var args = CbArgs.get_three(_b, env, info)`);
-    for (let i = 0; i < 3; i++) emitTypeCheck(lines, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
-  } else if (args.length === 4) {
-    lines.push(`        var args = CbArgs.get_four(_b, env, info)`);
-    for (let i = 0; i < 4; i++) emitTypeCheck(lines, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
-  } else {
-    // N >= 5: heap-allocate argv, copy to locals, free immediately before body
-    const n = args.length;
-    lines.push(`        var _argv = unsafe_alloc[NapiValue](${n})`);
-    // get_argv returns the actual argc (discarded — argv is napi-padded with
-    // undefined) and needs the explicit origin widening on the alloc'd buffer.
-    lines.push(`        _ = CbArgs.get_argv(_b, env, info, ${n}, _argv.as_unsafe_any_origin())`);
-    for (let i = 0; i < n; i++) lines.push(`        var _a${i} = _argv[unsafe_offset=${i}]`);
-    lines.push(`        _argv.unsafe_free()`);
-    for (let i = 0; i < n; i++) emitTypeCheck(lines, jsName, args[i], `_a${i}`, `arg ${i+1}`);
-  }
+  emitArgPreamble(lines, jsName, args, { allowVarargs: true });
 
   if (mojoFn) {
     // Auto-trampoline: extract Mojo-typed args, call mojoFn, wrap result.
@@ -443,24 +462,10 @@ function generateAsyncFunction(name, decl) {
   out.push(`def ${name}_fn(env: NapiEnv, info: NapiValue) -> NapiValue:`);
   out.push(`    try:`);
   out.push(`        var _b = CbArgs.get_bindings(env, info)`);
-  if (args.length === 1) {
-    out.push(`        var arg0 = CbArgs.get_one(_b, env, info)`);
-    emitTypeCheck(out, jsName, args[0], 'arg0', null);
-    out.push((TYPE_MAP[args[0].replace(/\?$/, '')] || TYPE_MAP.number).extract('input0', 'arg0'));
-  } else if (args.length === 2) {
-    out.push(`        var args = CbArgs.get_two(_b, env, info)`);
-    emitTypeCheck(out, jsName, args[0], 'args[0]', 'arg 1');
-    emitTypeCheck(out, jsName, args[1], 'args[1]', 'arg 2');
-    out.push((TYPE_MAP[args[0].replace(/\?$/, '')] || TYPE_MAP.number).extract('input0', 'args[0]'));
-    out.push((TYPE_MAP[args[1].replace(/\?$/, '')] || TYPE_MAP.number).extract('input1', 'args[1]'));
-  } else if (args.length === 3) {
-    out.push(`        var args = CbArgs.get_three(_b, env, info)`);
-    for (let i = 0; i < 3; i++) emitTypeCheck(out, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
-    for (let i = 0; i < 3; i++) out.push((TYPE_MAP[args[i].replace(/\?$/, '')] || TYPE_MAP.number).extract(`input${i}`, `args[${i}]`));
-  } else if (args.length === 4) {
-    out.push(`        var args = CbArgs.get_four(_b, env, info)`);
-    for (let i = 0; i < 4; i++) emitTypeCheck(out, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
-    for (let i = 0; i < 4; i++) out.push((TYPE_MAP[args[i].replace(/\?$/, '')] || TYPE_MAP.number).extract(`input${i}`, `args[${i}]`));
+  emitArgPreamble(out, jsName, args);
+  for (let i = 0; i < args.length; i++) {
+    const info = TYPE_MAP[args[i].replace(/\?$/, '')] || TYPE_MAP.number;
+    out.push(info.extract(`input${i}`, getArgExpr(i, args.length)));
   }
   const inputArgs = argMojoTypes.map((_, i) => `input${i}`).join(', ');
   out.push(`        var data_ptr = unsafe_alloc[${structName}](1)`);
@@ -524,20 +529,7 @@ function generateClassConstructor(className, decl) {
   lines.push(`        var _b = CbArgs.get_bindings(env, info)`);
   lines.push(`        var this_val = CbArgs.get_this(_b, env, info)`);
 
-  if (ctorArgs.length === 1) {
-    lines.push(`        var arg0 = CbArgs.get_one(_b, env, info)`);
-    emitTypeCheck(lines, jsName, ctorArgs[0], 'arg0', null);
-  } else if (ctorArgs.length === 2) {
-    lines.push(`        var args = CbArgs.get_two(_b, env, info)`);
-    emitTypeCheck(lines, jsName, ctorArgs[0], 'args[0]', 'arg 1');
-    emitTypeCheck(lines, jsName, ctorArgs[1], 'args[1]', 'arg 2');
-  } else if (ctorArgs.length === 3) {
-    lines.push(`        var args = CbArgs.get_three(_b, env, info)`);
-    for (let i = 0; i < 3; i++) emitTypeCheck(lines, jsName, ctorArgs[i], `args[${i}]`, `arg ${i+1}`);
-  } else if (ctorArgs.length === 4) {
-    lines.push(`        var args = CbArgs.get_four(_b, env, info)`);
-    for (let i = 0; i < 4; i++) emitTypeCheck(lines, jsName, ctorArgs[i], `args[${i}]`, `arg ${i+1}`);
-  }
+  emitArgPreamble(lines, jsName, ctorArgs);
 
   const bodyLines = ctorBody.split('\n');
   for (const bl of bodyLines) {
@@ -571,20 +563,7 @@ function generateClassMethod(className, methodName, decl) {
   lines.push(`        var _b = CbArgs.get_bindings(env, info)`);
   lines.push(`        var this_val = CbArgs.get_this(_b, env, info)`);
 
-  if (args.length === 1) {
-    lines.push(`        var arg0 = CbArgs.get_one(_b, env, info)`);
-    emitTypeCheck(lines, jsName, args[0], 'arg0', null);
-  } else if (args.length === 2) {
-    lines.push(`        var args = CbArgs.get_two(_b, env, info)`);
-    emitTypeCheck(lines, jsName, args[0], 'args[0]', 'arg 1');
-    emitTypeCheck(lines, jsName, args[1], 'args[1]', 'arg 2');
-  } else if (args.length === 3) {
-    lines.push(`        var args = CbArgs.get_three(_b, env, info)`);
-    for (let i = 0; i < 3; i++) emitTypeCheck(lines, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
-  } else if (args.length === 4) {
-    lines.push(`        var args = CbArgs.get_four(_b, env, info)`);
-    for (let i = 0; i < 4; i++) emitTypeCheck(lines, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
-  }
+  emitArgPreamble(lines, jsName, args);
 
   const bodyLines = body.split('\n');
   for (const bl of bodyLines) {
@@ -620,20 +599,7 @@ function generateClassStaticMethod(className, methodName, decl) {
   lines.push(`    try:`);
   lines.push(`        var _b = CbArgs.get_bindings(env, info)`);
 
-  if (args.length === 1) {
-    lines.push(`        var arg0 = CbArgs.get_one(_b, env, info)`);
-    emitTypeCheck(lines, jsName, args[0], 'arg0', null);
-  } else if (args.length === 2) {
-    lines.push(`        var args = CbArgs.get_two(_b, env, info)`);
-    emitTypeCheck(lines, jsName, args[0], 'args[0]', 'arg 1');
-    emitTypeCheck(lines, jsName, args[1], 'args[1]', 'arg 2');
-  } else if (args.length === 3) {
-    lines.push(`        var args = CbArgs.get_three(_b, env, info)`);
-    for (let i = 0; i < 3; i++) emitTypeCheck(lines, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
-  } else if (args.length === 4) {
-    lines.push(`        var args = CbArgs.get_four(_b, env, info)`);
-    for (let i = 0; i < 4; i++) emitTypeCheck(lines, jsName, args[i], `args[${i}]`, `arg ${i+1}`);
-  }
+  emitArgPreamble(lines, jsName, args);
 
   const bodyLines = body.split('\n');
   for (const bl of bodyLines) {
