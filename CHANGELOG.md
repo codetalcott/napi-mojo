@@ -16,6 +16,17 @@ break the source API that downstream addons compile against.
 
 ### Added
 
+- **Zero-copy binary tokens in the code generator.** `float64array` as an
+  argument hands the Mojo function a `Span[Float64]` aliasing the JS
+  `Float64Array`'s own backing store; as a return type the function hands back
+  a `MojoFloat64Array` whose allocation JavaScript adopts. No copy in either
+  direction — the story Mojo exists for, previously reachable only from a
+  hand-written callback. `buffer` gives a `Span[Byte]` view over a Node
+  `Buffer` and is argument-only: there is no Mojo-owned `Buffer` type to hand
+  back without copying, so `returns = "buffer"` is rejected with that reason
+  rather than silently copying. TypeScript emits `Float64Array` and `Buffer`.
+  The input Span aliases engine-owned memory and is valid only for the
+  duration of the call.
 - **[docs/TUTORIAL.md](docs/TUTORIAL.md)** — the CLI's missing half. Walks from
   `napi-mojo init` to a published-shaped addon: a pure function, a nullable
   return, a struct in both directions, async work on a worker thread, and a

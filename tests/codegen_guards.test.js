@@ -74,6 +74,31 @@ describe('generator input guards', () => {
     expect(r.code).toBe(0);
   });
 
+  test('buffer is rejected as a return type, with the reason', () => {
+    const r = generate(
+      '[functions.make_buf]\njs_name = "makeBuf"\nmojo_fn = "make_buf"\n' +
+        'args = ["number"]\nreturns = "buffer"\n'
+    );
+    // float64array returns work because MojoFloat64Array owns a buffer JS can
+    // adopt; there is no Buffer counterpart, so the alternative is a silent
+    // copy — which is exactly what the zero-copy tokens exist to avoid.
+    expect(r.code).toBe(1);
+    expect(r.stderr).toMatch(/no Mojo-owned Buffer type/);
+  });
+
+  test('float64array generates a zero-copy Span in and MojoFloat64Array out', () => {
+    const r = generate(
+      '[functions.scale]\njs_name = "scale"\nmojo_fn = "scale"\n' +
+        'args = ["float64array", "number"]\nreturns = "float64array"\n'
+    );
+    expect(r.code).toBe(0);
+    const out = fs.readFileSync(path.join(r.dir, 'generated', 'callbacks.mojo'), 'utf8');
+    expect(out).toContain('from napi.framework.js_mojo_array import MojoFloat64Array');
+    expect(out).toContain('JsTypedArray.is_typedarray(_b, env, args[0])');
+    expect(out).toContain('Span[Float64](unsafe_ptr=_ta_mojo_arg0.data_ptr_float64(_b, env)');
+    expect(out).toContain('return mojo_result.to_js(_b, env)');
+  });
+
   test('async declarations are capped at 4 args', () => {
     const r = generate(
       '[functions.too_many]\njs_name = "tooMany"\nasync = true\nreturns = "number"\n' +

@@ -4,6 +4,7 @@
 from std.collections import Optional
 from napi.types import NapiValue
 from generated.structs import KsConfigData
+from napi.framework.js_mojo_array import MojoFloat64Array
 
 
 def ks_zero() -> Float64:
@@ -102,3 +103,21 @@ def ks_config_roundtrip(c: KsConfigData) -> KsConfigData:
         c.label, c.ratio, c.flag, c.enabled, c.small, c.index, c.big,
         c.obj, c.val, c.b, c.env,
     )
+
+
+## --- Binary tokens: zero-copy views over JS memory ---
+## float64array hands the Mojo fn a Span aliasing the JS backing store, and
+## takes a MojoFloat64Array back (JS adopts that buffer). buffer is a
+## Span[Byte] view and is argument-only.
+def ks_scale_vec(v: Span[Float64, MutAnyOrigin], k: Float64) -> MojoFloat64Array:
+    var out = MojoFloat64Array(len(v))
+    for i in range(len(v)):
+        out.ptr[unsafe_offset=i] = v[i] * k
+    return out^
+
+
+def ks_byte_sum(bytes: Span[Byte, MutAnyOrigin]) -> Float64:
+    var total: Float64 = 0.0
+    for i in range(len(bytes)):
+        total += Float64(Int(bytes[i]))
+    return total

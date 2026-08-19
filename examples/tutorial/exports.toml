@@ -6,7 +6,7 @@
 # instead of quietly misleading a reader.
 
 extra_imports = [
-    "from fns import greet_pure, add_pure, safe_divide_pure, describe_config_pure",
+    "from fns import greet_pure, add_pure, safe_divide_pure, describe_config_pure, scale_vec",
 ]
 
 # --- A pure function with a string arg and a string return ---
@@ -55,6 +55,15 @@ async = true
 execute_body = """
 ptr[].result = ptr[].input0 * ptr[].input1
 """
+
+# --- Zero-copy binary data ---
+# The Span aliases the JS Float64Array's memory going in; the returned
+# MojoFloat64Array's buffer is adopted by JS going out. No copy either way.
+[functions.scale_vec]
+js_name = "scaleVec"
+args = ["float64array", "number"]
+returns = "float64array"
+mojo_fn = "scale_vec"
 
 # --- A class: constructor, getter, method ---
 [classes.counter]

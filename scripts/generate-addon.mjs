@@ -142,6 +142,35 @@ const TYPE_MAP = {
       `        var ${varName} = from_js_array_str(_b, env, ${argExpr})`,
     create: (expr) => `to_js_array_str(_b, env, ${expr})`,
   },
+  // float64array: a ZERO-COPY view into the JS Float64Array's backing store.
+  // The Mojo fn receives a Span aliasing V8 memory — no copy in either
+  // direction — so it must not retain the Span beyond the call: the typed
+  // array is only guaranteed alive for the duration of the callback.
+  // As a return type the Mojo fn hands back a MojoFloat64Array, whose buffer
+  // JS adopts (its GC finalizer frees it), so that direction is copy-free too.
+  float64array: {
+    napi_type: '__IS_FLOAT64ARRAY__',
+    type_name: 'Float64Array',
+    extract: (varName, argExpr) =>
+      `        var _ta_${varName} = JsTypedArray(${argExpr})\n` +
+      `        var ${varName} = Span[Float64](unsafe_ptr=_ta_${varName}.data_ptr_float64(_b, env), length=Int(_ta_${varName}.length(_b, env)))`,
+    create: (expr) => `${expr}.to_js(_b, env)`,
+  },
+  // buffer: a zero-copy Span[Byte] view over a Node Buffer, argument-only.
+  // There is no Mojo-owned Buffer counterpart to MojoFloat64Array, so
+  // `returns = "buffer"` is rejected rather than quietly copying.
+  buffer: {
+    napi_type: '__IS_BUFFER__',
+    type_name: 'Buffer',
+    returnUnsupported:
+      'there is no Mojo-owned Buffer type to hand back without copying — ' +
+      'return "float64array" for numeric output, or build the Buffer in a ' +
+      'hand-written callback with JsBuffer',
+    extract: (varName, argExpr) =>
+      `        var _buf_${varName} = JsBuffer(${argExpr})\n` +
+      `        var ${varName} = Span[Byte](unsafe_ptr=_buf_${varName}.data_ptr(_b, env), length=Int(_buf_${varName}.length(_b, env)))`,
+    create: (expr) => expr,
+  },
   any: {
     napi_type: null, // no type check
     passthrough: true,
@@ -264,7 +293,17 @@ function emitTypeCheck(lines, jsName, rawType, argExpr, argDesc) {
       `('?' on a RETURN type is unaffected — that maps Optional[T] to null.)`);
   }
   if (nullable || !typeInfo.napi_type) return;
-  if (typeInfo.napi_type === '__IS_ARRAY__') {
+  if (typeInfo.napi_type === '__IS_FLOAT64ARRAY__' || typeInfo.napi_type === '__IS_BUFFER__') {
+    // Both read as 'object' to napi_typeof, so each gets a dedicated
+    // predicate. data_ptr_float64 additionally raises on the wrong
+    // TypedArray subtype (an Int32Array reaching a float64array arg).
+    const pred = typeInfo.napi_type === '__IS_BUFFER__'
+      ? `JsBuffer.is_buffer(_b, env, ${argExpr})`
+      : `JsTypedArray.is_typedarray(_b, env, ${argExpr})`;
+    lines.push(`        if not ${pred}:`);
+    lines.push(`            throw_js_type_error_dynamic(_b, env, "${jsName}: expected ${typeInfo.type_name}${argDesc ? ' for ' + argDesc : ''}")`);
+    lines.push(`            return NapiValue(unsafe_from_address=Int(0))`);
+  } else if (typeInfo.napi_type === '__IS_ARRAY__') {
     lines.push(`        if not js_is_array(_b, env, ${argExpr}):`);
     lines.push(`            throw_js_type_error_dynamic(_b, env, "${jsName}: expected array${argDesc ? ' for ' + argDesc : ''}")`);
     lines.push(`            return NapiValue(unsafe_from_address=Int(0))`);
@@ -313,6 +352,9 @@ function generateCallback(name, decl) {
     lines.push(`        var mojo_result = ${mojoFn}(${callArgs})`);
     const returnsNullable = returns.endsWith('?');
     const { typeInfo: retTypeInfo } = resolveType(returns);
+    if (retTypeInfo.returnUnsupported) {
+      fail(`[functions.${name}] returns "${returns}": ${retTypeInfo.returnUnsupported}`);
+    }
     if (returnsNullable) {
       // Optional[T] → null check + unwrap
       lines.push(`        if not mojo_result:`);
@@ -874,6 +916,8 @@ function main() {
   const needsStrArray = allTypeTokens.includes('string[]');
   const needsConvertImport = needsF64Array || needsStrArray;
   const needsNullReturn = funcEntries.some(([, d]) => (d.returns || '').endsWith('?'));
+  const needsF64TypedArray = allTypeTokens.includes('float64array');
+  const needsBuffer = allTypeTokens.includes('buffer');
 
   // Generate output
   const output = [];
@@ -910,6 +954,13 @@ function main() {
   }
   if (needsNullReturn) {
     output.push('from napi.framework.js_null import JsNull');
+  }
+  if (needsF64TypedArray) {
+    output.push('from napi.framework.js_typedarray import JsTypedArray');
+    output.push('from napi.framework.js_mojo_array import MojoFloat64Array');
+  }
+  if (needsBuffer) {
+    output.push('from napi.framework.js_buffer import JsBuffer');
   }
   // Auto-import convert helpers when number[] / string[] types are used
   if (needsConvertImport) {

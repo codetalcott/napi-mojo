@@ -14,6 +14,9 @@ const TOML_TYPE_TO_TS_BASE = {
   int32: 'number', uint32: 'number', int64: 'number',
   object: 'object', array: 'any[]', any: 'any',
   'number[]': 'number[]', 'string[]': 'string[]',
+  // Binary tokens: zero-copy views. `buffer` is argument-only (the generator
+  // rejects it as a return), so `Buffer` never appears in return position.
+  float64array: 'Float64Array', buffer: 'Buffer',
 };
 
 function makeTokenToTs(map) {

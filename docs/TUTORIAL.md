@@ -81,7 +81,8 @@ before conversion, so `greet(42)` throws a descriptive `TypeError` —
 
 Supported argument and return tokens: `number`, `string`, `boolean`/`bool`,
 `int32`, `uint32`, `int64`, `object`, `array`, `number[]`, `string[]`, `any`,
-and any struct you declare. The full reference lives in the
+any struct you declare, and the zero-copy binary tokens `float64array` and
+`buffer` (section 8). The full reference lives in the
 [README's Code Generator section](../README.md#code-generator).
 
 ## 4. Returning null
@@ -225,7 +226,43 @@ one is a compile error (`use of unknown declaration 'args'`), not a silent
 bug — which is why the tutorial's addon is compiled by CI rather than
 transcribed by hand.
 
-## 8. Ship it
+## 8. Zero-copy binary data
+
+`float64array` hands your Mojo function a `Span` that aliases the JavaScript
+`Float64Array`'s own memory — no copy on the way in. Returning a
+`MojoFloat64Array` hands its buffer to JavaScript the same way: JS adopts the
+allocation and its garbage collector frees it, so there is no copy out either.
+
+```toml
+[functions.scale_vec]
+js_name = "scaleVec"
+args = ["float64array", "number"]
+returns = "float64array"
+mojo_fn = "scale_vec"
+```
+
+```mojo
+def scale_vec(v: Span[Float64, MutAnyOrigin], k: Float64) -> MojoFloat64Array:
+    var out = MojoFloat64Array(len(v))
+    for i in range(len(v)):
+        out.ptr[unsafe_offset=i] = v[i] * k
+    return out^
+```
+
+```js
+scaleVec(new Float64Array([1, 2, 3]), 10)   // Float64Array [10, 20, 30]
+```
+
+**The input Span is only valid for the duration of the call.** It points into
+memory owned by the JavaScript engine, which makes no promise about that
+memory once your function returns — so do not store the Span, and do not hand
+it to anything that outlives the call.
+
+`buffer` gives you a `Span[Byte]` over a Node `Buffer` on the same terms. It is
+argument-only: there is no Mojo-owned `Buffer` type to hand back without
+copying, so `returns = "buffer"` is rejected rather than silently copying.
+
+## 9. Ship it
 
 ```bash
 npx napi-mojo build --bundle
@@ -243,7 +280,7 @@ toolchain.
 - **[docs/EXPORTS.md](EXPORTS.md)** — every export of the demo addon, which is
   itself generated from `src/exports.toml`.
 - **Hand-written callbacks** — the declarative surface does not cover
-  everything. Zero-copy binary data (`TypedArray`, `Buffer`, `ArrayBuffer`) is
-  reachable today only from a hand-written callback using the framework
+  everything. `ArrayBuffer`, `DataView`, non-Float64 TypedArrays, symbols and
+  BigInt are reachable only from a hand-written callback using the framework
   directly; [`examples/hello-addon.mojo`](../examples/hello-addon.mojo) shows
   the minimal pattern, and `src/addon/` is the worked reference.
