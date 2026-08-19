@@ -221,9 +221,11 @@ await asyncProduct(6, 7)   // 42
 and writes `ptr[].result`, and that is all. The generated completion callback
 runs back on the main thread and resolves the promise for you.
 
-Async declarations are currently limited to numeric returns and at most four
-arguments, for the same reason: the data struct crosses a thread boundary, so
-it can hold only types that are safe to move there.
+Async returns can be numeric (`number`, `int32`, `uint32`, `int64`) or
+`string`; a string result is built on the worker thread and turned into a JS
+string by the completion callback. Other tokens are refused, because the data
+struct has to hold the value across the thread boundary. Argument count is not
+limited.
 
 ## 7. A class with native state
 

@@ -16,6 +16,16 @@ break the source API that downstream addons compile against.
 
 ### Added
 
+- **Async generation: no argument cap, and `string` results.** The four-argument
+  limit came from the entry callback's arity chain, not from anything about
+  threads, and disappeared when that chain was unified — async now uses the
+  same heap-argv path as sync. `returns = "string"` also works: the data
+  struct holds a Mojo `String`, moved rather than copied in its move
+  constructor. The rule that this struct may hold "only simple types" was
+  folklore; the constraints that actually bind on the worker thread are no
+  N-API calls and no dlopen/dlsym, and CLAUDE.md now says so. **Not
+  established:** behaviour under heavy concurrency — none of this is
+  stress- or race-tested.
 - **Nullable arguments are real now.** `args = ["string?"]` hands the Mojo
   function an `Optional[String]` — `None` for JS null or undefined, a
   converted value otherwise — and the typed check sits *inside* the null test,

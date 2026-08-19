@@ -177,6 +177,12 @@ jobs:
             assert.deepStrictEqual(Array.from(scaled), [10, 20, 30]);
             (async () => {
               assert.strictEqual(await m.asyncProduct(6, 7), 42);
+              assert.strictEqual(await m.shoutLater('hey'), 'hey!!!');
+              // Several in flight at once: each async work owns its own data
+              // struct, including its String result.
+              assert.deepStrictEqual(
+                await Promise.all(['a', 'b', 'c', 'd'].map((x) => m.shoutLater(x))),
+                ['a!!!', 'b!!!', 'c!!!', 'd!!!']);
               console.log('tutorial addon OK');
             })().catch((e) => { console.error(e); process.exit(1); });
           "
