@@ -1,0 +1,34 @@
+{
+  "darwin-arm64": {
+    "hello()": 1790,
+    "greet(\"world\")": 1930,
+    "add(1, 2)": 1730,
+    "isPositive(42)": 1580,
+    "getNull()": 1560,
+    "createObject()": 1610,
+    "makeGreeting()": 2400,
+    "addInts(1, 2)": 1640,
+    "exampleAdd(1, 2)": 1690,
+    "exampleGreet(\"x\")": 1820,
+    "counter.increment()": 1980,
+    "counter.value (getter)": 2010,
+    "getProperty(obj, \"x\")": 1830,
+    "strictEquals(1, 1)": 1660
+  },
+  "linux-x64": {
+    "hello()": 600,
+    "greet(\"world\")": 1000,
+    "add(1, 2)": 600,
+    "isPositive(42)": 570,
+    "getNull()": 570,
+    "createObject()": 600,
+    "makeGreeting()": 1230,
+    "addInts(1, 2)": 630,
+    "exampleAdd(1, 2)": 630,
+    "exampleGreet(\"x\")": 850,
+    "counter.increment()": 940,
+    "counter.value (getter)": 950,
+    "getProperty(obj, \"x\")": 820,
+    "strictEquals(1, 1)": 630
+  }
+}
