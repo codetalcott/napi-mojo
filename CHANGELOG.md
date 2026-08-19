@@ -16,6 +16,13 @@ break the source API that downstream addons compile against.
 
 ### Added
 
+- `npm run generate:docs` says what it documents. It runs typedoc over
+  `build/index.d.ts` — the **demo addon's** surface — while being named and
+  titled as if it covered the framework. Output moves to
+  `docs/api-demo-addon/` with a matching title. A reference for the framework
+  itself is scoped in `docs/plan-api-reference.md`, whose finding is that 87%
+  of the 397 public framework defs carry no doc comment at all, so the
+  bottleneck is content rather than tooling.
 - **Async generation: no argument cap, and `string` results.** The four-argument
   limit came from the entry callback's arity chain, not from anything about
   threads, and disappeared when that chain was unified — async now uses the
