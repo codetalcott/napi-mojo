@@ -316,6 +316,37 @@ jobs:
           NAPI_MOJO_STRESS_WIDTH: '80'
         run: node ./node_modules/jest/bin/jest.js tests/async_stress.test.js --runInBand
 
+  # TEMPORARY — remove once read. docs/plan-api-reference.md leaves one
+  # question open: does the pinned Mojo toolchain ship a doc extractor? It
+  # decides the renderer half of that plan, and cannot be answered from the
+  # dev sandbox (no local toolchain, and docs.modular.com is egress-blocked).
+  # Every command is || true: this job reports, it does not gate.
+  probe-mojo-doc:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.1
+        with:
+          pixi-version: latest
+      - name: Does `mojo doc` exist, and what does it emit?
+        run: |
+          echo "::group::mojo --help (subcommand list)"
+          pixi run mojo --help 2>&1 | head -40 || true
+          echo "::endgroup::"
+          echo "::group::mojo doc --help"
+          pixi run mojo doc --help 2>&1 | head -40 || true
+          echo "::endgroup::"
+          echo "::group::mojo doc on a real framework module"
+          pixi run mojo doc src/napi/framework/js_mojo_array.mojo -o /tmp/doc.json 2>&1 | head -20 || true
+          if [ -f /tmp/doc.json ]; then
+            echo "OUTPUT PRODUCED: $(wc -c < /tmp/doc.json) bytes"
+            head -c 1200 /tmp/doc.json || true
+          else
+            echo "NO OUTPUT FILE PRODUCED"
+          fi
+          echo "::endgroup::"
+
   # Node 24 coverage is a SEPARATE job, deliberately — not a node-version
   # matrix dimension on `test`. The required status checks on main are pinned
   # by NAME (`test (macos-latest)`, `test (ubuntu-latest)`); adding a matrix
