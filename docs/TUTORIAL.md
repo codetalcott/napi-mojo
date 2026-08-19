@@ -81,8 +81,8 @@ before conversion, so `greet(42)` throws a descriptive `TypeError` —
 
 Supported argument and return tokens: `number`, `string`, `boolean`/`bool`,
 `int32`, `uint32`, `int64`, `object`, `array`, `number[]`, `string[]`, `any`,
-any struct you declare, and the zero-copy binary tokens `float64array` and
-`buffer` (section 8). The full reference lives in the
+any struct you declare (and its array form, `<struct>[]`), and the zero-copy
+binary tokens `float64array` and `buffer` (section 8). The full reference lives in the
 [README's Code Generator section](../README.md#code-generator).
 
 ## 4. Returning null
@@ -151,6 +151,30 @@ def describe_config_pure(c: ConfigData) -> String:
 describeConfig({ host: 'localhost', port: 8080, verbose: true })
 // 'localhost:8080 (verbose)'
 ```
+
+Declaring the struct also gives you `config[]` — an array of them — in either
+position, with no further declaration:
+
+```toml
+[functions.verbose_only]
+js_name = "verboseOnly"
+args = ["config[]"]
+returns = "config[]"
+mojo_fn = "verbose_only"
+```
+
+```mojo
+def verbose_only(cs: List[ConfigData]) -> List[ConfigData]:
+    var out = List[ConfigData]()
+    for i in range(len(cs)):
+        if cs[i].verbose:
+            out.append(ConfigData(copy=cs[i]))
+    return out^
+```
+
+The generated struct implements the framework's `ToJsValue`/`FromJsValue`
+traits, and the array converters are generic over those — so the array form
+costs nothing extra. TypeScript sees `Config[]`.
 
 ## 6. Work off the main thread
 

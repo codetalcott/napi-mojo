@@ -196,15 +196,29 @@ const STRUCT_FIELD_MAP = {
 function registerStructTypes(structs) {
   for (const [name, sDecl] of Object.entries(structs)) {
     const pascalName = snakeToPascal(name);
+    const jsName = sDecl.js_name || pascalName;
     TYPE_MAP[name] = {
       napi_type: 'NAPI_TYPE_OBJECT',
-      type_name: sDecl.js_name || pascalName,
+      type_name: jsName,
       extract: (varName, argExpr) =>
         `        var ${varName} = ${name}_from_js(_b, env, ${argExpr})`,
       create: (expr) => `${name}_to_js(_b, env, ${expr})`,
     };
+    // `<struct>[]` — arrays of structs, via the parametric converters in
+    // convert.mojo. Those are generic over ToJsValue/FromJsValue, which the
+    // generated struct now implements, so this costs one TYPE_MAP entry
+    // rather than a bespoke emitter per struct.
+    TYPE_MAP[`${name}[]`] = {
+      napi_type: '__IS_ARRAY__',
+      type_name: `${jsName}[]`,
+      isStructArray: true,
+      extract: (varName, argExpr) =>
+        `        var ${varName} = from_js_array[${pascalName}Data](_b, env, ${argExpr})`,
+      create: (expr) => `to_js_array[${pascalName}Data](_b, env, ${expr})`,
+    };
   }
 }
+
 
 // --- Resolve type, handling nullable suffix ('?') ---
 // Returns { typeInfo, nullable } where nullable=true skips the type check.
@@ -773,7 +787,7 @@ function generateStruct(name, sDecl) {
   }
 
   // --- Struct definition ---
-  out.push(`struct ${structName}(Movable, Copyable):`);
+  out.push(`struct ${structName}(Movable, Copyable, ToJsValue, FromJsValue):`);
   for (const [fName, fType] of fieldEntries) {
     validateIdentifier(fName, `[structs.${name}] field "${fName}"`);
     // The old warn-and-continue here was a lie: the loops below dereference
@@ -819,6 +833,18 @@ function generateStruct(name, sDecl) {
   for (const [fName] of fieldEntries) {
     out.push(`        self.${fName} = copy.${fName}`);
   }
+  out.push('');
+
+  // --- Conversion trait conformance ---
+  // Delegates to the free functions below. Implementing the traits is what
+  // makes <struct>[] work: to_js_array/from_js_array are generic over them,
+  // so arrays of structs need no per-struct emitter.
+  out.push(`    def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:`);
+  out.push(`        return ${name}_to_js(b, env, self)`);
+  out.push('');
+  out.push(`    @staticmethod`);
+  out.push(`    def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:`);
+  out.push(`        return ${name}_from_js(b, env, val)`);
   out.push('');
 
   // --- from_js converter ---
@@ -916,6 +942,7 @@ function main() {
   const needsStrArray = allTypeTokens.includes('string[]');
   const needsConvertImport = needsF64Array || needsStrArray;
   const needsNullReturn = funcEntries.some(([, d]) => (d.returns || '').endsWith('?'));
+  const needsStructArray = allTypeTokens.some((t) => (TYPE_MAP[t] || {}).isStructArray);
   const needsF64TypedArray = allTypeTokens.includes('float64array');
   const needsBuffer = allTypeTokens.includes('buffer');
 
@@ -967,7 +994,11 @@ function main() {
     const importNames = [];
     if (needsF64Array) importNames.push('from_js_array_f64', 'to_js_array_f64');
     if (needsStrArray) importNames.push('from_js_array_str', 'to_js_array_str');
+    // (struct arrays use the parametric pair, imported separately below)
     output.push(`from napi.framework.convert import ${importNames.join(', ')}`);
+  }
+  if (needsStructArray) {
+    output.push('from napi.framework.convert import from_js_array, to_js_array');
   }
   // Extra imports for mojo_fn declarations (user-defined pure Mojo functions)
   const extraImports = decl.extra_imports || [];
@@ -1056,6 +1087,7 @@ function main() {
   if (structEntries.length > 0) {
     structOutput.push('from napi.types import NapiEnv, NapiValue');
     structOutput.push('from napi.bindings import Bindings');
+    structOutput.push('from napi.framework.convert import ToJsValue, FromJsValue');
     structOutput.push('from napi.framework.js_string import JsString');
     structOutput.push('from napi.framework.js_number import JsNumber');
     structOutput.push('from napi.framework.js_boolean import JsBoolean');

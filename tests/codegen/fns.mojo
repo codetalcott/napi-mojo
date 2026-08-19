@@ -121,3 +121,13 @@ def ks_byte_sum(bytes: Span[Byte, MutAnyOrigin]) -> Float64:
     for i in range(len(bytes)):
         total += Float64(Int(bytes[i]))
     return total
+
+
+## --- Struct arrays, via the parametric converters ---
+## Works because the generated struct implements ToJsValue/FromJsValue;
+## from_js_array/to_js_array are generic over those traits.
+def ks_config_list_roundtrip(cs: List[KsConfigData]) -> List[KsConfigData]:
+    var out = List[KsConfigData]()
+    for i in range(len(cs)):
+        out.append(KsConfigData(copy=cs[i]))
+    return out^

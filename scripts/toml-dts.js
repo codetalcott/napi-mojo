@@ -56,8 +56,10 @@ function emitTomlDts(toml) {
   const tomlStructs = toml.structs || {};
   for (const [sName, sDecl] of Object.entries(tomlStructs)) {
     const jsName = sDecl.js_name || sName;
-    // Register the TOML struct name as a TS type mapping
+    // Register the TOML struct name as a TS type mapping, plus its array
+    // form — makeTokenToTs looks up the whole `name[]` token.
     map[sName] = jsName;
+    map[`${sName}[]`] = `${jsName}[]`;
     // Emit interface
     const fields = sDecl.fields || {};
     output.push(`export interface ${jsName} {`);

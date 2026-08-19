@@ -38,3 +38,14 @@ def scale_vec(v: Span[Float64, MutAnyOrigin], k: Float64) -> MojoFloat64Array:
     for i in range(len(v)):
         out.ptr[unsafe_offset=i] = v[i] * k
     return out^
+
+
+## Arrays of structs come free once the struct exists: the generated struct
+## implements ToJsValue/FromJsValue, and the parametric converters are generic
+## over those traits.
+def verbose_only(cs: List[ConfigData]) -> List[ConfigData]:
+    var out = List[ConfigData]()
+    for i in range(len(cs)):
+        if cs[i].verbose:
+            out.append(ConfigData(copy=cs[i]))
+    return out^
