@@ -11,7 +11,9 @@
 # Coverage map (each line names the branch it exists to instantiate):
 #   - sync arity 0,1,2,3,4 (get_one/two/three/FOUR), 5 and 6 (heap get_argv path)
 #   - every TYPE_MAP token as arg and return: number,string,boolean,bool,
-#     int32,uint32,int64,object,array,number[],string[],any + struct names
+#     int32,uint32,int64,object,array,number[],string[],any + struct names,
+#     float64array (both positions) and buffer (arg only — the return
+#     direction is a rejection, covered in tests/codegen_guards.test.js)
 #   - nullable returns (number?/string? -> JsNull branch), nullable arg on
 #     every pass-through token (any?/object?/array? skip-check branch),
 #     body-only functions
@@ -26,7 +28,7 @@
 # When adding a generator feature, add its instantiation here IN THE SAME
 # COMMIT — a template branch this file does not reach is unverified.
 
-extra_imports = ["from fns import ks_zero, ks_echo_string, ks_not, ks_neg_i32, ks_inc_u32, ks_neg_i64, ks_object_passthrough, ks_sum_f64_list, ks_double_f64_list, ks_join_str_list, ks_wrap_str_list, ks_maybe_number, ks_maybe_string, ks_sum2, ks_sum3, ks_sum4, ks_sum5, ks_sum6, ks_config_roundtrip"]
+extra_imports = ["from fns import ks_zero, ks_echo_string, ks_not, ks_neg_i32, ks_inc_u32, ks_neg_i64, ks_object_passthrough, ks_sum_f64_list, ks_double_f64_list, ks_join_str_list, ks_wrap_str_list, ks_maybe_number, ks_maybe_string, ks_sum2, ks_sum3, ks_sum4, ks_sum5, ks_sum6, ks_config_roundtrip, ks_scale_vec, ks_byte_sum"]
 
 # --- Struct: every STRUCT_FIELD_MAP field type, plus the field names that
 # collide with the converter's own identifiers. `obj` used to redeclare
@@ -212,6 +214,20 @@ returns = "number"
 body = """
 return JsNumber.create(_b, env, 7.0).value
 """
+
+# --- Binary tokens: float64array (arg + return) and buffer (arg only) ---
+
+[functions.ks_scale_vec]
+js_name = "ksScaleVec"
+args = ["float64array", "number"]
+returns = "float64array"
+mojo_fn = "ks_scale_vec"
+
+[functions.ks_byte_sum]
+js_name = "ksByteSum"
+args = ["buffer"]
+returns = "number"
+mojo_fn = "ks_byte_sum"
 
 # --- Struct as arg and return ---
 

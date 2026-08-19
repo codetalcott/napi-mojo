@@ -4,6 +4,7 @@
 ## generated/structs.mojo, which the generator writes from [structs.*].
 
 from generated.structs import ConfigData
+from napi.framework.js_mojo_array import MojoFloat64Array
 
 
 def greet_pure(name: String) -> String:
@@ -27,3 +28,13 @@ def describe_config_pure(c: ConfigData) -> String:
     if c.verbose:
         return summary + " (verbose)"
     return summary
+
+
+## The Span points into the JS engine's buffer and is valid only for the
+## duration of this call. MojoFloat64Array allocates the output; to_js hands
+## that allocation to JS, whose GC frees it.
+def scale_vec(v: Span[Float64, MutAnyOrigin], k: Float64) -> MojoFloat64Array:
+    var out = MojoFloat64Array(len(v))
+    for i in range(len(v)):
+        out.ptr[unsafe_offset=i] = v[i] * k
+    return out^
