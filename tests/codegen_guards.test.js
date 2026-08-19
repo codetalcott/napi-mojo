@@ -74,6 +74,44 @@ describe('generator input guards', () => {
     expect(r.code).toBe(0);
   });
 
+  test('async declarations are capped at 4 args', () => {
+    const r = generate(
+      '[functions.too_many]\njs_name = "tooMany"\nasync = true\nreturns = "number"\n' +
+        'args = ["number", "number", "number", "number", "number"]\n' +
+        'execute_body = """\nptr[].result = 0.0\n"""\n'
+    );
+    // The async data struct is fixed at 4 input fields; the sync emitter's
+    // >=5-arg heap-argv path has no async counterpart.
+    expect(r.code).toBe(1);
+    expect(r.stderr).toMatch(/async function "too_many": 5 args declared/);
+  });
+
+  test('class members are capped at 4 args', () => {
+    const r = generate(
+      '[classes.thing]\njs_name = "Thing"\n\n' +
+        '[classes.thing.instance_methods.wide]\nreturns = "number"\n' +
+        'args = ["number", "number", "number", "number", "number"]\nbody = """\nreturn arg0\n"""\n'
+    );
+    expect(r.code).toBe(1);
+    expect(r.stderr).toMatch(/class method "thing\.wide": 5 args declared/);
+  });
+
+  test('a >=5-arg sync function still emits the heap-argv path', () => {
+    const r = generate(
+      '[functions.sum5]\njs_name = "sum5"\nreturns = "number"\n' +
+        'args = ["number", "number", "number", "number", "number"]\n' +
+        'body = """\nreturn _a0\n"""\n'
+    );
+    expect(r.code).toBe(0);
+    const out = fs.readFileSync(path.join(r.dir, 'generated', 'callbacks.mojo'), 'utf8');
+    // Sync is the one shape that goes past 4 args, and the origin widening on
+    // the alloc'd buffer is what an earlier template bug got wrong.
+    expect(out).toContain('var _argv = unsafe_alloc[NapiValue](5)');
+    expect(out).toContain('_argv.as_unsafe_any_origin()');
+    expect(out).toContain('var _a4 = _argv[unsafe_offset=4]');
+    expect(out).toContain('_argv.unsafe_free()');
+  });
+
   test('field names that collide with the converter\'s identifiers emit distinct locals', () => {
     const r = generate(
       '[structs.thing]\njs_name = "Thing"\n[structs.thing.fields]\n' +

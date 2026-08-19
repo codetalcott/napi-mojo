@@ -5,6 +5,15 @@ break the source API that downstream addons compile against.
 
 ## Unreleased
 
+### Changed
+
+- The argument-fetch and type-check chain in `generate-addon.mjs` lived in five
+  copies (sync, async, class constructor, instance method, static method) that
+  had to be edited in lockstep for any new token or arity — and had already
+  drifted. They now share one `emitArgPreamble`. Verified behaviour-preserving:
+  `src/generated/`, the kitchen-sink output (every emitter branch) and the
+  tutorial addon all regenerate **byte-identical** to the pre-refactor output.
+
 ### Added
 
 - **[docs/TUTORIAL.md](docs/TUTORIAL.md)** — the CLI's missing half. Walks from
