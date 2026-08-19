@@ -31,6 +31,8 @@
     "examples/",
     "!examples/codegen/build",
     "!examples/codegen/generated",
+    "!examples/tutorial/build",
+    "!examples/tutorial/generated",
     "bin/",
     "scripts/generate-addon.mjs",
     "scripts/generate-dts.js",

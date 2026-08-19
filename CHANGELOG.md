@@ -3,6 +3,18 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
+## Unreleased
+
+### Added
+
+- **[docs/TUTORIAL.md](docs/TUTORIAL.md)** — the CLI's missing half. Walks from
+  `napi-mojo init` to a published-shaped addon: a pure function, a nullable
+  return, a struct in both directions, async work on a worker thread, and a
+  class. Its finished addon is a real fixture, `examples/tutorial/`, and a new
+  CI step generates, compiles and calls every one of its exports on both
+  platforms — so the doc's snippets cannot rot the way prose examples do (this
+  repo has shipped that failure three times).
+
 ## 0.8.1 — 2026-08-19
 
 ### Fixed — code generator

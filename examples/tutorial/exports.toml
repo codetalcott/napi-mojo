@@ -1,0 +1,80 @@
+# exports.toml — the finished addon from docs/TUTORIAL.md.
+#
+# Every declaration here is generated, compiled and called by the "Tutorial
+# addon end-to-end" step in .github/workflows/test.yml, on macOS and Linux.
+# The tutorial quotes this file, so a snippet that stops compiling fails CI
+# instead of quietly misleading a reader.
+
+extra_imports = [
+    "from fns import greet_pure, add_pure, safe_divide_pure, describe_config_pure",
+]
+
+# --- A pure function with a string arg and a string return ---
+[functions.greet]
+js_name = "greet"
+args = ["string"]
+returns = "string"
+mojo_fn = "greet_pure"
+
+# --- Numbers ---
+[functions.add]
+js_name = "add"
+args = ["number", "number"]
+returns = "number"
+mojo_fn = "add_pure"
+
+# --- Optional[T] in Mojo becomes `T | null` in TypeScript ---
+[functions.safe_divide]
+js_name = "safeDivide"
+args = ["number", "number"]
+returns = "number?"
+mojo_fn = "safe_divide_pure"
+
+# --- A JS object shape, both directions ---
+[structs.config]
+js_name = "Config"
+[structs.config.fields]
+host = "string"
+port = "number"
+verbose = "boolean"
+
+[functions.describe_config]
+js_name = "describeConfig"
+args = ["config"]
+returns = "string"
+mojo_fn = "describe_config_pure"
+
+# --- Work on a worker thread, resolved as a Promise ---
+# execute_body runs OFF the main thread, so it may not touch N-API: it reads
+# and writes only the fields of the generated data struct.
+[functions.async_product]
+js_name = "asyncProduct"
+args = ["number", "number"]
+returns = "number"
+async = true
+execute_body = """
+ptr[].result = ptr[].input0 * ptr[].input1
+"""
+
+# --- A class: constructor, getter, method ---
+[classes.counter]
+js_name = "Counter"
+constructor_args = ["number"]
+constructor_body = """
+JsObject(this_val).set_named_property(_b, env, "_n", args[0])
+"""
+
+[classes.counter.getters.value]
+returns = "number"
+body = """
+return JsObject(this_val).get_named_property(_b, env, "_n")
+"""
+
+[classes.counter.instance_methods.plus]
+args = ["number"]
+returns = "number"
+body = """
+var current = JsNumber.from_napi_value(_b, env, JsObject(this_val).get_named_property(_b, env, "_n"))
+var addend = JsNumber.from_napi_value(_b, env, args[0])
+return JsNumber.create(_b, env, current + addend).value
+"""

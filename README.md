@@ -127,6 +127,11 @@ the Mojo runtime libraries next to the `.node` and rewrites its load paths, so
 the result runs on machines with no Mojo installation (this is how the demo
 packages on npm are produced).
 
+**New here? [docs/TUTORIAL.md](docs/TUTORIAL.md)** walks the whole path — a
+function, a nullable return, a struct in both directions, async work on a
+worker thread, and a class — building [`examples/tutorial/`](examples/tutorial),
+which CI compiles and calls on both platforms.
+
 See [`examples/`](examples/) for runnable scripts.
 
 ### Building from source
