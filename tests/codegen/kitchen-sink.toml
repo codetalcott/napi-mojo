@@ -19,6 +19,8 @@
 #     body-only functions
 #   - async arity 0,1,3,4 and every ASYNC_TYPE_MAP return (number,int32,
 #     uint32,int64), nested execute_body indentation
+#   - native class state: state = "<struct>", constructor_mojo_fn, and
+#     mojo_fn on an instance method and a getter (wrap/unwrap + type tag)
 #   - struct arrays (<struct>[]) in both positions, via the parametric
 #     to_js_array/from_js_array over the struct's trait conformance
 #   - struct with every STRUCT_FIELD_MAP field type, plus fields named
@@ -30,7 +32,7 @@
 # When adding a generator feature, add its instantiation here IN THE SAME
 # COMMIT — a template branch this file does not reach is unverified.
 
-extra_imports = ["from fns import ks_zero, ks_echo_string, ks_not, ks_neg_i32, ks_inc_u32, ks_neg_i64, ks_object_passthrough, ks_sum_f64_list, ks_double_f64_list, ks_join_str_list, ks_wrap_str_list, ks_maybe_number, ks_maybe_string, ks_sum2, ks_sum3, ks_sum4, ks_sum5, ks_sum6, ks_config_roundtrip, ks_config_list_roundtrip, ks_scale_vec, ks_byte_sum"]
+extra_imports = ["from fns import ks_zero, ks_echo_string, ks_not, ks_neg_i32, ks_inc_u32, ks_neg_i64, ks_object_passthrough, ks_sum_f64_list, ks_double_f64_list, ks_join_str_list, ks_wrap_str_list, ks_maybe_number, ks_maybe_string, ks_sum2, ks_sum3, ks_sum4, ks_sum5, ks_sum6, ks_config_roundtrip, ks_config_list_roundtrip, ks_scale_vec, ks_byte_sum, ks_acc_new, ks_acc_add, ks_acc_total"]
 
 # --- Struct: every STRUCT_FIELD_MAP field type, plus the field names that
 # collide with the converter's own identifiers. `obj` used to redeclare
@@ -216,6 +218,28 @@ returns = "number"
 body = """
 return JsNumber.create(_b, env, 7.0).value
 """
+
+# --- Native class state: state + constructor_mojo_fn + member mojo_fn ---
+
+[structs.ks_acc_state]
+js_name = "KsAccState"
+[structs.ks_acc_state.fields]
+total = "number"
+
+[classes.ks_acc]
+js_name = "KsAcc"
+state = "ks_acc_state"
+constructor_args = ["number"]
+constructor_mojo_fn = "ks_acc_new"
+
+[classes.ks_acc.instance_methods.add]
+args = ["number"]
+returns = "number"
+mojo_fn = "ks_acc_add"
+
+[classes.ks_acc.getters.total]
+returns = "number"
+mojo_fn = "ks_acc_total"
 
 # --- Struct arrays: <struct>[] in both positions ---
 

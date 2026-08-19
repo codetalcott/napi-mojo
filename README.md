@@ -250,6 +250,27 @@ and its array form `<struct>[]`, plus the zero-copy binary tokens
 `array`) to skip type validation; on a return type `?` maps `Optional[T]` to
 `T | null`.
 
+### Classes with native state
+
+```toml
+[classes.tally]
+js_name = "Tally"
+state = "tally_state"            # a declared [structs.*]
+constructor_args = ["number"]
+constructor_mojo_fn = "tally_new"
+
+[classes.tally.instance_methods.add]
+args = ["number"]
+returns = "number"
+mojo_fn = "tally_add"            # def tally_add(mut s: TallyStateData, n: Float64) -> Float64
+```
+
+The generator heap-allocates the struct, wraps it onto the instance with a
+128-bit type tag derived from the class name, hands the unwrapped state to
+every `mojo_fn` member, and emits the GC finalizer. Borrowing a method onto a
+foreign object is a TypeError, not a reinterpret. `mojo_fn` on setters and
+static methods is rejected (no instance to unwrap); use `body`.
+
 ### Nullable returns (`Optional[T]` → `T | null`)
 
 ```toml

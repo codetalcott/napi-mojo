@@ -564,10 +564,65 @@ function generateRegistration(declarations) {
 
 // --- Class generation ---
 
+// --- Native class state (`state = "<struct>"`) ---
+// Without this, a generated class has nowhere to keep Mojo data: the demo's
+// ExamplePoint stashes its fields as JS properties on `this`, which costs a
+// napi call per access and cannot hold anything that is not a JS value.
+//
+// With it, the class wraps a heap-allocated instance of a declared struct and
+// every member reaches it through the type-tagged unwrap. The tag is what
+// makes borrowing a method onto a foreign instance a TypeError instead of
+// memory corruption (see the class type-tagging note in CLAUDE.md), so it is
+// generated, not optional.
+//
+// The tag halves are derived from the class name by FNV-1a rather than picked
+// randomly, because the generator must produce identical output on every run —
+// the drift gate compares bytes.
+function classTag(className) {
+  const fnv = (seed, s) => {
+    let h = BigInt(seed);
+    const prime = 1099511628211n;
+    const mask = (1n << 64n) - 1n;
+    for (const ch of `${s}`) {
+      h = (h ^ BigInt(ch.codePointAt(0))) & mask;
+      h = (h * prime) & mask;
+    }
+    return h;
+  };
+  const lower = fnv('14695981039346656037', `napi-mojo:${className}:lower`);
+  const upper = fnv('14695981039346656037', `napi-mojo:${className}:upper`);
+  const hex = (v) => `0x${v.toString(16).toUpperCase().padStart(16, '0')}`;
+  return { lower: hex(lower), upper: hex(upper) };
+}
+
+// Resolve a class's `state` declaration to the generated struct type, failing
+// with a legible message rather than emitting a reference to a type that does
+// not exist.
+function resolveClassState(className, decl, structs) {
+  const stateName = decl.state;
+  if (!stateName) return null;
+  if (!structs || !structs[stateName]) {
+    fail(`class "${className}": state = "${stateName}" does not match any [structs.*] declaration`);
+  }
+  return {
+    name: stateName,
+    mojoType: `${snakeToPascal(stateName)}Data`,
+    tag: classTag(className),
+  };
+}
+
 // Generate the constructor callback for a class
-function generateClassConstructor(className, decl) {
+function generateClassConstructor(className, decl, structs) {
   const jsName = decl.js_name || className;
   const ctorArgs = decl.constructor_args || [];
+  const ctorMojoFn = decl.constructor_mojo_fn;
+  const state = resolveClassState(className, decl, structs);
+  if (ctorMojoFn && !state) {
+    fail(`class "${className}": constructor_mojo_fn requires state = "<struct>" — the returned value needs somewhere to live`);
+  }
+  if (state && !ctorMojoFn) {
+    fail(`class "${className}": state = "${state.name}" requires constructor_mojo_fn to build it`);
+  }
   const ctorBody = decl.constructor_body || 'pass';
   const fnName = `${className}_ctor_fn`;
 
@@ -587,6 +642,39 @@ function generateClassConstructor(className, decl) {
 
   emitArgPreamble(lines, jsName, ctorArgs);
 
+  if (state) {
+    // Build the state with the user's pure fn, heap-allocate it, and hand
+    // ownership to JS via wrap_native. On a wrap failure ownership comes back
+    // to us, so the data is freed here rather than leaked or double-freed.
+    for (let i = 0; i < ctorArgs.length; i++) {
+      const { typeInfo } = resolveType(ctorArgs[i]);
+      lines.push(typeInfo.extract(`mojo_arg${i}`, getArgExpr(i, ctorArgs.length)));
+    }
+    const callArgs = ctorArgs.map((_, i) => `mojo_arg${i}`).join(', ');
+    lines.push(`        var _state = ${ctorMojoFn}(${callArgs})`);
+    lines.push(`        var _data_ptr = unsafe_alloc[${state.mojoType}](1)`);
+    lines.push(`        _data_ptr.unsafe_write(_state^)`);
+    lines.push(`        var _fin_ref = ${className}_finalize`);
+    lines.push(`        try:`);
+    lines.push(`            wrap_native(`);
+    lines.push(`                _b,`);
+    lines.push(`                env,`);
+    lines.push(`                this_val,`);
+    lines.push(`                _data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),`);
+    lines.push(`                fn_ptr(_fin_ref),`);
+    lines.push(`                NapiTypeTag(${state.tag.lower}, ${state.tag.upper}),`);
+    lines.push(`            )`);
+    lines.push(`        except e:`);
+    lines.push(`            _data_ptr.unsafe_deinit_pointee()`);
+    lines.push(`            _data_ptr.unsafe_free()`);
+    lines.push(`            raise e^`);
+    lines.push(`        return this_val`);
+    lines.push(`    except:`);
+    lines.push(`        throw_js_error(env, "${jsName} constructor failed")`);
+    lines.push(`        return NapiValue(unsafe_from_address=Int(0))`);
+    return lines.join('\n');
+  }
+
   const bodyLines = ctorBody.split('\n');
   for (const bl of bodyLines) {
     lines.push(`        ${bl}`);
@@ -600,11 +688,31 @@ function generateClassConstructor(className, decl) {
   return lines.join('\n');
 }
 
+// The GC finalizer for a stateful class: JS owns the allocation after
+// wrap_native, so this is the only place it is freed.
+function generateClassFinalizer(className, state) {
+  return [
+    `def ${className}_finalize(`,
+    `    env: NapiEnv,`,
+    `    data: OpaquePointer[MutAnyOrigin],`,
+    `    hint: OpaquePointer[MutAnyOrigin],`,
+    `):`,
+    `    var ptr = data.unsafe_bitcast[${state.mojoType}]()`,
+    `    ptr.unsafe_deinit_pointee()`,
+    `    ptr.unsafe_free()`,
+  ].join('\n');
+}
+
 // Generate an instance method callback (has access to this_val)
-function generateClassMethod(className, methodName, decl) {
+function generateClassMethod(className, methodName, decl, structs, classDecl) {
   const jsName = decl.js_name || methodName;
   const fnName = `${className}_${methodName}_fn`;
   const args = decl.args || [];
+  const mojoFn = decl.mojo_fn;
+  const state = resolveClassState(className, classDecl || {}, structs);
+  if (mojoFn && !state) {
+    fail(`class method "${className}.${methodName}": mojo_fn requires the class to declare state = "<struct>" — there is nothing for the function to receive`);
+  }
   const body = decl.body || 'return JsUndefined.create(_b, env).value';
 
   validateIdentifier(methodName, `[classes.${className}.instance_methods.${methodName}]`);
@@ -621,9 +729,36 @@ function generateClassMethod(className, methodName, decl) {
 
   emitArgPreamble(lines, jsName, args);
 
-  const bodyLines = body.split('\n');
-  for (const bl of bodyLines) {
-    lines.push(`        ${bl}`);
+  if (mojoFn) {
+    // The type-tagged unwrap is what makes borrowing this method onto a
+    // foreign wrapped instance a TypeError rather than a reinterpret.
+    lines.push(`        var _state = unwrap_native_from_this[${state.mojoType}](`);
+    lines.push(`            _b, env, this_val, NapiTypeTag(${state.tag.lower}, ${state.tag.upper})`);
+    lines.push(`        )`);
+    for (let i = 0; i < args.length; i++) {
+      const { typeInfo } = resolveType(args[i]);
+      lines.push(typeInfo.extract(`mojo_arg${i}`, getArgExpr(i, args.length)));
+    }
+    const callArgs = ['_state[]', ...args.map((_, i) => `mojo_arg${i}`)].join(', ');
+    const returns = decl.returns || 'any';
+    const returnsNullable = returns.endsWith('?');
+    const { typeInfo: retTypeInfo } = resolveType(returns);
+    if (retTypeInfo.returnUnsupported) {
+      fail(`class method "${className}.${methodName}" returns "${returns}": ${retTypeInfo.returnUnsupported}`);
+    }
+    lines.push(`        var mojo_result = ${mojoFn}(${callArgs})`);
+    if (returnsNullable) {
+      lines.push(`        if not mojo_result:`);
+      lines.push(`            return JsNull.create(_b, env).value`);
+      lines.push(`        return ${retTypeInfo.create('mojo_result.value()')}`);
+    } else {
+      lines.push(`        return ${retTypeInfo.create('mojo_result')}`);
+    }
+  } else {
+    const bodyLines = body.split('\n');
+    for (const bl of bodyLines) {
+      lines.push(`        ${bl}`);
+    }
   }
 
   lines.push(`    except:`);
@@ -640,6 +775,9 @@ function camelToSnake(s) {
 
 // Generate a static method callback (no this_val)
 function generateClassStaticMethod(className, methodName, decl) {
+  if (decl.mojo_fn) {
+    fail(`class static method "${className}.${methodName}": mojo_fn is not supported on static methods yet (there is no instance to unwrap) — use body`);
+  }
   const jsName = decl.js_name || methodName;
   const fnName = `${className}_static_${camelToSnake(methodName)}_fn`;
   const args = decl.args || [];
@@ -671,6 +809,9 @@ function generateClassStaticMethod(className, methodName, decl) {
 
 // Generate a setter callback (has access to this_val + val)
 function generateClassSetter(className, propName, decl) {
+  if (decl.mojo_fn) {
+    fail(`class setter "${className}.${propName}": mojo_fn is not supported on setters yet — use body, or a method`);
+  }
   const fnName = `${className}_set_${propName}_fn`;
   const body = decl.body || 'return val';
 
@@ -694,8 +835,13 @@ function generateClassSetter(className, propName, decl) {
 }
 
 // Generate a getter callback (has access to this_val, no args)
-function generateClassGetter(className, getterName, decl) {
+function generateClassGetter(className, getterName, decl, structs, classDecl) {
   const fnName = `${className}_get_${getterName}_fn`;
+  const mojoFn = decl.mojo_fn;
+  const state = resolveClassState(className, classDecl || {}, structs);
+  if (mojoFn && !state) {
+    fail(`class getter "${className}.${getterName}": mojo_fn requires the class to declare state = "<struct>"`);
+  }
   const body = decl.body || 'return JsUndefined.create(_b, env).value';
 
   const lines = [];
@@ -704,9 +850,18 @@ function generateClassGetter(className, getterName, decl) {
   lines.push(`        var _b = CbArgs.get_bindings(env, info)`);
   lines.push(`        var this_val = CbArgs.get_this(_b, env, info)`);
 
-  const bodyLines = body.split('\n');
-  for (const bl of bodyLines) {
-    lines.push(`        ${bl}`);
+  if (mojoFn) {
+    lines.push(`        var _state = unwrap_native_from_this[${state.mojoType}](`);
+    lines.push(`            _b, env, this_val, NapiTypeTag(${state.tag.lower}, ${state.tag.upper})`);
+    lines.push(`        )`);
+    const { typeInfo: retTypeInfo } = resolveType(decl.returns || 'any');
+    lines.push(`        var mojo_result = ${mojoFn}(_state[])`);
+    lines.push(`        return ${retTypeInfo.create('mojo_result')}`);
+  } else {
+    const bodyLines = body.split('\n');
+    for (const bl of bodyLines) {
+      lines.push(`        ${bl}`);
+    }
   }
 
   lines.push(`    except:`);
@@ -942,6 +1097,7 @@ function main() {
   const needsStrArray = allTypeTokens.includes('string[]');
   const needsConvertImport = needsF64Array || needsStrArray;
   const needsNullReturn = funcEntries.some(([, d]) => (d.returns || '').endsWith('?'));
+  const needsClassState = Object.values(classes).some((c) => c && c.state);
   const needsStructArray = allTypeTokens.some((t) => (TYPE_MAP[t] || {}).isStructArray);
   const needsF64TypedArray = allTypeTokens.includes('float64array');
   const needsBuffer = allTypeTokens.includes('buffer');
@@ -1000,6 +1156,10 @@ function main() {
   if (needsStructArray) {
     output.push('from napi.framework.convert import from_js_array, to_js_array');
   }
+  if (needsClassState) {
+    output.push('from napi.types import NapiTypeTag');
+    output.push('from napi.framework.js_class import wrap_native, unwrap_native_from_this');
+  }
   // Extra imports for mojo_fn declarations (user-defined pure Mojo functions)
   const extraImports = decl.extra_imports || [];
   for (const imp of (Array.isArray(extraImports) ? extraImports : [extraImports])) {
@@ -1035,17 +1195,23 @@ function main() {
   // Generate class callbacks
   for (const [cName, cDecl] of classEntries) {
     const jsName = cDecl.js_name || cName;
+    const cState = resolveClassState(cName, cDecl, structs);
+    if (cState) {
+      output.push(`# ${jsName} class — GC finalizer for its native state`);
+      output.push(generateClassFinalizer(cName, cState));
+      output.push('');
+    }
     output.push(`# ${jsName} class — constructor`);
-    output.push(generateClassConstructor(cName, cDecl));
+    output.push(generateClassConstructor(cName, cDecl, structs));
     output.push('');
     for (const [mName, mDecl] of Object.entries(cDecl.instance_methods || {})) {
       output.push(`# ${jsName}.${mName} (instance method)`);
-      output.push(generateClassMethod(cName, mName, mDecl));
+      output.push(generateClassMethod(cName, mName, mDecl, structs, cDecl));
       output.push('');
     }
     for (const [gName, gDecl] of Object.entries(cDecl.getters || {})) {
       output.push(`# ${jsName}.${gName} (getter)`);
-      output.push(generateClassGetter(cName, gName, gDecl));
+      output.push(generateClassGetter(cName, gName, gDecl, structs, cDecl));
       output.push('');
     }
     for (const [sName, sDecl] of Object.entries(cDecl.setters || {})) {

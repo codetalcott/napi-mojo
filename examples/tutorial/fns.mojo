@@ -3,7 +3,7 @@
 ## Each function is named by `mojo_fn` in exports.toml. Struct types come from
 ## generated/structs.mojo, which the generator writes from [structs.*].
 
-from generated.structs import ConfigData
+from generated.structs import ConfigData, TallyStateData
 from napi.framework.js_mojo_array import MojoFloat64Array
 
 
@@ -49,3 +49,18 @@ def verbose_only(cs: List[ConfigData]) -> List[ConfigData]:
         if cs[i].verbose:
             out.append(ConfigData(copy=cs[i]))
     return out^
+
+
+## Native class state. The generator hands each member the unwrapped struct;
+## a mutating method takes it `mut`, a getter borrows it.
+def tally_new(initial: Float64) -> TallyStateData:
+    return TallyStateData(initial)
+
+
+def tally_add(mut s: TallyStateData, n: Float64) -> Float64:
+    s.total += n
+    return s.total
+
+
+def tally_total(s: TallyStateData) -> Float64:
+    return s.total

@@ -74,6 +74,69 @@ describe('generator input guards', () => {
     expect(r.code).toBe(0);
   });
 
+  test('mojo_fn on a class member requires declared state', () => {
+    const r = generate(
+      '[classes.thing]\njs_name = "Thing"\n\n' +
+        '[classes.thing.instance_methods.go]\nreturns = "number"\nmojo_fn = "go"\n'
+    );
+    expect(r.code).toBe(1);
+    expect(r.stderr).toMatch(/requires the class to declare state/);
+  });
+
+  test('state must name a real struct, and needs a constructor to build it', () => {
+    const missing = generate('[classes.thing]\njs_name = "Thing"\nstate = "nope"\n');
+    expect(missing.code).toBe(1);
+    expect(missing.stderr).toMatch(/does not match any \[structs\.\*\] declaration/);
+
+    const noCtor = generate(
+      '[structs.st]\njs_name = "St"\n[structs.st.fields]\nn = "number"\n\n' +
+        '[classes.thing]\njs_name = "Thing"\nstate = "st"\n'
+    );
+    expect(noCtor.code).toBe(1);
+    expect(noCtor.stderr).toMatch(/requires constructor_mojo_fn/);
+  });
+
+  test('mojo_fn is rejected where there is no instance to unwrap', () => {
+    const base =
+      '[structs.st]\njs_name = "St"\n[structs.st.fields]\nn = "number"\n\n' +
+      '[classes.thing]\njs_name = "Thing"\nstate = "st"\n' +
+      'constructor_args = ["number"]\nconstructor_mojo_fn = "mk"\n\n';
+    const setter = generate(base + '[classes.thing.setters.n]\nmojo_fn = "set_n"\n');
+    expect(setter.code).toBe(1);
+    expect(setter.stderr).toMatch(/not supported on setters/);
+
+    const stat = generate(base + '[classes.thing.static_methods.make]\nreturns = "number"\nmojo_fn = "mk2"\n');
+    expect(stat.code).toBe(1);
+    expect(stat.stderr).toMatch(/no instance to unwrap/);
+  });
+
+  test('a stateful class emits the wrap/unwrap ceremony with a stable tag', () => {
+    const toml =
+      '[structs.st]\njs_name = "St"\n[structs.st.fields]\nn = "number"\n\n' +
+      '[classes.thing]\njs_name = "Thing"\nstate = "st"\n' +
+      'constructor_args = ["number"]\nconstructor_mojo_fn = "mk"\n\n' +
+      '[classes.thing.instance_methods.bump]\nreturns = "number"\nmojo_fn = "bump"\n';
+    const a = generate(toml);
+    expect(a.code).toBe(0);
+    const out = fs.readFileSync(path.join(a.dir, 'generated', 'callbacks.mojo'), 'utf8');
+    expect(out).toContain('def thing_finalize(');
+    expect(out).toContain('ptr.unsafe_deinit_pointee()');
+    expect(out).toContain('wrap_native(');
+    expect(out).toContain('var _state = unwrap_native_from_this[StData](');
+    expect(out).toContain('var mojo_result = bump(_state[])');
+    // Ownership returns to the caller when wrap_native raises, so the data is
+    // freed there rather than leaked or double-freed against the finalizer.
+    expect(out).toContain('raise e^');
+
+    // The tag is derived from the class name, so regeneration is byte-stable —
+    // the drift gate compares bytes, and a random tag would break every run.
+    const tag = out.match(/NapiTypeTag\((0x[0-9A-F]+), (0x[0-9A-F]+)\)/);
+    expect(tag).not.toBeNull();
+    const b = generate(toml);
+    const out2 = fs.readFileSync(path.join(b.dir, 'generated', 'callbacks.mojo'), 'utf8');
+    expect(out2).toBe(out);
+  });
+
   test('a declared struct also yields a <struct>[] token', () => {
     const r = generate(
       '[structs.cfg]\njs_name = "Cfg"\n[structs.cfg.fields]\nhost = "string"\n\n' +
