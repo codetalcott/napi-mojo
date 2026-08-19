@@ -221,6 +221,7 @@ struct NapiNodeVersion:
     var major: UInt32
     var minor: UInt32
     var patch: UInt32
+    @__allow_legacy_any_origin_fields
     var release: OpaquePointer[ImmutAnyOrigin]  # const char*
 
     def __init__(out self):

@@ -99,6 +99,21 @@ jobs:
             tests/compile/framework_coverage.mojo -o /tmp/framework_coverage.so
           node scripts/check-compile-coverage.mjs
 
+      # A third lazily-checked thing, alongside method bodies and generator
+      # templates: documentation. 87% of public defs in src/napi/ had neither a
+      # docstring nor a comment when this was measured, and nothing noticed
+      # because nothing was counting. This asks the compiler itself —
+      # `mojo doc --diagnose-missing-doc-strings` emits one warning per
+      # undocumented public symbol — and ratchets the per-file count against
+      # scripts/docstring-floor.json: it may fall, never rise.
+      #
+      # It is a step inside the required job, not a new job, so it cannot
+      # rename the required checks and strand open PRs.
+      #
+      # raw.mojo is deliberately excluded; see the script header.
+      - name: Docstring coverage (ratchet)
+        run: node scripts/check-docstring-coverage.mjs
+
       # The drift gate above only proves the templates src/exports.toml
       # happens to instantiate. Three latent template bugs shipped through
       # branches nothing instantiates (two Int(0)-literal-era rots, one bare

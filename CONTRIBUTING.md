@@ -25,10 +25,42 @@ Standards and rules for all contributions to `napi-mojo`, including LLM agents a
 - **Cached Bindings**: Everything runs on cached function pointers (`b: Bindings` first parameter). The only env-only surface is the `raw_get_cb_info` bootstrap (`CbArgs`) and the `throw_js_*` except-block fallbacks — do not add new env-only overloads. See "Cached NapiBindings" in CLAUDE.md.
 - **Struct Layout**: `NapiPropertyDescriptor` must match the C struct layout exactly (8 fields, no reordering).
 
-### Coverage Rules (the two that bite)
+### Coverage Rules (the three that bite)
 
 - **Every new or changed public framework method gets a cover call in `tests/compile/framework_coverage.mojo` — one per overload — in the same commit.** Mojo elaborates imported-package `def` bodies lazily, so an uncovered method can ship broken with the build green. `scripts/check-compile-coverage.mjs` fails CI on a missing name but cannot see a missing overload; that part is on you.
 - **Every new code-generator feature gets an instantiation in `tests/codegen/kitchen-sink.toml` in the same commit.** The drift gate only proves templates that `src/exports.toml` happens to use; the kitchen sink compiles every emitter branch in CI.
+- **Every new public `def` in `src/napi/framework/`, `src/napi/error.mojo` or `src/napi/module.mojo` gets a `"""` docstring in the same commit.** `scripts/check-docstring-coverage.mjs` ratchets against a committed floor, so the undocumented count can fall but never rise. See the docstring convention below.
+
+### Docstrings
+
+Public framework symbols use Mojo `"""` docstrings — not the `##`-above-the-def comments found in older code. Only `"""` is a language feature: it is what `mojo doc` extracts, what an editor hover shows, and what the coverage gate counts. Convert a `##` block opportunistically when you touch the method; there is no sweep planned.
+
+```mojo
+def create(b: Bindings, env: NapiEnv, value: String) raises -> Self:
+    """Create a JS string from a Mojo String.
+
+    Args:
+        b: Cached N-API bindings.
+        env: The N-API environment.
+        value: UTF-8 content; the byte length is passed explicitly, so the
+            String need not be NUL-terminated.
+
+    Returns:
+        A JsString wrapping the new napi_value.
+
+    Raises:
+        If napi_create_string_utf8 does not return napi_ok.
+    """
+```
+
+The gate is a **ratchet, not a target**: it fails when the undocumented count rises, and equally when it falls without `scripts/docstring-floor.json` being updated in the same change (otherwise the coverage you just added can be silently undone). To move the floor:
+
+```bash
+node scripts/check-docstring-coverage.mjs --print    # see current counts
+node scripts/check-docstring-coverage.mjs --update   # rewrite the floor, then commit it
+```
+
+`src/napi/raw.mojo` is deliberately out of scope: its 147 thin FFI wrappers are an implementation detail, and a docstring on each would only restate the N-API name.
 
 ### Toolchain and Imports (Mojo 1.0.0 stable)
 
