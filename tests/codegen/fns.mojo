@@ -3,7 +3,7 @@
 
 from std.collections import Optional
 from napi.types import NapiValue
-from generated.structs import KsConfigData
+from generated.structs import KsConfigData, KsAccStateData
 from napi.framework.js_mojo_array import MojoFloat64Array
 
 
@@ -131,3 +131,19 @@ def ks_config_list_roundtrip(cs: List[KsConfigData]) -> List[KsConfigData]:
     for i in range(len(cs)):
         out.append(KsConfigData(copy=cs[i]))
     return out^
+
+
+## --- Native class state ---
+## The generator wraps a heap KsAccStateData onto the JS instance and hands
+## each member the unwrapped state. Mutating methods take it `mut`.
+def ks_acc_new(initial: Float64) -> KsAccStateData:
+    return KsAccStateData(initial)
+
+
+def ks_acc_add(mut s: KsAccStateData, n: Float64) -> Float64:
+    s.total += n
+    return s.total
+
+
+def ks_acc_total(s: KsAccStateData) -> Float64:
+    return s.total

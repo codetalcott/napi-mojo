@@ -16,6 +16,16 @@ break the source API that downstream addons compile against.
 
 ### Added
 
+- **Classes can keep native Mojo state.** `state = "<struct>"` plus
+  `constructor_mojo_fn` makes the generator heap-allocate a declared struct,
+  wrap it onto the instance, and hand it to every `mojo_fn` member — a
+  mutating method takes it `mut`, a getter borrows it — with the GC finalizer
+  emitted alongside. Previously a generated class had nowhere to put Mojo data
+  and had to stash values as JS properties. Instances are stamped with a
+  128-bit type tag derived (deterministically, so regeneration is byte-stable)
+  from the class name, and every member verifies it, so borrowing a method onto
+  a foreign object raises a TypeError instead of reinterpreting memory.
+  `mojo_fn` on setters and static methods is rejected rather than ignored.
 - **Generated structs implement `ToJsValue`/`FromJsValue`, and `<struct>[]`
   works everywhere a type token is accepted.** Declaring `[structs.config]` has
   always given you `config` as a token; it now also gives `config[]`, in

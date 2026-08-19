@@ -159,6 +159,10 @@ jobs:
             const c = new m.Counter(10);
             assert.strictEqual(c.value, 10);
             assert.strictEqual(c.plus(5), 15);
+            const t = new m.Tally(100);
+            assert.strictEqual(t.add(5), 105);
+            assert.strictEqual(t.total, 105);
+            assert.throws(() => m.Tally.prototype.add.call({}, 1), /TypeError|failed/);
             const picked = m.verboseOnly([
               { host: 'a', port: 1, verbose: true },
               { host: 'b', port: 2, verbose: false },

@@ -6,7 +6,7 @@
 # instead of quietly misleading a reader.
 
 extra_imports = [
-    "from fns import greet_pure, add_pure, safe_divide_pure, describe_config_pure, scale_vec, verbose_only",
+    "from fns import greet_pure, add_pure, safe_divide_pure, describe_config_pure, scale_vec, verbose_only, tally_new, tally_add, tally_total",
 ]
 
 # --- A pure function with a string arg and a string return ---
@@ -72,7 +72,30 @@ args = ["float64array", "number"]
 returns = "float64array"
 mojo_fn = "scale_vec"
 
-# --- A class: constructor, getter, method ---
+# --- A class that keeps NATIVE state ---
+# state names a declared struct; the generator heap-allocates it, wraps it on
+# the instance with a 128-bit type tag, and hands it to every member.
+[structs.tally_state]
+js_name = "TallyState"
+[structs.tally_state.fields]
+total = "number"
+
+[classes.tally]
+js_name = "Tally"
+state = "tally_state"
+constructor_args = ["number"]
+constructor_mojo_fn = "tally_new"
+
+[classes.tally.instance_methods.add]
+args = ["number"]
+returns = "number"
+mojo_fn = "tally_add"
+
+[classes.tally.getters.total]
+returns = "number"
+mojo_fn = "tally_total"
+
+# --- A class holding its state as JS properties ---
 [classes.counter]
 js_name = "Counter"
 constructor_args = ["number"]

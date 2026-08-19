@@ -206,7 +206,69 @@ Async declarations are currently limited to numeric returns and at most four
 arguments, for the same reason: the data struct crosses a thread boundary, so
 it can hold only types that are safe to move there.
 
-## 7. A class
+## 7. A class with native state
+
+A class can keep real Mojo data instead of stashing values as JS properties.
+Name a declared struct as its `state`, and the generator heap-allocates it,
+wraps it onto the instance, and hands it to every member:
+
+```toml
+[structs.tally_state]
+js_name = "TallyState"
+[structs.tally_state.fields]
+total = "number"
+
+[classes.tally]
+js_name = "Tally"
+state = "tally_state"
+constructor_args = ["number"]
+constructor_mojo_fn = "tally_new"
+
+[classes.tally.instance_methods.add]
+args = ["number"]
+returns = "number"
+mojo_fn = "tally_add"
+
+[classes.tally.getters.total]
+returns = "number"
+mojo_fn = "tally_total"
+```
+
+```mojo
+def tally_new(initial: Float64) -> TallyStateData:
+    return TallyStateData(initial)
+
+
+def tally_add(mut s: TallyStateData, n: Float64) -> Float64:
+    s.total += n
+    return s.total
+
+
+def tally_total(s: TallyStateData) -> Float64:
+    return s.total
+```
+
+```js
+const t = new Tally(100);
+t.add(5)   // 105
+t.total    // 105
+```
+
+A mutating method takes the state `mut`; a getter borrows it. The allocation
+belongs to JavaScript once the constructor returns — its garbage collector
+runs the generated finalizer.
+
+**Every instance is stamped with a 128-bit type tag**, and each member checks
+it before unwrapping. That is what makes
+`Tally.prototype.add.call(somethingElse)` a `TypeError` rather than a
+reinterpret of unrelated memory — the failure mode is otherwise reachable from
+plain JavaScript. The tag is derived from the class name, so regenerating
+produces identical output.
+
+`mojo_fn` is not available on setters or static methods yet; both are
+rejected with that message rather than silently ignored. Use `body` there.
+
+## 7b. A class without native state
 
 ```toml
 [classes.counter]
@@ -238,7 +300,7 @@ c.value    // 10
 c.plus(5)  // 15
 ```
 
-Class members use `body` rather than `mojo_fn`: the body is spliced into the
+Without `state`, class members use `body` rather than `mojo_fn`: the body is spliced into the
 generated callback, where `this_val` is the instance, `env` is the N-API
 environment, and `_b` is the cached bindings pointer that every framework call
 takes as its first argument. Getters, setters, static methods and inheritance
