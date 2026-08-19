@@ -158,6 +158,7 @@ with `npm run generate:addon`; CI gates drift with `git diff --exit-code src/gen
 | `echoConfig(cfg)` | `mojo_fn` + struct | Round-trips a `Config` struct (`[structs.config]`) |
 | `configSummary(cfg)` | `mojo_fn` + struct | Formats a `Config` as a string |
 | `asyncSum(a, b)` | `async = true` | Returns a Promise; sums on a worker thread |
+| `asyncLabel(s)` | `async_label_fn` | Appends " done" on a worker thread; resolves with the string (generated async, String result) |
 | `new ExamplePoint(x, y)` | class | Generated class: `.x`/`.y` getters + setters, `.sum()`, `ExamplePoint.isPoint()` |
 
 `Config` (`[structs.config]`) generates the `ConfigData` Mojo struct plus

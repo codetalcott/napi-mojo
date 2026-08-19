@@ -205,6 +205,77 @@ jobs:
       - name: Run GC finalizer tests
         run: npm run test:gc
 
+  # Concurrent async work under a checking allocator.
+  #
+  # `returns = "string"` puts a Mojo String in the async data struct: allocated
+  # on a libuv worker thread, freed on the main thread when the completion
+  # callback deinitializes the struct. That reasoning is written down in
+  # CLAUDE.md, but reasoning is not evidence — this repo shipped a finalizer
+  # use-after-free that passed CI for months because nothing ran the allocator
+  # in checking mode.
+  #
+  # Guard Malloc turns a deferred freelist trap into an immediate fault AT the
+  # bad access, so a corrupting write lands in the addon's own frame instead of
+  # surfacing later inside V8. It is macOS-only; Linux gets glibc's malloc
+  # checks, which are much weaker but free.
+  #
+  # Separate, non-required job for the same reason as test-node24: the required
+  # checks are pinned by name, and this one is deliberately allowed to be slow.
+  async-stress:
+    if: github.event_name == 'pull_request'
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install pixi
+        uses: prefix-dev/setup-pixi@v0.10.1
+        with:
+          pixi-version: latest
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Build Mojo addon
+        run: pixi run bash build.sh
+
+      # jest is invoked DIRECTLY, not through npx: npx re-execs and drops
+      # DYLD_INSERT_LIBRARIES, so the suite would run under the normal
+      # allocator while appearing to be checked. --runInBand keeps every
+      # allocation in one process where the checker can see it.
+      - name: Async stress under Guard Malloc (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib \
+          MALLOC_STRICT_SIZE=1 \
+            node ./node_modules/jest/bin/jest.js tests/async_stress.test.js --runInBand
+
+      # No libgmalloc here. MALLOC_PERTURB_ fills freed memory with a poison
+      # byte, so a use-after-free reads garbage instead of plausible data, and
+      # MALLOC_CHECK_=3 aborts on heap inconsistency. Weaker than Guard Malloc
+      # — it catches the corruption later, not at the access — but it is the
+      # cheap half of the same signal.
+      - name: Async stress with glibc malloc checks (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          MALLOC_PERTURB_=165 MALLOC_CHECK_=3 \
+            node ./node_modules/jest/bin/jest.js tests/async_stress.test.js --runInBand
+
+      # A second pass with GC forced between rounds, so a premature free of a
+      # string already handed to JS has a chance to surface.
+      - name: Async stress with forced GC
+        run: |
+          NODE_OPTIONS='--expose-gc' \
+            node ./node_modules/jest/bin/jest.js tests/async_stress.test.js --runInBand
+
   # Node 24 coverage is a SEPARATE job, deliberately — not a node-version
   # matrix dimension on `test`. The required status checks on main are pinned
   # by NAME (`test (macos-latest)`, `test (ubuntu-latest)`); adding a matrix
