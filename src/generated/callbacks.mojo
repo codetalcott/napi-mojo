@@ -21,6 +21,8 @@ from std.memory.alloc import unsafe_alloc
 from napi.framework.async_work import AsyncWork, AsyncWorkResult
 from napi.framework.js_null import JsNull
 from napi.framework.convert import from_js_array_f64, to_js_array_f64, from_js_array_str, to_js_array_str
+from napi.types import NapiTypeTag
+from napi.framework.js_class import wrap_native, unwrap_native_from_this
 from addon.user_fns import square_pure
 from addon.user_fns import clamp_pure
 from addon.user_fns import uppercase_pure
@@ -33,7 +35,15 @@ from addon.user_fns import safe_divide_pure
 from addon.user_fns import find_name_pure
 from addon.struct_fns import echo_config_pure
 from addon.struct_fns import config_summary_pure
-from generated.structs import ConfigData, config_from_js, config_to_js
+from addon.struct_fns import tally_new
+from addon.struct_fns import tally_add
+from addon.struct_fns import tally_total
+from addon.struct_fns import tally_set_total
+from addon.struct_fns import tally_label
+from addon.struct_fns import tally_zero
+from addon.struct_fns import tally_combine
+from addon.struct_fns import tally_parse_total
+from generated.structs import ConfigData, config_from_js, config_to_js, TallyStateData, tally_state_from_js, tally_state_to_js
 
 # exampleAdd
 def example_add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -658,6 +668,171 @@ def example_point_static_is_point_fn(env: NapiEnv, info: NapiValue) -> NapiValue
         throw_js_error(env, "isPoint failed")
         return NapiValue(unsafe_from_address=Int(0))
 
+# Tally class — GC finalizer for its native state
+def tally_finalize(
+    env: NapiEnv,
+    data: OpaquePointer[MutAnyOrigin],
+    hint: OpaquePointer[MutAnyOrigin],
+):
+    var ptr = data.unsafe_bitcast[TallyStateData]()
+    ptr.unsafe_deinit_pointee()
+    ptr.unsafe_free()
+
+# Tally class — constructor
+def tally_ctor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(_b, env, info)
+        var args = CbArgs.get_two(_b, env, info)
+        var _t_args_0_ = js_typeof(_b, env, args[0])
+        if _t_args_0_ != NAPI_TYPE_STRING:
+            throw_js_type_error_dynamic(_b, env, "Tally: expected string for arg 1, got " + js_type_name(_t_args_0_))
+            return NapiValue(unsafe_from_address=Int(0))
+        var _t_args_1_ = js_typeof(_b, env, args[1])
+        if _t_args_1_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "Tally: expected number for arg 2, got " + js_type_name(_t_args_1_))
+            return NapiValue(unsafe_from_address=Int(0))
+        var mojo_arg0 = JsString.from_napi_value(_b, env, args[0])
+        var mojo_arg1 = JsNumber.from_napi_value(_b, env, args[1])
+        var _state = tally_new(mojo_arg0, mojo_arg1)
+        var _data_ptr = unsafe_alloc[TallyStateData](1)
+        _data_ptr.unsafe_write(_state^)
+        var _fin_ref = tally_finalize
+        try:
+            wrap_native(
+                _b,
+                env,
+                this_val,
+                _data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                fn_ptr(_fin_ref),
+                NapiTypeTag(0x287DE45536CA4D16, 0xDBB9EA0B84AE92A3),
+            )
+        except e:
+            _data_ptr.unsafe_deinit_pointee()
+            _data_ptr.unsafe_free()
+            raise e^
+        return this_val
+    except:
+        throw_js_error(env, "Tally constructor failed")
+        return NapiValue(unsafe_from_address=Int(0))
+
+# Tally.add (instance method)
+def tally_add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(_b, env, info)
+        var arg0 = CbArgs.get_one(_b, env, info)
+        var _t_arg0 = js_typeof(_b, env, arg0)
+        if _t_arg0 != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "add: expected number, got " + js_type_name(_t_arg0))
+            return NapiValue(unsafe_from_address=Int(0))
+        var _state = unwrap_native_from_this[TallyStateData](
+            _b, env, this_val, NapiTypeTag(0x287DE45536CA4D16, 0xDBB9EA0B84AE92A3)
+        )
+        var mojo_arg0 = JsNumber.from_napi_value(_b, env, arg0)
+        var mojo_result = tally_add(_state[], mojo_arg0)
+        return JsNumber.create(_b, env, mojo_result).value
+    except:
+        throw_js_error(env, "add failed")
+        return NapiValue(unsafe_from_address=Int(0))
+
+# Tally.total (getter)
+def tally_get_total_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(_b, env, info)
+        var _state = unwrap_native_from_this[TallyStateData](
+            _b, env, this_val, NapiTypeTag(0x287DE45536CA4D16, 0xDBB9EA0B84AE92A3)
+        )
+        var mojo_result = tally_total(_state[])
+        return JsNumber.create(_b, env, mojo_result).value
+    except:
+        throw_js_error(env, "total getter failed")
+        return NapiValue(unsafe_from_address=Int(0))
+
+# Tally.label (getter)
+def tally_get_label_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(_b, env, info)
+        var _state = unwrap_native_from_this[TallyStateData](
+            _b, env, this_val, NapiTypeTag(0x287DE45536CA4D16, 0xDBB9EA0B84AE92A3)
+        )
+        var mojo_result = tally_label(_state[])
+        return JsString.create(_b, env, mojo_result).value
+    except:
+        throw_js_error(env, "label getter failed")
+        return NapiValue(unsafe_from_address=Int(0))
+
+# Tally.total (setter)
+def tally_set_total_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var this_val = CbArgs.get_this(_b, env, info)
+        var val = CbArgs.get_one(_b, env, info)
+        var _state = unwrap_native_from_this[TallyStateData](
+            _b, env, this_val, NapiTypeTag(0x287DE45536CA4D16, 0xDBB9EA0B84AE92A3)
+        )
+        var _t_val = js_typeof(_b, env, val)
+        if _t_val != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "total setter: expected number, got " + js_type_name(_t_val))
+            return NapiValue(unsafe_from_address=Int(0))
+        var mojo_val = JsNumber.from_napi_value(_b, env, val)
+        tally_set_total(_state[], mojo_val)
+        return val
+    except:
+        throw_js_error(env, "total setter failed")
+        return NapiValue(unsafe_from_address=Int(0))
+
+# Tally.zero (static method)
+def tally_static_zero_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var mojo_result = tally_zero()
+        return JsNumber.create(_b, env, mojo_result).value
+    except:
+        throw_js_error(env, "zero failed")
+        return NapiValue(unsafe_from_address=Int(0))
+
+# Tally.combine (static method)
+def tally_static_combine_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(_b, env, info)
+        var _t_args_0_ = js_typeof(_b, env, args[0])
+        if _t_args_0_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "combine: expected number for arg 1, got " + js_type_name(_t_args_0_))
+            return NapiValue(unsafe_from_address=Int(0))
+        var _t_args_1_ = js_typeof(_b, env, args[1])
+        if _t_args_1_ != NAPI_TYPE_NUMBER:
+            throw_js_type_error_dynamic(_b, env, "combine: expected number for arg 2, got " + js_type_name(_t_args_1_))
+            return NapiValue(unsafe_from_address=Int(0))
+        var mojo_arg0 = JsNumber.from_napi_value(_b, env, args[0])
+        var mojo_arg1 = JsNumber.from_napi_value(_b, env, args[1])
+        var mojo_result = tally_combine(mojo_arg0, mojo_arg1)
+        return JsNumber.create(_b, env, mojo_result).value
+    except:
+        throw_js_error(env, "combine failed")
+        return NapiValue(unsafe_from_address=Int(0))
+
+# Tally.parseTotal (static method)
+def tally_static_parse_total_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(_b, env, info)
+        var _t_arg0 = js_typeof(_b, env, arg0)
+        if _t_arg0 != NAPI_TYPE_STRING:
+            throw_js_type_error_dynamic(_b, env, "parseTotal: expected string, got " + js_type_name(_t_arg0))
+            return NapiValue(unsafe_from_address=Int(0))
+        var mojo_arg0 = JsString.from_napi_value(_b, env, arg0)
+        var mojo_result = tally_parse_total(mojo_arg0)
+        if not mojo_result:
+            return JsNull.create(_b, env).value
+        return JsNumber.create(_b, env, mojo_result.value()).value
+    except:
+        throw_js_error(env, "parseTotal failed")
+        return NapiValue(unsafe_from_address=Int(0))
+
 
 ## register_generated — register all generated functions and classes
 ##
@@ -720,9 +895,24 @@ def register_generated(mut m: ModuleBuilder) raises:
     var example_point_set_x_gen_ref = example_point_set_x_fn
     var example_point_set_y_gen_ref = example_point_set_y_fn
     var example_point_static_is_point_gen_ref = example_point_static_is_point_fn
+    var tally_ctor_gen_ref = tally_ctor_fn
+    var tally_add_gen_ref = tally_add_fn
+    var tally_get_total_gen_ref = tally_get_total_fn
+    var tally_get_label_gen_ref = tally_get_label_fn
+    var tally_set_total_gen_ref = tally_set_total_fn
+    var tally_static_zero_gen_ref = tally_static_zero_fn
+    var tally_static_combine_gen_ref = tally_static_combine_fn
+    var tally_static_parse_total_gen_ref = tally_static_parse_total_fn
 
     var example_point_builder = m.class_def("ExamplePoint", fn_ptr(example_point_ctor_gen_ref))
     example_point_builder.instance_method("sum", fn_ptr(example_point_sum_gen_ref))
     example_point_builder.getter_setter("x", fn_ptr(example_point_get_x_gen_ref), fn_ptr(example_point_set_x_gen_ref))
     example_point_builder.getter_setter("y", fn_ptr(example_point_get_y_gen_ref), fn_ptr(example_point_set_y_gen_ref))
     example_point_builder.static_method("isPoint", fn_ptr(example_point_static_is_point_gen_ref))
+    var tally_builder = m.class_def("Tally", fn_ptr(tally_ctor_gen_ref))
+    tally_builder.instance_method("add", fn_ptr(tally_add_gen_ref))
+    tally_builder.getter_setter("total", fn_ptr(tally_get_total_gen_ref), fn_ptr(tally_set_total_gen_ref))
+    tally_builder.getter("label", fn_ptr(tally_get_label_gen_ref))
+    tally_builder.static_method("zero", fn_ptr(tally_static_zero_gen_ref))
+    tally_builder.static_method("combine", fn_ptr(tally_static_combine_gen_ref))
+    tally_builder.static_method("parseTotal", fn_ptr(tally_static_parse_total_gen_ref))

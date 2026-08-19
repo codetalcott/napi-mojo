@@ -17,13 +17,23 @@ test('generate-dts.js produces build/index.d.ts', () => {
 
 test('.d.ts contains export for every addon function', () => {
   const dts = fs.readFileSync(DTS_PATH, 'utf8');
-  // Exclude known class constructors (they appear as functions in addon object)
-  const knownClasses = ['Counter', 'Animal', 'Dog', 'ExamplePoint'];
-  const keys = Object.keys(addon).filter(
-    k => typeof addon[k] === 'function' && !knownClasses.includes(k)
+  // Class constructors are functions on the addon object but are declared
+  // `export class`, so they are matched against that instead of being listed
+  // by hand. The hardcoded list silently needed editing every time a class was
+  // added — a test that rots rather than one that guards.
+  const declaredClasses = new Set(
+    [...dts.matchAll(/^export class (\w+)/gm)].map(m => m[1])
   );
+  const keys = Object.keys(addon).filter(k => typeof addon[k] === 'function');
   for (const key of keys) {
+    if (declaredClasses.has(key)) continue;
     expect(dts).toMatch(new RegExp(`export function ${key}\\b`));
+  }
+  // Deriving the skip list means a stale `export class` could hide a missing
+  // export, so close that: every declared class must really be on the addon.
+  expect(declaredClasses.size).toBeGreaterThan(0);
+  for (const cls of declaredClasses) {
+    expect(typeof addon[cls]).toBe('function');
   }
 });
 

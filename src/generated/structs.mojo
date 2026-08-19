@@ -54,3 +54,39 @@ def config_to_js(b: Bindings, env: NapiEnv, data: ConfigData) raises -> NapiValu
     obj.set_property(b, env, "verbose", JsBoolean.create(b, env, data.verbose).value)
     return obj.value
 
+# TallyState struct
+struct TallyStateData(Movable, Copyable, ToJsValue, FromJsValue):
+    var total: Float64
+    var label: String
+
+    def __init__(out self, total: Float64, label: String):
+        self.total = total
+        self.label = label
+
+    def __moveinit__(out self, deinit take: Self):
+        self.total = take.total
+        self.label = take.label^
+
+    def __init__(out self, *, copy: Self):
+        self.total = copy.total
+        self.label = copy.label
+
+    def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+        return tally_state_to_js(b, env, self)
+
+    @staticmethod
+    def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
+        return tally_state_from_js(b, env, val)
+
+def tally_state_from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> TallyStateData:
+    var obj = JsObject(val)
+    var _f_total = JsNumber.from_napi_value(b, env, obj.get_named_property(b, env, "total"))
+    var _f_label = JsString.from_napi_value(b, env, obj.get_named_property(b, env, "label"))
+    return TallyStateData(_f_total, _f_label)
+
+def tally_state_to_js(b: Bindings, env: NapiEnv, data: TallyStateData) raises -> NapiValue:
+    var obj = JsObject.create(b, env)
+    obj.set_property(b, env, "total", JsNumber.create(b, env, data.total).value)
+    obj.set_property(b, env, "label", JsString.create(b, env, data.label).value)
+    return obj.value
+

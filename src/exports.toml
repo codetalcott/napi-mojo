@@ -27,6 +27,14 @@ extra_imports = [
   "from addon.user_fns import find_name_pure",
   "from addon.struct_fns import echo_config_pure",
   "from addon.struct_fns import config_summary_pure",
+  "from addon.struct_fns import tally_new",
+  "from addon.struct_fns import tally_add",
+  "from addon.struct_fns import tally_total",
+  "from addon.struct_fns import tally_set_total",
+  "from addon.struct_fns import tally_label",
+  "from addon.struct_fns import tally_zero",
+  "from addon.struct_fns import tally_combine",
+  "from addon.struct_fns import tally_parse_total",
 ]
 
 # --- Example declarations ---
@@ -301,3 +309,57 @@ js_name = "configSummary"
 args = ["config"]
 returns = "string"
 mojo_fn = "config_summary_pure"
+
+# --- Native class state: the runtime half of `state = "<struct>"` ---
+#
+# Everything below existed only in tests/codegen/kitchen-sink.toml, which
+# COMPILES the generated callbacks but never loads them. So wrap/unwrap, the
+# type tag, `mut` mutation persisting across calls, and the finalizer had no
+# runtime coverage at all. This class is that coverage, and it is what
+# tests/class_state.test.js drives.
+
+[structs.tally_state]
+js_name = "TallyState"
+[structs.tally_state.fields]
+total = "number"
+label = "string"
+
+[classes.tally]
+js_name = "Tally"
+state = "tally_state"
+constructor_args = ["string", "number"]
+constructor_mojo_fn = "tally_new"
+
+[classes.tally.instance_methods.add]
+args = ["number"]
+returns = "number"
+mojo_fn = "tally_add"
+
+[classes.tally.getters.total]
+returns = "number"
+mojo_fn = "tally_total"
+
+# mojo_fn on a setter: the declared token type-checks the incoming value, and
+# the pure function mutates state through `mut`.
+[classes.tally.setters.total]
+type = "number"
+mojo_fn = "tally_set_total"
+
+[classes.tally.getters.label]
+returns = "string"
+mojo_fn = "tally_label"
+
+# mojo_fn on static methods: no instance, so no unwrap and no state.
+[classes.tally.static_methods.zero]
+returns = "number"
+mojo_fn = "tally_zero"
+
+[classes.tally.static_methods.combine]
+args = ["number", "number"]
+returns = "number"
+mojo_fn = "tally_combine"
+
+[classes.tally.static_methods.parseTotal]
+args = ["string"]
+returns = "number?"
+mojo_fn = "tally_parse_total"

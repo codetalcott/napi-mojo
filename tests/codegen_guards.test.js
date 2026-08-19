@@ -116,18 +116,49 @@ describe('generator input guards', () => {
     expect(noCtor.stderr).toMatch(/requires constructor_mojo_fn/);
   });
 
-  test('mojo_fn is rejected where there is no instance to unwrap', () => {
-    const base =
+  test('a mojo_fn setter is rejected on a class with no state', () => {
+    // A setter reaches its instance through the unwrap, so without a state
+    // struct there is nothing for the pure function to set. Statics are the
+    // opposite case and are covered below.
+    const stateless =
+      '[classes.thing]\njs_name = "Thing"\nconstructor_args = ["number"]\n' +
+      'constructor_body = """\npass\n"""\n\n' +
+      '[classes.thing.setters.n]\ntype = "number"\nmojo_fn = "set_n"\n';
+    const r = generate(stateless);
+    expect(r.code).toBe(1);
+    expect(r.stderr).toMatch(/requires the class to declare state/);
+  });
+
+  test('a mojo_fn setter unwraps state and type-checks its value', () => {
+    const toml =
       '[structs.st]\njs_name = "St"\n[structs.st.fields]\nn = "number"\n\n' +
       '[classes.thing]\njs_name = "Thing"\nstate = "st"\n' +
-      'constructor_args = ["number"]\nconstructor_mojo_fn = "mk"\n\n';
-    const setter = generate(base + '[classes.thing.setters.n]\nmojo_fn = "set_n"\n');
-    expect(setter.code).toBe(1);
-    expect(setter.stderr).toMatch(/not supported on setters/);
+      'constructor_args = ["number"]\nconstructor_mojo_fn = "mk"\n\n' +
+      '[classes.thing.setters.n]\ntype = "number"\nmojo_fn = "set_n"\n';
+    const r = generate(toml);
+    expect(r.code).toBe(0);
+    const out = fs.readFileSync(path.join(r.dir, 'generated', 'callbacks.mojo'), 'utf8');
+    expect(out).toMatch(/unwrap_native_from_this\[StData\]/);
+    // The declared token must actually gate the value, not just name it.
+    expect(out).toMatch(/js_typeof\(_b, env, val\)/);
+    expect(out).toMatch(/set_n\(_state\[\], mojo_val\)/);
+  });
 
-    const stat = generate(base + '[classes.thing.static_methods.make]\nreturns = "number"\nmojo_fn = "mk2"\n');
-    expect(stat.code).toBe(1);
-    expect(stat.stderr).toMatch(/no instance to unwrap/);
+  test('a mojo_fn static method needs no state and no unwrap', () => {
+    // The inverse of the setter guard: a static has no instance, so it must
+    // work on a class that declares no state at all.
+    const toml =
+      '[classes.thing]\njs_name = "Thing"\nconstructor_args = ["number"]\n' +
+      'constructor_body = """\npass\n"""\n\n' +
+      '[classes.thing.static_methods.make]\nargs = ["number"]\nreturns = "number"\nmojo_fn = "mk2"\n';
+    const r = generate(toml);
+    expect(r.code).toBe(0);
+    const out = fs.readFileSync(path.join(r.dir, 'generated', 'callbacks.mojo'), 'utf8');
+    expect(out).toMatch(/mk2\(mojo_arg0\)/);
+    // No instance means no unwrap and no `this` in the static's body.
+    const staticFn = out.split('def thing_static_make_fn')[1].split('\ndef ')[0];
+    expect(staticFn).not.toMatch(/unwrap_native/);
+    expect(staticFn).not.toMatch(/get_this/);
   });
 
   test('a stateful class emits the wrap/unwrap ceremony with a stable tag', () => {
