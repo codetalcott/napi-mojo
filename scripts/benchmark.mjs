@@ -8,17 +8,26 @@
  *
  * Reports mean, median, P95, P99, and stddev per call (ns).
  *
- * Usage: node scripts/benchmark.mjs
+ * Usage:
+ *   node scripts/benchmark.mjs           # human-readable table
+ *   node scripts/benchmark.mjs --json    # machine-readable, for the CI gate
+ *
+ * Iteration counts are overridable via $NAPI_MOJO_BENCH_BATCHES so CI can trade
+ * precision for wall-clock without editing this file.
  */
 
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const addon = require('../build/index.node');
 
+const JSON_MODE = process.argv.includes('--json');
 const WARMUP = 1000;
 const BATCH_SIZE = 1000;
-const BATCHES = 1000;
+const BATCHES = Number(process.env.NAPI_MOJO_BENCH_BATCHES ?? 1000);
 const TOTAL = BATCH_SIZE * BATCHES;
+
+// name -> stats, in declaration order. The gate reads this; the table prints it.
+const results = {};
 
 function bench(name, fn) {
   // Warmup
@@ -40,6 +49,15 @@ function bench(name, fn) {
   const variance = timings.reduce((s, t) => s + (t - mean) ** 2, 0) / BATCHES;
   const stddev = Math.sqrt(variance);
 
+  results[name] = {
+    mean: Number(mean.toFixed(1)),
+    median: Number(median.toFixed(1)),
+    p95: Number(p95.toFixed(1)),
+    p99: Number(p99.toFixed(1)),
+    stddev: Number(stddev.toFixed(1)),
+  };
+
+  if (JSON_MODE) return;
   const stats = [
     `mean=${mean.toFixed(0)}`,
     `median=${median.toFixed(0)}`,
@@ -50,8 +68,13 @@ function bench(name, fn) {
   console.log(`${name.padEnd(30)} ${stats} ns/call`);
 }
 
-console.log(`Node.js ${process.version} (${process.platform} ${process.arch})`);
-console.log(`Benchmark: ${TOTAL.toLocaleString()} iterations (${BATCHES} batches of ${BATCH_SIZE})\n`);
+// Headings are part of the table, not the data.
+function section(title) {
+  if (!JSON_MODE) console.log(title);
+}
+
+section(`Node.js ${process.version} (${process.platform} ${process.arch})`);
+section(`Benchmark: ${TOTAL.toLocaleString()} iterations (${BATCHES} batches of ${BATCH_SIZE})\n`);
 
 // Simple return (no args, no N-API reads)
 bench('hello()', () => addon.hello());
@@ -83,16 +106,32 @@ bench('exampleAdd(1, 2)', () => addon.exampleAdd(1, 2));
 // Generated string callback
 bench('exampleGreet("x")', () => addon.exampleGreet('x'));
 
-console.log('\n--- Class operations ---\n');
+section('\n--- Class operations ---\n');
 
 const counter = new addon.Counter(0);
 bench('counter.increment()', () => counter.increment());
 bench('counter.value (getter)', () => counter.value);
 
-console.log('\n--- Property access ---\n');
+section('\n--- Property access ---\n');
 
 const obj = { x: 42, y: 'hello' };
 bench('getProperty(obj, "x")', () => addon.getProperty(obj, 'x'));
 bench('strictEquals(1, 1)', () => addon.strictEquals(1, 1));
 
-console.log();
+if (JSON_MODE) {
+  console.log(
+    JSON.stringify(
+      {
+        platform: `${process.platform}-${process.arch}`,
+        node: process.version,
+        batches: BATCHES,
+        batchSize: BATCH_SIZE,
+        results,
+      },
+      null,
+      2
+    )
+  );
+} else {
+  console.log();
+}

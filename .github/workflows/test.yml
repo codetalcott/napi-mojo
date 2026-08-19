@@ -236,6 +236,48 @@ jobs:
   #
   # Separate, non-required job for the same reason as test-node24: the required
   # checks are pinned by name, and this one is deliberately allowed to be slow.
+  # Per-call overhead. The cached-NapiBindings design exists to keep a
+  # dlopen(NULL)+dlsym off the hot path, and nothing in CI has ever checked
+  # that it stayed off — a reintroduced per-call lookup costs 10-100x and would
+  # have shipped silently.
+  #
+  # Calibrated for that, and only that. Ceilings carry 4x headroom over the
+  # measured median, per platform, because these are shared runners with noisy
+  # neighbours. It will not see a 10% regression and does not pretend to; the
+  # step prints observed/ceiling as a percentage on every run so a slow creep
+  # is visible to a human long before it trips.
+  #
+  # NON-REQUIRED, deliberately: a timing measurement must never be able to
+  # block a merge. Same reasoning as test-node24 below.
+  benchmark:
+    if: github.event_name == 'pull_request'
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install pixi
+        uses: prefix-dev/setup-pixi@v0.10.1
+        with:
+          pixi-version: latest
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Build Mojo addon
+        run: pixi run bash build.sh
+
+      - name: Check per-call overhead against ceilings
+        run: node scripts/check-benchmark.mjs
+
   async-stress:
     if: github.event_name == 'pull_request'
     strategy:
