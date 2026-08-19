@@ -3,7 +3,7 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
-## Unreleased
+## 0.8.1 — 2026-08-19
 
 ### Fixed — code generator
 
