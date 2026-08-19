@@ -252,6 +252,13 @@ boolean, the integer tokens, declared structs) arrive as `Optional[T]`, while
 `any?`/`object?`/`array?` pass the raw value through. `number[]`,
 `float64array` and `buffer` have no meaningful Optional form and are refused.
 
+### Async returns
+
+`returns` accepts `number`, `int32`, `uint32`, `int64` and `string` for
+`async = true`. A `string` result is allocated by `execute_body` on the
+worker thread and consumed by the generated completion callback on the main
+thread, which is also where its destructor runs.
+
 ### Classes with native state
 
 ```toml

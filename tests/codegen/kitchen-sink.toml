@@ -17,6 +17,8 @@
 #   - nullable returns (number?/string? -> JsNull branch), nullable arg on
 #     every pass-through token (any?/object?/array? skip-check branch),
 #     body-only functions
+#   - async at 5 args (heap-argv path) and a String result (a data-struct
+#     field with a destructor, deinitialized on the main thread)
 #   - async arity 0,1,3,4 and every ASYNC_TYPE_MAP return (number,int32,
 #     uint32,int64), nested execute_body indentation
 #   - nullable converting args (Optional[T]): a scalar and a struct
@@ -218,6 +220,26 @@ args = []
 returns = "number"
 body = """
 return JsNumber.create(_b, env, 7.0).value
+"""
+
+# --- Async beyond the old limits: 5 args, and a String result ---
+
+[functions.ks_async_five]
+js_name = "ksAsyncFive"
+args = ["number", "number", "number", "number", "number"]
+returns = "number"
+async = true
+execute_body = """
+ptr[].result = ptr[].input0 + ptr[].input1 + ptr[].input2 + ptr[].input3 + ptr[].input4
+"""
+
+[functions.ks_async_string]
+js_name = "ksAsyncString"
+args = ["string"]
+returns = "string"
+async = true
+execute_body = """
+ptr[].result = ptr[].input0 + " (async)"
 """
 
 # --- Nullable converting args: Optional[T] in, descriptive check inside ---

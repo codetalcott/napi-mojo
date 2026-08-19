@@ -448,11 +448,25 @@ function generateCallback(name, decl) {
 // complete; the worker-thread execute never touches it). Mojo has no module
 // globals (see spike/global_probe.mojo's verdict), so the payload the
 // context already carries is the only zero-dlsym channel.
+// `transfer` marks a field that is not ImplicitlyCopyable, so __moveinit__
+// must move it rather than copy it.
+//
+// On `string`: the long-standing rule was that this struct may hold only
+// scalars "because the execute callback runs on a worker thread". The two
+// constraints that are actually load-bearing on that thread are documented
+// elsewhere and are different — no N-API calls, and no dlopen/dlsym (the
+// loader lock, which asyncProgress had to be fixed for). Allocating a Mojo
+// String is neither: it is malloc underneath, the struct is owned
+// exclusively by the async work while it runs, and the completion callback
+// (main thread) is ordered after execute by libuv, which is the handoff edge.
+// What that reasoning does NOT establish is race-freedom under concurrent
+// load; see the note in the PR that introduced it.
 const ASYNC_TYPE_MAP = {
   number: { mojoType: 'Float64', zeroVal: '0.0', createExpr: (e) => `JsNumber.create(_b, env, ${e})` },
   int32:  { mojoType: 'Int32',   zeroVal: '0',   createExpr: (e) => `JsInt32.create(_b, env, ${e})` },
   uint32: { mojoType: 'UInt32',  zeroVal: '0',   createExpr: (e) => `JsUInt32.create(_b, env, ${e})` },
   int64:  { mojoType: 'Int64',   zeroVal: '0',   createExpr: (e) => `JsInt64.create(_b, env, ${e})` },
+  string: { mojoType: 'String',  zeroVal: 'String()', transfer: true, createExpr: (e) => `JsString.create(_b, env, ${e})` },
 };
 
 function snakeToPascal(s) {
@@ -476,9 +490,6 @@ function generateAsyncFunction(name, decl) {
   if (!ASYNC_TYPE_MAP[returnsToken]) {
     fail(`async function "${name}": return type "${returnsToken}" is not supported for async (worker-thread data structs allow only: ${Object.keys(ASYNC_TYPE_MAP).join(', ')})`);
   }
-  if (args.length > 4) {
-    fail(`async function "${name}": ${args.length} args declared, but async generation supports at most 4`);
-  }
   const retType = ASYNC_TYPE_MAP[returnsToken];
   const argMojoTypes = args.map((a, idx) => {
     const tok = a.replace(/\?$/, '');
@@ -490,7 +501,9 @@ function generateAsyncFunction(name, decl) {
 
   const out = [];
 
-  // 1. Data struct (Movable — no destructors, safe to pass across threads)
+  // 1. Data struct (Movable). A `string` field brings a destructor with it;
+  // that destructor runs in the complete callback on the MAIN thread, where
+  // the struct is deinitialized, not on the worker.
   out.push(`struct ${structName}(Movable):`);
   // NapiDeferred/NapiAsyncWork hide AnyOrigin, which dev2026062206 rejects in
   // struct fields. Decorator is the changelog-sanctioned stopgap — see the
@@ -522,9 +535,9 @@ function generateAsyncFunction(name, decl) {
   out.push(`        self.work = take.work`);
   out.push(`        self.bindings_addr = take.bindings_addr`);
   for (let i = 0; i < args.length; i++) {
-    out.push(`        self.input${i} = take.input${i}`);
+    out.push(`        self.input${i} = take.input${i}${argMojoTypes[i].transfer ? '^' : ''}`);
   }
-  out.push(`        self.result = take.result`);
+  out.push(`        self.result = take.result${retType.transfer ? '^' : ''}`);
 
   // 2. Execute callback (worker thread — no N-API calls allowed)
   out.push('');
@@ -560,7 +573,7 @@ function generateAsyncFunction(name, decl) {
   out.push(`def ${name}_fn(env: NapiEnv, info: NapiValue) -> NapiValue:`);
   out.push(`    try:`);
   out.push(`        var _b = CbArgs.get_bindings(env, info)`);
-  emitArgPreamble(out, jsName, args);
+  emitArgPreamble(out, jsName, args, { allowVarargs: true });
   for (let i = 0; i < args.length; i++) {
     const info = TYPE_MAP[args[i].replace(/\?$/, '')] || TYPE_MAP.number;
     out.push(info.extract(`input${i}`, getArgExpr(i, args.length)));

@@ -79,6 +79,19 @@ args = ["float64array", "number"]
 returns = "float64array"
 mojo_fn = "scale_vec"
 
+# --- Async work that returns a string ---
+# execute_body runs on a worker thread and must not call N-API; it may build
+# a Mojo String, which the completion callback (main thread) turns into a JS
+# string and then deinitializes.
+[functions.shout_later]
+js_name = "shoutLater"
+args = ["string"]
+returns = "string"
+async = true
+execute_body = """
+ptr[].result = ptr[].input0 + "!!!"
+"""
+
 # --- A class that keeps NATIVE state ---
 # state names a declared struct; the generator heap-allocates it, wraps it on
 # the instance with a 128-bit type tag, and hands it to every member.

@@ -201,16 +201,40 @@ describe('generator input guards', () => {
     expect(out).toContain('return mojo_result.to_js(_b, env)');
   });
 
-  test('async declarations are capped at 4 args', () => {
+  test('async now goes past 4 args, via the heap-argv path', () => {
     const r = generate(
-      '[functions.too_many]\njs_name = "tooMany"\nasync = true\nreturns = "number"\n' +
+      '[functions.wide]\njs_name = "wide"\nasync = true\nreturns = "number"\n' +
         'args = ["number", "number", "number", "number", "number"]\n' +
-        'execute_body = """\nptr[].result = 0.0\n"""\n'
+        'execute_body = """\nptr[].result = ptr[].input0\n"""\n'
     );
-    // The async data struct is fixed at 4 input fields; the sync emitter's
-    // >=5-arg heap-argv path has no async counterpart.
+    expect(r.code).toBe(0);
+    const out = fs.readFileSync(path.join(r.dir, 'generated', 'callbacks.mojo'), 'utf8');
+    expect(out).toContain('var _argv = unsafe_alloc[NapiValue](5)');
+    expect(out).toContain('var input4: Float64');
+  });
+
+  test('an async string result transfers rather than copies in __moveinit__', () => {
+    const r = generate(
+      '[functions.label]\njs_name = "label"\nasync = true\nreturns = "string"\n' +
+        'args = ["string"]\nexecute_body = """\nptr[].result = ptr[].input0\n"""\n'
+    );
+    expect(r.code).toBe(0);
+    const out = fs.readFileSync(path.join(r.dir, 'generated', 'callbacks.mojo'), 'utf8');
+    expect(out).toContain('var result: String');
+    // String is not ImplicitlyCopyable: the move ctor must transfer both the
+    // input and the result, or the struct does not compile.
+    expect(out).toContain('self.input0 = take.input0^');
+    expect(out).toContain('self.result = take.result^');
+    expect(out).toContain('self.result = String()');
+  });
+
+  test('async still refuses argument and return tokens it cannot hold', () => {
+    const r = generate(
+      '[functions.bad]\njs_name = "bad"\nasync = true\nreturns = "object"\n' +
+        'args = ["number"]\nexecute_body = """\nptr[].result = 0\n"""\n'
+    );
     expect(r.code).toBe(1);
-    expect(r.stderr).toMatch(/async function "too_many": 5 args declared/);
+    expect(r.stderr).toMatch(/return type "object" is not supported for async/);
   });
 
   test('class members are capped at 4 args', () => {
