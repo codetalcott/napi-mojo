@@ -503,6 +503,72 @@ def async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         throw_js_error(env, "asyncSum failed")
         return NapiValue(unsafe_from_address=Int(0))
 
+# asyncLabel (async)
+struct AsyncLabelData(Movable):
+    @__allow_legacy_any_origin_fields
+    var deferred: NapiDeferred
+    @__allow_legacy_any_origin_fields
+    var work: NapiAsyncWork
+    # Cached NapiBindings address, written by the entry callback on the
+    # main thread; read only by the complete callback (also main thread).
+    var bindings_addr: Int
+    var input0: String
+    var result: String
+
+    def __init__(out self, input0: String):
+        self.deferred = NapiDeferred(unsafe_from_address=Int(0))
+        self.work = NapiAsyncWork(unsafe_from_address=Int(0))
+        self.bindings_addr = 0
+        self.input0 = input0
+        self.result = String()
+
+    def __moveinit__(out self, deinit take: Self):
+        self.deferred = take.deferred
+        self.work = take.work
+        self.bindings_addr = take.bindings_addr
+        self.input0 = take.input0^
+        self.result = take.result^
+
+def async_label_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.unsafe_bitcast[AsyncLabelData]()
+    ptr[].result = ptr[].input0 + " done"
+
+def async_label_complete(env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.unsafe_bitcast[AsyncLabelData]()
+    try:
+        var _b = Bindings(unsafe_from_address=ptr[].bindings_addr)
+        if status == NAPI_OK:
+            var rv = JsString.create(_b, env, ptr[].result)
+            AsyncWork.resolve(_b, env, ptr[].deferred, ptr[].work, rv.value)
+        else:
+            AsyncWork.reject_with_error(_b, env, ptr[].deferred, ptr[].work, "asyncLabel failed")
+    except:
+        pass
+    ptr.unsafe_deinit_pointee()
+    ptr.unsafe_free()
+
+def async_label_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var _b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(_b, env, info)
+        var _t_arg0 = js_typeof(_b, env, arg0)
+        if _t_arg0 != NAPI_TYPE_STRING:
+            throw_js_type_error_dynamic(_b, env, "asyncLabel: expected string, got " + js_type_name(_t_arg0))
+            return NapiValue(unsafe_from_address=Int(0))
+        var input0 = JsString.from_napi_value(_b, env, arg0)
+        var data_ptr = unsafe_alloc[AsyncLabelData](1)
+        data_ptr.unsafe_write(AsyncLabelData(input0))
+        data_ptr[].bindings_addr = Int(_b)
+        var exec_ref = async_label_execute
+        var comp_ref = async_label_complete
+        var aw = AsyncWork.queue(_b, env, "asyncLabel", data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), fn_ptr(exec_ref), fn_ptr(comp_ref))
+        data_ptr[].deferred = aw.deferred
+        data_ptr[].work = aw.work
+        return aw.value
+    except:
+        throw_js_error(env, "asyncLabel failed")
+        return NapiValue(unsafe_from_address=Int(0))
+
 # ExamplePoint class — constructor
 def example_point_ctor_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
@@ -613,6 +679,7 @@ def register_generated(mut m: ModuleBuilder) raises:
     var sum_array_gen_ref = sum_array_fn
     var example_clamp_gen_ref = example_clamp_fn
     var async_sum_gen_ref = async_sum_fn
+    var async_label_gen_ref = async_label_fn
     var negate_bool_gen_ref = negate_bool_fn
     var add_int32_gen_ref = add_int32_fn
     var describe_gen_ref = describe_fn
@@ -637,6 +704,7 @@ def register_generated(mut m: ModuleBuilder) raises:
     m.method("sumArrayPure", fn_ptr(sum_array_gen_ref))
     m.method("exampleClamp", fn_ptr(example_clamp_gen_ref))
     m.method("asyncSum", fn_ptr(async_sum_gen_ref))
+    m.method("asyncLabel", fn_ptr(async_label_gen_ref))
     m.method("negateBoolPure", fn_ptr(negate_bool_gen_ref))
     m.method("addInt32Pure", fn_ptr(add_int32_gen_ref))
     m.method("describePure", fn_ptr(describe_gen_ref))

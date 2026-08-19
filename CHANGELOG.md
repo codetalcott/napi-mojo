@@ -3,7 +3,13 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
-## Unreleased
+## 0.9.0 — 2026-08-19
+
+The code generator stops being a convenience for simple functions and becomes
+the way an addon is written: zero-copy binary data, arrays of structs, classes
+with native Mojo state, nullable arguments, and async without the old caps.
+Plus the tutorial that was missing when the CLI shipped, and the allocator
+evidence the async string result was owed.
 
 ### Changed
 
@@ -16,6 +22,23 @@ break the source API that downstream addons compile against.
 
 ### Added
 
+- **A concurrent-async stress suite, run under a checking allocator in CI.**
+  `tests/async_stress.test.js` puts many string-returning async calls in
+  flight at once — mixed sizes, interleaved with numeric async, with forced GC
+  between rounds — and a new non-required `async-stress` job runs it under a
+  checking allocator: Guard Malloc on macOS (which does engage on GitHub
+  runners — the job probes for the `GuardMalloc[node-…]` banner and warns if
+  that ever stops being true, since a stripped `DYLD_INSERT_LIBRARIES` is not
+  an error and would check nothing while going green), always the
+  libmalloc knobs `MallocScribble`/`MallocGuardEdges`/`MallocErrorAbort` which
+  the system allocator honours directly, and `MALLOC_PERTURB_`/`MALLOC_CHECK_`
+  on Linux. This
+  is the evidence the async `string` result was missing: the reasoning for why
+  a Mojo String may cross to a worker thread was sound, but nothing had run the
+  allocator in checking mode against it. jest is invoked directly rather than
+  through npx, which drops `DYLD_INSERT_LIBRARIES`.
+- `asyncLabel(s)` — a string-returning async export on the demo addon, so the
+  new capability has a runtime target where the jest suite already points.
 - `npm run generate:docs` says what it documents. It runs typedoc over
   `build/index.d.ts` — the **demo addon's** surface — while being named and
   titled as if it covered the framework. Output moves to
@@ -30,9 +53,8 @@ break the source API that downstream addons compile against.
   struct holds a Mojo `String`, moved rather than copied in its move
   constructor. The rule that this struct may hold "only simple types" was
   folklore; the constraints that actually bind on the worker thread are no
-  N-API calls and no dlopen/dlsym, and CLAUDE.md now says so. **Not
-  established:** behaviour under heavy concurrency — none of this is
-  stress- or race-tested.
+  N-API calls and no dlopen/dlsym, and CLAUDE.md now says so. Concurrency is
+  covered by the stress suite above, added in this same release.
 - **Nullable arguments are real now.** `args = ["string?"]` hands the Mojo
   function an `Optional[String]` — `None` for JS null or undefined, a
   converted value otherwise — and the typed check sits *inside* the null test,

@@ -175,6 +175,15 @@ execute_body = """
 ptr[].result = ptr[].input0 + ptr[].input1
 """
 
+[functions.async_label]
+js_name = "asyncLabel"
+args = ["string"]
+returns = "string"
+async = true
+execute_body = """
+ptr[].result = ptr[].input0 + " done"
+"""
+
 # --- Phase 28: generated class example ---
 # ExamplePoint stores x, y as "_x" / "_y" own properties.
 # Using underscore prefix avoids napi_set_named_property silently failing
