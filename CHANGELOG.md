@@ -29,14 +29,13 @@ evidence the async string result was owed.
   checking allocator: Guard Malloc on macOS (which does engage on GitHub
   runners — the job probes for the `GuardMalloc[node-…]` banner and warns if
   that ever stops being true, since a stripped `DYLD_INSERT_LIBRARIES` is not
-  an error and would check nothing while going green), always the
-  libmalloc knobs `MallocScribble`/`MallocGuardEdges`/`MallocErrorAbort` which
-  the system allocator honours directly, and `MALLOC_PERTURB_`/`MALLOC_CHECK_`
-  on Linux. This
-  is the evidence the async `string` result was missing: the reasoning for why
-  a Mojo String may cross to a worker thread was sound, but nothing had run the
-  allocator in checking mode against it. jest is invoked directly rather than
-  through npx, which drops `DYLD_INSERT_LIBRARIES`.
+  an error and would check nothing while going green), always the libmalloc
+  knobs `MallocScribble`/`MallocGuardEdges`/`MallocErrorAbort` which the
+  system allocator honours directly, and `MALLOC_PERTURB_`/`MALLOC_CHECK_` on
+  Linux. This is the evidence the async `string` result was missing: the
+  reasoning for why a Mojo String may cross to a worker thread was sound, but
+  nothing had run the allocator in checking mode against it. jest is invoked
+  directly rather than through npx, which drops `DYLD_INSERT_LIBRARIES`.
 - `asyncLabel(s)` — a string-returning async export on the demo addon, so the
   new capability has a runtime target where the jest suite already points.
 - `npm run generate:docs` says what it documents. It runs typedoc over

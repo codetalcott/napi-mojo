@@ -1,21 +1,19 @@
 # Plan: an API reference for the framework
 
-**Status:** scoped 2026-08-19, **not started.** The recommendation is to *not*
-build the pipeline first.
+**Status:** scoped 2026-08-19, tooling **verified in CI**, work **not started.**
+The recommendation is still content first — but the tooling turned out to be
+cheaper and better than the original scoping assumed.
 
 ## The problem
 
-`npm run generate:docs` runs typedoc over `build/index.d.ts`. That file
-describes the **demo addon** — `greet`, `asyncSum`, `Counter`. The product is
-the framework: `JsString.create`, `unwrap_native[T]`, `ThreadsafeFunction`,
-`MojoFloat64Array`. So the one command named "docs" documents the thing nobody
-installs napi-mojo to use, under a title that says `napi-mojo`.
+`npm run generate:docs` runs typedoc over `build/index.d.ts`, which describes
+the **demo addon** — `greet`, `asyncSum`, `Counter`. The product is the
+framework: `JsString.create`, `unwrap_native[T]`, `ThreadsafeFunction`,
+`MojoFloat64Array`. (The script now says "demo addon" in its name and output
+path, so it no longer misrepresents itself; the framework reference is what is
+still missing.)
 
-The design review filed this as "no API reference for the actual product". It
-is real, but the obvious framing — "pick a doc generator that reads Mojo" — is
-the wrong first move.
-
-## The finding that reorders the work
+## The finding that orders the work
 
 A scan of every public `def` in `src/napi/` (397 of them):
 
@@ -29,71 +27,87 @@ Worst concentrations: `raw.mojo` (130 of 147 undocumented), `args.mojo` (22 of
 23), `js_typedarray.mojo` (20 of 20), `error.mojo` (18 of 18), `js_object.mojo`
 (17 of 18).
 
-**Any pipeline run today would emit a reference that is 87% bare signatures.**
-That is worse than no reference: it looks complete, ranks in search, and tells
-a reader nothing. The bottleneck is content, not tooling.
+**A pipeline run today would emit a reference that is 87% bare signatures** —
+worse than none, because it looks complete and says nothing. The bottleneck is
+content, not tooling. Note also that the documented 11% use `##` comments,
+which is a napi-mojo convention rather than a language feature: no extractor
+finds them, and they do not appear in editor hovers.
 
-Note also that the 11% which *are* documented use `##` comments above the
-`def`, which is a napi-mojo convention, not a Mojo language feature — no
-extractor will find them without custom parsing, and they do not appear in
-editor hovers either.
+## Tooling: settled, in CI, on the pinned toolchain
 
-## Options for the renderer (secondary)
+The original version of this plan listed `mojo doc` as unverified, because
+this repo's dev sandbox has no Mojo and `docs.modular.com` is egress-blocked.
+A temporary CI job (removed again in the same PR) settled it.
 
-1. **`mojo doc`, if the pinned toolchain has it.** Mojo's own doc extractor
-   reads `"""` docstrings and emits JSON, which a small script can render.
-   Language-native, survives syntax changes, and the docstrings double as
-   editor hover text. **Unverified from this repo's sandbox** — docs.modular.com
-   is egress-blocked here and there is no local toolchain. First step of any
-   work on this item:
+**`mojo doc` exists on the Mojo 1.0.0 pin** and emits JSON:
 
-   ```bash
-   pixi run mojo doc --help          # does the 1.0.0 pin ship it?
-   pixi run mojo doc src/napi/framework/js_object.mojo -o /tmp/doc.json
-   ```
+```bash
+# WORKS. Per file, with -I so the package imports resolve.
+pixi run mojo doc -I src src/napi/framework/js_object.mojo -o /tmp/js_object.json
+```
 
-2. **A custom extractor.** `scripts/generate-dts.js` already parses Mojo source
-   with regexes (registration passes, body extraction), so the machinery is not
-   new ground. But it re-implements a parser the compiler already has, and this
-   repo has been burned by regex-over-Mojo drifting across toolchain bumps.
-   Fallback only if option 1 does not exist.
+```json
+{ "decl": { "kind": "module", "name": "js_object",
+            "structs": [ { "name": "JsObject", "description": "",
+                           "fields": [ { "name": "value", "type": "NapiValue", "summary": "" } ],
+                           "functions": [ … ] } ] } }
+```
 
-3. **Hand-written reference pages.** Rejected: 397 entries cannot be kept
-   truthful by hand, and this repo's whole discipline is generated-or-gated.
+Every declaration carries `description` and `summary` fields, so rendering is a
+JSON-to-Markdown walk, not a parser.
 
-## Recommendation
+**Two invocations that do not work**, both worth knowing before someone loses
+an hour to them:
 
-Phased, content first.
+- **A bare file with no `-I`** fails with `'None' has no attributes` on an
+  explicit `__moveinit__`. That is the error CLAUDE.md already documents for a
+  struct compiled as a *main module* rather than as part of a package —
+  `mojo doc` treats a bare path that way. Always pass `-I src`.
+- **A directory** (`mojo doc -I src src/napi/`) produces no output file. The
+  renderer has to iterate files itself.
 
-1. **Adopt `"""` docstrings as the convention** for the public framework
-   surface, replacing the `##`-above-def style, and record it in
-   `CONTRIBUTING.md`. Convert the 47 existing `##` blocks as they are touched —
-   not in one sweep.
-2. **Add a docstring-coverage gate that ratchets.** The pattern already exists:
-   `scripts/check-compile-coverage.mjs` fails CI when a public framework method
-   is missing from the coverage target. The analogue counts documented public
-   defs against a floor committed in the repo, and the floor only goes up. That
-   turns 87% undocumented from a number nobody owns into a number that cannot
-   regress.
-3. **Document the surface a consumer actually touches first** — the `Js*`
-   wrappers, `CbArgs`, `register.mojo`, `convert.mojo`, `async_work.mojo`. That
-   is roughly 150 of the 397. `raw.mojo`'s 147 thin FFI wrappers are an
-   implementation detail and should be excluded from the reference entirely.
-4. **Only then wire the renderer**, once there is something worth rendering.
+### The coverage gate is free
+
+`mojo doc --diagnose-missing-doc-strings` emits one warning per undocumented
+public symbol, with position and name:
+
+```
+src/napi/framework/js_object.mojo:98:9: warning: public symbol 'set_named_property' is missing a doc string
+src/napi/framework/js_object.mojo:105:9: warning: public symbol 'set' is missing a doc string
+```
+
+So the ratcheting gate this plan called for is a **warning count against a
+committed floor**, not a custom Mojo parser. That is both cheaper than the
+original estimate and more durable: it is the compiler's own notion of a
+missing docstring, so it cannot drift from the language the way a regex would.
+
+## Plan
+
+1. **Adopt `"""` docstrings** for the public framework surface, replacing the
+   `##`-above-the-def style, and record the convention in `CONTRIBUTING.md`.
+   Convert the 47 existing `##` blocks opportunistically, not in one sweep.
+2. **Add `scripts/check-docstring-coverage.mjs` and a CI step**: run
+   `mojo doc --diagnose-missing-doc-strings -I src` over the consumer-facing
+   modules, count the warnings, compare against a floor committed in the repo,
+   fail if it rises. Model it on `check-compile-coverage.mjs`, which already
+   does exactly this shape of job.
+3. **Document the surface a consumer actually touches** — the `Js*` wrappers,
+   `CbArgs`, `register.mojo`, `convert.mojo`, `async_work.mojo`, `js_class.mojo`:
+   roughly 150 of the 397. **`raw.mojo`'s 147 thin FFI wrappers are an
+   implementation detail and stay out of the reference and out of the gate.**
+4. **Render**, once there is something worth rendering: iterate the framework
+   files, `mojo doc -I src <file> -o <json>`, walk the JSON to Markdown, publish
+   next to the tutorial. Wire it into `generate:docs` alongside the demo-addon
+   typedoc rather than replacing it.
 
 ## Sizing
 
-- Step 1: an hour, mostly deciding and writing it down.
-- Step 2: half a day (the gate is a sibling of a script that already exists).
-- Step 3: the real cost — ~150 docstrings, days of work, and the only part that
-  cannot be automated.
-- Step 4: half a day if `mojo doc` exists; two days for a custom extractor.
-
-## What to do about `generate:docs` meanwhile
-
-Left in place but renamed to say what it is (the demo addon's API), so it stops
-reading as the framework reference it is not. Removing it would lose a working
-artifact; leaving it mislabelled was the actual defect.
+| step | size | notes |
+|---|---|---|
+| 1. Convention | ~1 h | mostly deciding and writing it down |
+| 2. Ratcheting gate | ~2 h | was half a day; `--diagnose-missing-doc-strings` did the hard part |
+| 3. ~150 docstrings | days | the real cost, and the only part that cannot be automated |
+| 4. Renderer | ~half a day | JSON walk; no parsing, no third-party doc tool |
 
 ## Revisit when
 
