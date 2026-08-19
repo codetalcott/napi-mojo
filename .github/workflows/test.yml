@@ -159,6 +159,10 @@ jobs:
             const c = new m.Counter(10);
             assert.strictEqual(c.value, 10);
             assert.strictEqual(c.plus(5), 15);
+            assert.strictEqual(m.greetMaybe('world'), 'Hello, world!');
+            assert.strictEqual(m.greetMaybe(null), 'Hello, whoever you are!');
+            assert.strictEqual(m.greetMaybe(undefined), 'Hello, whoever you are!');
+            assert.throws(() => m.greetMaybe(42), /TypeError|failed/);
             const t = new m.Tally(100);
             assert.strictEqual(t.add(5), 105);
             assert.strictEqual(t.total, 105);

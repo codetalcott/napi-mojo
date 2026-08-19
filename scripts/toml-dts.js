@@ -36,12 +36,12 @@ function emitTomlDts(toml) {
   const map = { ...TOML_TYPE_TO_TS_BASE };
   const tomlTokenToTs = makeTokenToTs(map);
 
-  // Argument position: a '?' token means the generated callback skips type
-  // validation, so null/undefined are accepted — say so in the types instead
-  // of silently stripping the '?'. This is only true because generate-addon.mjs
-  // REJECTS '?' on a converting token in argument position: those extracts call
-  // Js*.from_napi_value on the value and would raise on the null advertised
-  // here. Only pass-through tokens (any/object/array) reach this line.
+  // Argument position: '?' means the argument accepts null/undefined, and the
+  // types say so. A pass-through token (any/object/array) hands the raw value
+  // to Mojo; a converting token (number, string, a struct) arrives as
+  // Optional[T], None for null. Tokens with no meaningful Optional form
+  // (number[], float64array, buffer) are rejected by generate-addon.mjs, so
+  // they never reach this line.
   function tomlArgToTs(token) {
     const base = tomlTokenToTs(token);
     if (String(token || '').endsWith('?') && base !== 'any') {

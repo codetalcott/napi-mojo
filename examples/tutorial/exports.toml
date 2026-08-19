@@ -6,7 +6,7 @@
 # instead of quietly misleading a reader.
 
 extra_imports = [
-    "from fns import greet_pure, add_pure, safe_divide_pure, describe_config_pure, scale_vec, verbose_only, tally_new, tally_add, tally_total",
+    "from fns import greet_pure, add_pure, safe_divide_pure, describe_config_pure, scale_vec, verbose_only, tally_new, tally_add, tally_total, greet_maybe",
 ]
 
 # --- A pure function with a string arg and a string return ---
@@ -55,6 +55,13 @@ async = true
 execute_body = """
 ptr[].result = ptr[].input0 * ptr[].input1
 """
+
+# --- An optional argument: Optional[T] in Mojo, `T | null` in TypeScript ---
+[functions.greet_maybe]
+js_name = "greetMaybe"
+args = ["string?"]
+returns = "string"
+mojo_fn = "greet_maybe"
 
 # --- An array of structs: `config[]` needs no extra declaration ---
 [functions.verbose_only]

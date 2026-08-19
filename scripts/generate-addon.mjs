@@ -60,6 +60,7 @@ function validateJsName(jsName, where) {
 const TYPE_MAP = {
   number: {
     napi_type: 'NAPI_TYPE_NUMBER',
+    mojoType: 'Float64',
     type_name: 'number',
     extract: (varName, argExpr) =>
       `        var ${varName} = JsNumber.from_napi_value(_b, env, ${argExpr})`,
@@ -67,6 +68,7 @@ const TYPE_MAP = {
   },
   string: {
     napi_type: 'NAPI_TYPE_STRING',
+    mojoType: 'String',
     type_name: 'string',
     extract: (varName, argExpr) =>
       `        var ${varName} = JsString.from_napi_value(_b, env, ${argExpr})`,
@@ -74,6 +76,7 @@ const TYPE_MAP = {
   },
   boolean: {
     napi_type: 'NAPI_TYPE_BOOLEAN',
+    mojoType: 'Bool',
     type_name: 'boolean',
     extract: (varName, argExpr) =>
       `        var ${varName} = JsBoolean.from_napi_value(_b, env, ${argExpr})`,
@@ -82,6 +85,7 @@ const TYPE_MAP = {
   // bool: alias for boolean
   bool: {
     napi_type: 'NAPI_TYPE_BOOLEAN',
+    mojoType: 'Bool',
     type_name: 'boolean',
     extract: (varName, argExpr) =>
       `        var ${varName} = JsBoolean.from_napi_value(_b, env, ${argExpr})`,
@@ -89,6 +93,7 @@ const TYPE_MAP = {
   },
   int32: {
     napi_type: 'NAPI_TYPE_NUMBER',
+    mojoType: 'Int32',
     type_name: 'number',
     extract: (varName, argExpr) =>
       `        var ${varName} = JsInt32.from_napi_value(_b, env, ${argExpr})`,
@@ -96,6 +101,7 @@ const TYPE_MAP = {
   },
   uint32: {
     napi_type: 'NAPI_TYPE_NUMBER',
+    mojoType: 'UInt32',
     type_name: 'number',
     extract: (varName, argExpr) =>
       `        var ${varName} = JsUInt32.from_napi_value(_b, env, ${argExpr})`,
@@ -103,6 +109,7 @@ const TYPE_MAP = {
   },
   int64: {
     napi_type: 'NAPI_TYPE_NUMBER',
+    mojoType: 'Int64',
     type_name: 'number',
     extract: (varName, argExpr) =>
       `        var ${varName} = JsInt64.from_napi_value(_b, env, ${argExpr})`,
@@ -200,6 +207,7 @@ function registerStructTypes(structs) {
     TYPE_MAP[name] = {
       napi_type: 'NAPI_TYPE_OBJECT',
       type_name: jsName,
+      mojoType: `${pascalName}Data`,
       extract: (varName, argExpr) =>
         `        var ${varName} = ${name}_from_js(_b, env, ${argExpr})`,
       create: (expr) => `${name}_to_js(_b, env, ${expr})`,
@@ -239,6 +247,40 @@ function getArgExpr(i, totalArgs) {
   if (totalArgs === 1) return 'arg0';
   if (totalArgs <= 4) return `args[${i}]`;
   return `_a${i}`;
+}
+
+// --- Emit the extraction for one argument ---
+// For a plain token this is just the TYPE_MAP extract. For a nullable
+// converting token (`number?`, a struct) it emits an Optional[T] that is None
+// for JS null/undefined and carries a converted value otherwise — with the
+// typed check nested INSIDE the null test, so a wrong type still gets the
+// descriptive TypeError while null legitimately passes through.
+//
+// Until this existed the .d.ts said `number | null` while the extract called
+// from_napi_value unconditionally, so the advertised null raised at runtime;
+// that mismatch was rejected outright rather than shipped, and this is the
+// support that replaces the rejection.
+function emitArgExtract(lines, jsName, rawType, varName, argExpr, argDesc) {
+  const { typeInfo, nullable } = resolveType(rawType);
+  if (!nullable || typeInfo.passthrough) {
+    lines.push(typeInfo.extract(varName, argExpr));
+    return;
+  }
+  const where = argDesc ? ` for ${argDesc}` : '';
+  const t = `_n_${varName}`;
+  lines.push(`        var ${varName}: Optional[${typeInfo.mojoType}] = None`);
+  lines.push(`        var ${t} = js_typeof(_b, env, ${argExpr})`);
+  lines.push(`        if ${t} != NAPI_TYPE_NULL and ${t} != NAPI_TYPE_UNDEFINED:`);
+  if (typeInfo.napi_type === '__IS_ARRAY__') {
+    lines.push(`            if not js_is_array(_b, env, ${argExpr}):`);
+  } else {
+    lines.push(`            if ${t} != ${typeInfo.napi_type}:`);
+  }
+  lines.push(`                throw_js_type_error_dynamic(_b, env, "${jsName}: expected ${typeInfo.type_name} or null${where}, got " + js_type_name(${t}))`);
+  lines.push(`                return NapiValue(unsafe_from_address=Int(0))`);
+  // The base extract emits at 8 spaces; it lives one level deeper here.
+  lines.push(typeInfo.extract(`_v_${varName}`, argExpr).replace(/^ {8}/gm, '            '));
+  lines.push(`            ${varName} = _v_${varName}`);
 }
 
 // --- Emit the argument-fetch + type-check preamble ---
@@ -297,16 +339,15 @@ function emitTypeCheck(lines, jsName, rawType, argExpr, argDesc) {
   // lie the caller can only discover at runtime, so it is rejected here.
   // Pass-through tokens (any/object/array) hand the raw napi_value straight to
   // the Mojo fn, so for those `| null` is the truth and '?' stays supported.
-  if (nullable && !typeInfo.passthrough) {
+  if (nullable && !typeInfo.passthrough && !typeInfo.mojoType) {
     const base = rawType.slice(0, -1);
     fail(
       `${jsName}: nullable argument type "${rawType}"${argDesc ? ` (${argDesc})` : ''} is not supported — ` +
-      `'?' skips the type check but the generated extract still converts the value as ${base}, ` +
-      `so passing the null the .d.ts advertises would raise. Declare it as "${base}" and reject null ` +
-      `in your Mojo function, or use "any?" if the argument really may be null. ` +
-      `('?' on a RETURN type is unaffected — that maps Optional[T] to null.)`);
+      `"${base}" has no meaningful Optional form (an absent array is an empty one; an absent ` +
+      `zero-copy view has no buffer). Nullable arguments work for number, string, boolean, ` +
+      `int32, uint32, int64 and declared structs, and any?/object?/array? pass the raw value through.`);
   }
-  if (nullable || !typeInfo.napi_type) return;
+  if (nullable || !typeInfo.napi_type) return;  // nullable: emitArgExtract owns the check
   if (typeInfo.napi_type === '__IS_FLOAT64ARRAY__' || typeInfo.napi_type === '__IS_BUFFER__') {
     // Both read as 'object' to napi_typeof, so each gets a dedicated
     // predicate. data_ptr_float64 additionally raises on the wrong
@@ -359,8 +400,7 @@ function generateCallback(name, decl) {
     // Auto-trampoline: extract Mojo-typed args, call mojoFn, wrap result.
     // mojo_fn takes precedence over body if both are present.
     for (let i = 0; i < args.length; i++) {
-      const { typeInfo } = resolveType(args[i]);
-      lines.push(typeInfo.extract(`mojo_arg${i}`, getArgExpr(i, args.length)));
+      emitArgExtract(lines, jsName, args[i], `mojo_arg${i}`, getArgExpr(i, args.length), args.length === 1 ? null : `arg ${i + 1}`);
     }
     const callArgs = args.map((_, i) => `mojo_arg${i}`).join(', ');
     lines.push(`        var mojo_result = ${mojoFn}(${callArgs})`);
@@ -647,8 +687,7 @@ function generateClassConstructor(className, decl, structs) {
     // ownership to JS via wrap_native. On a wrap failure ownership comes back
     // to us, so the data is freed here rather than leaked or double-freed.
     for (let i = 0; i < ctorArgs.length; i++) {
-      const { typeInfo } = resolveType(ctorArgs[i]);
-      lines.push(typeInfo.extract(`mojo_arg${i}`, getArgExpr(i, ctorArgs.length)));
+      emitArgExtract(lines, jsName, ctorArgs[i], `mojo_arg${i}`, getArgExpr(i, ctorArgs.length), ctorArgs.length === 1 ? null : `arg ${i + 1}`);
     }
     const callArgs = ctorArgs.map((_, i) => `mojo_arg${i}`).join(', ');
     lines.push(`        var _state = ${ctorMojoFn}(${callArgs})`);
@@ -736,8 +775,7 @@ function generateClassMethod(className, methodName, decl, structs, classDecl) {
     lines.push(`            _b, env, this_val, NapiTypeTag(${state.tag.lower}, ${state.tag.upper})`);
     lines.push(`        )`);
     for (let i = 0; i < args.length; i++) {
-      const { typeInfo } = resolveType(args[i]);
-      lines.push(typeInfo.extract(`mojo_arg${i}`, getArgExpr(i, args.length)));
+      emitArgExtract(lines, jsName, args[i], `mojo_arg${i}`, getArgExpr(i, args.length), args.length === 1 ? null : `arg ${i + 1}`);
     }
     const callArgs = ['_state[]', ...args.map((_, i) => `mojo_arg${i}`)].join(', ');
     const returns = decl.returns || 'any';
@@ -1097,6 +1135,15 @@ function main() {
   const needsStrArray = allTypeTokens.includes('string[]');
   const needsConvertImport = needsF64Array || needsStrArray;
   const needsNullReturn = funcEntries.some(([, d]) => (d.returns || '').endsWith('?'));
+  // Raw (unstripped) argument tokens: a nullable converting arg emits a
+  // null/undefined comparison, which needs those two constants imported.
+  const rawArgTokens = [...funcEntries.map(([, d]) => d), ...classMemberDecls]
+    .flatMap((d) => [...(d.args || []), ...(d.constructor_args || [])].map(String));
+  const needsNullableArg = rawArgTokens.some((t) => {
+    if (!t.endsWith('?')) return false;
+    const info = TYPE_MAP[t.slice(0, -1)];
+    return Boolean(info && info.mojoType);
+  });
   const needsClassState = Object.values(classes).some((c) => c && c.state);
   const needsStructArray = allTypeTokens.some((t) => (TYPE_MAP[t] || {}).isStructArray);
   const needsF64TypedArray = allTypeTokens.includes('float64array');
@@ -1137,6 +1184,9 @@ function main() {
   }
   if (needsNullReturn) {
     output.push('from napi.framework.js_null import JsNull');
+  }
+  if (needsNullableArg) {
+    output.push('from napi.types import NAPI_TYPE_NULL, NAPI_TYPE_UNDEFINED');
   }
   if (needsF64TypedArray) {
     output.push('from napi.framework.js_typedarray import JsTypedArray');

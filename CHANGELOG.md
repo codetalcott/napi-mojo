@@ -16,6 +16,16 @@ break the source API that downstream addons compile against.
 
 ### Added
 
+- **Nullable arguments are real now.** `args = ["string?"]` hands the Mojo
+  function an `Optional[String]` — `None` for JS null or undefined, a
+  converted value otherwise — and the typed check sits *inside* the null test,
+  so a wrong type still raises the descriptive TypeError instead of falling
+  into the generic catch. Works for number, string, boolean, the integer
+  tokens and declared structs. This replaces the rejection added earlier in
+  this cycle, which existed because the `.d.ts` advertised `| null` while the
+  extract converted unconditionally. `number[]`, `float64array` and `buffer`
+  are still refused, now with the reason: an absent array is an empty one, and
+  an absent zero-copy view has no buffer.
 - **Classes can keep native Mojo state.** `state = "<struct>"` plus
   `constructor_mojo_fn` makes the generator heap-allocate a declared struct,
   wrap it onto the instance, and hand it to every `mojo_fn` member — a
