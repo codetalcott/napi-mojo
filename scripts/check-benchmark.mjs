@@ -37,7 +37,18 @@ const CEILINGS_FILE = 'scripts/benchmark-ceilings.json';
 
 // Headroom applied to a measured median when seeding a ceiling. Generous on
 // purpose: see the note at the top about what this gate is for.
+//
+// SEED FROM A NOISY RUN, NEVER A LUCKY ONE. Two runs of the SAME COMMIT on
+// ubuntu-latest differed by 1.5-1.8x (hello() 149.4 then 263.7 ns). Seeding
+// from the fast one left barely 2.3x of real margin while the file said "4x".
+// If you reseed, run it a few times and keep the highest, or re-check that the
+// resulting percentages below sit near 25%, not near 50%.
 const HEADROOM = 4;
+
+// Warn (do not fail) above this fraction of ceiling. Run-to-run noise puts a
+// healthy benchmark around 25-45%; sustained 75%+ means either a real creep or
+// a ceiling seeded from a lucky run. Both want a human, neither wants a red X.
+const WARN_AT = 0.75;
 
 const args = process.argv.slice(2);
 const mode = args.includes('--update') ? 'update' : args.includes('--print') ? 'print' : 'check';
@@ -119,6 +130,15 @@ for (const r of rows.sort((a, b) => b.pct - a.pct)) {
   const bar = r.pct > 100 ? 'OVER' : `${r.pct.toFixed(0)}%`;
   console.log(
     `  ${r.name.padEnd(26)} ${String(r.median).padStart(8)}  ceiling ${String(r.ceiling).padStart(6)}  ${bar}`
+  );
+}
+
+const warm = rows.filter((r) => r.pct >= WARN_AT * 100 && r.pct <= 100);
+if (warm.length > 0) {
+  console.log(
+    `\n::warning::${warm.length} benchmark(s) above ${WARN_AT * 100}% of ceiling — ` +
+      `either overhead is creeping or the ceiling was seeded from a lucky run: ` +
+      warm.map((r) => `${r.name} ${r.pct.toFixed(0)}%`).join(', ')
   );
 }
 

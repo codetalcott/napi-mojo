@@ -37,6 +37,8 @@ Standards and rules for all contributions to `napi-mojo`, including LLM agents a
 
 Be clear about what it is for. It carries 4x headroom and runs on shared runners, so it catches a *structural* regression — a per-call `OwnedDLHandle()` + dlsym back on the hot path, costing 10-100x — and will not see a 10% one. A gate tuned tighter than the noise floor gets ignored, which is worse than one that admits its limits.
 
+When you reseed, **run it a few times and keep the highest.** Two runs of the *same commit* on `ubuntu-latest` differed by 1.5–1.8×; seeding from the fast one leaves ~2.3× of real margin while the file claims 4×. A healthy benchmark sits around 25–45% of its ceiling — the step emits a CI warning (not a failure) above 75%, which means either real creep or a ceiling seeded from a lucky run.
+
 The two platforms are genuinely far apart — on the same commit, `macos-latest` measures **~2.7x** the per-call cost of `ubuntu-latest`. That is why ceilings are keyed by platform and why a platform with no recorded ceilings is a hard error rather than a silent skip.
 
 If you add or rename a benchmark, reseed the ceilings **on each platform** (they are not comparable) and commit the result:

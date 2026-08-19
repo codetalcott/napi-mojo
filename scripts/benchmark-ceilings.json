@@ -16,19 +16,19 @@
     "strictEquals(1, 1)": 1660
   },
   "linux-x64": {
-    "hello()": 600,
-    "greet(\"world\")": 1000,
-    "add(1, 2)": 600,
-    "isPositive(42)": 570,
-    "getNull()": 570,
-    "createObject()": 600,
-    "makeGreeting()": 1230,
-    "addInts(1, 2)": 630,
-    "exampleAdd(1, 2)": 630,
-    "exampleGreet(\"x\")": 850,
-    "counter.increment()": 940,
-    "counter.value (getter)": 950,
-    "getProperty(obj, \"x\")": 820,
-    "strictEquals(1, 1)": 630
+    "hello()": 1060,
+    "greet(\"world\")": 1720,
+    "add(1, 2)": 990,
+    "isPositive(42)": 1020,
+    "getNull()": 910,
+    "createObject()": 1060,
+    "makeGreeting()": 2410,
+    "addInts(1, 2)": 1100,
+    "exampleAdd(1, 2)": 1090,
+    "exampleGreet(\"x\")": 1490,
+    "counter.increment()": 1680,
+    "counter.value (getter)": 1590,
+    "getProperty(obj, \"x\")": 1420,
+    "strictEquals(1, 1)": 1070
   }
 }
