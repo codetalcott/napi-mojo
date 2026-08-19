@@ -129,10 +129,17 @@ async function pool(items, limit, worker) {
 // Only count warnings attributed to the file under test. With -I src the
 // driver walks imported modules too, and without this filter a symbol in
 // js_string.mojo would be charged to every file that imports it.
+//
+// The diagnostic prints an ABSOLUTE path (`/…/napi-mojo/src/napi/…`), so the
+// repo-relative path is matched as a path *suffix* — hence `/` in the leading
+// character class alongside line-start and whitespace. Requiring the whole
+// relative path keeps that unambiguous: no target here is a path-suffix of
+// another. (A first version anchored on line-start only, measured 0 everywhere
+// in CI, and looked like perfect coverage.)
 function countFor(file, output) {
   const escaped = file.replaceAll('.', '\\.').replaceAll('/', '[/\\\\]');
   const re = new RegExp(
-    `(?:^|[\\s'"])${escaped}:\\d+:\\d+: warning: public symbol .* is missing a doc string`,
+    `(?:^|[\\s'"/])${escaped}:\\d+:\\d+: warning: public symbol .* is missing a doc string`,
     'gm'
   );
   return [...output.matchAll(re)].length;
@@ -165,7 +172,8 @@ if (brokeUnexpectedly.length > 0) {
 }
 
 const skipHealed = runs.filter((r) => r.code === 0 && r.file in KNOWN_UNDOCUMENTABLE);
-if (skipHealed.length > 0) {
+// Only a gate concern; --print and --update stay usable while a skip is stale.
+if (mode === 'check' && skipHealed.length > 0) {
   console.error(`${skipHealed.length} file(s) in KNOWN_UNDOCUMENTABLE now document cleanly:\n`);
   for (const r of skipHealed) console.error(`  ${r.file}  (was: ${KNOWN_UNDOCUMENTABLE[r.file]})`);
   console.error(
@@ -183,6 +191,30 @@ const counts = Object.fromEntries(
     .sort((a, b) => a[0].localeCompare(b[0]))
 );
 const total = Object.values(counts).reduce((a, b) => a + b, 0);
+
+// Self-check on the parser, not a heuristic. If mojo doc printed the phrase
+// anywhere and countFor matched none of it, the regex is broken — which is
+// exactly what a path-format change does, and the resulting all-zeros reads as
+// PERFECT coverage. (It happened: the first CI run measured 0 everywhere
+// because the diagnostic prints absolute paths and the pattern was anchored on
+// line-start.) When the repo really is fully documented the phrase is absent
+// and this stays quiet.
+const sawPhrase = runs.some(
+  (r) => !(r.file in KNOWN_UNDOCUMENTABLE) && r.out.includes('is missing a doc string')
+);
+if (total === 0 && sawPhrase) {
+  console.error(
+    'Parser check failed: `mojo doc` reported missing docstrings, but this script\n' +
+      'matched none of them. countFor() has drifted from the diagnostic format —\n' +
+      'fix the pattern rather than committing a floor of zeros.\n\nSample:\n'
+  );
+  const sample = runs
+    .flatMap((r) => r.out.split('\n'))
+    .filter((l) => l.includes('is missing a doc string'))
+    .slice(0, 3);
+  console.error(sample.join('\n'));
+  process.exit(1);
+}
 
 if (mode === 'print') {
   console.log(JSON.stringify(counts, null, 2));
