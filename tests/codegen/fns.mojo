@@ -149,6 +149,28 @@ def ks_acc_total(s: KsAccStateData) -> Float64:
     return s.total
 
 
+## A setter's mojo_fn mutates state and returns nothing.
+def ks_acc_set_total(mut s: KsAccStateData, n: Float64):
+    s.total = n
+
+
+## Static methods get no state — these are ordinary pure functions.
+def ks_acc_zero() -> Float64:
+    return 0.0
+
+
+def ks_acc_combine(a: Float64, b: Float64) -> Float64:
+    return a + b
+
+
+def ks_acc_parse_total(text: String) -> Optional[Float64]:
+    if text == "zero":
+        return Optional(0.0)
+    if text == "one":
+        return Optional(1.0)
+    return None
+
+
 ## --- Nullable converting arguments arrive as Optional[T] ---
 def ks_opt_scalar(n: Float64, label: Optional[String]) -> Float64:
     if label:

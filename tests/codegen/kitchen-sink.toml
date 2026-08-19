@@ -23,7 +23,9 @@
 #     uint32,int64), nested execute_body indentation
 #   - nullable converting args (Optional[T]): a scalar and a struct
 #   - native class state: state = "<struct>", constructor_mojo_fn, and
-#     mojo_fn on an instance method and a getter (wrap/unwrap + type tag)
+#     mojo_fn on an instance method, a getter, a SETTER (typed value + mut
+#     mutation) and STATIC methods (arity 0 and 2, plus a nullable return —
+#     statics take no state, so they exercise a distinct emitter path)
 #   - struct arrays (<struct>[]) in both positions, via the parametric
 #     to_js_array/from_js_array over the struct's trait conformance
 #   - struct with every STRUCT_FIELD_MAP field type, plus fields named
@@ -35,7 +37,7 @@
 # When adding a generator feature, add its instantiation here IN THE SAME
 # COMMIT — a template branch this file does not reach is unverified.
 
-extra_imports = ["from fns import ks_zero, ks_echo_string, ks_not, ks_neg_i32, ks_inc_u32, ks_neg_i64, ks_object_passthrough, ks_sum_f64_list, ks_double_f64_list, ks_join_str_list, ks_wrap_str_list, ks_maybe_number, ks_maybe_string, ks_sum2, ks_sum3, ks_sum4, ks_sum5, ks_sum6, ks_config_roundtrip, ks_config_list_roundtrip, ks_scale_vec, ks_byte_sum, ks_acc_new, ks_acc_add, ks_acc_total, ks_opt_scalar, ks_opt_struct"]
+extra_imports = ["from fns import ks_zero, ks_echo_string, ks_not, ks_neg_i32, ks_inc_u32, ks_neg_i64, ks_object_passthrough, ks_sum_f64_list, ks_double_f64_list, ks_join_str_list, ks_wrap_str_list, ks_maybe_number, ks_maybe_string, ks_sum2, ks_sum3, ks_sum4, ks_sum5, ks_sum6, ks_config_roundtrip, ks_config_list_roundtrip, ks_scale_vec, ks_byte_sum, ks_acc_new, ks_acc_add, ks_acc_total, ks_acc_set_total, ks_acc_zero, ks_acc_combine, ks_acc_parse_total, ks_opt_scalar, ks_opt_struct"]
 
 # --- Struct: every STRUCT_FIELD_MAP field type, plus the field names that
 # collide with the converter's own identifiers. `obj` used to redeclare
@@ -277,6 +279,29 @@ mojo_fn = "ks_acc_add"
 [classes.ks_acc.getters.total]
 returns = "number"
 mojo_fn = "ks_acc_total"
+
+# mojo_fn on a SETTER: unwraps state, type-checks the incoming value against
+# the declared token, and calls a pure function that mutates through `mut`.
+[classes.ks_acc.setters.total]
+type = "number"
+mojo_fn = "ks_acc_set_total"
+
+# mojo_fn on a STATIC method: no instance, so no unwrap and no state — a plain
+# pure function over the declared args. Arity 0 and 2, plus a nullable return,
+# to cover the branches this emitter has of its own.
+[classes.ks_acc.static_methods.zero]
+returns = "number"
+mojo_fn = "ks_acc_zero"
+
+[classes.ks_acc.static_methods.combine]
+args = ["number", "number"]
+returns = "number"
+mojo_fn = "ks_acc_combine"
+
+[classes.ks_acc.static_methods.parseTotal]
+args = ["string"]
+returns = "number?"
+mojo_fn = "ks_acc_parse_total"
 
 # --- Struct arrays: <struct>[] in both positions ---
 

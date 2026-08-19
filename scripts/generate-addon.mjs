@@ -828,9 +828,7 @@ function camelToSnake(s) {
 
 // Generate a static method callback (no this_val)
 function generateClassStaticMethod(className, methodName, decl) {
-  if (decl.mojo_fn) {
-    fail(`class static method "${className}.${methodName}": mojo_fn is not supported on static methods yet (there is no instance to unwrap) — use body`);
-  }
+  const mojoFn = decl.mojo_fn;
   const jsName = decl.js_name || methodName;
   const fnName = `${className}_static_${camelToSnake(methodName)}_fn`;
   const args = decl.args || [];
@@ -848,9 +846,33 @@ function generateClassStaticMethod(className, methodName, decl) {
 
   emitArgPreamble(lines, jsName, args);
 
-  const bodyLines = body.split('\n');
-  for (const bl of bodyLines) {
-    lines.push(`        ${bl}`);
+  if (mojoFn) {
+    // No unwrap and no state: a static method has no instance, so its mojo_fn
+    // is an ordinary pure function over the declared args — the same shape as
+    // a top-level [functions.*] mojo_fn. That is why this needs no state
+    // declaration on the class, unlike instance methods, getters and setters.
+    for (let i = 0; i < args.length; i++) {
+      emitArgExtract(lines, jsName, args[i], `mojo_arg${i}`, getArgExpr(i, args.length), args.length === 1 ? null : `arg ${i + 1}`);
+    }
+    const returns = decl.returns || 'any';
+    const returnsNullable = returns.endsWith('?');
+    const { typeInfo: retTypeInfo } = resolveType(returns);
+    if (retTypeInfo.returnUnsupported) {
+      fail(`class static method "${className}.${methodName}" returns "${returns}": ${retTypeInfo.returnUnsupported}`);
+    }
+    lines.push(`        var mojo_result = ${mojoFn}(${args.map((_, i) => `mojo_arg${i}`).join(', ')})`);
+    if (returnsNullable) {
+      lines.push(`        if not mojo_result:`);
+      lines.push(`            return JsNull.create(_b, env).value`);
+      lines.push(`        return ${retTypeInfo.create('mojo_result.value()')}`);
+    } else {
+      lines.push(`        return ${retTypeInfo.create('mojo_result')}`);
+    }
+  } else {
+    const bodyLines = body.split('\n');
+    for (const bl of bodyLines) {
+      lines.push(`        ${bl}`);
+    }
   }
 
   lines.push(`    except:`);
@@ -861,9 +883,11 @@ function generateClassStaticMethod(className, methodName, decl) {
 }
 
 // Generate a setter callback (has access to this_val + val)
-function generateClassSetter(className, propName, decl) {
-  if (decl.mojo_fn) {
-    fail(`class setter "${className}.${propName}": mojo_fn is not supported on setters yet — use body, or a method`);
+function generateClassSetter(className, propName, decl, structs, classDecl) {
+  const mojoFn = decl.mojo_fn;
+  const state = resolveClassState(className, classDecl || {}, structs);
+  if (mojoFn && !state) {
+    fail(`class setter "${className}.${propName}": mojo_fn requires the class to declare state = "<struct>" — a setter that cannot reach the instance has nothing to set`);
   }
   const fnName = `${className}_set_${propName}_fn`;
   const body = decl.body || 'return val';
@@ -875,9 +899,29 @@ function generateClassSetter(className, propName, decl) {
   lines.push(`        var this_val = CbArgs.get_this(_b, env, info)`);
   lines.push(`        var val = CbArgs.get_one(_b, env, info)`);
 
-  const bodyLines = body.split('\n');
-  for (const bl of bodyLines) {
-    lines.push(`        ${bl}`);
+  if (mojoFn) {
+    // Type-tagged, exactly as instance methods: a setter borrowed onto a
+    // foreign wrapped instance must be a TypeError, not a reinterpret.
+    lines.push(`        var _state = unwrap_native_from_this[${state.mojoType}](`);
+    lines.push(`            _b, env, this_val, NapiTypeTag(${state.tag.lower}, ${state.tag.upper})`);
+    lines.push(`        )`);
+    // The incoming value is not an argv entry — it arrives via get_one — so the
+    // arity chain in emitArgPreamble does not apply, but the CHECK does: a
+    // setter fed the wrong type should say "expected number, got string", not
+    // fall through to the except: block and report "total setter failed".
+    // emitTypeCheck is the same one every argument goes through.
+    emitTypeCheck(lines, `${propName} setter`, decl.type || 'any', 'val', null);
+    emitArgExtract(lines, `${propName} setter`, decl.type || 'any', 'mojo_val', 'val', null);
+    // The pure function mutates state through `mut` and returns nothing.
+    lines.push(`        ${mojoFn}(_state[], mojo_val)`);
+    // JS discards a setter's return value; hand back the value we already hold
+    // rather than spending an N-API call on undefined.
+    lines.push(`        return val`);
+  } else {
+    const bodyLines = body.split('\n');
+    for (const bl of bodyLines) {
+      lines.push(`        ${bl}`);
+    }
   }
 
   lines.push(`    except:`);
@@ -1281,7 +1325,7 @@ function main() {
     }
     for (const [sName, sDecl] of Object.entries(cDecl.setters || {})) {
       output.push(`# ${jsName}.${sName} (setter)`);
-      output.push(generateClassSetter(cName, sName, sDecl));
+      output.push(generateClassSetter(cName, sName, sDecl, structs, cDecl));
       output.push('');
     }
     for (const [smName, smDecl] of Object.entries(cDecl.static_methods || {})) {

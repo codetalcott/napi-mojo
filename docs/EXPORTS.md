@@ -160,7 +160,15 @@ with `npm run generate:addon`; CI gates drift with `git diff --exit-code src/gen
 | `asyncSum(a, b)` | `async = true` | Returns a Promise; sums on a worker thread |
 | `asyncLabel(s)` | `async_label_fn` | Appends " done" on a worker thread; resolves with the string (generated async, String result) |
 | `new ExamplePoint(x, y)` | class | Generated class: `.x`/`.y` getters + setters, `.sum()`, `ExamplePoint.isPoint()` |
+| `new Tally(label, n)` | class + `state` | Native-state class: the wrapped struct is `TallyStateData`, and every member is a `mojo_fn` — `.add()` (mutates through `mut`), `.total` getter **and setter**, `.label` getter, and the statics `Tally.zero()`, `Tally.combine()`, `Tally.parseTotal()` (nullable) |
 
 `Config` (`[structs.config]`) generates the `ConfigData` Mojo struct plus
 `config_from_js()` / `config_to_js()` converters in `src/generated/structs.mojo`,
 and a TypeScript `interface Config` in the emitted `.d.ts`.
+
+`Tally` is the runtime counterpart to the compile-only state-backed class in
+`tests/codegen/kitchen-sink.toml`. `state = "<struct>"` shipped in 0.9.0 with
+codegen coverage only — nothing loaded the result — so wrap/unwrap, the type
+tag, `mut` mutation across calls and the finalizer had never actually run.
+`tests/class_state.test.js` drives all of it, including borrowing a member onto
+a foreign wrapped instance (which must be a `TypeError`, not a reinterpret).

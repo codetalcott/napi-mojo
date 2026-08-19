@@ -50,6 +50,18 @@ function emitTomlDts(toml) {
     return base;
   }
 
+  // Return position: same '?' rule as arguments. Class members used bare
+  // tomlTokenToTs and so silently dropped the nullability that
+  // generate-addon.mjs emits a real JsNull branch for — a getter or method
+  // declared "number?" typed as `number` while it can return null.
+  function tomlRetToTs(token) {
+    const base = tomlTokenToTs(token);
+    if (String(token || '').endsWith('?') && base !== 'any') {
+      return `${base} | null`;
+    }
+    return base;
+  }
+
   const output = [];
 
   // Register struct types and emit TypeScript interfaces
@@ -96,13 +108,13 @@ function emitTomlDts(toml) {
 
     // Constructor
     const ctorArgs = cls.constructor_args || [];
-    const ctorParams = ctorArgs.map((t, i) => `arg${i}: ${tomlTokenToTs(t)}`).join(', ');
+    const ctorParams = ctorArgs.map((t, i) => `arg${i}: ${tomlArgToTs(t)}`).join(', ');
     output.push(`  constructor(${ctorParams});`);
 
     // Instance methods
     for (const [mName, mDecl] of Object.entries(cls.instance_methods || {})) {
-      const ret = tomlTokenToTs(mDecl.returns);
-      const mArgs = (mDecl.args || []).map((t, i) => `arg${i}: ${tomlTokenToTs(t)}`).join(', ');
+      const ret = tomlRetToTs(mDecl.returns);
+      const mArgs = (mDecl.args || []).map((t, i) => `arg${i}: ${tomlArgToTs(t)}`).join(', ');
       output.push(`  ${mName}(${mArgs}): ${ret};`);
     }
 
@@ -111,7 +123,7 @@ function emitTomlDts(toml) {
 
     // Getters
     for (const [gName, gDecl] of Object.entries(cls.getters || {})) {
-      const ret = tomlTokenToTs(gDecl.returns);
+      const ret = tomlRetToTs(gDecl.returns);
       if (setterNames.has(gName)) {
         output.push(`  ${gName}: ${ret};`);
       } else {
@@ -119,17 +131,19 @@ function emitTomlDts(toml) {
       }
     }
 
-    // Setter-only (no paired getter — unusual but possible)
+    // Setter-only (no paired getter — unusual but possible). A setter that
+    // declares a value type gets it; `any` is the fallback, not the rule.
     for (const sName of setterNames) {
       if (!(cls.getters || {})[sName]) {
-        output.push(`  ${sName}: any;`);
+        const sDecl = cls.setters[sName] || {};
+        output.push(`  ${sName}: ${sDecl.type ? tomlTokenToTs(sDecl.type) : 'any'};`);
       }
     }
 
     // Static methods
     for (const [smName, smDecl] of Object.entries(cls.static_methods || {})) {
-      const ret = tomlTokenToTs(smDecl.returns);
-      const smArgs = (smDecl.args || []).map((t, i) => `arg${i}: ${tomlTokenToTs(t)}`).join(', ');
+      const ret = tomlRetToTs(smDecl.returns);
+      const smArgs = (smDecl.args || []).map((t, i) => `arg${i}: ${tomlArgToTs(t)}`).join(', ');
       output.push(`  static ${smName}(${smArgs}): ${ret};`);
     }
 
