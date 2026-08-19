@@ -35,7 +35,10 @@ function emitTomlDts(toml) {
 
   // Argument position: a '?' token means the generated callback skips type
   // validation, so null/undefined are accepted — say so in the types instead
-  // of silently stripping the '?'.
+  // of silently stripping the '?'. This is only true because generate-addon.mjs
+  // REJECTS '?' on a converting token in argument position: those extracts call
+  // Js*.from_napi_value on the value and would raise on the null advertised
+  // here. Only pass-through tokens (any/object/array) reach this line.
   function tomlArgToTs(token) {
     const base = tomlTokenToTs(token);
     if (String(token || '').endsWith('?') && base !== 'any') {

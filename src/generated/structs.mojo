@@ -34,10 +34,10 @@ struct ConfigData(Movable, Copyable):
 
 def config_from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> ConfigData:
     var obj = JsObject(val)
-    var host = JsString.from_napi_value(b, env, obj.get_named_property(b, env, "host"))
-    var port = JsNumber.from_napi_value(b, env, obj.get_named_property(b, env, "port"))
-    var verbose = JsBoolean.from_napi_value(b, env, obj.get_named_property(b, env, "verbose"))
-    return ConfigData(host, port, verbose)
+    var _f_host = JsString.from_napi_value(b, env, obj.get_named_property(b, env, "host"))
+    var _f_port = JsNumber.from_napi_value(b, env, obj.get_named_property(b, env, "port"))
+    var _f_verbose = JsBoolean.from_napi_value(b, env, obj.get_named_property(b, env, "verbose"))
+    return ConfigData(_f_host, _f_port, _f_verbose)
 
 def config_to_js(b: Bindings, env: NapiEnv, data: ConfigData) raises -> NapiValue:
     var obj = JsObject.create(b, env)

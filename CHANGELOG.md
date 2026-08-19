@@ -3,6 +3,35 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
+## Unreleased
+
+### Fixed — code generator
+
+Three emitter bugs, each reachable only from a consumer's own `exports.toml`
+(`src/exports.toml` contains none of these shapes, and the kitchen-sink gate
+covers template branches, not malformed input). `napi-mojo init` shipping in
+0.8.0 is what made user-authored TOML the common case.
+
+- A struct declared with no fields emitted `def __init__(out self, ):` plus a
+  `__moveinit__` and copy ctor with empty bodies — three syntax errors that
+  surfaced at `mojo build`, far from the missing `[structs.<name>.fields]`
+  table that caused them. Now rejected with that cause named.
+- A struct field named `obj` redeclared `from_js`'s own `var obj` and made
+  every later field read its property off a `Float64`; `val`, `b` and `env`
+  shadowed the converter's parameters the same way. Field locals are now
+  `_f_`-prefixed, so no field name can collide.
+- A converting token in argument position could carry `?` (`number?`,
+  `string?`, a struct): the `.d.ts` advertised `| null` while the generated
+  extract called `Js*.from_napi_value` on the value unconditionally, so the
+  advertised `null` raised at runtime. Now rejected, with the supported
+  spellings named. `?` is unchanged on return types and on pass-through
+  argument tokens (`any?`/`object?`/`array?`), where `| null` is the truth.
+
+`tests/codegen_guards.test.js` covers the rejection branches — the half
+`tests/codegen/` cannot, since that target has to compile — and the kitchen
+sink now declares the four colliding field names and both remaining
+pass-through nullable tokens.
+
 ## 0.8.0 — 2026-08-18
 
 ### BREAKING: the env-only overload surface is deleted (#42)
