@@ -124,7 +124,13 @@ describe('toml-lite: parses the real exports.toml', () => {
     const r = parseTOML(text);
     expect(Object.keys(r.functions).length).toBeGreaterThan(0);
     expect(Array.isArray(r.extra_imports)).toBe(true);
-    expect(r.extra_imports.length).toBe(12);
+    // The point is that the multiline array survives the parse intact, so the
+    // expected count is DERIVED from the file rather than hardcoded — a magic
+    // number here just has to be bumped every time an import is added, which
+    // is a test that rots instead of one that guards.
+    const declared = text.match(/^\s*"from addon\.\w+ import \w+",?\s*$/gm) || [];
+    expect(declared.length).toBeGreaterThan(0);
+    expect(r.extra_imports.length).toBe(declared.length);
     // every import line survived the multiline array intact
     for (const imp of r.extra_imports) {
       expect(imp).toMatch(/^from addon\.\w+ import \w+$/);
