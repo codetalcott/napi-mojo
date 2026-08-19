@@ -20,6 +20,9 @@
 // pay for regressing another. Per-file also makes the failure message name the
 // file, which is the only thing the author needs.
 //
+// A file `mojo doc` cannot open at all is a separate case from an undocumented
+// one, and is handled by KNOWN_UNDOCUMENTABLE below rather than by a zero count.
+//
 // Usage:
 //   node scripts/check-docstring-coverage.mjs            # check against floor
 //   node scripts/check-docstring-coverage.mjs --update   # rewrite the floor
@@ -47,6 +50,23 @@ const FRAMEWORK_DIR = 'src/napi/framework';
 //   - types.mojo    aliases and constants, no def bodies.
 const EXTRA_FILES = ['src/napi/error.mojo', 'src/napi/module.mojo'];
 
+// `mojo doc` compiles the file NAMED ON THE COMMAND LINE as a main module, even
+// with -I src. That is the exact context in which an explicit
+//   def __moveinit__(out self, deinit take: Self)
+// fails with `'None' has no attributes` on `self` — a Mojo bug CLAUDE.md already
+// documents, and which does not fire when the same file is compiled as part of
+// the package (build.sh compiles all three of these every run).
+//
+// So these are not undocumentable code; they are files the doc tool cannot open.
+// They are excluded from the counts, and the script FAILS if one of them starts
+// succeeding — that is the signal to delete its entry here and fold the file
+// back into the floor.
+const KNOWN_UNDOCUMENTABLE = {
+  'src/napi/framework/js_string.mojo': "explicit __moveinit__ on Latin1Buf",
+  'src/napi/framework/js_mojo_array.mojo': "explicit __moveinit__ on MojoFloat64Array",
+  'src/napi/framework/register.mojo': "explicit __moveinit__ on ClassRegistry",
+};
+
 const args = process.argv.slice(2);
 const mode = args.includes('--update')
   ? 'update'
@@ -68,9 +88,11 @@ const targets = [
 
 const scratch = mkdtempSync(join(tmpdir(), 'napi-mojo-doc-'));
 
-// `mojo doc` needs -I src (a bare path is treated as a main module, which
-// fails on explicit __moveinit__) and needs a file, not a directory (a
-// directory produces no output at all). Both verified on the 1.0.0 pin.
+// Two invocation constraints, both verified on the 1.0.0 pin:
+//   -I src   — without it the package imports do not resolve at all. It does
+//              NOT make the target file itself a package member; see
+//              KNOWN_UNDOCUMENTABLE above.
+//   a file   — a directory argument produces no output whatsoever.
 function run(file) {
   const [bin, ...rest] = mojoCmd.split(/\s+/);
   const argv = [
@@ -118,18 +140,47 @@ function countFor(file, output) {
 
 const runs = await pool(targets, Math.max(2, cpus().length - 1), run);
 
-const failed = runs.filter((r) => r.code !== 0);
-if (failed.length > 0) {
-  console.error(`\`${mojoCmd} doc\` failed on ${failed.length} file(s):\n`);
-  for (const r of failed) {
+// Show the diagnostics that actually stopped it, not a blind tail: `mojo doc`
+// emits every missing-docstring warning first, so the tail is all warnings and
+// the error that matters has scrolled off.
+function errorLines(out) {
+  const lines = out.split('\n').filter((l) => /: error: /.test(l));
+  return lines.length > 0 ? lines.join('\n') : out.trim().split('\n').slice(-10).join('\n');
+}
+
+const brokeUnexpectedly = runs.filter((r) => r.code !== 0 && !(r.file in KNOWN_UNDOCUMENTABLE));
+if (brokeUnexpectedly.length > 0) {
+  console.error(`\`${mojoCmd} doc\` failed on ${brokeUnexpectedly.length} file(s):\n`);
+  for (const r of brokeUnexpectedly) {
     console.error(`--- ${r.file} (exit ${r.code}) ---`);
-    console.error(r.out.trim().split('\n').slice(-20).join('\n'));
+    console.error(errorLines(r.out));
+    console.error('');
   }
+  console.error(
+    'A doc failure is a real finding, not gate noise: it type-checks declarations\n' +
+      'the build never elaborates. If it is genuinely the main-module __moveinit__\n' +
+      'bug, add the file to KNOWN_UNDOCUMENTABLE with that reason.\n'
+  );
+  process.exit(1);
+}
+
+const skipHealed = runs.filter((r) => r.code === 0 && r.file in KNOWN_UNDOCUMENTABLE);
+if (skipHealed.length > 0) {
+  console.error(`${skipHealed.length} file(s) in KNOWN_UNDOCUMENTABLE now document cleanly:\n`);
+  for (const r of skipHealed) console.error(`  ${r.file}  (was: ${KNOWN_UNDOCUMENTABLE[r.file]})`);
+  console.error(
+    '\nDelete those entries from scripts/check-docstring-coverage.mjs and run\n' +
+      '  node scripts/check-docstring-coverage.mjs --update\n' +
+      'so the files enter the floor.\n'
+  );
   process.exit(1);
 }
 
 const counts = Object.fromEntries(
-  runs.map((r) => [r.file, countFor(r.file, r.out)]).sort((a, b) => a[0].localeCompare(b[0]))
+  runs
+    .filter((r) => !(r.file in KNOWN_UNDOCUMENTABLE))
+    .map((r) => [r.file, countFor(r.file, r.out)])
+    .sort((a, b) => a[0].localeCompare(b[0]))
 );
 const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
@@ -224,8 +275,10 @@ if (removed.length > 0) {
 
 if (bad) process.exit(1);
 
+const nSkipped = Object.keys(KNOWN_UNDOCUMENTABLE).length;
 console.log(
   `docstring coverage: ${total} undocumented public symbols across ` +
-    `${targets.length} consumer-facing modules, at or below the floor in ${FLOOR_FILE} ` +
-    `(${floorTotal}).`
+    `${Object.keys(counts).length} consumer-facing modules, at or below the floor in ` +
+    `${FLOOR_FILE} (${floorTotal}). ${nSkipped} module(s) skipped — mojo doc cannot ` +
+    `open them (see KNOWN_UNDOCUMENTABLE).`
 );
