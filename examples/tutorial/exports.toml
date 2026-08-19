@@ -6,7 +6,7 @@
 # instead of quietly misleading a reader.
 
 extra_imports = [
-    "from fns import greet_pure, add_pure, safe_divide_pure, describe_config_pure, scale_vec",
+    "from fns import greet_pure, add_pure, safe_divide_pure, describe_config_pure, scale_vec, verbose_only",
 ]
 
 # --- A pure function with a string arg and a string return ---
@@ -55,6 +55,13 @@ async = true
 execute_body = """
 ptr[].result = ptr[].input0 * ptr[].input1
 """
+
+# --- An array of structs: `config[]` needs no extra declaration ---
+[functions.verbose_only]
+js_name = "verboseOnly"
+args = ["config[]"]
+returns = "config[]"
+mojo_fn = "verbose_only"
 
 # --- Zero-copy binary data ---
 # The Span aliases the JS Float64Array's memory going in; the returned

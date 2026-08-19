@@ -74,6 +74,25 @@ describe('generator input guards', () => {
     expect(r.code).toBe(0);
   });
 
+  test('a declared struct also yields a <struct>[] token', () => {
+    const r = generate(
+      '[structs.cfg]\njs_name = "Cfg"\n[structs.cfg.fields]\nhost = "string"\n\n' +
+        '[functions.pick]\njs_name = "pick"\nmojo_fn = "pick"\n' +
+        'args = ["cfg[]"]\nreturns = "cfg[]"\n'
+    );
+    expect(r.code).toBe(0);
+    const cbs = fs.readFileSync(path.join(r.dir, 'generated', 'callbacks.mojo'), 'utf8');
+    const structs = fs.readFileSync(path.join(r.dir, 'generated', 'structs.mojo'), 'utf8');
+    // The array form is carried entirely by the struct's trait conformance
+    // plus the parametric converters — no per-struct array emitter.
+    expect(structs).toContain('struct CfgData(Movable, Copyable, ToJsValue, FromJsValue):');
+    expect(structs).toContain('def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:');
+    expect(structs).toContain('def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:');
+    expect(cbs).toContain('from napi.framework.convert import from_js_array, to_js_array');
+    expect(cbs).toContain('var mojo_arg0 = from_js_array[CfgData](_b, env, arg0)');
+    expect(cbs).toContain('return to_js_array[CfgData](_b, env, mojo_result)');
+  });
+
   test('buffer is rejected as a return type, with the reason', () => {
     const r = generate(
       '[functions.make_buf]\njs_name = "makeBuf"\nmojo_fn = "make_buf"\n' +

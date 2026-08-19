@@ -159,6 +159,11 @@ jobs:
             const c = new m.Counter(10);
             assert.strictEqual(c.value, 10);
             assert.strictEqual(c.plus(5), 15);
+            const picked = m.verboseOnly([
+              { host: 'a', port: 1, verbose: true },
+              { host: 'b', port: 2, verbose: false },
+            ]);
+            assert.deepStrictEqual(picked, [{ host: 'a', port: 1, verbose: true }]);
             const scaled = m.scaleVec(new Float64Array([1, 2, 3]), 10);
             assert.ok(scaled instanceof Float64Array);
             assert.deepStrictEqual(Array.from(scaled), [10, 20, 30]);

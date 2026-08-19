@@ -3,6 +3,7 @@
 
 from napi.types import NapiEnv, NapiValue
 from napi.bindings import Bindings
+from napi.framework.convert import ToJsValue, FromJsValue
 from napi.framework.js_string import JsString
 from napi.framework.js_number import JsNumber
 from napi.framework.js_boolean import JsBoolean
@@ -12,7 +13,7 @@ from napi.framework.js_int64 import JsInt64
 from napi.framework.js_object import JsObject
 
 # Config struct
-struct ConfigData(Movable, Copyable):
+struct ConfigData(Movable, Copyable, ToJsValue, FromJsValue):
     var host: String
     var port: Float64
     var verbose: Bool
@@ -31,6 +32,13 @@ struct ConfigData(Movable, Copyable):
         self.host = copy.host
         self.port = copy.port
         self.verbose = copy.verbose
+
+    def to_js(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+        return config_to_js(b, env, self)
+
+    @staticmethod
+    def from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> Self:
+        return config_from_js(b, env, val)
 
 def config_from_js(b: Bindings, env: NapiEnv, val: NapiValue) raises -> ConfigData:
     var obj = JsObject(val)

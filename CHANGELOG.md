@@ -16,6 +16,13 @@ break the source API that downstream addons compile against.
 
 ### Added
 
+- **Generated structs implement `ToJsValue`/`FromJsValue`, and `<struct>[]`
+  works everywhere a type token is accepted.** Declaring `[structs.config]` has
+  always given you `config` as a token; it now also gives `config[]`, in
+  argument and return position, mapping to `List[ConfigData]` in Mojo and
+  `Config[]` in TypeScript. The array form is carried entirely by the trait
+  conformance plus the existing parametric `to_js_array`/`from_js_array` — no
+  per-struct array emitter.
 - **Zero-copy binary tokens in the code generator.** `float64array` as an
   argument hands the Mojo function a `Span[Float64]` aliasing the JS
   `Float64Array`'s own backing store; as a return type the function hands back

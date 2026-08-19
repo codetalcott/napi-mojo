@@ -244,9 +244,9 @@ def square_pure(x: Float64) -> Float64:
 ```
 
 Supported type tokens: `number`, `string`, `boolean`/`bool`, `int32`, `uint32`,
-`int64`, `object`, `array`, `number[]`, `string[]`, `any`, plus the zero-copy
-binary tokens `float64array` (argument and return) and `buffer` (argument
-only). Append `?` to an argument of a pass-through token (`any`, `object`,
+`int64`, `object`, `array`, `number[]`, `string[]`, `any`, any declared struct
+and its array form `<struct>[]`, plus the zero-copy binary tokens
+`float64array` (argument and return) and `buffer` (argument only). Append `?` to an argument of a pass-through token (`any`, `object`,
 `array`) to skip type validation; on a return type `?` maps `Optional[T]` to
 `T | null`.
 
