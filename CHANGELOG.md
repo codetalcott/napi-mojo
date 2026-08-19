@@ -3,6 +3,90 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
+## Unreleased
+
+Three gates and one code-generator feature. The through-line is the same one
+0.9.0 kept running into: this codebase's characteristic failure is something
+that compiles, passes, and was never actually executed.
+
+### Added
+
+- **Docstring coverage ratchet.** `scripts/check-docstring-coverage.mjs` runs
+  `mojo doc --diagnose-missing-doc-strings` over the consumer-facing modules and
+  compares per-file counts against `scripts/docstring-floor.json` — 351
+  undocumented public symbols across 38 modules at adoption. Per-file rather
+  than one total, because a single number lets documenting one module pay for
+  regressing another. The ratchet fails in both directions: rising is a
+  regression, and falling without updating the floor would let the coverage
+  just added be undone silently later.
+
+  Asking the compiler rather than a regex matters for more than tidiness —
+  `mojo doc` elaborates every declaration in the file it opens, so the gate is
+  a third view onto lazily-checked code after `framework_coverage.mojo` (method
+  bodies) and `tests/codegen/` (generator templates). A doc failure there is a
+  finding, not gate noise. Three framework files that `mojo doc` cannot open at
+  all — the main-module `__moveinit__` compiler bug — are listed in
+  `KNOWN_UNDOCUMENTABLE` with their reason, and the script fails if one ever
+  starts working, so the skip cannot outlive the bug.
+
+  `"""` is now the documented convention for public framework symbols, with a
+  worked example in `CONTRIBUTING.md`. No sweep of the existing `##` blocks.
+
+- **Per-call overhead gate.** A non-required `benchmark` job compares median
+  ns/call against per-platform ceilings in `scripts/benchmark-ceilings.json`.
+  Cached `NapiBindings` exists to keep a `dlopen(NULL)` + `dlsym` off the hot
+  path and nothing had ever checked it stayed off; a reintroduced per-call
+  lookup costs 10-100x and would ship green.
+
+  Calibrated for that and honest about the rest: it will not see a 10%
+  regression on a shared runner and does not claim to. `macos-latest` measures
+  ~2.7x the per-call cost of `ubuntu-latest`, hence per-platform ceilings and a
+  hard error on an unrecorded platform. Every run prints observed/ceiling as a
+  percentage and emits a CI warning above 75%.
+
+- **`mojo_fn` on class setters and static methods**, the last two generator
+  rejections. A setter takes the tagged unwrap plus a declared
+  `type = "<token>"` for its value and mutates through `mut`; a static takes no
+  state at all and works on a class with no `state` declared.
+
+- **Runtime coverage for native class state.** `state = "<struct>"` shipped in
+  0.9.0 with codegen coverage only — the kitchen sink compiles a state-backed
+  class but never loads it, and `src/exports.toml` declared none — so
+  wrap/unwrap, the type tag, `mut` mutation across calls and the finalizer had
+  never run. The `Tally` class and `tests/class_state.test.js` drive all of it,
+  including borrowing a method, getter or setter onto a foreign wrapped
+  instance, which must be a `TypeError` rather than a reinterpret.
+
+### Fixed
+
+- `NapiNodeVersion` could not compile: `release` was missing
+  `@__allow_legacy_any_origin_fields`, latent since dev2026062206 because
+  nothing constructs the struct and struct definitions elaborate lazily. Found
+  by the docstring gate's first run.
+- `toml-dts.js` ignored `?` throughout the class block, so a class method or
+  getter declared `"number?"` was typed `number` while the generated callback
+  has a real `JsNull` branch. Class members now use the same nullable-aware
+  mappers as top-level functions, for arguments and returns alike. A
+  setter-only property with a declared type emits that type instead of `any`.
+- A generated setter did not type-check its value: the check lives in
+  `emitArgPreamble`, which the setter path does not use, so a wrong type fell
+  through to the `except:` block as "<prop> setter failed" rather than
+  "expected number, got string".
+
+### Changed
+
+- Two test assertions that rotted rather than guarded now derive from the
+  source: `typescript.test.js` builds its class skip-list from the `.d.ts`'s
+  own `export class` lines (and checks every declared class is really on the
+  addon, so the derived list cannot hide a missing export), and
+  `toml_lite.test.js` derives the expected `extra_imports` count instead of
+  hardcoding it.
+- `scripts/benchmark.mjs` gains `--json` and `$NAPI_MOJO_BENCH_BATCHES`; the
+  human-readable table is unchanged.
+- `CLAUDE.md` referred to `@qkstat/rag` and `packages/rag`, which do not
+  exist. The downstream packages are `@qkstat/retrieve` (which holds the GPU
+  work) and `@qkstat/embed`.
+
 ## 0.9.0 — 2026-08-19
 
 The code generator stops being a convenience for simple functions and becomes
