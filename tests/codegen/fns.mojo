@@ -152,7 +152,7 @@ def ks_acc_total(s: KsAccStateData) -> Float64:
 ## --- Nullable converting arguments arrive as Optional[T] ---
 def ks_opt_scalar(n: Float64, label: Optional[String]) -> Float64:
     if label:
-        return n + Float64(len(label.value()))
+        return n + Float64(label.value().byte_length())
     return n
 
 

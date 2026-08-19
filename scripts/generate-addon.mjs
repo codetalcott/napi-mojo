@@ -280,7 +280,9 @@ function emitArgExtract(lines, jsName, rawType, varName, argExpr, argDesc) {
   lines.push(`                return NapiValue(unsafe_from_address=Int(0))`);
   // The base extract emits at 8 spaces; it lives one level deeper here.
   lines.push(typeInfo.extract(`_v_${varName}`, argExpr).replace(/^ {8}/gm, '            '));
-  lines.push(`            ${varName} = _v_${varName}`);
+  // Transfer, not copy: a struct or String is not ImplicitlyCopyable, and
+  // the temp is dead after this line for every token.
+  lines.push(`            ${varName} = _v_${varName}^`);
 }
 
 // --- Emit the argument-fetch + type-check preamble ---
