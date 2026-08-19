@@ -329,22 +329,27 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.10.1
         with:
           pixi-version: latest
-      - name: Does `mojo doc` exist, and what does it emit?
+      - name: Which `mojo doc` invocation actually works?
         run: |
-          echo "::group::mojo --help (subcommand list)"
-          pixi run mojo --help 2>&1 | head -40 || true
+          echo "::group::A. bare file, no -I (known to fail: treated as a main module)"
+          pixi run mojo doc src/napi/framework/js_object.mojo -o /tmp/a.json 2>&1 | tail -5 || true
+          [ -f /tmp/a.json ] && echo "A OK: $(wc -c < /tmp/a.json) bytes" || echo "A: no output"
           echo "::endgroup::"
-          echo "::group::mojo doc --help"
-          pixi run mojo doc --help 2>&1 | head -40 || true
+          echo "::group::B. file with -I src"
+          pixi run mojo doc -I src src/napi/framework/js_object.mojo -o /tmp/b.json 2>&1 | tail -5 || true
+          [ -f /tmp/b.json ] && echo "B OK: $(wc -c < /tmp/b.json) bytes" || echo "B: no output"
           echo "::endgroup::"
-          echo "::group::mojo doc on a real framework module"
-          pixi run mojo doc src/napi/framework/js_mojo_array.mojo -o /tmp/doc.json 2>&1 | head -20 || true
-          if [ -f /tmp/doc.json ]; then
-            echo "OUTPUT PRODUCED: $(wc -c < /tmp/doc.json) bytes"
-            head -c 1200 /tmp/doc.json || true
-          else
-            echo "NO OUTPUT FILE PRODUCED"
-          fi
+          echo "::group::C. the whole package directory"
+          pixi run mojo doc -I src src/napi/ -o /tmp/c.json 2>&1 | tail -5 || true
+          [ -f /tmp/c.json ] && echo "C OK: $(wc -c < /tmp/c.json) bytes" || echo "C: no output"
+          echo "::endgroup::"
+          echo "::group::D. --diagnose-missing-doc-strings (the coverage signal)"
+          pixi run mojo doc --diagnose-missing-doc-strings -I src src/napi/framework/js_object.mojo -o /tmp/d.json 2>&1 | head -25 || true
+          echo "::endgroup::"
+          echo "::group::E. shape of the JSON, if any was produced"
+          for f in /tmp/b.json /tmp/c.json; do
+            [ -f "$f" ] && { echo "--- $f ---"; head -c 700 "$f"; echo; }
+          done
           echo "::endgroup::"
 
   # Node 24 coverage is a SEPARATE job, deliberately — not a node-version
