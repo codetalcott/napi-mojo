@@ -16,6 +16,10 @@ skills-lock.json
 # Generated example build artifacts
 examples/codegen/generated/
 examples/codegen/build/
+# Tutorial addon: generated/ and build/ are derived, CI regenerates them
+examples/tutorial/generated/
+examples/tutorial/build/
+examples/tutorial/index.d.ts
 # Kitchen-sink codegen compile target scratch output (regenerated every run)
 tests/codegen/generated/
 # Personal pinned-nightly note

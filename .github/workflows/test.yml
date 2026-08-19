@@ -132,6 +132,39 @@ jobs:
             console.log('CLI e2e OK');
           "
 
+      # docs/TUTORIAL.md quotes examples/tutorial/ line for line, so the
+      # tutorial is only as true as this step. It builds that addon through the
+      # CLI exactly as the doc tells a reader to, then calls every export —
+      # including the ones the scaffold does not cover (Optional -> null, a
+      # struct in both directions, async on a worker thread, a class). Prose
+      # examples rot silently; this repo has shipped that failure three times.
+      - name: Tutorial addon end-to-end
+        run: |
+          node bin/napi-mojo.mjs generate \
+            --toml examples/tutorial/exports.toml \
+            --out examples/tutorial/generated \
+            --dts examples/tutorial/index.d.ts
+          node bin/napi-mojo.mjs build examples/tutorial/lib.mojo \
+            -o examples/tutorial/build/index.node
+          node -e "
+            const assert = require('assert');
+            const m = require('./examples/tutorial/build/index.node');
+            assert.strictEqual(m.greet('world'), 'Hello, world!');
+            assert.strictEqual(m.add(2, 3), 5);
+            assert.strictEqual(m.safeDivide(9, 3), 3);
+            assert.strictEqual(m.safeDivide(1, 0), null);
+            assert.strictEqual(
+              m.describeConfig({ host: 'localhost', port: 8080, verbose: true }),
+              'localhost:8080 (verbose)');
+            const c = new m.Counter(10);
+            assert.strictEqual(c.value, 10);
+            assert.strictEqual(c.plus(5), 15);
+            (async () => {
+              assert.strictEqual(await m.asyncProduct(6, 7), 42);
+              console.log('tutorial addon OK');
+            })().catch((e) => { console.error(e); process.exit(1); });
+          "
+
       # No retry wrapper, deliberately. These steps used to retry 3×, blamed
       # on a Mojo `def` function-pointer gap at finalizer registration sites.
       # That diagnosis was wrong: the intermittent macOS SIGABRT/SIGSEGV was a
