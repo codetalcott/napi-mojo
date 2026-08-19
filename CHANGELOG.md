@@ -26,9 +26,10 @@ evidence the async string result was owed.
   `tests/async_stress.test.js` puts many string-returning async calls in
   flight at once — mixed sizes, interleaved with numeric async, with forced GC
   between rounds — and a new non-required `async-stress` job runs it under a
-  checking allocator: Guard Malloc on macOS when `DYLD_INSERT_LIBRARIES`
-  survives (probed, because macOS strips it for hardened binaries and a
-  stripped insertion checks nothing while the step goes green), always the
+  checking allocator: Guard Malloc on macOS (which does engage on GitHub
+  runners — the job probes for the `GuardMalloc[node-…]` banner and warns if
+  that ever stops being true, since a stripped `DYLD_INSERT_LIBRARIES` is not
+  an error and would check nothing while going green), always the
   libmalloc knobs `MallocScribble`/`MallocGuardEdges`/`MallocErrorAbort` which
   the system allocator honours directly, and `MALLOC_PERTURB_`/`MALLOC_CHECK_`
   on Linux. This
