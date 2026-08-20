@@ -89,11 +89,15 @@ struct ModuleBuilder(Movable):
         out self,
         env: NapiEnv,
         exports: NapiValue,
-        data: NapiStore,
+        data: NapiValue,
     ):
         self.env = env
         self.exports = exports
-        self.data = data
+        # The public parameter stays AnyOrigin: every addon's register_module
+        # already writes `ModuleBuilder(env, exports, cb_data)` with a widened
+        # pointer, and that is not worth breaking. Narrow to storage here — the
+        # bindings allocation lives for the whole env, so Untracked is honest.
+        self.data = data.unsafe_origin_cast[MutUntrackedOrigin]()
         self._descs = unsafe_alloc[NapiPropertyDescriptor](MAX_DESCRIPTORS).unsafe_origin_cast[MutUntrackedOrigin]()
         self._count = 0
         self._capacity = MAX_DESCRIPTORS
@@ -186,7 +190,7 @@ struct ModuleBuilder(Movable):
         var b = bindings_from_context(self.data)
         var ctor = define_class(b, self.env, name, ctor_ptr, self.data)
         JsObject(self.exports).set_property(b, self.env, name, ctor)
-        return ClassBuilder(self.env, ctor, self.data)
+        return ClassBuilder(self.env, ctor, self.data.as_unsafe_any_origin())
 
 
 ## ClassBuilder — chainable class member registration
@@ -205,11 +209,11 @@ struct ClassBuilder:
         out self,
         env: NapiEnv,
         ctor: NapiValue,
-        data: NapiStore,
+        data: NapiValue,
     ):
         self.env = env
         self.ctor = ctor
-        self.data = data
+        self.data = data.unsafe_origin_cast[MutUntrackedOrigin]()
 
     ## instance_method — add an instance method to the class prototype
     def instance_method(
