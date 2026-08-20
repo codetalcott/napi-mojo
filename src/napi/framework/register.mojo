@@ -166,7 +166,10 @@ struct ModuleBuilder(Movable):
                     self.env,
                     self.exports,
                     UInt(self._count),
-                    Pointer(to=self._descs[unsafe_offset=0]).unsafe_bitcast[NoneType](),
+                    Pointer(to=self._descs[unsafe_offset=0])
+                    .unsafe_bitcast[NoneType]()
+                    .unsafe_mut_cast[False]()
+                    .as_unsafe_any_origin(),
                 )
             )
         except e:
@@ -188,7 +191,9 @@ struct ModuleBuilder(Movable):
         self, name: StringLiteral, ctor_ptr: OpaquePointer[MutAnyOrigin]
     ) raises -> ClassBuilder:
         var b = bindings_from_context(self.data.as_unsafe_any_origin())
-        var ctor = define_class(b, self.env, name, ctor_ptr, self.data)
+        var ctor = define_class(
+            b, self.env, name, ctor_ptr, self.data.as_unsafe_any_origin()
+        )
         JsObject(self.exports).set_property(b, self.env, name, ctor)
         return ClassBuilder(self.env, ctor, self.data.as_unsafe_any_origin())
 
@@ -240,7 +245,7 @@ struct ClassBuilder:
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
-        desc.getter = ptr
+        desc.getter = ptr.unsafe_origin_cast[MutUntrackedOrigin]()
         desc.data = self.data
         desc.attributes = 0
         define_property(b, self.env, proto, desc)
@@ -287,7 +292,7 @@ struct ClassBuilder:
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
-        desc.getter = ptr
+        desc.getter = ptr.unsafe_origin_cast[MutUntrackedOrigin]()
         desc.data = self.data
         desc.attributes = 0
         define_property(b, self.env, self.ctor, desc)
