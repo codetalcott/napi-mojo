@@ -230,6 +230,38 @@ jobs:
             })().catch((e) => { console.error(e); process.exit(1); });
           "
 
+      # Host mode is the other direction: a Mojo PROGRAM driving Node, with
+      # `napi-mojo run` generating the registration wrapper and the bootstrap.
+      # Two things only an end-to-end run can catch: that Mojo still resolves
+      # a sibling plain-module import (`from main import mojo_main`) with no
+      # extra -I, and that a number returned from mojo_main becomes the
+      # process exit code. Both are load-bearing for the CLI contract.
+      - name: Host-mode program end-to-end
+        run: |
+          out=$(node bin/napi-mojo.mjs run examples/host/main.mojo -- one two)
+          echo "$out"
+          node -e "
+            const assert = require('assert');
+            const out = process.argv[1];
+            assert.match(out, /hello from Mojo, hosted by Node/);
+            assert.match(out, /platform: (darwin|linux)/);
+            assert.match(out, /joined: usr\/local\/bin/);
+            assert.match(out, /argc: 2/);
+            assert.match(out, /argv\[0\]: one/);
+            assert.match(out, /argv\[1\]: two/);
+            console.log('host mode OK');
+          " "$out"
+          # The generated wrapper must not survive the run.
+          test ! -f examples/host/_napi_mojo_host_entry.mojo
+
+      # A scaffolded host program must run with no edits, the same contract
+      # `napi-mojo init` has for addons.
+      - name: Host-mode scaffold end-to-end
+        run: |
+          node bin/napi-mojo.mjs init "$RUNNER_TEMP/host-e2e" --host
+          node bin/napi-mojo.mjs run "$RUNNER_TEMP/host-e2e/main.mojo" \
+            --mojo "pixi run --manifest-path $PWD/pixi.toml mojo"
+
       # No retry wrapper, deliberately. These steps used to retry 3×, blamed
       # on a Mojo `def` function-pointer gap at finalizer registration sites.
       # That diagnosis was wrong: the intermittent macOS SIGABRT/SIGSEGV was a

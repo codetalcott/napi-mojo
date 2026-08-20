@@ -21,6 +21,7 @@
   "src/napi/framework/js_exception.mojo": 5,
   "src/napi/framework/js_external.mojo": 3,
   "src/napi/framework/js_function.mojo": 10,
+  "src/napi/framework/js_host.mojo": 0,
   "src/napi/framework/js_int32.mojo": 5,
   "src/napi/framework/js_int64.mojo": 5,
   "src/napi/framework/js_null.mojo": 4,

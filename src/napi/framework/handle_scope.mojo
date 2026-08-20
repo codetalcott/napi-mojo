@@ -46,3 +46,47 @@ struct HandleScope:
 
     def close(self, b: Bindings, env: NapiEnv) raises:
         check_status(raw_close_handle_scope(b, env, self.scope))
+
+
+def with_handle_scope[
+    body: def () capturing raises -> None
+](b: Bindings, env: NapiEnv) raises:
+    """Run `body` inside its own handle scope, closing it on both paths.
+
+    This is the encapsulated form of the try/except discipline this module's
+    header describes. It matters most when Mojo drives a loop that calls into
+    JavaScript: every napi_value the iteration creates is pinned to the
+    enclosing scope until that scope closes, so a long Mojo-driven loop
+    without a per-iteration scope grows handles without bound.
+
+        for i in range(n):
+            @parameter
+            def _step():
+                _ = fs.call_method(b, env, "readFileSync", args)
+            with_handle_scope[_step](b, env)
+
+    The body's error wins: if `body` raises, the scope is still closed, and
+    the original error propagates unchanged rather than being replaced by a
+    generic wrapper. A failure to close is deliberately swallowed in that
+    path, because the body's error is the more useful diagnosis.
+
+    Parameters:
+        body: The work to run inside the scope.
+
+    Args:
+        b: Cached N-API bindings.
+        env: The N-API environment.
+
+    Raises:
+        Error: Whatever `body` raised, or a scope open/close failure.
+    """
+    var hs = HandleScope.open(b, env)
+    try:
+        body()
+    except e:
+        try:
+            hs.close(b, env)
+        except:
+            pass
+        raise e^
+    hs.close(b, env)

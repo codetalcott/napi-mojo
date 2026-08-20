@@ -6,9 +6,13 @@
 ##   var result = func.call0(env)               # no args
 ##   var result = func.call1(env, arg0)          # one arg
 ##   var result = func.call2(env, arg0, arg1)    # two args
+##   var result = func.call_n(env, args)         # runtime-length List
+##   var result = func.call_with(env, recv, args) # explicit `this`
 ##
-## All call variants use `undefined` as the `this` value. The function must
-## already be a valid JS function napi_value (check with js_typeof first).
+## call0/call1/call2/call_n use `undefined` as the `this` value; call_with
+## takes it explicitly, which is what method invocation requires (see
+## JsObject.call_method). The function must already be a valid JS function
+## napi_value (check with js_typeof first).
 
 from napi.types import NapiEnv, NapiValue, NapiStore, NapiConstStore, NapiPropertyDescriptor
 from napi.bindings import Bindings
@@ -89,6 +93,83 @@ struct JsFunction:
         )
         return result
 
+    def call_n(
+        self, b: Bindings, env: NapiEnv, args: List[NapiValue]
+    ) raises -> NapiValue:
+        """Call the function with N arguments and `undefined` as `this`.
+
+        `call0`/`call1`/`call2` remain the allocation-free fast paths; reach
+        for this one when the argument count is only known at runtime.
+
+        Args:
+            b: Cached N-API bindings.
+            env: The N-API environment.
+            args: The arguments, in order. May be empty.
+
+        Returns:
+            The value the function returned.
+
+        Raises:
+            Error: If the call fails, or the callee threw. A JS exception
+                raised by the callee stays pending and keeps its identity —
+                do not throw a replacement error over it.
+        """
+        var recv: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var recv_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
+            to=recv
+        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+        check_status(raw_get_undefined(b, env, recv_ptr))
+        return self.call_with(b, env, recv, args)
+
+    def call_with(
+        self,
+        b: Bindings,
+        env: NapiEnv,
+        recv: NapiValue,
+        args: List[NapiValue],
+    ) raises -> NapiValue:
+        """Call the function with N arguments and an explicit `this`.
+
+        Method calls need this: `obj.method(...)` only behaves correctly when
+        `recv` is `obj`. `JsObject.call_method` is the ergonomic wrapper.
+
+        Args:
+            b: Cached N-API bindings.
+            env: The N-API environment.
+            recv: The `this` value for the call.
+            args: The arguments, in order. May be empty.
+
+        Returns:
+            The value the function returned.
+
+        Raises:
+            Error: If the call fails, or the callee threw. A JS exception
+                raised by the callee stays pending and keeps its identity —
+                do not throw a replacement error over it.
+        """
+        var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
+        var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
+            to=result
+        ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+        # An empty List's data pointer is not guaranteed dereferenceable, so
+        # hand napi a genuine null argv rather than a zero-length buffer —
+        # the same null_argv call0 passes.
+        var argv_ptr = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
+        if len(args) > 0:
+            argv_ptr = args.unsafe_ptr().unsafe_bitcast[
+                NoneType
+            ]().as_unsafe_any_origin()
+        check_status(
+            raw_call_function(
+                b, env, recv, self.value, UInt(len(args)), argv_ptr, result_ptr
+            )
+        )
+        # Keep `args` alive past the FFI call. `unsafe_ptr()` is NOT a tracked
+        # use, so ASAP destruction is otherwise free to release the buffer
+        # napi is mid-read on. Same idiom as create_named's `_ = name`; this
+        # is the argv lifetime hazard CLAUDE.md flags for call1/call2.
+        _ = args
+        return result
     @staticmethod
     def create(
         b: Bindings,
