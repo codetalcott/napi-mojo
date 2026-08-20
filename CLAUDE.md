@@ -111,7 +111,7 @@ src/exports.toml                         # Function/class/struct declarations fo
 src/generated/callbacks.mojo             # AUTO-GENERATED callbacks from exports.toml
 src/generated/structs.mojo               # AUTO-GENERATED struct definitions + from_js/to_js converters
 src/addon/runtime_ops.mojo               # asyncRuntimeInitOk() — makes a silent parallelize() regression testable
-spike/ffi_probe.mojo                     # throwaway FFI validation (run on new machine / Mojo upgrade)
+spike/ffi_probe.mojo                     # FFI contract + origin-migration recipe; BUILT AND RUN in CI
 spike/elaboration_probe.mojo             # throwaway: proves per-method lazy elaboration (+ spike/elab_pkg/)
 spike/runtime_probe.mojo                 # throwaway: AsyncRT init + parallelize, run from inside Node
 bin/napi-mojo.mjs                        # CLI: init / generate (--dts) / build (--bundle) — wraps the generators + bundle-runtime.sh; e2e-tested in CI
@@ -278,7 +278,7 @@ bindings.create_object = _slot(h, "napi_create_object")   # _slot = get_symbol +
 - `@export("name", ABI="C")` → `@export("name")` + `abi("C")` effect on the def. Only `examples/codegen/lib.mojo` still had the old form — it sits outside the `examples/*-addon.mojo` CI glob and had rotted (it was also still missing dev2026072306's `.as_unsafe_any_origin()`); consider widening that glob if more non-addon examples appear.
 - New warning: "assignment to 'X' was never used" **false-positives on vars captured by `capturing` closures** (3 sites in `examples/vectors-addon.mojo`, `chunk_size`). Do not delete the "dead" var — it is read inside the closure. Left as warnings.
 
-**`get_symbol` now borrows the handle** (dev2026080905): it returns `Optional[Pointer[T, origin-of-handle]]` instead of a `MutUntrackedOrigin` pointer, so inside a generic `ref h` function the mutability is symbolic and `.as_unsafe_any_origin()` no longer converts to `MutAnyOrigin` (error names `SomeUnsafeAnyOrigin`; the note says `.mut … is 'h_is_mut'`). `_slot` (in both `bindings.mojo` and `spike/ffi_probe.mojo`) now spells the widening explicitly: `opt.value().unsafe_mut_cast[True]().unsafe_origin_cast[MutAnyOrigin]()` — same soundness argument as before (a symbol address is a static code address; the handle is `dlopen(NULL)`, never unmapped). Related: **`AnyOrigin[mut]` and `UnsafeAnyOrigin[mut]` are now distinct spellings** (identical MLIR attr underneath); upstream documents `UnsafeAnyOrigin` as "slated for deprecation and removal", so expect a future forced migration of the whole `MutAnyOrigin` field/signature surface.
+**`get_symbol` now borrows the handle** (dev2026080905): it returns `Optional[Pointer[T, origin-of-handle]]` instead of a `MutUntrackedOrigin` pointer, so inside a generic `ref h` function the mutability is symbolic and `.as_unsafe_any_origin()` no longer converts to `MutAnyOrigin` (error names `SomeUnsafeAnyOrigin`; the note says `.mut … is 'h_is_mut'`). `_slot` now spells the widening explicitly: `opt.value().unsafe_mut_cast[True]().unsafe_origin_cast[MutAnyOrigin]()` in `bindings.mojo`, and `…unsafe_origin_cast[MutUntrackedOrigin]()` in `spike/ffi_probe.mojo`, whose cache struct has already been migrated off the field decorator (see `docs/plan-origin-migration.md`) — same soundness argument as before (a symbol address is a static code address; the handle is `dlopen(NULL)`, never unmapped). Related: **`AnyOrigin[mut]` and `UnsafeAnyOrigin[mut]` are now distinct spellings** (identical MLIR attr underneath); upstream documents `UnsafeAnyOrigin` as "slated for deprecation and removal", so expect a future forced migration of the whole `MutAnyOrigin` field/signature surface.
 
 **`parallelize` moved to `max.algorithm`** (dev2026080905): `from std.algorithm import parallelize` no longer resolves — the function now ships in the MAX package: **`from max.algorithm import parallelize`**. Probe trap that cost real time here: an *unused* `from X import name` is NOT verified (imports resolve lazily, like body elaboration) — a probe must **call** the symbol to prove anything.
 
@@ -370,7 +370,7 @@ The TOML code generator reduces N-API boilerplate to near-zero for common patter
 
 ## Development workflow
 
-Follow the RED → GREEN → REFACTOR TDD cycle (see `docs/METHODOLOGY.md`). Every feature starts with a failing Jest test. The spike (`spike/ffi_probe.mojo`) is the exception — it is validated experimentally, not by tests.
+Follow the RED → GREEN → REFACTOR TDD cycle (see `docs/METHODOLOGY.md`). Every feature starts with a failing Jest test. The spike (`spike/ffi_probe.mojo`) is the exception — it is validated experimentally rather than TDD'd, though CI does now build it and assert both its exports, so it can no longer rot unnoticed.
 
 ## Scope: no GPU code here
 
