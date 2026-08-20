@@ -253,6 +253,13 @@ jobs:
           " "$out"
           # The generated wrapper must not survive the run.
           test ! -f examples/host/_napi_mojo_host_entry.mojo
+          # Second run must hit the build cache and produce identical output.
+          # The cache key covers the user's tree AND the framework tree, so a
+          # stale binary here would mean the dependency set is incomplete.
+          test -f examples/host/.napi-mojo/build.key
+          out2=$(node bin/napi-mojo.mjs run examples/host/main.mojo -- one two)
+          test "$out" = "$out2"
+          echo "build cache OK"
 
       # The pipeline demo doubles as the regression test for module-name
       # collision: an entry basename becomes a TOP-LEVEL Mojo module name, and

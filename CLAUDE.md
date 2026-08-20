@@ -425,6 +425,15 @@ is captured rather than `stdio: 'inherit'`). `examples/host/pipeline.mojo` is
 named that deliberately — it is the regression test, and renaming it to
 something unique would silently retire the coverage.
 
+**Runs are cached on an input hash** (`.napi-mojo/build.key`), because the
+compile is ~1.8s of a ~2s run and re-running is the whole iterate loop. The key
+covers the user's tree, the framework tree, the include path, the compiler
+command and the CLI version — and that set is COMPLETE precisely because `run`
+accepts exactly one `-I`, so no build can pull from a directory the hash did
+not see. Adding a second include path to `run` without extending the key would
+turn this into a stale-binary trap. `--rebuild` forces a recompile; CI asserts
+a second run is byte-identical.
+
 **`require` is module-scoped and unreachable from Mojo.** It is not on
 `globalThis`; `process.mainModule.require` resolves under a CJS entry but is
 `undefined` under ESM and `node -e`. The bootstrap therefore *hands it in* on
