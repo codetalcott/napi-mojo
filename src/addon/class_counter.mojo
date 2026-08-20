@@ -216,4 +216,6 @@ def register_counter(mut m: ModuleBuilder, b: Bindings) raises:
     registry.register(b, counter.env, "Counter", counter.ctor)
     var registry_ptr = unsafe_alloc[ClassRegistry](1)
     registry_ptr.unsafe_write(registry^)
-    b[].registry = registry_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+    b[].registry = registry_ptr.unsafe_bitcast[
+        NoneType
+    ]().unsafe_origin_cast[MutUntrackedOrigin]()

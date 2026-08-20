@@ -18,6 +18,7 @@ from napi.types import (
     NapiEnv,
     NapiValue,
     NapiStatus,
+    NapiStore,
     NapiAsyncContext,
     NapiCallbackScope,
     NapiPropertyDescriptor,
@@ -37,445 +38,302 @@ struct NapiBindings(Movable):
     # --- 144 fields: 142 resolved N-API symbols + the ClassRegistry pointer
     # (`registry`, below) which is not a symbol and is set after class setup,
     # + the `magic` sentinel checked by CbArgs.get_bindings* ---
-    @__allow_legacy_any_origin_fields
-    var create_string_utf8: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_object: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var set_named_property: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_cb_info: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_value_string_utf8: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var define_properties: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_value_double: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_double: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var throw_error: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_boolean: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_value_bool: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var typeof_: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_null: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_undefined: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_array_with_length: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var set_element: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_element: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_array_length: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_property: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var is_array: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_named_property: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var has_named_property: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var call_function: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var open_handle_scope: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var close_handle_scope: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_promise: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var resolve_deferred: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var reject_deferred: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_error: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_async_work: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var queue_async_work: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var delete_async_work: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_int32: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_value_int32: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_uint32: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_value_uint32: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_int64: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_value_int64: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var throw_type_error: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var throw_range_error: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_type_error: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_range_error: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_arraybuffer: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_arraybuffer_info: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var is_arraybuffer: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var detach_arraybuffer: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_buffer: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_buffer_copy: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_buffer_info: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var is_buffer: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_typedarray: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_typedarray_info: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var is_typedarray: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var define_class: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var wrap: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var unwrap: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var remove_wrap: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var new_instance: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_function: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_new_target: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_global: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_reference: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var delete_reference: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var reference_ref: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var reference_unref: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_reference_value: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var open_escapable_handle_scope: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var close_escapable_handle_scope: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var escape_handle: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_bigint_int64: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_bigint_uint64: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_value_bigint_int64: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_value_bigint_uint64: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_date: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_date_value: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var is_date: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_symbol: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var symbol_for: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_property_names: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_all_property_names: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var has_own_property: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var delete_property: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var strict_equals: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var instanceof_: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var object_freeze: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var object_seal: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var has_element: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var delete_element: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_prototype: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_threadsafe_function: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var call_threadsafe_function: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var acquire_threadsafe_function: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var release_threadsafe_function: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_external: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_value_external: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_version: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_node_version: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var set_property: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var has_property: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var throw_: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var is_exception_pending: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_and_clear_last_exception: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var coerce_to_bool: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var coerce_to_number: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var coerce_to_string: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var coerce_to_object: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_dataview: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_dataview_info: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var is_dataview: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_bigint_words: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_value_bigint_words: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var add_finalizer: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_external_arraybuffer: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var set_instance_data: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_instance_data: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var add_env_cleanup_hook: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var remove_env_cleanup_hook: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var cancel_async_work: OpaquePointer[MutAnyOrigin]
+    var create_string_utf8: NapiStore
+    var create_object: NapiStore
+    var set_named_property: NapiStore
+    var get_cb_info: NapiStore
+    var get_value_string_utf8: NapiStore
+    var define_properties: NapiStore
+    var get_value_double: NapiStore
+    var create_double: NapiStore
+    var throw_error: NapiStore
+    var get_boolean: NapiStore
+    var get_value_bool: NapiStore
+    var typeof_: NapiStore
+    var get_null: NapiStore
+    var get_undefined: NapiStore
+    var create_array_with_length: NapiStore
+    var set_element: NapiStore
+    var get_element: NapiStore
+    var get_array_length: NapiStore
+    var get_property: NapiStore
+    var is_array: NapiStore
+    var get_named_property: NapiStore
+    var has_named_property: NapiStore
+    var call_function: NapiStore
+    var open_handle_scope: NapiStore
+    var close_handle_scope: NapiStore
+    var create_promise: NapiStore
+    var resolve_deferred: NapiStore
+    var reject_deferred: NapiStore
+    var create_error: NapiStore
+    var create_async_work: NapiStore
+    var queue_async_work: NapiStore
+    var delete_async_work: NapiStore
+    var create_int32: NapiStore
+    var get_value_int32: NapiStore
+    var create_uint32: NapiStore
+    var get_value_uint32: NapiStore
+    var create_int64: NapiStore
+    var get_value_int64: NapiStore
+    var throw_type_error: NapiStore
+    var throw_range_error: NapiStore
+    var create_type_error: NapiStore
+    var create_range_error: NapiStore
+    var create_arraybuffer: NapiStore
+    var get_arraybuffer_info: NapiStore
+    var is_arraybuffer: NapiStore
+    var detach_arraybuffer: NapiStore
+    var create_buffer: NapiStore
+    var create_buffer_copy: NapiStore
+    var get_buffer_info: NapiStore
+    var is_buffer: NapiStore
+    var create_typedarray: NapiStore
+    var get_typedarray_info: NapiStore
+    var is_typedarray: NapiStore
+    var define_class: NapiStore
+    var wrap: NapiStore
+    var unwrap: NapiStore
+    var remove_wrap: NapiStore
+    var new_instance: NapiStore
+    var create_function: NapiStore
+    var get_new_target: NapiStore
+    var get_global: NapiStore
+    var create_reference: NapiStore
+    var delete_reference: NapiStore
+    var reference_ref: NapiStore
+    var reference_unref: NapiStore
+    var get_reference_value: NapiStore
+    var open_escapable_handle_scope: NapiStore
+    var close_escapable_handle_scope: NapiStore
+    var escape_handle: NapiStore
+    var create_bigint_int64: NapiStore
+    var create_bigint_uint64: NapiStore
+    var get_value_bigint_int64: NapiStore
+    var get_value_bigint_uint64: NapiStore
+    var create_date: NapiStore
+    var get_date_value: NapiStore
+    var is_date: NapiStore
+    var create_symbol: NapiStore
+    var symbol_for: NapiStore
+    var get_property_names: NapiStore
+    var get_all_property_names: NapiStore
+    var has_own_property: NapiStore
+    var delete_property: NapiStore
+    var strict_equals: NapiStore
+    var instanceof_: NapiStore
+    var object_freeze: NapiStore
+    var object_seal: NapiStore
+    var has_element: NapiStore
+    var delete_element: NapiStore
+    var get_prototype: NapiStore
+    var create_threadsafe_function: NapiStore
+    var call_threadsafe_function: NapiStore
+    var acquire_threadsafe_function: NapiStore
+    var release_threadsafe_function: NapiStore
+    var create_external: NapiStore
+    var get_value_external: NapiStore
+    var get_version: NapiStore
+    var get_node_version: NapiStore
+    var set_property: NapiStore
+    var has_property: NapiStore
+    var throw_: NapiStore
+    var is_exception_pending: NapiStore
+    var get_and_clear_last_exception: NapiStore
+    var coerce_to_bool: NapiStore
+    var coerce_to_number: NapiStore
+    var coerce_to_string: NapiStore
+    var coerce_to_object: NapiStore
+    var create_dataview: NapiStore
+    var get_dataview_info: NapiStore
+    var is_dataview: NapiStore
+    var create_bigint_words: NapiStore
+    var get_value_bigint_words: NapiStore
+    var add_finalizer: NapiStore
+    var create_external_arraybuffer: NapiStore
+    var set_instance_data: NapiStore
+    var get_instance_data: NapiStore
+    var add_env_cleanup_hook: NapiStore
+    var remove_env_cleanup_hook: NapiStore
+    var cancel_async_work: NapiStore
     # Phase 21-22 additions (119-127)
-    @__allow_legacy_any_origin_fields
-    var is_error: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var adjust_external_memory: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var run_script: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var throw_syntax_error: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_syntax_error: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var is_detached_arraybuffer: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var fatal_exception: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var type_tag_object: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var check_object_type_tag: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var add_async_cleanup_hook: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var remove_async_cleanup_hook: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var get_uv_event_loop: OpaquePointer[MutAnyOrigin]
+    var is_error: NapiStore
+    var adjust_external_memory: NapiStore
+    var run_script: NapiStore
+    var throw_syntax_error: NapiStore
+    var create_syntax_error: NapiStore
+    var is_detached_arraybuffer: NapiStore
+    var fatal_exception: NapiStore
+    var type_tag_object: NapiStore
+    var check_object_type_tag: NapiStore
+    var add_async_cleanup_hook: NapiStore
+    var remove_async_cleanup_hook: NapiStore
+    var get_uv_event_loop: NapiStore
     # Phase C2 additions (131-133): async context + make_callback
-    @__allow_legacy_any_origin_fields
-    var async_init: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var async_destroy: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var make_callback: OpaquePointer[MutAnyOrigin]
+    var async_init: NapiStore
+    var async_destroy: NapiStore
+    var make_callback: NapiStore
     # Phase C3 additions (134-135): callback scope
-    @__allow_legacy_any_origin_fields
-    var open_callback_scope: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var close_callback_scope: OpaquePointer[MutAnyOrigin]
+    var open_callback_scope: NapiStore
+    var close_callback_scope: NapiStore
     # N-API v10 additions (136-141)
-    @__allow_legacy_any_origin_fields
-    var create_external_string_latin1: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_external_string_utf16: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_property_key_utf8: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_property_key_latin1: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_property_key_utf16: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var create_buffer_from_arraybuffer: OpaquePointer[MutAnyOrigin]
+    var create_external_string_latin1: NapiStore
+    var create_external_string_utf16: NapiStore
+    var create_property_key_utf8: NapiStore
+    var create_property_key_latin1: NapiStore
+    var create_property_key_utf16: NapiStore
+    var create_buffer_from_arraybuffer: NapiStore
     # Missing N-API v1 function (needed for external string Latin-1 path)
-    @__allow_legacy_any_origin_fields
-    var get_value_string_latin1: OpaquePointer[MutAnyOrigin]  # 142
+    var get_value_string_latin1: NapiStore  # 142
     # Non-function-pointer slot: ClassRegistry pointer (set after module init)
-    @__allow_legacy_any_origin_fields
-    var registry: OpaquePointer[MutAnyOrigin]
+    var registry: NapiStore
     # Sentinel checked by CbArgs.get_bindings* before trusting the bitcast
     var magic: UInt64
 
     def __init__(out self):
-        self.create_string_utf8 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_object = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.set_named_property = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_cb_info = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_value_string_utf8 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.define_properties = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_value_double = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_double = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.throw_error = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_boolean = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_value_bool = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.typeof_ = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_undefined = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_array_with_length = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.set_element = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_element = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_array_length = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_property = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.is_array = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_named_property = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.has_named_property = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.call_function = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.open_handle_scope = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.close_handle_scope = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_promise = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.resolve_deferred = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.reject_deferred = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_error = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_async_work = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.queue_async_work = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.delete_async_work = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_int32 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_value_int32 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_uint32 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_value_uint32 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_int64 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_value_int64 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.throw_type_error = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.throw_range_error = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_type_error = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_range_error = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_arraybuffer = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_arraybuffer_info = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.is_arraybuffer = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.detach_arraybuffer = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_buffer = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_buffer_copy = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_buffer_info = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.is_buffer = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_typedarray = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_typedarray_info = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.is_typedarray = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.define_class = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.wrap = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.unwrap = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.remove_wrap = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.new_instance = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_function = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_new_target = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_global = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_reference = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.delete_reference = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.reference_ref = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.reference_unref = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_reference_value = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.open_escapable_handle_scope = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.close_escapable_handle_scope = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.escape_handle = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_bigint_int64 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_bigint_uint64 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_value_bigint_int64 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_value_bigint_uint64 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_date = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_date_value = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.is_date = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_symbol = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.symbol_for = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_property_names = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_all_property_names = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.has_own_property = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.delete_property = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.strict_equals = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.instanceof_ = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.object_freeze = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.object_seal = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.has_element = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.delete_element = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_prototype = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_threadsafe_function = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.call_threadsafe_function = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.acquire_threadsafe_function = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.release_threadsafe_function = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_external = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_value_external = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_version = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_node_version = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.set_property = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.has_property = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.throw_ = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.is_exception_pending = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_and_clear_last_exception = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.coerce_to_bool = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.coerce_to_number = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.coerce_to_string = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.coerce_to_object = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_dataview = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_dataview_info = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.is_dataview = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_bigint_words = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_value_bigint_words = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.add_finalizer = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_external_arraybuffer = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.set_instance_data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_instance_data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.add_env_cleanup_hook = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.remove_env_cleanup_hook = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.cancel_async_work = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.is_error = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.adjust_external_memory = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.run_script = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.throw_syntax_error = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_syntax_error = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.is_detached_arraybuffer = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.fatal_exception = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.type_tag_object = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.check_object_type_tag = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.add_async_cleanup_hook = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.remove_async_cleanup_hook = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_uv_event_loop = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.async_init = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.async_destroy = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.make_callback = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.open_callback_scope = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.close_callback_scope = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_external_string_latin1 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_external_string_utf16 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_property_key_utf8 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_property_key_latin1 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_property_key_utf16 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.create_buffer_from_arraybuffer = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.get_value_string_latin1 = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.registry = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        self.create_string_utf8 = NapiStore(unsafe_from_address=Int(0))
+        self.create_object = NapiStore(unsafe_from_address=Int(0))
+        self.set_named_property = NapiStore(unsafe_from_address=Int(0))
+        self.get_cb_info = NapiStore(unsafe_from_address=Int(0))
+        self.get_value_string_utf8 = NapiStore(unsafe_from_address=Int(0))
+        self.define_properties = NapiStore(unsafe_from_address=Int(0))
+        self.get_value_double = NapiStore(unsafe_from_address=Int(0))
+        self.create_double = NapiStore(unsafe_from_address=Int(0))
+        self.throw_error = NapiStore(unsafe_from_address=Int(0))
+        self.get_boolean = NapiStore(unsafe_from_address=Int(0))
+        self.get_value_bool = NapiStore(unsafe_from_address=Int(0))
+        self.typeof_ = NapiStore(unsafe_from_address=Int(0))
+        self.get_null = NapiStore(unsafe_from_address=Int(0))
+        self.get_undefined = NapiStore(unsafe_from_address=Int(0))
+        self.create_array_with_length = NapiStore(unsafe_from_address=Int(0))
+        self.set_element = NapiStore(unsafe_from_address=Int(0))
+        self.get_element = NapiStore(unsafe_from_address=Int(0))
+        self.get_array_length = NapiStore(unsafe_from_address=Int(0))
+        self.get_property = NapiStore(unsafe_from_address=Int(0))
+        self.is_array = NapiStore(unsafe_from_address=Int(0))
+        self.get_named_property = NapiStore(unsafe_from_address=Int(0))
+        self.has_named_property = NapiStore(unsafe_from_address=Int(0))
+        self.call_function = NapiStore(unsafe_from_address=Int(0))
+        self.open_handle_scope = NapiStore(unsafe_from_address=Int(0))
+        self.close_handle_scope = NapiStore(unsafe_from_address=Int(0))
+        self.create_promise = NapiStore(unsafe_from_address=Int(0))
+        self.resolve_deferred = NapiStore(unsafe_from_address=Int(0))
+        self.reject_deferred = NapiStore(unsafe_from_address=Int(0))
+        self.create_error = NapiStore(unsafe_from_address=Int(0))
+        self.create_async_work = NapiStore(unsafe_from_address=Int(0))
+        self.queue_async_work = NapiStore(unsafe_from_address=Int(0))
+        self.delete_async_work = NapiStore(unsafe_from_address=Int(0))
+        self.create_int32 = NapiStore(unsafe_from_address=Int(0))
+        self.get_value_int32 = NapiStore(unsafe_from_address=Int(0))
+        self.create_uint32 = NapiStore(unsafe_from_address=Int(0))
+        self.get_value_uint32 = NapiStore(unsafe_from_address=Int(0))
+        self.create_int64 = NapiStore(unsafe_from_address=Int(0))
+        self.get_value_int64 = NapiStore(unsafe_from_address=Int(0))
+        self.throw_type_error = NapiStore(unsafe_from_address=Int(0))
+        self.throw_range_error = NapiStore(unsafe_from_address=Int(0))
+        self.create_type_error = NapiStore(unsafe_from_address=Int(0))
+        self.create_range_error = NapiStore(unsafe_from_address=Int(0))
+        self.create_arraybuffer = NapiStore(unsafe_from_address=Int(0))
+        self.get_arraybuffer_info = NapiStore(unsafe_from_address=Int(0))
+        self.is_arraybuffer = NapiStore(unsafe_from_address=Int(0))
+        self.detach_arraybuffer = NapiStore(unsafe_from_address=Int(0))
+        self.create_buffer = NapiStore(unsafe_from_address=Int(0))
+        self.create_buffer_copy = NapiStore(unsafe_from_address=Int(0))
+        self.get_buffer_info = NapiStore(unsafe_from_address=Int(0))
+        self.is_buffer = NapiStore(unsafe_from_address=Int(0))
+        self.create_typedarray = NapiStore(unsafe_from_address=Int(0))
+        self.get_typedarray_info = NapiStore(unsafe_from_address=Int(0))
+        self.is_typedarray = NapiStore(unsafe_from_address=Int(0))
+        self.define_class = NapiStore(unsafe_from_address=Int(0))
+        self.wrap = NapiStore(unsafe_from_address=Int(0))
+        self.unwrap = NapiStore(unsafe_from_address=Int(0))
+        self.remove_wrap = NapiStore(unsafe_from_address=Int(0))
+        self.new_instance = NapiStore(unsafe_from_address=Int(0))
+        self.create_function = NapiStore(unsafe_from_address=Int(0))
+        self.get_new_target = NapiStore(unsafe_from_address=Int(0))
+        self.get_global = NapiStore(unsafe_from_address=Int(0))
+        self.create_reference = NapiStore(unsafe_from_address=Int(0))
+        self.delete_reference = NapiStore(unsafe_from_address=Int(0))
+        self.reference_ref = NapiStore(unsafe_from_address=Int(0))
+        self.reference_unref = NapiStore(unsafe_from_address=Int(0))
+        self.get_reference_value = NapiStore(unsafe_from_address=Int(0))
+        self.open_escapable_handle_scope = NapiStore(unsafe_from_address=Int(0))
+        self.close_escapable_handle_scope = NapiStore(unsafe_from_address=Int(0))
+        self.escape_handle = NapiStore(unsafe_from_address=Int(0))
+        self.create_bigint_int64 = NapiStore(unsafe_from_address=Int(0))
+        self.create_bigint_uint64 = NapiStore(unsafe_from_address=Int(0))
+        self.get_value_bigint_int64 = NapiStore(unsafe_from_address=Int(0))
+        self.get_value_bigint_uint64 = NapiStore(unsafe_from_address=Int(0))
+        self.create_date = NapiStore(unsafe_from_address=Int(0))
+        self.get_date_value = NapiStore(unsafe_from_address=Int(0))
+        self.is_date = NapiStore(unsafe_from_address=Int(0))
+        self.create_symbol = NapiStore(unsafe_from_address=Int(0))
+        self.symbol_for = NapiStore(unsafe_from_address=Int(0))
+        self.get_property_names = NapiStore(unsafe_from_address=Int(0))
+        self.get_all_property_names = NapiStore(unsafe_from_address=Int(0))
+        self.has_own_property = NapiStore(unsafe_from_address=Int(0))
+        self.delete_property = NapiStore(unsafe_from_address=Int(0))
+        self.strict_equals = NapiStore(unsafe_from_address=Int(0))
+        self.instanceof_ = NapiStore(unsafe_from_address=Int(0))
+        self.object_freeze = NapiStore(unsafe_from_address=Int(0))
+        self.object_seal = NapiStore(unsafe_from_address=Int(0))
+        self.has_element = NapiStore(unsafe_from_address=Int(0))
+        self.delete_element = NapiStore(unsafe_from_address=Int(0))
+        self.get_prototype = NapiStore(unsafe_from_address=Int(0))
+        self.create_threadsafe_function = NapiStore(unsafe_from_address=Int(0))
+        self.call_threadsafe_function = NapiStore(unsafe_from_address=Int(0))
+        self.acquire_threadsafe_function = NapiStore(unsafe_from_address=Int(0))
+        self.release_threadsafe_function = NapiStore(unsafe_from_address=Int(0))
+        self.create_external = NapiStore(unsafe_from_address=Int(0))
+        self.get_value_external = NapiStore(unsafe_from_address=Int(0))
+        self.get_version = NapiStore(unsafe_from_address=Int(0))
+        self.get_node_version = NapiStore(unsafe_from_address=Int(0))
+        self.set_property = NapiStore(unsafe_from_address=Int(0))
+        self.has_property = NapiStore(unsafe_from_address=Int(0))
+        self.throw_ = NapiStore(unsafe_from_address=Int(0))
+        self.is_exception_pending = NapiStore(unsafe_from_address=Int(0))
+        self.get_and_clear_last_exception = NapiStore(unsafe_from_address=Int(0))
+        self.coerce_to_bool = NapiStore(unsafe_from_address=Int(0))
+        self.coerce_to_number = NapiStore(unsafe_from_address=Int(0))
+        self.coerce_to_string = NapiStore(unsafe_from_address=Int(0))
+        self.coerce_to_object = NapiStore(unsafe_from_address=Int(0))
+        self.create_dataview = NapiStore(unsafe_from_address=Int(0))
+        self.get_dataview_info = NapiStore(unsafe_from_address=Int(0))
+        self.is_dataview = NapiStore(unsafe_from_address=Int(0))
+        self.create_bigint_words = NapiStore(unsafe_from_address=Int(0))
+        self.get_value_bigint_words = NapiStore(unsafe_from_address=Int(0))
+        self.add_finalizer = NapiStore(unsafe_from_address=Int(0))
+        self.create_external_arraybuffer = NapiStore(unsafe_from_address=Int(0))
+        self.set_instance_data = NapiStore(unsafe_from_address=Int(0))
+        self.get_instance_data = NapiStore(unsafe_from_address=Int(0))
+        self.add_env_cleanup_hook = NapiStore(unsafe_from_address=Int(0))
+        self.remove_env_cleanup_hook = NapiStore(unsafe_from_address=Int(0))
+        self.cancel_async_work = NapiStore(unsafe_from_address=Int(0))
+        self.is_error = NapiStore(unsafe_from_address=Int(0))
+        self.adjust_external_memory = NapiStore(unsafe_from_address=Int(0))
+        self.run_script = NapiStore(unsafe_from_address=Int(0))
+        self.throw_syntax_error = NapiStore(unsafe_from_address=Int(0))
+        self.create_syntax_error = NapiStore(unsafe_from_address=Int(0))
+        self.is_detached_arraybuffer = NapiStore(unsafe_from_address=Int(0))
+        self.fatal_exception = NapiStore(unsafe_from_address=Int(0))
+        self.type_tag_object = NapiStore(unsafe_from_address=Int(0))
+        self.check_object_type_tag = NapiStore(unsafe_from_address=Int(0))
+        self.add_async_cleanup_hook = NapiStore(unsafe_from_address=Int(0))
+        self.remove_async_cleanup_hook = NapiStore(unsafe_from_address=Int(0))
+        self.get_uv_event_loop = NapiStore(unsafe_from_address=Int(0))
+        self.async_init = NapiStore(unsafe_from_address=Int(0))
+        self.async_destroy = NapiStore(unsafe_from_address=Int(0))
+        self.make_callback = NapiStore(unsafe_from_address=Int(0))
+        self.open_callback_scope = NapiStore(unsafe_from_address=Int(0))
+        self.close_callback_scope = NapiStore(unsafe_from_address=Int(0))
+        self.create_external_string_latin1 = NapiStore(unsafe_from_address=Int(0))
+        self.create_external_string_utf16 = NapiStore(unsafe_from_address=Int(0))
+        self.create_property_key_utf8 = NapiStore(unsafe_from_address=Int(0))
+        self.create_property_key_latin1 = NapiStore(unsafe_from_address=Int(0))
+        self.create_property_key_utf16 = NapiStore(unsafe_from_address=Int(0))
+        self.create_buffer_from_arraybuffer = NapiStore(unsafe_from_address=Int(0))
+        self.get_value_string_latin1 = NapiStore(unsafe_from_address=Int(0))
+        self.registry = NapiStore(unsafe_from_address=Int(0))
         self.magic = BINDINGS_MAGIC
 
     def __moveinit__(out self, deinit take: Self):
@@ -655,14 +513,12 @@ comptime Bindings = Pointer[NapiBindings, MutAnyOrigin]
 ## precedent for origin-casting the transient slot-cast sites elsewhere — see
 ## the AnyOrigin rule in CLAUDE.md.
 @always_inline
-def _slot(ref h: OwnedDLHandle, name: StaticString) raises -> OpaquePointer[
-    MutAnyOrigin
-]:
+def _slot(ref h: OwnedDLHandle, name: StaticString) raises -> NapiStore:
     var opt = h.get_symbol[NoneType](name)
     if opt is None:
         raise Error("napi-mojo: symbol not found: ", name)
     return opt.value().unsafe_mut_cast[True]().unsafe_origin_cast[
-        MutAnyOrigin
+        MutUntrackedOrigin
     ]()
 
 
@@ -674,9 +530,18 @@ def _slot(ref h: OwnedDLHandle, name: StaticString) raises -> OpaquePointer[
 def assert_fn_ptr_is_one_word():
     comptime assert size_of[
         def(NapiEnv, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
-    ]() == size_of[OpaquePointer[MutAnyOrigin]](), (
+    ]() == size_of[NapiStore](), (
         "a thin abi(C) fn ptr is no longer one machine word — the NapiBindings"
         " cache (fn ptr erased to OpaquePointer) is no longer sound"
+    )
+    # The decorator-removal recipe changes only each field's ORIGIN parameter.
+    # If that ever altered the machine representation, every raw_* wrapper's
+    # Pointer(to=b[].slot) reinterpret would read the wrong word.
+    comptime assert size_of[NapiStore]() == size_of[
+        OpaquePointer[MutAnyOrigin]
+    ](), (
+        "OpaquePointer[MutUntrackedOrigin] is no longer the same size as the"
+        " AnyOrigin spelling — the origin migration is not layout-neutral"
     )
 
 
