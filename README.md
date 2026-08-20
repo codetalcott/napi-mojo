@@ -24,7 +24,7 @@ demo.greet("world"); // "Hello, world!"
 ## Project Status
 
 **Alpha** — napi-mojo is under active development and not yet proven in
-production. The API covers the full N-API v10 surface (150 exported functions, 5
+production. The API covers the full N-API v10 surface (152 exported functions, 5
 classes, 650+ tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
@@ -125,7 +125,7 @@ loop runs, and the callback fires later.
 
 ## Features
 
-- **150 exported functions** and **5 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
+- **152 exported functions** and **5 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
 - Primitives: strings, numbers (Float64/Int32/UInt32/Int64), booleans, null,
   undefined, BigInt, Symbol, Date
 - Objects: create, read/write properties, enumerate keys, freeze/seal, prototype

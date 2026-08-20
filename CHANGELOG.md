@@ -3,6 +3,79 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
+## 0.11.0 — 2026-08-20
+
+**napi-mojo is bidirectional.** Alongside addons (JS calls Mojo) it now hosts
+Mojo *programs*: `napi-mojo run main.mojo` compiles your entry, generates the
+registration wrapper and a CJS bootstrap, and hands Mojo the Node ecosystem —
+`require`, `fs`, `zlib`, `fetch`, npm. Node owns `main()`; Mojo is the program.
+
+The framework could already call JavaScript — `raw_call_function`,
+`raw_new_instance`, `js_run_script`, `JsRef` and `ThreadsafeFunction` have all
+been here for releases. What was missing was ergonomics, an entry point, and
+anyone saying so. This release is mostly surfacing, not new machinery.
+
+### Host mode
+
+- **`napi-mojo run <entry.mojo>`** and **`napi-mojo init --host`**. The wrapper
+  is generated next to your entry, because Mojo resolves a plain-module import
+  relative to the main module's directory; it is removed after the run unless
+  `--keep`.
+- **`NodeHost`** (`napi.framework.js_host`) — `from_context`, `require`,
+  `global_object`, `argv`, `console_log`. `require` is module-scoped and *not*
+  on `globalThis`, so the bootstrap hands it in on `ctx`, built with
+  `module.createRequire` rooted at the entry's directory.
+- **Runs are cached** on a hash of your tree, the framework tree, the include
+  path and the compiler command — a warm run is ~0.07s against ~1.8s cold.
+  `--rebuild` forces a recompile.
+
+### Call ergonomics
+
+- **`JsFunction.call_n` / `call_with`** — call with a runtime-length argument
+  list, with or without an explicit receiver. `call0/1/2` remain as the
+  allocation-free fast paths.
+- **`JsObject.call_method`** — `obj[name](...args)` with `this` bound. `call1`
+  passes `undefined` as the receiver, which silently breaks any callee reading
+  `this`; this is the right tool for a method call.
+- **`with_handle_scope`** — a Mojo-driven loop calling JS pins every napi_value
+  until the enclosing scope closes. This encapsulates the open/close-on-both-
+  paths discipline and preserves the body's error.
+
+### Correctness and measurement
+
+- **Continuation passing is tested.** Mojo has no `await`, and the documented
+  answer — hand JS a Mojo callback and return — had shipped with zero coverage.
+  It works; it had just never been checked. A continuation now provably fires
+  on a later tick, is not synchronous, stays independent across several in
+  flight, and can reach `require` from that later tick through a `napi_ref`.
+- **The Mojo→JS direction is benchmarked** (`callN`, `callMethod`,
+  `scopedCall`) and under the same ceilings gate as the forward direction. The
+  numbers corrected the guidance: the *call* is not the expensive part
+  (~435 ns round trip vs ~375 ns forward-only) — **argument marshalling is**,
+  at roughly **~100 ns per value crossing**. Cross with few coarse values.
+- **Fixed: an entry basename becomes a top-level Mojo module name**, so
+  `pipeline.mojo` was shadowed by MAX's own `pipeline` package and failed with
+  *"does not contain 'mojo_main'"*. `run` now exposes the entry through a
+  `_napi_mojo_src_` alias and rewrites it back out of compiler diagnostics, so
+  errors still name your file.
+- **New gate: `scripts/check-exports-doc.mjs`.** Every export must appear in
+  `docs/EXPORTS.md`, and the "N exported functions" counts in README and
+  CLAUDE.md must match reality. CLAUDE.md warned that nothing updates numbers
+  embedded in prose; the count went stale within a week anyway. Now something
+  checks it.
+
+### Positioning
+
+napi-mojo and the sibling [mojo-http](https://github.com/codetalcott/mojo-http)
+are complements, not competitors: **Mojo owns `main()` → mojo-http; Node owns
+`main()` → `napi-mojo run`.** No build-time dependency in either direction.
+Embedding libnode was considered and rejected — N-API is a guest API with no
+public way to create an `env`, Node's embedder API is C++ where Mojo's FFI is
+C-ABI only, and there are no official cross-platform `libnode` prebuilts.
+`examples/host/pipeline.mojo` is the demo: Mojo computes statistics over
+200,000 samples, Node does the JSON, gzip and file write, and the samples never
+cross the boundary.
+
 ## 0.10.0 — 2026-08-20
 
 Three gates, one code-generator feature, and the removal of
