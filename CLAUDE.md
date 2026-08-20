@@ -414,6 +414,17 @@ makes the generated `from main import mojo_main` work with no extra `-I`
 package). Moving the wrapper into `.napi-mojo/` would break that import. It is
 removed after the run unless `--keep`, and CI asserts the cleanup.
 
+**An entry basename becomes a TOP-LEVEL Mojo module name, so it can be
+shadowed by an installed package.** `pipeline.mojo` resolved to MAX's own
+`pipeline` package and failed with `package 'pipeline' does not contain
+'mojo_main'`; `-I <entryDir>` does not change that in either position. `run`
+therefore exposes the entry through a `_napi_mojo_src_<name>.mojo` symlink that
+nothing else can claim, and **rewrites the alias out of the compiler's
+diagnostics** so errors still name the user's own file (which is why the build
+is captured rather than `stdio: 'inherit'`). `examples/host/pipeline.mojo` is
+named that deliberately — it is the regression test, and renaming it to
+something unique would silently retire the coverage.
+
 **`require` is module-scoped and unreachable from Mojo.** It is not on
 `globalThis`; `process.mainModule.require` resolves under a CJS entry but is
 `undefined` under ESM and `node -e`. The bootstrap therefore *hands it in* on

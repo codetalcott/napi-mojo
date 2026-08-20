@@ -99,6 +99,19 @@ builds it into `.napi-mojo/`, writes a CJS bootstrap, and spawns Node. A
 number returned from `mojo_main` becomes the process exit code. The wrapper is
 removed after the run unless `--keep`.
 
+### Module-name collision (found by writing the demo)
+
+An entry file's basename becomes a **top-level** Mojo module name. `pipeline.mojo`
+therefore resolved to MAX's `pipeline` package, and the wrapper's
+`from pipeline import mojo_main` failed with *"package 'pipeline' does not
+contain 'mojo_main'"* — with the file compiling perfectly on its own. Adding
+`-I <entryDir>` does not win the race, in either position.
+
+`run` now exposes the entry through a `_napi_mojo_src_<name>.mojo` symlink and
+rewrites that alias back out of the compiler's diagnostics, so errors still
+name the user's file. `examples/host/pipeline.mojo` keeps its colliding name on
+purpose: it is the regression test.
+
 ## Constraints, and why they are not bugs
 
 1. **No `await`.** A JS function returning a Promise hands Mojo a pending

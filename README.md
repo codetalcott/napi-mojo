@@ -81,6 +81,11 @@ def mojo_main(b: Bindings, env: NapiEnv, ctx: NapiValue) raises -> NapiValue:
 napi-mojo init myprog --host && cd myprog && napi-mojo run main.mojo
 ```
 
+[`examples/host/pipeline.mojo`](examples/host/pipeline.mojo) is the demo worth
+reading: Mojo computes statistics over 200,000 samples, Node does the JSON,
+the gzip and the file write, and the samples themselves never cross the
+boundary.
+
 `ctx` carries `{ require, argv, cwd }` from the bootstrap. `require` is
 module-scoped in Node and is *not* reachable through `globalThis`, so the
 bootstrap hands it in rather than Mojo scavenging for it. See
