@@ -98,8 +98,19 @@ competitors, and share no build-time dependency:
 | **napi-mojo run** | Node | yes | Node + a `.node` |
 
 Pick by whether you need the ecosystem more than you need the standalone
-binary. Host mode is best for I/O-bound glue; every JS call crosses a V8
-boundary, so it is not the place to put compute.
+binary.
+
+**What it costs.** Measured on darwin-arm64 / Node 24 (`node scripts/benchmark.mjs`), a full
+JS -> Mojo -> JS -> Mojo -> JS round trip through `callN(fn, [])` is ~435 ns,
+against ~375 ns for a forward-only call like `hello()`. So the Mojo -> JS call
+itself is not the expensive part — **argument marshalling is**: `callN` with
+three arguments costs ~735 ns, i.e. roughly **~100 ns per value crossing the
+boundary**. A `this`-bound `callMethod` with one argument is ~680 ns.
+
+The practical rule that follows: host mode is right for I/O-bound glue, where a
+syscall dwarfs a few hundred nanoseconds, and wrong for a hot numeric loop.
+Keep data on the Mojo side and cross the boundary with few, coarse values
+rather than many fine ones.
 
 **What host mode cannot do:** Mojo has no `await`. A JS function returning a
 Promise hands Mojo a *pending* Promise it cannot suspend on. Use synchronous

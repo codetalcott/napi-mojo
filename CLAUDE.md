@@ -438,7 +438,12 @@ the mistake — it makes Mojo-side validation failures invisible.
    `JsFunction.create` and give it to `.then()`; `mojo_main` returns and the
    event loop runs it later. **Do not add a blocking await helper**: draining
    the event loop from inside a napi callback re-enters JS on a stack that is
-   already inside one.
+   already inside one. The CPS path is *tested*, not just asserted
+   (`then_double_fn` / `deferred_require_fn` in `src/addon/host_ops.mojo`).
+   A continuation runs on a later tick, so everything it needs must survive in
+   a `napi_ref` and the bindings pointer must travel in its heap payload —
+   the same designated-carrier rule as async and TSFN. The continuation frees
+   its own payload when it fires.
 2. **Mojo-driven loops that call JS need a per-iteration handle scope.** Every
    napi_value is pinned to the enclosing scope until it closes.
    `with_handle_scope[body](b, env)` encapsulates the open/close-on-both-paths
@@ -446,7 +451,13 @@ the mistake — it makes Mojo-side validation failures invisible.
    with a 20,000-iteration loop.
 3. **A pending JS exception poisons every subsequent N-API call** with
    `napi_pending_exception`. Bail or clear — do not keep calling.
-4. **Per-call cost is real.** Host mode is for I/O-bound glue, not compute.
+4. **Argument marshalling dominates, not the call.** Measured on
+   darwin-arm64 / Node 24: a `callN(fn, [])` round trip is ~435 ns vs ~375 ns
+   for a forward-only `hello()`, but `callN(fn, [1,2,3])` is ~735 ns — about
+   **~100 ns per value crossing the boundary**. So host mode is right for
+   I/O-bound glue and wrong for a hot numeric loop; cross with few coarse
+   values, not many fine ones. `scripts/benchmark.mjs` covers this direction
+   (`callN`, `callMethod`, `scopedCall`) and the ceilings gate guards it.
 
 **`call1` is the wrong tool for a method call** — it passes `undefined` as the
 receiver, which silently breaks any callee reading `this`. Use

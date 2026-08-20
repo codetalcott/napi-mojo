@@ -147,7 +147,16 @@ const stale = Object.keys(ceilings).filter((n) => !names.includes(n));
 
 if (missing.length > 0) {
   console.error(`\n${missing.length} benchmark(s) have no ceiling for ${platform}:\n`);
-  for (const n of missing) console.error(`  ${n}`);
+  // Print the observed median alongside, so a platform you cannot get an
+  // interactive shell on (a CI runner) can still be seeded: read the numbers
+  // out of this log and write them in with the same HEADROOM the updater uses.
+  for (const n of missing) {
+    const median = results[n].median;
+    console.error(
+      `  ${n.padEnd(26)} observed ${String(median).padStart(8)}  ` +
+        `suggested ceiling ${Math.ceil((median * HEADROOM) / 10) * 10}`
+    );
+  }
   console.error(`\nRun --update on a ${platform} runner and commit ${CEILINGS_FILE}.`);
 }
 if (stale.length > 0) {

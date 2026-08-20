@@ -8,14 +8,16 @@
 ## `require`, it is always handed in.
 
 from std.memory.alloc import unsafe_alloc
-from napi.types import NapiEnv, NapiValue
-from napi.bindings import Bindings
+from napi.types import NapiEnv, NapiValue, NapiRef, NapiStore
+from napi.bindings import NapiBindings, Bindings
 from napi.error import throw_js_error, throw_js_error_dynamic
 from napi.framework.args import CbArgs
 from napi.framework.handle_scope import with_handle_scope
 from napi.framework.js_array import JsArray
 from napi.framework.js_function import JsFunction
 from napi.framework.js_host import NodeHost
+from napi.framework.js_ref import JsRef
+from napi.framework.js_value import js_get_global
 from napi.framework.js_number import JsNumber
 from napi.framework.js_object import JsObject
 from napi.framework.js_string import JsString, js_to_string
@@ -149,6 +151,179 @@ def scoped_call_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue(unsafe_from_address=Int(0))
 
 
+
+# --- Continuation passing ------------------------------------------------
+#
+# Mojo has no `await`, so the documented shape for anything async is to hand
+# JavaScript a Mojo callback and return. `mojo_main` (or any callback) ends,
+# the event loop runs, and the continuation fires on a LATER tick.
+#
+# That later tick is the whole difficulty: the napi_values the creating call
+# held are long out of scope, so anything the continuation needs must survive
+# in a napi_ref, and the bindings pointer must travel in the payload — this is
+# the same "designated carrier" rule the async/TSFN paths follow.
+
+
+## ContinuationPayload — what a Mojo continuation carries across the tick
+## boundary. Heap-allocated by the creating call, freed by the continuation
+## when it fires.
+struct ContinuationPayload(Movable):
+    var on_result: NapiRef
+    var stashed: NapiRef
+    var b_raw: NapiStore
+    var has_stashed: Bool
+
+    def __init__(
+        out self,
+        on_result: NapiRef,
+        stashed: NapiRef,
+        b: Bindings,
+        has_stashed: Bool,
+    ):
+        self.on_result = on_result
+        self.stashed = stashed
+        self.b_raw = b.unsafe_bitcast[NoneType]()
+        self.has_stashed = has_stashed
+
+    def __moveinit__(out self, deinit take: Self):
+        self.on_result = take.on_result
+        self.stashed = take.stashed
+        self.b_raw = take.b_raw
+        self.has_stashed = take.has_stashed
+
+
+## Attach a Mojo continuation to `promise`, doubling the resolved value and
+## handing it to the JS callback. Proves the plain CPS shape.
+def then_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+
+        var ref_on = JsRef.create(b, env, args[1], 1)
+        var p = unsafe_alloc[ContinuationPayload](1)
+        p.unsafe_write(
+            ContinuationPayload(
+                ref_on.handle, NapiRef(unsafe_from_address=Int(0)), b, False
+            )
+        )
+
+        var cb_ref = continuation_double_fn
+        var cb_ptr = Pointer(to=cb_ref).unsafe_bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
+        var cont = JsFunction.create_with_data(
+            b,
+            env,
+            "mojoContinuation",
+            cb_ptr,
+            p.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+        )
+
+        var then_args = List[NapiValue]()
+        then_args.append(cont.value)
+        _ = JsObject(args[0]).call_method(b, env, "then", then_args)
+        _ = cb_ref
+    except e:
+        throw_js_error_dynamic(env, String(e))
+    return NapiValue(unsafe_from_address=Int(0))
+
+
+def continuation_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        # Runs on a LATER event-loop tick. get_data is the env-only bootstrap;
+        # everything else comes off the payload.
+        var raw_data = CbArgs.get_data(env, info)
+        var p = raw_data.unsafe_bitcast[ContinuationPayload]()
+        var b = p[].b_raw.unsafe_bitcast[NapiBindings]()
+
+        var resolved = CbArgs.get_one(b, env, info)
+        var n = JsNumber.from_napi_value(b, env, resolved)
+        var on_result = JsRef(p[].on_result)
+        var cb = JsFunction(on_result.get(b, env))
+        _ = cb.call1(b, env, JsNumber.create(b, env, n * 2.0).value)
+
+        on_result.delete(b, env)
+        p.unsafe_deinit_pointee()
+        p.unsafe_free()
+    except:
+        pass
+    return NapiValue(unsafe_from_address=Int(0))
+
+
+## Stash `require` in a napi_ref, then use it from a later tick. Proves the
+## documented persistence story: a host program can reach npm after mojo_main
+## has already returned.
+def deferred_require_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        _ = NodeHost.from_context(b, env, args[0])  # validate the ctx shape
+
+        var require_val = JsObject(args[0]).get_named_property(
+            b, env, "require"
+        )
+        var ref_req = JsRef.create(b, env, require_val, 1)
+        var ref_on = JsRef.create(b, env, args[1], 1)
+
+        var p = unsafe_alloc[ContinuationPayload](1)
+        p.unsafe_write(
+            ContinuationPayload(ref_on.handle, ref_req.handle, b, True)
+        )
+
+        var cb_ref = continuation_require_fn
+        var cb_ptr = Pointer(to=cb_ref).unsafe_bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
+        var cont = JsFunction.create_with_data(
+            b,
+            env,
+            "mojoDeferredRequire",
+            cb_ptr,
+            p.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+        )
+
+        # Promise.resolve().then(cont) — the smallest way to reach a later
+        # tick using only what the runtime already provides.
+        var promise_ctor = JsObject(
+            js_get_global(b, env).get_named_property(b, env, "Promise")
+        )
+        var resolved = promise_ctor.call_method(
+            b, env, "resolve", List[NapiValue]()
+        )
+        var then_args = List[NapiValue]()
+        then_args.append(cont.value)
+        _ = JsObject(resolved).call_method(b, env, "then", then_args)
+        _ = cb_ref
+    except e:
+        throw_js_error_dynamic(env, String(e))
+    return NapiValue(unsafe_from_address=Int(0))
+
+
+def continuation_require_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var raw_data = CbArgs.get_data(env, info)
+        var p = raw_data.unsafe_bitcast[ContinuationPayload]()
+        var b = p[].b_raw.unsafe_bitcast[NapiBindings]()
+
+        var stashed = JsRef(p[].stashed)
+        var req = JsFunction(stashed.get(b, env))
+        var mod = JsObject(
+            req.call1(b, env, JsString.create(b, env, "path").value)
+        )
+        var sep = mod.get_named_property(b, env, "sep")
+
+        var on_result = JsRef(p[].on_result)
+        _ = JsFunction(on_result.get(b, env)).call1(b, env, sep)
+
+        on_result.delete(b, env)
+        stashed.delete(b, env)
+        p.unsafe_deinit_pointee()
+        p.unsafe_free()
+    except:
+        pass
+    return NapiValue(unsafe_from_address=Int(0))
+
+
 def register_host_ops(mut m: ModuleBuilder) raises:
     var host_require_ref = host_require_fn
     var host_argv_ref = host_argv_fn
@@ -157,6 +332,8 @@ def register_host_ops(mut m: ModuleBuilder) raises:
     var call_method_ref = call_method_fn
     var call_n_ref = call_n_fn
     var scoped_call_ref = scoped_call_fn
+    var then_double_ref = then_double_fn
+    var deferred_require_ref = deferred_require_fn
 
     m.method("hostRequire", fn_ptr(host_require_ref))
     m.method("hostArgv", fn_ptr(host_argv_ref))
@@ -165,6 +342,8 @@ def register_host_ops(mut m: ModuleBuilder) raises:
     m.method("callMethod", fn_ptr(call_method_ref))
     m.method("callN", fn_ptr(call_n_ref))
     m.method("scopedCall", fn_ptr(scoped_call_ref))
+    m.method("thenDouble", fn_ptr(then_double_ref))
+    m.method("deferredRequire", fn_ptr(deferred_require_ref))
 
     _ = host_require_ref
     _ = host_argv_ref
@@ -173,3 +352,5 @@ def register_host_ops(mut m: ModuleBuilder) raises:
     _ = call_method_ref
     _ = call_n_ref
     _ = scoped_call_ref
+    _ = then_double_ref
+    _ = deferred_require_ref

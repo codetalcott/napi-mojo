@@ -13,7 +13,11 @@
     "counter.increment()": 1980,
     "counter.value (getter)": 2010,
     "getProperty(obj, \"x\")": 1830,
-    "strictEquals(1, 1)": 1660
+    "strictEquals(1, 1)": 1660,
+    "callN(fn, [])": 1760,
+    "callN(fn, [1,2,3])": 2950,
+    "callMethod(obj, \"m\", [1])": 2770,
+    "scopedCall(1, fn)": 1890
   },
   "linux-x64": {
     "hello()": 1060,
@@ -29,6 +33,10 @@
     "counter.increment()": 1680,
     "counter.value (getter)": 1590,
     "getProperty(obj, \"x\")": 1420,
-    "strictEquals(1, 1)": 1070
+    "strictEquals(1, 1)": 1070,
+    "callN(fn, [])": 1470,
+    "callN(fn, [1,2,3])": 2760,
+    "callMethod(obj, \"m\", [1])": 3240,
+    "scopedCall(1, fn)": 1580
   }
 }
