@@ -11,6 +11,7 @@
 // No third-party dependencies — argument parsing is deliberately minimal.
 
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync,
   symlinkSync, writeFileSync,
@@ -406,6 +407,42 @@ if (typeof rc === 'number' && Number.isInteger(rc)) process.exitCode = rc;
 `;
 }
 
+// Every input `run` supports, hashed: the user's tree, the framework tree, the
+// include path, the compiler command and the generated wrapper. `run` accepts
+// exactly one -I, so that dependency set is COMPLETE — there is no third
+// directory a build could pull from, which is what makes skipping the compile
+// safe rather than a stale-binary trap. `--rebuild` is the escape hatch.
+function mojoFilesUnder(dir) {
+  const out = [];
+  const walk = (d) => {
+    let entries;
+    try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries.sort((a, b) => (a.name < b.name ? -1 : 1))) {
+      if (e.name.startsWith('.') || e.name.startsWith('_napi_mojo_')) continue;
+      const full = join(d, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (e.name.endsWith('.mojo')) out.push(full);
+    }
+  };
+  walk(dir);
+  return out;
+}
+
+function buildKey({ entryDir, include, mojoCmd, wrapperSrc }) {
+  const h = createHash('sha256');
+  for (const part of [VERSION, mojoCmd.join(' '), include, wrapperSrc]) {
+    h.update(part);
+    h.update('\0');
+  }
+  for (const f of [...mojoFilesUnder(entryDir), ...mojoFilesUnder(include)]) {
+    h.update(f);
+    h.update('\0');
+    h.update(readFileSync(f));
+    h.update('\0');
+  }
+  return h.digest('hex');
+}
+
 function cmdRun(argv) {
   // Split user program args at the first `--` before flag parsing, so that
   // `napi-mojo run main.mojo -- --verbose` passes --verbose to the program.
@@ -416,7 +453,7 @@ function cmdRun(argv) {
   const { opts, positional } = parseArgs(
     ownArgs,
     ['--include', '--mojo'],
-    ['--keep']
+    ['--keep', '--rebuild']
   );
   const entry = resolve(positional[0] || 'main.mojo');
   if (!existsSync(entry)) fail(`entry not found: ${entry}`);
@@ -443,8 +480,22 @@ function cmdRun(argv) {
     try { rmSync(alias, { force: true }); } catch {}
   };
 
-  try {
-    writeFileSync(wrapper, hostEntrySource(aliasModule));
+  const mojo = resolveMojoCmd(opts.mojo);
+  const wrapperSrc = hostEntrySource(aliasModule);
+  const stamp = join(workDir, 'build.key');
+  const key = buildKey({ entryDir, include, mojoCmd: mojo, wrapperSrc });
+  const cached =
+    !opts.rebuild &&
+    existsSync(addon) &&
+    existsSync(stamp) &&
+    readFileSync(stamp, 'utf8').trim() === key;
+
+  if (cached) {
+    // Nothing to do: the compile is ~1.8s of a ~2s run, so this is the
+    // difference between `run` feeling like a runtime and like a build tool.
+    writeFileSync(bootstrap, hostBootstrapSource(addon, entryDir));
+  } else try {
+    writeFileSync(wrapper, wrapperSrc);
     // Symlink, so diagnostics carry the real line numbers and nothing is
     // duplicated. Copy is the fallback for filesystems without symlinks.
     rmSync(alias, { force: true });
@@ -454,7 +505,6 @@ function cmdRun(argv) {
       copyFileSync(entry, alias);
     }
 
-    const mojo = resolveMojoCmd(opts.mojo);
     const args = [
       ...mojo.slice(1),
       'build', '--emit', 'shared-lib', '-I', include, wrapper, '-o', addon,
@@ -475,6 +525,7 @@ function cmdRun(argv) {
       process.exit(bres.status ?? 1);
     }
 
+    writeFileSync(stamp, `${key}\n`);
     writeFileSync(bootstrap, hostBootstrapSource(addon, entryDir));
   } finally {
     cleanup();
@@ -509,6 +560,7 @@ Usage:
       --include <dir>    framework include path (default: this package's src/)
       --mojo "<cmd>"     compiler command       (default: pixi run mojo | mojo)
       --keep             keep the generated wrapper for inspection
+      --rebuild          force a recompile (runs are cached on input hash)
   napi-mojo --version | --help
 `;
 
