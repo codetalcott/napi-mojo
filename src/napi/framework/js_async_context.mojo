@@ -21,7 +21,6 @@ from napi.error import check_status
 
 
 struct JsAsyncContext:
-    @__allow_legacy_any_origin_fields
     var value: NapiAsyncContext
 
     def __init__(out self, value: NapiAsyncContext):

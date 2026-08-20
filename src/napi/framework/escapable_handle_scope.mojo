@@ -22,7 +22,6 @@ from napi.bindings import Bindings
 
 
 struct EscapableHandleScope:
-    @__allow_legacy_any_origin_fields
     var scope: NapiEscapableHandleScope
 
     def __init__(out self, scope: NapiEscapableHandleScope):

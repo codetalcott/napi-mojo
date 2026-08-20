@@ -16,8 +16,8 @@
 # OpaquePointer[MutAnyOrigin] is fully concrete — required for @export
 # functions and non-parametric function types in get_function[].
 # ---------------------------------------------------------------------------
-comptime NapiEnv = OpaquePointer[MutAnyOrigin]
-comptime NapiValue = OpaquePointer[MutAnyOrigin]
+comptime NapiEnv = OpaquePointer[MutUntrackedOrigin]
+comptime NapiValue = OpaquePointer[MutUntrackedOrigin]
 
 # ---------------------------------------------------------------------------
 # STORAGE spellings — what a struct FIELD uses.
@@ -62,7 +62,7 @@ comptime NAPI_TYPE_BIGINT: NapiValueType = 9
 # napi_handle_scope is an opaque pointer. Opening a scope creates a new
 # local handle context; closing it releases all handles created within.
 # ---------------------------------------------------------------------------
-comptime NapiHandleScope = OpaquePointer[MutAnyOrigin]
+comptime NapiHandleScope = OpaquePointer[MutUntrackedOrigin]
 
 # ---------------------------------------------------------------------------
 # Deferred type (for promises)
@@ -71,7 +71,7 @@ comptime NapiHandleScope = OpaquePointer[MutAnyOrigin]
 # Created by napi_create_promise, consumed by napi_resolve_deferred or
 # napi_reject_deferred. Each deferred can only be used once.
 # ---------------------------------------------------------------------------
-comptime NapiDeferred = OpaquePointer[MutAnyOrigin]
+comptime NapiDeferred = OpaquePointer[MutUntrackedOrigin]
 
 # ---------------------------------------------------------------------------
 # Async work type
@@ -80,7 +80,7 @@ comptime NapiDeferred = OpaquePointer[MutAnyOrigin]
 # Created by napi_create_async_work, queued by napi_queue_async_work,
 # and cleaned up by napi_delete_async_work.
 # ---------------------------------------------------------------------------
-comptime NapiAsyncWork = OpaquePointer[MutAnyOrigin]
+comptime NapiAsyncWork = OpaquePointer[MutUntrackedOrigin]
 
 # ---------------------------------------------------------------------------
 # Async context type (C2)
@@ -89,7 +89,7 @@ comptime NapiAsyncWork = OpaquePointer[MutAnyOrigin]
 # Created by napi_async_init, destroyed by napi_async_destroy.
 # Used with napi_make_callback to call JS in the correct async context.
 # ---------------------------------------------------------------------------
-comptime NapiAsyncContext = OpaquePointer[MutAnyOrigin]
+comptime NapiAsyncContext = OpaquePointer[MutUntrackedOrigin]
 
 # ---------------------------------------------------------------------------
 # Callback scope type (C3)
@@ -97,7 +97,7 @@ comptime NapiAsyncContext = OpaquePointer[MutAnyOrigin]
 # napi_callback_scope wraps the async context for a synchronous JS call.
 # Created by napi_open_callback_scope, closed by napi_close_callback_scope.
 # ---------------------------------------------------------------------------
-comptime NapiCallbackScope = OpaquePointer[MutAnyOrigin]
+comptime NapiCallbackScope = OpaquePointer[MutUntrackedOrigin]
 
 # ---------------------------------------------------------------------------
 # Reference type
@@ -105,7 +105,7 @@ comptime NapiCallbackScope = OpaquePointer[MutAnyOrigin]
 # napi_ref is an opaque handle to a persistent reference to a napi_value.
 # Created by napi_create_reference, allows preventing GC of a value.
 # ---------------------------------------------------------------------------
-comptime NapiRef = OpaquePointer[MutAnyOrigin]
+comptime NapiRef = OpaquePointer[MutUntrackedOrigin]
 
 # ---------------------------------------------------------------------------
 # Escapable handle scope type
@@ -113,7 +113,7 @@ comptime NapiRef = OpaquePointer[MutAnyOrigin]
 # napi_escapable_handle_scope allows one value to be "escaped" (promoted)
 # to the outer scope.
 # ---------------------------------------------------------------------------
-comptime NapiEscapableHandleScope = OpaquePointer[MutAnyOrigin]
+comptime NapiEscapableHandleScope = OpaquePointer[MutUntrackedOrigin]
 
 # ---------------------------------------------------------------------------
 # Threadsafe function type
@@ -121,7 +121,7 @@ comptime NapiEscapableHandleScope = OpaquePointer[MutAnyOrigin]
 # napi_threadsafe_function is an opaque handle for calling JS functions
 # from any thread. Created by napi_create_threadsafe_function.
 # ---------------------------------------------------------------------------
-comptime NapiThreadsafeFunction = OpaquePointer[MutAnyOrigin]
+comptime NapiThreadsafeFunction = OpaquePointer[MutUntrackedOrigin]
 
 # ---------------------------------------------------------------------------
 # napi_threadsafe_function_call_mode enum constants

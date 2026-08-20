@@ -55,7 +55,6 @@ def _animal_tag_ok(
 
 
 struct AnimalData(Movable):
-    @__allow_legacy_any_origin_fields
     var name_ptr: OpaquePointer[MutAnyOrigin]
     var name_len: UInt
 
@@ -71,10 +70,8 @@ struct AnimalData(Movable):
 
 
 struct DogData(Movable):
-    @__allow_legacy_any_origin_fields
     var name_ptr: OpaquePointer[MutAnyOrigin]
     var name_len: UInt
-    @__allow_legacy_any_origin_fields
     var breed_ptr: OpaquePointer[MutAnyOrigin]
     var breed_len: UInt
 

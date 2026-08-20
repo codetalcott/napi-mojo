@@ -41,7 +41,6 @@ struct MojoFloat64Array(Movable):
     __del__ automatically frees the buffer to prevent leaks.
     """
 
-    @__allow_legacy_any_origin_fields
     var ptr: Pointer[Float64, MutAnyOrigin]
     var length: Int
     var _transferred: Bool

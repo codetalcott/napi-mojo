@@ -441,9 +441,7 @@ def config_summary_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 # asyncSum (async)
 struct AsyncSumData(Movable):
-    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred
-    @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
     # Cached NapiBindings address, written by the entry callback on the
     # main thread; read only by the complete callback (also main thread).
@@ -515,9 +513,7 @@ def async_sum_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 # asyncLabel (async)
 struct AsyncLabelData(Movable):
-    @__allow_legacy_any_origin_fields
     var deferred: NapiDeferred
-    @__allow_legacy_any_origin_fields
     var work: NapiAsyncWork
     # Cached NapiBindings address, written by the entry callback on the
     # main thread; read only by the complete callback (also main thread).

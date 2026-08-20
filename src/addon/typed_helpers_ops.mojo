@@ -36,9 +36,7 @@ from napi.framework.register import fn_ptr, ModuleBuilder
 
 struct TypedPayload(Movable):
     var value: Float64
-    @__allow_legacy_any_origin_fields
     var counter: Pointer[Int64, MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
     var ab_ref: NapiRef
     # Cached NapiBindings address so the finalizer can release ab_ref on
     # cached pointers (the bindings allocation is never freed, so this

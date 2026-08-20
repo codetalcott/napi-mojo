@@ -505,12 +505,12 @@ function generateAsyncFunction(name, decl) {
   // that destructor runs in the complete callback on the MAIN thread, where
   // the struct is deinitialized, not on the worker.
   out.push(`struct ${structName}(Movable):`);
-  // NapiDeferred/NapiAsyncWork hide AnyOrigin, which dev2026062206 rejects in
-  // struct fields. Decorator is the changelog-sanctioned stopgap — see the
-  // AnyOrigin rule in CLAUDE.md.
-  out.push(`    @__allow_legacy_any_origin_fields`);
+  // NapiDeferred/NapiAsyncWork used to hide AnyOrigin here, which
+  // dev2026062206 rejects in struct fields, and the generator emitted
+  // @__allow_legacy_any_origin_fields as the stopgap. Both aliases are
+  // MutUntrackedOrigin now, so the fields are legal as written and the
+  // decorator is gone — see docs/plan-origin-migration.md.
   out.push(`    var deferred: NapiDeferred`);
-  out.push(`    @__allow_legacy_any_origin_fields`);
   out.push(`    var work: NapiAsyncWork`);
   out.push(`    # Cached NapiBindings address, written by the entry callback on the`);
   out.push(`    # main thread; read only by the complete callback (also main thread).`);
