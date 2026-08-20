@@ -82,6 +82,34 @@ jobs:
             echo "::endgroup::"
           done
 
+      # spike/ffi_probe.mojo is the canonical RUNNABLE statement of the FFI
+      # contract, and nothing ran it — so its own comptime guard
+      # (assert_fn_ptr_is_one_word) had never once fired, and the file was free
+      # to rot exactly the way runtime.mojo did. It now also carries the
+      # decorator-removal recipe for the AnyOrigin migration: its structs use
+      # MutUntrackedOrigin with NO @__allow_legacy_any_origin_fields while the
+      # FFI function-pointer types deliberately keep MutAnyOrigin.
+      #
+      # originProbe() does a create -> read-back -> byte-compare round trip
+      # through four separate output slots, so a clobbered slot fails on
+      # content rather than passing a null check.
+      - name: FFI probe (origin-migration recipe, build + run)
+        run: |
+          pixi run mojo build --emit shared-lib spike/ffi_probe.mojo \
+            -o "$RUNNER_TEMP/probe.so"
+          cp "$RUNNER_TEMP/probe.so" "$RUNNER_TEMP/probe.node"
+          node -e "
+            const assert = require('assert');
+            const p = require(process.env.RUNNER_TEMP + '/probe.node');
+            assert.match(p.hello(), /^FFI probe OK/, 'hello() regressed');
+            assert.strictEqual(
+              p.originProbe(), 'originProbe PASS 4/4',
+              'decorator-free MutUntrackedOrigin fields did not round-trip'
+            );
+            console.log('ffi probe:', p.hello());
+            console.log('ffi probe:', p.originProbe());
+          "
+
       # Mojo elaborates imported-package `def` bodies lazily, per METHOD: a
       # body full of type errors compiles unless something in the compiled
       # graph calls that exact method. 0.5.1 shipped four broken framework
