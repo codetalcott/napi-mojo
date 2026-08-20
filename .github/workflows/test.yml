@@ -142,6 +142,15 @@ jobs:
       - name: Docstring coverage (ratchet)
         run: node scripts/check-docstring-coverage.mjs
 
+      # A fourth lazily-checked thing: the exported-function table and the
+      # counts embedded in prose. CLAUDE.md already warned that "nothing
+      # updates numbers embedded in prose", and the count went stale within a
+      # week of that warning anyway — the continuation PR added two exports and
+      # four separate "150 exported functions" claims kept saying 150. A number
+      # in prose only survives if something checks it.
+      - name: Exports doc + prose counts
+        run: node scripts/check-exports-doc.mjs
+
       # The drift gate above only proves the templates src/exports.toml
       # happens to instantiate. Three latent template bugs shipped through
       # branches nothing instantiates (two Int(0)-literal-era rots, one bare
