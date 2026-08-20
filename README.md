@@ -44,9 +44,11 @@ classes, 650+ tests). Expect breaking changes as the project matures.
   with `mojo_fn` auto-trampolines, nullable returns, and struct-to-object
   mapping — all validated by the test suite.
 - **What's missing:** Production hardening, cross-platform prebuild
-  distribution (currently darwin-arm64 + linux-x64 only), performance
-  benchmarking against napi-rs, and documentation beyond this README and the
-  generated `.d.ts`.
+  distribution (currently darwin-arm64 + linux-x64 only), and documentation
+  beyond this README and the generated `.d.ts`.
+- **Performance vs napi-rs:** measured, and currently **~4x slower per call** —
+  see [Performance](#performance) below for the number, the diagnosed cause,
+  and what it does and does not affect.
 
 ## Two directions
 
@@ -447,6 +449,42 @@ build, works in any TypeScript-aware IDE.
 | GC & lifecycle | `createExternal` `attachFinalizer` `setInstanceData` `getInstanceData` `addCleanupHook` `removeCleanupHook` |
 | Runtime introspection | `getGlobal` `getNapiVersion` `getNodeVersion` `runScript` `adjustExternalMemory` |
 | Code-generated | `square` `clamp` `uppercase` `sumArrayPure` `negateBoolPure` `addInt32Pure` `describePure` `reverseStringsPure` `safeDivide` `findName` `echoConfig` `configSummary` `exampleAdd` `exampleGreet` `exampleIsPositive` `exampleClamp` `asyncSum` `ExamplePoint` |
+
+## Performance
+
+Per-call boundary overhead against [napi-rs](https://napi.rs), same Node
+process, same timing harness, verified-identical function semantics
+(darwin-arm64, Node 24, best of 5 interleaved rounds):
+
+| call | napi-mojo | napi-rs | ratio |
+|---|---|---|---|
+| `getNull()` | 405.7 ns | 38.8 ns | 10.46x |
+| `hello()` | 411.0 ns | 79.7 ns | 5.16x |
+| `add(1, 2)` | 441.9 ns | 112.0 ns | 3.95x |
+| `getProperty(obj, "x")` | 506.7 ns | 234.8 ns | 2.16x |
+| `makeGreeting()` | 632.0 ns | 339.8 ns | 1.86x |
+
+**Median 3.95x slower.** napi-mojo is not competitive with napi-rs on per-call
+overhead today, and the full table is in
+[`bench/napi-rs/README.md`](bench/napi-rs/README.md).
+
+The useful column is not the ratio — it is the **delta**, which is flat at
+~330 ns across calls whose absolute cost varies by 8x. That is a constant
+per-call tax, not a scaling penalty, and it has a single identified cause:
+every callback bootstraps by resolving `napi_get_cb_info` through
+`dlopen(NULL)` + `dlsym`, because the pointer that would let it skip that is
+the very thing it is fetching. Measured in isolation, that bootstrap is
+**366.7 ns**, of which ~325 ns is the `dlsym` — essentially the entire gap.
+
+Fixing it needs a process-global to cache one function pointer, and **Mojo has
+no module-level `var`** (see `spike/global_probe.mojo`). The other 142 N-API
+pointers avoid this by travelling in callback data; the bootstrap is the call
+that *reads* callback data, so it has nowhere to travel in.
+
+Practically: this matters for chatty, fine-grained APIs and is irrelevant for
+compute-heavy addons, which is the reason to reach for Mojo in the first place.
+A fixed 330 ns vanishes against any kernel worth writing. Note that the gap is
+widest where the callee does least.
 
 ## Architecture
 

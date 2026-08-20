@@ -1,0 +1,14 @@
+{
+  "name": "napi-rs-baseline",
+  "version": "0.0.0",
+  "private": true,
+  "description": "napi-rs baseline for the napi-mojo per-call overhead comparison",
+  "main": "baseline.node",
+  "napi": { "binaryName": "baseline" },
+  "scripts": {
+    "build": "napi build --release --platform"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3.0.0"
+  }
+}

@@ -1,0 +1,22 @@
+[package]
+name = "napi_rs_baseline"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "3", default-features = false, features = ["napi4"] }
+napi-derive = "3"
+
+[build-dependencies]
+napi-build = "2"
+
+# Release profile chosen to match what a napi-rs user actually ships: the
+# defaults from `napi build --release`. Deliberately NOT tuned beyond that —
+# a comparison against a hand-tuned baseline would flatter napi-mojo.
+[profile.release]
+lto = true
+opt-level = 3

@@ -51,6 +51,16 @@ Everything else takes `b: Bindings` first. `ModuleBuilder`/`ClassBuilder` regist
 - **Async cleanup hooks**: the hook's `arg` is the bindings pointer.
 - **Dynamically created inner callbacks**: their data slot either IS the bindings pointer (`inner_callback_fn`) or a capture struct that embeds it (`AdderCapture.b_raw`).
 
+**The bootstrap dlsym costs ~330 ns per call, and it is the whole napi-rs gap.**
+`raw_get_cb_info`'s env-only overload runs `OwnedDLHandle()` + `get_symbol` on
+EVERY callback. Measured from a host-mode program: `OwnedDLHandle()+get_symbol`
+= 366.7 ns/op, `OwnedDLHandle()` alone = 41.7 ns, so ~325 ns is the dlsym.
+`bench/napi-rs` measures napi-mojo at a median **3.95x** napi-rs per-call, with
+a **flat ~330 ns delta** across calls whose absolute cost varies 8x — a constant
+tax, not a scaling one, and it matches the bootstrap almost exactly. Do not
+read the ratio column; read the delta. Removing this needs the global below, so
+the two facts are one fact.
+
 **A process-global bindings cache is impossible: Mojo has no module-level `var`** (hard error "global variables are not supported", verified dev2026080905 — see the VERDICT header in `spike/global_probe.mojo`). The carriers above are the workaround: thread the bindings address through whatever payload the context already carries. If a nightly changelog ever mentions global variables, re-run the probe — a true global would also let `except:` blocks use cached pointers.
 
 ### How a `.node` addon works
