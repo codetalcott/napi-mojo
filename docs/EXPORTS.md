@@ -178,6 +178,7 @@ a foreign wrapped instance (which must be a `TypeError`, not a reinterpret).
 | `hostGlobal(ctx)` | `host_global_fn` | Host mode: `NodeHost.global_object()` — `globalThis` |
 | `callMethod(obj, name, args)` | `call_method_fn` | `JsObject.call_method` — invoke `obj[name](...args)` with `this` bound to `obj` |
 | `callN(fn, args)` | `call_n_fn` | `JsFunction.call_n` — call with a runtime-length argument list |
+| `globalCacheActive()` | `global_cache_active_fn` | True when the bootstrap symbol is served from the data-segment slot rather than a per-call dlsym — guards a silent perf regression |
 | `scopedCall(n, fn)` | `scoped_call_fn` | Calls `fn(i)` n times, each iteration in its own handle scope (`with_handle_scope`) |
 | `thenDouble(promise, onResult)` | `then_double_fn` | Host mode: attaches a Mojo continuation via `.then()`; fires on a later tick and calls `onResult(value * 2)` |
 | `deferredRequire(ctx, onResult)` | `deferred_require_fn` | Host mode: stashes `require` in a `napi_ref` and uses it from a later tick — the continuation persistence story |

@@ -15,9 +15,14 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 /// Mirrors `hello()` — a fixed 16-byte string, same length as "Hello from Mojo!".
+///
+/// `&'static str`, NOT `String`. napi-mojo's hello() uses JsString.create_literal,
+/// which hands napi a pointer straight into .rodata. Returning an owned String
+/// here would make Rust do a heap allocation and copy that Mojo never does, and
+/// the comparison would be measuring that allocation rather than the boundary.
 #[napi]
-pub fn hello() -> String {
-  "Hello from Rust!".to_string()
+pub fn hello() -> &'static str {
+  "Hello from Rust!"
 }
 
 /// Mirrors `greet(name)` — "Hello, {name}!".

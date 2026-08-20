@@ -1,26 +1,37 @@
 ## spike/global_probe.mojo — THROWAWAY: module-level globals in a dlopen'd .node
 ##
 ## ===========================================================================
-## VERDICT (2026-08-09, dev2026080905): DOES NOT COMPILE — and that IS the
-## result. `var` at module scope errors with:
+## VERDICT (2026-08-09, dev2026080905): `var` at module scope DOES NOT COMPILE:
 ##
 ##     error: global variables are not supported; move this into a function
 ##     body or use 'comptime' to declare a constant
 ##
-## So a process-global NapiBindings cache is impossible in today's Mojo, in
-## both the main module and package modules. Consequences:
-##   - The dual env-only/Bindings overload surface cannot be collapsed via a
-##     global. The two viable alternatives, in preference order:
-##     (a) thread the bindings pointer through the payload the context already
-##         carries (async data struct, TSFN context, finalizer hint) — zero
-##         dlsym, implemented for generated async completes in
-##         scripts/generate-addon.mjs;
-##     (b) claim napi_set_instance_data for a framework EnvSlot {bindings,
-##         user_data} and layer the user-facing instance-data API over it —
-##         one bootstrap dlsym per env-only-context call, but works for
-##         except-blocks too. Bigger refactor of instance_data.mojo; deferred.
-##   - Re-run this probe when a nightly changelog mentions global variables;
-##     if it ever compiles and returns 7042, design (a)/(b) can be revisited.
+## That is still true. But the conclusion this file drew from it — "a
+## process-global NapiBindings cache is impossible in today's Mojo" — was
+## WRONG, and stood for the life of this file until it was measured.
+##
+## SUPERSEDED (2026-08-20, Mojo 1.0.0): the LANGUAGE SURFACE has no global
+## `var`; the MLIR layer underneath has `pop.global_alloc`, the mutable sibling
+## of the op behind `builtin/globals.global_constant`. It lowers to
+## `llvm.mlir.global internal @<name>` — a zero-initialised, module-private
+## slot in the data segment. `src/napi/global_cache.mojo` uses it to hold the
+## `napi_get_cb_info` address, which removed ~346 ns from EVERY callback and
+## took bench/napi-rs from 3.95x slower to 0.42x.
+##
+## Verified: stable address across call sites, across a `-I` package boundary,
+## and across separate JS->Mojo callback entries on later event-loop ticks.
+## `@no_inline` on the accessor is load-bearing — the op is `Pure`, so each
+## inlined copy otherwise materialises its own global.
+##
+## Only the symbol ADDRESS is cached, never the NapiBindings struct: its
+## `registry` holds env-specific napi_refs, so sharing it across envs
+## (worker_threads) would be a real bug.
+##
+## This probe is kept because the `var` result is still the honest answer to
+## "does Mojo have global variables" — and as a reminder that "the language
+## cannot express X" is not the same as "X is impossible". Re-run it if a
+## changelog ever mentions global variables; a first-class one would be
+## preferable to an internal MLIR op with no stability guarantee.
 ## ===========================================================================
 ##
 ## Answers the question gating the process-global NapiBindings cache:

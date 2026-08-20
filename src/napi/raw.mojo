@@ -23,6 +23,7 @@
 ## carried the bindings pointer (see CLAUDE.md, "Cached NapiBindings").
 
 from std.ffi import OwnedDLHandle
+from napi.global_cache import cached_cb_info_addr, cache_cb_info_addr
 from napi.types import (
     NapiEnv,
     NapiValue,
@@ -122,6 +123,16 @@ def raw_set_named_property(
 ## `argv`:     out — pointer to an array of napi_value (caller allocates)
 ## `this_arg`: out — pointer to receive the this value (pass NULL to ignore)
 ## `data`:     out — pointer to receive callback data (pass NULL to ignore)
+comptime _GetCbInfoFn = def(
+    OpaquePointer[MutAnyOrigin],
+    OpaquePointer[MutAnyOrigin],
+    OpaquePointer[MutAnyOrigin],
+    OpaquePointer[MutAnyOrigin],
+    OpaquePointer[MutAnyOrigin],
+    OpaquePointer[MutAnyOrigin],
+) thin abi("C") -> NapiStatus
+
+
 def raw_get_cb_info(
     env: NapiEnv,
     info: NapiValue,
@@ -130,17 +141,25 @@ def raw_get_cb_info(
     this_arg: OpaquePointer[MutAnyOrigin],
     data: OpaquePointer[MutAnyOrigin],
 ) raises -> NapiStatus:
-    var h = OwnedDLHandle()
-    var f = _sym[
-        def(
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> NapiStatus
-    ](h, "napi_get_cb_info")
+    # The per-callback bootstrap. This ran OwnedDLHandle()+dlsym on EVERY call
+    # (~346 ns) because the pointer that would let it skip that is the very
+    # thing it is fetching. napi/global_cache.mojo breaks the cycle with a
+    # module-private data-segment slot; see that file for why this caches only
+    # the symbol ADDRESS and never the per-env Bindings.
+    var addr = cached_cb_info_addr()
+    if addr == 0:
+        var h = OwnedDLHandle()
+        var opt = h.get_symbol[NoneType]("napi_get_cb_info")
+        if opt is None:
+            raise Error("napi-mojo: symbol not found: napi_get_cb_info")
+        addr = Int(opt.value())
+        # A zero slot means "not cached"; if the global is ever non-functional
+        # this simply re-resolves every call, which is the old behaviour.
+        cache_cb_info_addr(addr)
+    # Reinterpret the WORD HOLDING the address, exactly as _sym does. Spelling
+    # this as `addr.unsafe_bitcast[...]` would call the function's first eight
+    # bytes of machine code as a pointer, and would still compile.
+    var f = Pointer(to=addr).unsafe_bitcast[_GetCbInfoFn]()[]
     return f(env.as_unsafe_any_origin(), info.as_unsafe_any_origin(), argc, argv, this_arg, data)
 
 

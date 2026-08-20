@@ -24,7 +24,7 @@ demo.greet("world"); // "Hello, world!"
 ## Project Status
 
 **Alpha** — napi-mojo is under active development and not yet proven in
-production. The API covers the full N-API v10 surface (152 exported functions, 5
+production. The API covers the full N-API v10 surface (153 exported functions, 5
 classes, 650+ tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
@@ -46,9 +46,8 @@ classes, 650+ tests). Expect breaking changes as the project matures.
 - **What's missing:** Production hardening, cross-platform prebuild
   distribution (currently darwin-arm64 + linux-x64 only), and documentation
   beyond this README and the generated `.d.ts`.
-- **Performance vs napi-rs:** measured, and currently **~4x slower per call** —
-  see [Performance](#performance) below for the number, the diagnosed cause,
-  and what it does and does not affect.
+- **Performance vs napi-rs:** measured — **median 0.42x**, i.e. about 2.4x
+  faster per call. See [Performance](#performance) for the method and caveats.
 
 ## Two directions
 
@@ -127,7 +126,7 @@ loop runs, and the callback fires later.
 
 ## Features
 
-- **152 exported functions** and **5 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
+- **153 exported functions** and **5 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
 - Primitives: strings, numbers (Float64/Int32/UInt32/Int64), booleans, null,
   undefined, BigInt, Symbol, Date
 - Objects: create, read/write properties, enumerate keys, freeze/seal, prototype
@@ -458,33 +457,30 @@ process, same timing harness, verified-identical function semantics
 
 | call | napi-mojo | napi-rs | ratio |
 |---|---|---|---|
-| `getNull()` | 405.7 ns | 38.8 ns | 10.46x |
-| `hello()` | 411.0 ns | 79.7 ns | 5.16x |
-| `add(1, 2)` | 441.9 ns | 112.0 ns | 3.95x |
-| `getProperty(obj, "x")` | 506.7 ns | 234.8 ns | 2.16x |
-| `makeGreeting()` | 632.0 ns | 339.8 ns | 1.86x |
+| `isPositive(42)` | 27.9 ns | 91.6 ns | 0.30x |
+| `createObject()` | 35.1 ns | 101.5 ns | 0.35x |
+| `add(1, 2)` | 35.8 ns | 97.5 ns | 0.37x |
+| `getNull()` | 18.9 ns | 33.7 ns | 0.56x |
+| `hello()` | 31.9 ns | 52.5 ns | 0.61x |
+| `makeGreeting()` | 188.2 ns | 278.0 ns | 0.68x |
 
-**Median 3.95x slower.** napi-mojo is not competitive with napi-rs on per-call
-overhead today, and the full table is in
-[`bench/napi-rs/README.md`](bench/napi-rs/README.md).
+**Median 0.42x** — about 2.4x faster than napi-rs on these microbenchmarks.
+Full table and method in [`bench/napi-rs/README.md`](bench/napi-rs/README.md);
+reproduce with `node bench/napi-rs/compare.mjs`.
 
-The useful column is not the ratio — it is the **delta**, which is flat at
-~330 ns across calls whose absolute cost varies by 8x. That is a constant
-per-call tax, not a scaling penalty, and it has a single identified cause:
-every callback bootstraps by resolving `napi_get_cb_info` through
-`dlopen(NULL)` + `dlsym`, because the pointer that would let it skip that is
-the very thing it is fetching. Measured in isolation, that bootstrap is
-**366.7 ns**, of which ~325 ns is the `dlsym` — essentially the entire gap.
+This is a recent change, and the honest version of the story is that napi-mojo
+was **3.95x slower** until the measurement itself found the cause. The delta
+against napi-rs was flat at ~330 ns across calls whose absolute cost varied 8x
+— a constant tax, not a scaling one. It was the per-callback bootstrap: reading
+a callback's data requires `napi_get_cb_info`, whose pointer could not come
+from the cache it was fetching, so every call ran `dlopen(NULL)` + `dlsym`
+(~346 ns). That single symbol is now held in a module-private data-segment slot
+(see `src/napi/global_cache.mojo`), and the tax is gone.
 
-Fixing it needs a process-global to cache one function pointer, and **Mojo has
-no module-level `var`** (see `spike/global_probe.mojo`). The other 142 N-API
-pointers avoid this by travelling in callback data; the bootstrap is the call
-that *reads* callback data, so it has nowhere to travel in.
-
-Practically: this matters for chatty, fine-grained APIs and is irrelevant for
-compute-heavy addons, which is the reason to reach for Mojo in the first place.
-A fixed 330 ns vanishes against any kernel worth writing. Note that the gap is
-widest where the callee does least.
+Caveats worth knowing: this measures **binding-layer overhead only** — nothing
+here says anything about Mojo versus Rust as languages. And the gap narrows as
+the callee does more work (`makeGreeting()` at 0.68x), because fixed overhead
+is what is being removed.
 
 ## Architecture
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. All planned phases complete — 152 exported functions + 5 classes covering the full N-API surface (650+ tests, plus 7 GC finalizer tests behind `--expose-gc`; the exact count is whatever `npm test` reports — don't embed it in prose, nothing updates numbers embedded in prose): primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError/SyntaxError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal/detach, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks (sync + async), type coercion (Boolean/Number/String/Object), TypeScript definition generation with JSDoc, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), version info (N-API + Node.js), script execution, async context + callback scope, type tagging, and external memory tracking. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, parametric array helpers (`to/from_js_array_f64/str`), an `AsyncWork` helper for ergonomic async work (promise + queue + resolve/reject), a TOML code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) with `mojo_fn` auto-trampolines, nullable returns (`Optional[T]` → `T | null`), struct-to-object mapping (`[structs.*]` → bidirectional converters), async/class generation, and auto-generated TypeScript `.d.ts` with interfaces, `MojoFloat64Array` for zero-copy TypedArray output, `parallelize_safe()` for SIMD parallel computation with automatic runtime init, **typed handles** (`JsExternal.create_typed[T]` / `get_typed[T]`, `set_instance_data[T]` / `get_instance_data[T]` with generic finalizers), and **cached NapiBindings** — all 142 N-API function pointers resolved once at module init, passed through callback data to every entry-point callback (zero per-call dlsym). The framework is **bidirectional**: besides addons (JS calls Mojo) it supports **host mode** (`napi-mojo run` — a Mojo program that drives Node and uses npm as its standard library), via `NodeHost`, `JsObject.call_method`, `JsFunction.call_n`/`call_with` and `with_handle_scope`.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. All planned phases complete — 153 exported functions + 5 classes covering the full N-API surface (650+ tests, plus 7 GC finalizer tests behind `--expose-gc`; the exact count is whatever `npm test` reports — don't embed it in prose, nothing updates numbers embedded in prose): primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError/SyntaxError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal/detach, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks (sync + async), type coercion (Boolean/Number/String/Object), TypeScript definition generation with JSDoc, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), version info (N-API + Node.js), script execution, async context + callback scope, type tagging, and external memory tracking. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, parametric array helpers (`to/from_js_array_f64/str`), an `AsyncWork` helper for ergonomic async work (promise + queue + resolve/reject), a TOML code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) with `mojo_fn` auto-trampolines, nullable returns (`Optional[T]` → `T | null`), struct-to-object mapping (`[structs.*]` → bidirectional converters), async/class generation, and auto-generated TypeScript `.d.ts` with interfaces, `MojoFloat64Array` for zero-copy TypedArray output, `parallelize_safe()` for SIMD parallel computation with automatic runtime init, **typed handles** (`JsExternal.create_typed[T]` / `get_typed[T]`, `set_instance_data[T]` / `get_instance_data[T]` with generic finalizers), and **cached NapiBindings** — all 142 N-API function pointers resolved once at module init, passed through callback data to every entry-point callback (zero per-call dlsym). The framework is **bidirectional**: besides addons (JS calls Mojo) it supports **host mode** (`napi-mojo run` — a Mojo program that drives Node and uses npm as its standard library), via `NodeHost`, `JsObject.call_method`, `JsFunction.call_n`/`call_with` and `with_handle_scope`.
 
 ## Commands
 
@@ -51,17 +51,45 @@ Everything else takes `b: Bindings` first. `ModuleBuilder`/`ClassBuilder` regist
 - **Async cleanup hooks**: the hook's `arg` is the bindings pointer.
 - **Dynamically created inner callbacks**: their data slot either IS the bindings pointer (`inner_callback_fn`) or a capture struct that embeds it (`AdderCapture.b_raw`).
 
-**The bootstrap dlsym costs ~330 ns per call, and it is the whole napi-rs gap.**
-`raw_get_cb_info`'s env-only overload runs `OwnedDLHandle()` + `get_symbol` on
-EVERY callback. Measured from a host-mode program: `OwnedDLHandle()+get_symbol`
-= 366.7 ns/op, `OwnedDLHandle()` alone = 41.7 ns, so ~325 ns is the dlsym.
-`bench/napi-rs` measures napi-mojo at a median **3.95x** napi-rs per-call, with
-a **flat ~330 ns delta** across calls whose absolute cost varies 8x — a constant
-tax, not a scaling one, and it matches the bootstrap almost exactly. Do not
-read the ratio column; read the delta. Removing this needs the global below, so
-the two facts are one fact.
+**The per-callback bootstrap dlsym is GONE — `src/napi/global_cache.mojo`.**
+`raw_get_cb_info`'s env-only overload used to run `OwnedDLHandle()` +
+`get_symbol` on EVERY callback: ~346 ns/call, of which ~280 ns was dlsym itself
+(the Mojo wrapper adds ~66 ns; the `String` copy inside `get_symbol` only ~8 ns,
+so bypassing the wrapper was never the fix). That was essentially the entire
+napi-rs gap — a FLAT ~330 ns delta across calls whose absolute cost varied 8x.
+Removing it moved `bench/napi-rs` from **3.95x slower to 0.42x**, and the
+benchmark ceilings were reseeded because the old ones had ~50x headroom and
+would no longer have caught the regression they exist for.
 
-**A process-global bindings cache is impossible: Mojo has no module-level `var`** (hard error "global variables are not supported", verified dev2026080905 — see the VERDICT header in `spike/global_probe.mojo`). The carriers above are the workaround: thread the bindings address through whatever payload the context already carries. If a nightly changelog ever mentions global variables, re-run the probe — a true global would also let `except:` blocks use cached pointers.
+**Mojo has no module-level `var`, but it does have `pop.global_alloc`.** The
+language-surface hard error ("global variables are not supported") is still
+real — `spike/global_probe.mojo` documents it. What is NOT true, and what this
+file claimed until it was measured, is that a process-lifetime cache is
+therefore impossible. `__mlir_op.pop.global_alloc` — the mutable sibling of the
+op behind `builtin/globals.global_constant` — lowers to
+`llvm.mlir.global internal @<name>`: a zero-initialised, module-private slot in
+the data segment. Verified stable across call sites, across a `-I` package
+boundary, and across separate JS→Mojo callback entries on later event-loop
+ticks.
+
+**`@no_inline` on the accessor is load-bearing.** `pop.global_alloc` is `Pure`,
+so every inlined copy materialises its OWN global: without it the probe returns
+sequential addresses 8 bytes apart and stores vanish. Do not remove it; do not
+add `@always_inline`.
+
+**Only the symbol ADDRESS is cached, never the `NapiBindings`.** The struct's
+`registry` holds `NapiRef`s to class constructors, and a napi_ref is
+env-specific — under `worker_threads` a callback in env B could read env A's
+refs. A resolved symbol address is process-image state, so it is safe; per-env
+bindings still travel through callback data as before.
+
+**The failure mode is graceful, which is what makes the internal-API risk
+affordable.** `__mlir_op` has no stability guarantee and `_get_kgen_string` is a
+private stdlib import. If either breaks, each call site sees a zero slot and
+falls back to dlsym — slower, never wrong. Because that is silent,
+`globalCacheActive()` (`src/addon/global_cache_ops.mojo`) exports the state and
+`tests/global_cache.test.js` asserts it, the same way `runtime.test.js` guards
+`parallelize_safe`'s silent sequential fallback.
 
 ### How a `.node` addon works
 
@@ -144,7 +172,7 @@ tests/codegen/                           # compile-only kitchen sink: every gene
 
 ### Exported addon functions
 
-152 exported functions covering the full N-API surface. See `docs/EXPORTS.md` for the complete table.
+153 exported functions covering the full N-API surface. See `docs/EXPORTS.md` for the complete table.
 
 ## Critical Mojo FFI rules
 

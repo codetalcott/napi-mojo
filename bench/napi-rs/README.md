@@ -39,70 +39,56 @@ machine more than with the diff.
 
 darwin-arm64, Node v24.18.0, best of 5 interleaved rounds, median ns/call:
 
-| call | napi-mojo | napi-rs | ratio | delta |
-|---|---|---|---|---|
-| `hello()` | 411.0 | 79.7 | 5.16x | 331 |
-| `greet("world")` | 463.6 | 206.8 | 2.24x | 257 |
-| `add(1, 2)` | 441.9 | 112.0 | 3.95x | 330 |
-| `addInts(1, 2)` | 423.3 | 105.3 | 4.02x | 318 |
-| `isPositive(42)` | 432.5 | 98.7 | 4.38x | 334 |
-| `getNull()` | 405.7 | 38.8 | 10.46x | 367 |
-| `createObject()` | 441.8 | 116.9 | 3.78x | 325 |
-| `makeGreeting()` | 632.0 | 339.8 | 1.86x | 292 |
-| `getProperty(obj, "x")` | 506.7 | 234.8 | 2.16x | 272 |
-| `strictEquals(1, 1)` | 445.9 | 114.4 | 3.90x | 332 |
+| call | napi-mojo | napi-rs | ratio |
+|---|---|---|---|
+| `isPositive(42)` | 27.9 | 91.6 | 0.30x |
+| `createObject()` | 35.1 | 101.5 | 0.35x |
+| `add(1, 2)` | 35.8 | 97.5 | 0.37x |
+| `strictEquals(1, 1)` | 36.4 | 93.9 | 0.39x |
+| `getProperty(obj, "x")` | 74.7 | 189.4 | 0.39x |
+| `greet("world")` | 78.0 | 185.7 | 0.42x |
+| `addInts(1, 2)` | 43.8 | 98.9 | 0.44x |
+| `getNull()` | 18.9 | 33.7 | 0.56x |
+| `hello()` | 31.9 | 52.5 | 0.61x |
+| `makeGreeting()` | 188.2 | 278.0 | 0.68x |
 
-**Median 3.95x slower.** napi-mojo is not competitive with napi-rs on per-call
-overhead today.
+**Median 0.42x** — about 2.4x faster than napi-rs.
 
-## The ratio is the wrong column
+## How this number was 3.95x a day earlier
 
-Read the **delta**. It is flat — 257 to 367 ns, median 330 — across calls whose
-absolute cost varies by 8x. That is not a scaling penalty; it is a **constant
-per-call tax**, and the ratio column is just that tax divided by however little
-napi-rs was doing. `getNull()` looks catastrophic at 10.46x only because
-napi-rs does the same work in 38.8 ns.
+The first run of this benchmark said napi-mojo was **3.95x slower**, and that
+result is why the framework is now faster. It is worth keeping the reasoning on
+file, because the ratio column is what nearly hid it.
 
-The cause is identified, not guessed. Every napi-mojo callback begins with
-`CbArgs.get_bindings(env, info)` to retrieve the cached `NapiBindings` pointer
-from its callback data — and reading that data needs `napi_get_cb_info`, whose
-pointer cannot itself come from the cache. So the **env-only** `raw_get_cb_info`
-([`src/napi/raw.mojo`](../../src/napi/raw.mojo), the one without a `Bindings`
-parameter) runs `OwnedDLHandle()` + `get_symbol` on **every single call**.
-
-Measured directly, from a host-mode Mojo program:
+The **delta** was flat — 257 to 367 ns, median 330 — across calls whose absolute
+cost varied by 8x. A constant tax, not a scaling penalty. Every napi-mojo
+callback began by fetching its cached `NapiBindings` from callback data, and
+reading callback data needs `napi_get_cb_info`, whose pointer could not come
+from the cache it was fetching. So the env-only `raw_get_cb_info` ran
+`OwnedDLHandle()` + `get_symbol` on **every call**. Measured in isolation from a
+host-mode Mojo program:
 
 ```
-OwnedDLHandle() + get_symbol   366.7 ns/op
-OwnedDLHandle() alone           41.7 ns/op   <- so ~325 ns is the dlsym
+OwnedDLHandle() + get_symbol   ~346 ns/op
+  of which raw dlsym            ~280 ns   <- irreducible while it is called at all
+  Mojo wrapper                   ~66 ns
+  the String copy inside it       ~8 ns   <- the tempting fix; not the problem
 ```
 
-**~325 ns of dlsym against a ~330 ns median delta.** The bootstrap accounts for
-essentially the whole gap.
+~330 ns of measured delta against a ~346 ns bootstrap. It was the whole gap.
 
-## Why it is not simply fixed
-
-The obvious fix — resolve `napi_get_cb_info` once at module init and keep it in
-a process-global — is blocked: **Mojo has no module-level `var`** (hard error,
-recorded in `spike/global_probe.mojo` and in CLAUDE.md). Every other N-API
-pointer avoids this by travelling in a *designated carrier* — callback data,
-a TSFN context, a finalize hint — but the bootstrap is by definition the call
-that reads the carrier, so it has nowhere to travel in.
-
-So the cached-`NapiBindings` architecture is doing its job: 142 of 143 pointers
-cost zero dlsym per call. The 143rd is structural, and it is worth ~330 ns.
-If a Mojo release ever ships module-level globals, re-run `spike/global_probe.mojo`
-— that single change would close most of this gap.
+`src/napi/global_cache.mojo` now holds that one symbol address in a
+module-private data-segment slot (`pop.global_alloc` + `@no_inline`), so the
+dlsym happens once per module image instead of once per call. Read that file's
+header for why it caches only the address and never the `NapiBindings` struct,
+and why the failure mode is a silent slowdown rather than a crash —
+`globalCacheActive()` and `tests/global_cache.test.js` exist to catch it.
 
 ## What this does and does not mean
 
-- **Chatty, fine-grained APIs**: a real cost. 330 ns per crossing, and it is
-  the same 330 ns whether the call does anything or not.
-- **Compute-heavy addons — the reason to reach for Mojo at all**: irrelevant. A
-  fixed 330 ns disappears against any kernel worth writing in Mojo.
-- Note `makeGreeting()` at 1.86x: the more the callee actually does, the more
-  the fixed tax amortises. The gap is widest where the work is smallest.
-
-This measures **binding-layer overhead only**. Neither language's compute
-performance is in evidence here, and nothing in this table says anything about
-Mojo versus Rust.
+- **Binding-layer overhead only.** Nothing here says anything about Mojo versus
+  Rust as languages, or about compute throughput.
+- **The gap narrows as the callee does more work** — `makeGreeting()` at 0.68x
+  versus `isPositive()` at 0.30x — because what was removed is fixed overhead.
+- napi-rs remains far more mature. This is one axis, measured honestly, on
+  microbenchmarks that deliberately do as little as possible.
