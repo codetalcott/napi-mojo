@@ -3,13 +3,70 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
-## Unreleased
+## 0.10.0 — 2026-08-20
 
-Three gates and one code-generator feature. The through-line is the same one
-0.9.0 kept running into: this codebase's characteristic failure is something
-that compiles, passes, and was never actually executed.
+Three gates, one code-generator feature, and the removal of
+`@__allow_legacy_any_origin_fields` from the entire tree — 243 fields to zero.
+The through-line is the same one 0.9.0 kept running into: this codebase's
+characteristic failure is something that compiles, passes, and was never
+actually executed.
+
+**Source-API note for downstream addons.** `NapiEnv`, `NapiValue` and the eight
+other handle aliases are now `OpaquePointer[MutUntrackedOrigin]` rather than
+`MutAnyOrigin`. Code that only passes handles around — the overwhelming
+majority — is unaffected, because every framework signature that takes a handle
+takes the alias. Code that spells `OpaquePointer[MutAnyOrigin]` literally where
+a handle is expected will need `.as_unsafe_any_origin()` at the boundary, or
+better, the alias. `ModuleBuilder`/`ClassBuilder` constructors deliberately kept
+their `data: OpaquePointer[MutAnyOrigin]` parameter so existing
+`register_module` boilerplate compiles untouched.
 
 ### Added
+
+- **`@__allow_legacy_any_origin_fields` is gone — 243 fields to zero.** Upstream
+  documents the decorator as an unstable escape hatch slated for removal, and
+  `UnsafeAnyOrigin` itself as slated for deprecation, so this was never
+  optional — only unscheduled. The alternative was doing it against a broken
+  build on a deadline, in the one area of this codebase that has already
+  produced SIGSEGVs.
+
+  What made it tractable was finding that the warning in `CLAUDE.md` about a
+  naive `MutAnyOrigin` → `MutUntrackedOrigin` rename is about a **different
+  population** than the decorator's. The 243 decorated *fields* all point at a
+  V8-owned handle, a static code address, or an `unsafe_alloc` block — checkable
+  rather than a judgement call, since
+  `grep -rn "self\.[a-z_]* = Pointer(to=" src/ examples/` is empty, so no field
+  anywhere holds a pointer to a Mojo local. The 159 dangerous sites are inline
+  `Pointer(to=<local>)…as_unsafe_any_origin()` *arguments*, where the widening
+  is load-bearing: it keeps a register-passable local's spill slot alive across
+  the FFI call. The two are disjoint, so the fields could move without touching
+  the arguments at all.
+
+  The recipe, now recorded in `docs/plan-origin-migration.md`: storage-type the
+  **field**; leave every parameter and return type alone; narrow at the write
+  into the field and widen at the read out of it; keep the
+  `comptime *Fn = def(...) thin abi("C")` types at `MutAnyOrigin`. That last
+  clause is the rule that must not be broken — "simplifying" it is exactly the
+  global rename that severs the load-bearing population, it looks tidier, and
+  nothing in the type system stops you.
+
+  It is proven rather than asserted. `spike/ffi_probe.mojo` carries the recipe
+  decorator-free and CI builds *and runs* it on both platforms: `originProbe`
+  creates a JS string through a local output slot, reads it back through a
+  second, and byte-compares — four payloads of different lengths, so a slot
+  clobbered by its neighbour fails on content where a null check would pass on
+  garbage. A compile-time assert pins that the origin parameter does not change
+  the machine representation and that `NapiPropertyDescriptor` is still 64
+  bytes; if it ever did, every `napi_define_properties` call would corrupt
+  silently.
+
+  Landed in five steps, each independently green: the spike and plan, then
+  `NapiBindings`' 143 slots, then `NapiPropertyDescriptor` and the registry
+  internals, then a verified no-op commit pinning `raw.mojo`'s 143 FFI type
+  expressions to a literal `MutAnyOrigin` (they were spelled with the aliases,
+  which would otherwise have moved underneath them), and finally the alias flip
+  itself. The generator no longer emits the decorator either, so
+  `npm run generate:addon && git diff --exit-code src/generated/` holds.
 
 - **Docstring coverage ratchet.** `scripts/check-docstring-coverage.mjs` runs
   `mojo doc --diagnose-missing-doc-strings` over the consumer-facing modules and
@@ -59,6 +116,11 @@ that compiles, passes, and was never actually executed.
 
 ### Fixed
 
+- `raw_create_promise` passed its `deferred` argument as if it were a handle.
+  It is an output slot — a `napi_deferred*` the callee writes — and its caller
+  hands it `Pointer(to=<local>)…as_unsafe_any_origin()`. Retyping it surfaced
+  the mistake at compile time; under the old aliases the same confusion would
+  have compiled silently, which is the general argument for the flip.
 - `NapiNodeVersion` could not compile: `release` was missing
   `@__allow_legacy_any_origin_fields`, latent since dev2026062206 because
   nothing constructs the struct and struct definitions elaborate lazily. Found

@@ -1,6 +1,10 @@
 # Plan: removing `@__allow_legacy_any_origin_fields`
 
-**Status:** recipe **proven in CI** (2026-08-20), migration **not started.**
+**Status: DONE.** Recipe proven in CI 2026-08-20, migration completed the same
+day and shipped in 0.10.0 — **243 decorated fields to zero.** The document
+stays as the record of *why* it was safe and of the rule that must not be
+broken; the "costed inventory" and "suggested order" below are now a history of
+how it was executed, not a plan.
 
 `@__allow_legacy_any_origin_fields` is the changelog-sanctioned escape hatch for
 the dev2026062206 rule "struct fields cannot expose AnyOrigin in their type".
@@ -130,8 +134,31 @@ Step 7's site count. The spike needed 2 widenings in ~50 lines of call sites,
 but that is too small a sample to extrapolate from honestly; the real number
 falls out of the first `bindings.mojo` build. Budget it as the unknown.
 
+## How it actually went
+
+Five steps, each independently green, in the order suggested below — with one
+addition discovered on contact: **`raw.mojo`'s 143 FFI type expressions were
+spelled with the handle aliases**, so flipping the aliases would have moved the
+FFI signatures underneath them, which is precisely the rule that must not be
+broken. A verified no-op commit pinning those 143 expressions to a literal
+`MutAnyOrigin` went first; only then was the flip safe.
+
+Step 7's unknown resolved at **265 widenings** across the whole migration, all
+placed from compiler diagnostics. The flip converged over seven build rounds
+(3 → 1 → 41 → 19 → 1 → 1 → 0 errors). Two of those rounds found real latent
+defects rather than spelling gaps:
+
+- `NapiNodeVersion`'s explicit constructor, which had never been elaborated.
+- **`raw_create_promise`'s `deferred` parameter**, which the migration exposed
+  as an *output slot* being handled as if it were a handle. Its caller passes
+  `Pointer(to=<local>)…as_unsafe_any_origin()` — population B. Under the old
+  aliases that confusion compiled silently; making the handle aliases a
+  distinct type is what turned it into a diagnostic. That is the clearest
+  single argument for having done the flip rather than only the fields.
+
 ## Revisit when
 
-A nightly changelog mentions removing `@__allow_legacy_any_origin_fields` or
-`UnsafeAnyOrigin`, or the Nightly Canary goes red with the AnyOrigin field
-error. Both are now recipes to execute rather than problems to solve.
+Nothing here is pending. If `UnsafeAnyOrigin` is eventually removed outright,
+the remaining surface is the FFI signatures and the 159 population-B argument
+sites — a genuinely harder problem than this one was, and the SIGSEGV warning
+above applies to it in full.
