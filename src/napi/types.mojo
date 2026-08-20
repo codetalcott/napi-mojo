@@ -18,6 +18,24 @@
 # ---------------------------------------------------------------------------
 comptime NapiEnv = OpaquePointer[MutAnyOrigin]
 comptime NapiValue = OpaquePointer[MutAnyOrigin]
+
+# ---------------------------------------------------------------------------
+# STORAGE spellings — what a struct FIELD uses.
+#
+# `struct fields cannot expose AnyOrigin in their type` (dev2026062206), and
+# @__allow_legacy_any_origin_fields is the escape hatch upstream has slated for
+# removal. These are the replacement: every such field points at a V8-owned
+# handle, a static code address, or an unsafe_alloc block, so Untracked is the
+# honest type — the lifetime really is managed explicitly.
+#
+# DELIBERATELY DISTINCT from NapiEnv/NapiValue above, which are FFI-facing and
+# must stay AnyOrigin: the widening at an inline
+# `Pointer(to=<local>)...as_unsafe_any_origin()` argument is load-bearing, and
+# moving those to Untracked is the rename that caused SIGSEGVs.
+# See docs/plan-origin-migration.md.
+# ---------------------------------------------------------------------------
+comptime NapiStore = OpaquePointer[MutUntrackedOrigin]
+comptime NapiConstStore = OpaquePointer[ImmutUntrackedOrigin]
 comptime NapiStatus = Int32
 comptime NAPI_OK: NapiStatus = 0
 
