@@ -116,7 +116,7 @@ comptime NAPI_OK: NapiStatus = 0
 # FFI-facing NapiEnv/NapiValue above, which must stay AnyOrigin — see the
 # TWO POPULATIONS note in the header.
 comptime NapiValueStore = OpaquePointer[MutUntrackedOrigin]
-comptime NapiConstStore = OpaquePointer[ImmutUntrackedOrigin]
+comptime NapiConstStore = OpaquePointer[ImmUntrackedOrigin]
 
 # Concrete N-API function types used below.
 comptime GetUndefinedFn = def(
@@ -450,7 +450,7 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         # than the as_unsafe_any_origin() widening it used to need.
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         desc.method = Pointer(to=cb).unsafe_bitcast[NapiValueStore]()[]
         desc.attributes = 0
 
@@ -470,7 +470,7 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         var name2 = StaticString("originProbe")
         desc2.utf8name = name2.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         desc2.method = Pointer(to=cb2).unsafe_bitcast[NapiValueStore]()[]
         desc2.attributes = 0
         _ = define_props(

@@ -10,7 +10,7 @@
 ## All call variants use `undefined` as the `this` value. The function must
 ## already be a valid JS function napi_value (check with js_typeof first).
 
-from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor
+from napi.types import NapiEnv, NapiValue, NapiStore, NapiConstStore, NapiPropertyDescriptor
 from napi.bindings import Bindings
 from napi.raw import raw_call_function, raw_get_undefined, raw_create_function
 from napi.error import check_status
@@ -177,10 +177,12 @@ struct JsFunction:
         # Set fn.length = length via napi_define_properties
         var len_val = JsNumber.create_int(b, env, length).value
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = "length".unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        desc.method = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        desc.value = len_val
+        desc.utf8name = "length".unsafe_ptr().unsafe_bitcast[
+            NoneType
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+        desc.method = NapiStore(unsafe_from_address=Int(0))
+        desc.value = len_val.unsafe_origin_cast[MutUntrackedOrigin]()
         desc.attributes = 4  # napi_configurable
-        desc.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        desc.data = NapiStore(unsafe_from_address=Int(0))
         define_property(b, env, result, desc)
         return JsFunction(result)

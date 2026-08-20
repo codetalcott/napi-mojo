@@ -5,7 +5,13 @@
 ## constructor napi_value. Instance properties go on the prototype (retrieved
 ## via constructor.prototype).
 
-from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor, NapiTypeTag
+from napi.types import (
+    NapiEnv,
+    NapiValue,
+    NapiPropertyDescriptor,
+    NapiTypeTag,
+    NapiStore,
+)
 from napi.bindings import Bindings
 from napi.raw import (
     raw_define_class,
@@ -98,8 +104,10 @@ def register_instance_method(
 ) raises:
     var proto = _get_prototype(b, env, constructor)
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-    desc.method = method_ptr
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+            NoneType
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+    desc.method = method_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
     desc.attributes = 0
     define_property(b, env, proto, desc)
 
@@ -113,8 +121,10 @@ def register_getter(
 ) raises:
     var proto = _get_prototype(b, env, constructor)
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-    desc.getter = getter_ptr
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+            NoneType
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+    desc.getter = getter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
     desc.attributes = 0
     define_property(b, env, proto, desc)
 
@@ -129,9 +139,11 @@ def register_getter_setter(
 ) raises:
     var proto = _get_prototype(b, env, constructor)
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-    desc.getter = getter_ptr
-    desc.setter = setter_ptr
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+            NoneType
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+    desc.getter = getter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
+    desc.setter = setter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
     desc.attributes = 0
     define_property(b, env, proto, desc)
 
@@ -144,8 +156,10 @@ def register_static_method(
     method_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-    desc.method = method_ptr
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+            NoneType
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+    desc.method = method_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
     desc.attributes = 0
     define_property(b, env, constructor, desc)
 
@@ -158,8 +172,10 @@ def register_static_getter(
     getter_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-    desc.getter = getter_ptr
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+            NoneType
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+    desc.getter = getter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
     desc.attributes = 0
     define_property(b, env, constructor, desc)
 
@@ -207,9 +223,11 @@ def register_static_getter_setter(
     setter_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-    desc.getter = getter_ptr
-    desc.setter = setter_ptr
+    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+            NoneType
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+    desc.getter = getter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
+    desc.setter = setter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
     desc.attributes = 0
     define_property(b, env, constructor, desc)
 
