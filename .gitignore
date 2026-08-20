@@ -25,3 +25,6 @@ examples/tutorial/index.d.ts
 tests/codegen/generated/
 # Personal pinned-nightly note
 .last-good-nightly
+bench/napi-rs/target/
+bench/napi-rs/index.js
+bench/napi-rs/index.d.ts

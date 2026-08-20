@@ -17,45 +17,21 @@
  */
 
 import { createRequire } from 'module';
+import { measure, WARMUP, BATCH_SIZE, BATCHES } from './bench-harness.mjs';
 const require = createRequire(import.meta.url);
 const addon = require('../build/index.node');
 
 const JSON_MODE = process.argv.includes('--json');
-const WARMUP = 1000;
-const BATCH_SIZE = 1000;
-const BATCHES = Number(process.env.NAPI_MOJO_BENCH_BATCHES ?? 1000);
 const TOTAL = BATCH_SIZE * BATCHES;
 
 // name -> stats, in declaration order. The gate reads this; the table prints it.
 const results = {};
 
 function bench(name, fn) {
-  // Warmup
-  for (let i = 0; i < WARMUP; i++) fn();
-
-  // Collect per-batch timings (ns/call for each batch)
-  const timings = new Float64Array(BATCHES);
-  for (let b = 0; b < BATCHES; b++) {
-    const start = process.hrtime.bigint();
-    for (let i = 0; i < BATCH_SIZE; i++) fn();
-    timings[b] = Number(process.hrtime.bigint() - start) / BATCH_SIZE;
-  }
-
-  timings.sort();
-  const mean = timings.reduce((a, b) => a + b) / BATCHES;
-  const median = timings[Math.floor(BATCHES / 2)];
-  const p95 = timings[Math.floor(BATCHES * 0.95)];
-  const p99 = timings[Math.floor(BATCHES * 0.99)];
-  const variance = timings.reduce((s, t) => s + (t - mean) ** 2, 0) / BATCHES;
-  const stddev = Math.sqrt(variance);
-
-  results[name] = {
-    mean: Number(mean.toFixed(1)),
-    median: Number(median.toFixed(1)),
-    p95: Number(p95.toFixed(1)),
-    p99: Number(p99.toFixed(1)),
-    stddev: Number(stddev.toFixed(1)),
-  };
+  // Timing lives in bench-harness.mjs so the napi-rs comparison can use the
+  // identical code path rather than a copy of it.
+  const { mean, median, p95, p99, stddev } = measure(fn);
+  results[name] = { mean, median, p95, p99, stddev };
 
   if (JSON_MODE) return;
   const stats = [
