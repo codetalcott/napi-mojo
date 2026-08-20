@@ -113,7 +113,7 @@ from napi.framework.convert import (
     from_js_array_str,
 )
 from napi.framework.escapable_handle_scope import EscapableHandleScope
-from napi.framework.handle_scope import HandleScope
+from napi.framework.handle_scope import HandleScope, with_handle_scope
 from napi.framework.instance_data import set_instance_data, get_instance_data
 from napi.framework.js_array import JsArray
 from napi.framework.js_arraybuffer import JsArrayBuffer
@@ -153,6 +153,7 @@ from napi.framework.js_exception import (
 )
 from napi.framework.js_external import JsExternal
 from napi.framework.js_function import JsFunction
+from napi.framework.js_host import NodeHost
 from napi.framework.js_int32 import JsInt32
 from napi.framework.js_int64 import JsInt64
 from napi.framework.js_mojo_array import MojoFloat64Array
@@ -327,6 +328,14 @@ def cover_escapable_handle_scope(
 def cover_handle_scope(b: Bindings, env: NapiEnv) raises:
     var s2 = HandleScope.open(b, env)
     s2.close(b, env)
+
+    # with_handle_scope is parametric on a capturing closure, so the cover
+    # call has to instantiate it with a real body to elaborate it.
+    @parameter
+    def _scoped_body():
+        pass
+
+    with_handle_scope[_scoped_body](b, env)
 
 
 # --- instance_data.mojo -------------------------------------------------------
@@ -516,6 +525,10 @@ def cover_js_function(b: Bindings, env: NapiEnv, v: NapiValue) raises:
     _ = f.call0(b, env)
     _ = f.call1(b, env, v)
     _ = f.call2(b, env, v, v)
+    var call_args = List[NapiValue]()
+    call_args.append(v)
+    _ = f.call_n(b, env, call_args)
+    _ = f.call_with(b, env, v, call_args)
 
     _ = cb_ref
 
@@ -591,6 +604,21 @@ def cover_js_object(b: Bindings, env: NapiEnv, v: NapiValue) raises:
     o.freeze(b, env)
     o.seal(b, env)
     _ = o.prototype(b, env)
+    var method_args = List[NapiValue]()
+    method_args.append(v)
+    _ = o.call_method(b, env, String("cover"), method_args)
+
+
+# --- js_host.mojo -------------------------------------------------------------
+
+
+def cover_js_host(b: Bindings, env: NapiEnv, v: NapiValue) raises:
+    var h = NodeHost(b, env, v)
+    _ = NodeHost.from_context(b, env, v)
+    _ = h.require(String("fs"))
+    _ = h.global_object()
+    _ = h.argv()
+    h.console_log(String("cover"))
 
 
 # --- js_promise.mojo ----------------------------------------------------------
@@ -824,6 +852,7 @@ def coverage_anchor(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         cover_js_exception(b, env, exports)
         cover_js_external(b, env, exports)
         cover_js_function(b, env, exports)
+        cover_js_host(b, env, exports)
         cover_js_int32(b, env, exports)
         cover_js_int64(b, env, exports)
         cover_js_uint32(b, env, exports)

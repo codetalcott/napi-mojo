@@ -24,7 +24,7 @@ demo.greet("world"); // "Hello, world!"
 ## Project Status
 
 **Alpha** — napi-mojo is under active development and not yet proven in
-production. The API covers the full N-API v10 surface (143 exported functions, 5
+production. The API covers the full N-API v10 surface (150 exported functions, 5
 classes, 650+ tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
@@ -48,15 +48,79 @@ classes, 650+ tests). Expect breaking changes as the project matures.
   benchmarking against napi-rs, and documentation beyond this README and the
   generated `.d.ts`.
 
+## Two directions
+
+Most native-addon frameworks serve one direction: JavaScript calls a fast
+native function. napi-mojo does that, and also the inverse — a Mojo **program**
+that drives Node, using the JavaScript runtime and npm as its standard library.
+
+```bash
+napi-mojo build lib.mojo    # JS calls Mojo   — an addon Node requires
+napi-mojo run  main.mojo    # Mojo calls JS   — a program Node hosts
+```
+
+Host mode needs no N-API boilerplate. You write `mojo_main`; `napi-mojo run`
+generates the registration wrapper and launches Node on a bootstrap that calls
+it:
+
+```mojo
+def mojo_main(b: Bindings, env: NapiEnv, ctx: NapiValue) raises -> NapiValue:
+    var host = NodeHost.from_context(b, env, ctx)
+
+    var fs = host.require("fs")
+    var args = List[NapiValue]()
+    args.append(JsString.create(b, env, "input.txt").value)
+    args.append(JsString.create(b, env, "utf8").value)
+    var text = fs.call_method(b, env, "readFileSync", args)
+
+    host.console_log("read " + js_to_string(b, env, text))
+    return JsNumber.create_int(b, env, 0).value   # becomes the exit code
+```
+
+```bash
+napi-mojo init myprog --host && cd myprog && napi-mojo run main.mojo
+```
+
+`ctx` carries `{ require, argv, cwd }` from the bootstrap. `require` is
+module-scoped in Node and is *not* reachable through `globalThis`, so the
+bootstrap hands it in rather than Mojo scavenging for it. See
+[`examples/host/`](examples/host/) and
+[`docs/plan-bidirectional.md`](docs/plan-bidirectional.md) for the design.
+
+**Two hosts, one language.** For a standalone Mojo binary that owns `main()`
+and needs no Node at all, there is [`mojo-http`](https://github.com/codetalcott/mojo-http)
+— an HTTP/1.1 server and web framework for Mojo. The two are complements, not
+competitors, and share no build-time dependency:
+
+| | owns `main()` | reaches npm | deployment |
+|---|---|---|---|
+| **mojo-http** | Mojo | no | standalone binary |
+| **napi-mojo run** | Node | yes | Node + a `.node` |
+
+Pick by whether you need the ecosystem more than you need the standalone
+binary. Host mode is best for I/O-bound glue; every JS call crosses a V8
+boundary, so it is not the place to put compute.
+
+**What host mode cannot do:** Mojo has no `await`. A JS function returning a
+Promise hands Mojo a *pending* Promise it cannot suspend on. Use synchronous
+APIs (`readFileSync`), or pass a continuation — build a Mojo callback with
+`JsFunction.create` and give it to `.then()`; `mojo_main` returns, the event
+loop runs, and the callback fires later.
+
 ## Features
 
-- **143 exported functions** and **5 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
+- **150 exported functions** and **5 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
 - Primitives: strings, numbers (Float64/Int32/UInt32/Int64), booleans, null,
   undefined, BigInt, Symbol, Date
 - Objects: create, read/write properties, enumerate keys, freeze/seal, prototype
   access
 - Arrays: create, map, element access, has/delete
-- Functions: call, create from Mojo, closures with captured data
+- Functions: call, create from Mojo, closures with captured data —
+  `call0`/`call1`/`call2` plus `call_n` for runtime-length argument lists and
+  `call_with` for an explicit `this`
+- **Node as a host** (`napi-mojo run`): `NodeHost.require()` to load any
+  builtin or npm package from Mojo, `JsObject.call_method` for correctly-bound
+  method calls, `with_handle_scope` for Mojo-driven loops that call JS
 - Binary data: ArrayBuffer, Buffer (including zero-copy slice from ArrayBuffer), TypedArray, DataView, external (Mojo-owned) memory
 - Classes: constructors, instance methods, getters/setters, static methods,
   inheritance
@@ -379,6 +443,11 @@ build, works in any TypeScript-aware IDE.
    `napi_value`
 5. N-API symbols are resolved at runtime from the host process via
    `dlopen(NULL)`
+
+In host mode the same machinery runs in reverse: `napi-mojo run` emits a
+wrapper that registers `mojo_main` as an ordinary export, plus a CJS bootstrap
+that `require()`s the built `.node` and calls it with
+`{ require, argv, cwd }`. Node is still the process; Mojo is the program.
 
 ## Development
 

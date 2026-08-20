@@ -172,3 +172,10 @@ codegen coverage only — nothing loaded the result — so wrap/unwrap, the type
 tag, `mut` mutation across calls and the finalizer had never actually run.
 `tests/class_state.test.js` drives all of it, including borrowing a member onto
 a foreign wrapped instance (which must be a `TypeError`, not a reinterpret).
+| `hostRequire(ctx, name)` | `host_require_fn` | Host mode: `NodeHost.require(name)` — load a builtin or npm package from Mojo |
+| `hostArgv(ctx)` | `host_argv_fn` | Host mode: `NodeHost.argv()` — the program's arguments as a string array |
+| `hostConsoleLog(ctx, msg)` | `host_console_log_fn` | Host mode: `NodeHost.console_log(msg)` — write a line via the host `console` |
+| `hostGlobal(ctx)` | `host_global_fn` | Host mode: `NodeHost.global_object()` — `globalThis` |
+| `callMethod(obj, name, args)` | `call_method_fn` | `JsObject.call_method` — invoke `obj[name](...args)` with `this` bound to `obj` |
+| `callN(fn, args)` | `call_n_fn` | `JsFunction.call_n` — call with a runtime-length argument list |
+| `scopedCall(n, fn)` | `scoped_call_fn` | Calls `fn(i)` n times, each iteration in its own handle scope (`with_handle_scope`) |

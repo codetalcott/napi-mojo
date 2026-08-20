@@ -29,6 +29,8 @@ from napi.types import (
     NAPI_KEY_NUMBERS_TO_STRINGS,
 )
 from napi.bindings import Bindings
+# js_function imports only js_number, so this direction is acyclic.
+from napi.framework.js_function import JsFunction
 from napi.raw import (
     raw_create_object,
     raw_create_string_utf8,
@@ -154,6 +156,36 @@ struct JsObject:
         var status = raw_get_property(b, env, self.value, key, result_ptr)
         check_status(status)
         return result
+
+    def call_method(
+        self, b: Bindings, env: NapiEnv, name: String, args: List[NapiValue]
+    ) raises -> NapiValue:
+        """Look up a method by name and call it with `this` bound to self.
+
+        This is the ergonomic form of driving JavaScript from Mojo:
+
+            var fs = host.require("fs")
+            var txt = fs.call_method(b, env, "readFileSync", args)
+
+        Binding `this` matters: `JsFunction.call1` uses `undefined` as the
+        receiver, which silently breaks any callee that reads `this`.
+
+        Args:
+            b: Cached N-API bindings.
+            env: The N-API environment.
+            name: The method's property name on this object.
+            args: The arguments, in order. May be empty.
+
+        Returns:
+            The value the method returned.
+
+        Raises:
+            Error: If the property is missing or not callable, or the method
+                threw. A JS exception raised by the method stays pending and
+                keeps its identity.
+        """
+        var f = JsFunction(self.get_named_property(b, env, name))
+        return f.call_with(b, env, self.value, args)
 
     def has_property(
         self, b: Bindings, env: NapiEnv, key: StringLiteral

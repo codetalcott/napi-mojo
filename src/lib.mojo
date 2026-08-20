@@ -27,6 +27,7 @@ from addon.async_context_ops import register_async_context
 from addon.convert_ops import register_convert
 from addon.typed_helpers_ops import register_typed_helpers
 from addon.runtime_ops import register_runtime_ops
+from addon.host_ops import register_host_ops
 
 
 @export("napi_register_module_v1")
@@ -81,6 +82,7 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         register_convert(m)
         register_typed_helpers(m)
         register_runtime_ops(m)
+        register_host_ops(m)
         m.flush()
     except:
         # Registration failed AFTER init_bindings succeeded, so cached

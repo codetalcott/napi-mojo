@@ -32,6 +32,7 @@
     "!examples/codegen/build",
     "!examples/codegen/generated",
     "!examples/tutorial/build",
+    "!examples/host/.napi-mojo",
     "!examples/tutorial/generated",
     "bin/",
     "scripts/generate-addon.mjs",
