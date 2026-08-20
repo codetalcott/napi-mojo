@@ -485,7 +485,12 @@ def raw_close_handle_scope(
 def raw_create_promise(
     b: Bindings,
     env: NapiEnv,
-    deferred: NapiDeferred,
+    # Both of these are OUTPUT SLOTS (napi_deferred* / napi_value*), not
+    # handles: the caller passes Pointer(to=<local>)…as_unsafe_any_origin(),
+    # which is population B, where the AnyOrigin widening keeps the local's
+    # spill slot alive across the FFI call. Do not "tidy" `deferred` into
+    # NapiDeferred — see docs/plan-origin-migration.md.
+    deferred: OpaquePointer[MutAnyOrigin],
     promise: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
     var f = Pointer(to=b[].create_promise).unsafe_bitcast[
@@ -493,7 +498,7 @@ def raw_create_promise(
             OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), deferred.as_unsafe_any_origin(), promise)
+    return f(env.as_unsafe_any_origin(), deferred, promise)
 
 
 def raw_resolve_deferred(
