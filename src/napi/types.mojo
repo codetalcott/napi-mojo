@@ -257,7 +257,9 @@ struct NapiNodeVersion:
         self.major = major
         self.minor = minor
         self.patch = patch
-        self.release = release
+        # Parameter stays AnyOrigin (it is pass-through, not storage); the
+        # narrowing happens here, at the write into the field.
+        self.release = release.unsafe_origin_cast[ImmUntrackedOrigin]()
 
     def __copyinit__(out self, copy: Self):
         self.major = copy.major
