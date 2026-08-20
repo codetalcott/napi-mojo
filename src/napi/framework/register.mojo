@@ -87,7 +87,11 @@ struct ModuleBuilder(Movable):
         out self,
         env: NapiEnv,
         exports: NapiValue,
-        data: NapiValue,
+        # Spelled literally, NOT as NapiValue: every addon's register_module
+        # builds cb_data with .as_unsafe_any_origin(), and that boilerplate is
+        # in the CLI scaffold, the tutorial and all five examples. Absorbing
+        # the narrowing here keeps every existing addon source-compatible.
+        data: OpaquePointer[MutAnyOrigin],
     ):
         self.env = env
         self.exports = exports
@@ -210,7 +214,11 @@ struct ClassBuilder:
         out self,
         env: NapiEnv,
         ctor: NapiValue,
-        data: NapiValue,
+        # Spelled literally, NOT as NapiValue: every addon's register_module
+        # builds cb_data with .as_unsafe_any_origin(), and that boilerplate is
+        # in the CLI scaffold, the tutorial and all five examples. Absorbing
+        # the narrowing here keeps every existing addon source-compatible.
+        data: OpaquePointer[MutAnyOrigin],
     ):
         self.env = env
         self.ctor = ctor

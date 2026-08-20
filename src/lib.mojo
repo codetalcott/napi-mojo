@@ -86,7 +86,7 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         # Registration failed AFTER init_bindings succeeded, so cached
         # bindings are available for the error report.
         try:
-            var b = bindings_ptr.as_unsafe_any_origin()
+            var b = bindings_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
             var null_code = NapiValue(unsafe_from_address=Int(0))
             var err_msg = JsString.create_literal(
                 b, env, "napi-mojo: register_module failed"
