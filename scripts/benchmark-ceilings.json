@@ -33,6 +33,10 @@
     "counter.increment()": 1680,
     "counter.value (getter)": 1590,
     "getProperty(obj, \"x\")": 1420,
-    "strictEquals(1, 1)": 1070
+    "strictEquals(1, 1)": 1070,
+    "callN(fn, [])": 1470,
+    "callN(fn, [1,2,3])": 2760,
+    "callMethod(obj, \"m\", [1])": 3240,
+    "scopedCall(1, fn)": 1580
   }
 }
