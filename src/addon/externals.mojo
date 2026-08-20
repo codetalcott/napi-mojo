@@ -205,7 +205,9 @@ def create_external_string_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
-        var data_ptr: OpaquePointer[ImmutAnyOrigin] = buf.unsafe_bitcast[NoneType]()
+        var data_ptr: OpaquePointer[ImmutAnyOrigin] = buf.unsafe_bitcast[
+            NoneType
+        ]().as_unsafe_any_origin()
         return JsString.create_external_latin1(
             b, env, data_ptr, length, fin_ptr, OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         ).value

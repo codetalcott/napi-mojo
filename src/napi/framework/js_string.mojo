@@ -43,14 +43,15 @@ from napi.framework.js_coerce import js_coerce_to_string
 ##
 ## Holds a pointer and length. The caller owns the pointer and must free it.
 struct Latin1Buf(Movable):
-    @__allow_legacy_any_origin_fields
-    var ptr: Pointer[UInt8, MutAnyOrigin]
+    # Storage type is Untracked: this is an unsafe_alloc block the caller owns
+    # and frees explicitly, never a pointer to a Mojo local.
+    var ptr: Pointer[UInt8, MutUntrackedOrigin]
     var length: UInt
 
     def __init__(
         out self, ptr: Pointer[UInt8, MutAnyOrigin], length: UInt
     ):
-        self.ptr = ptr
+        self.ptr = ptr.unsafe_origin_cast[MutUntrackedOrigin]()
         self.length = length
 
     def __moveinit__(out self, deinit take: Self):
@@ -61,7 +62,6 @@ struct Latin1Buf(Movable):
 ## JsString — typed wrapper for a JavaScript string napi_value
 struct JsString:
     ## The underlying napi_value handle. Valid within the current handle scope.
-    @__allow_legacy_any_origin_fields
     var value: NapiValue
 
     def __init__(out self, value: NapiValue):

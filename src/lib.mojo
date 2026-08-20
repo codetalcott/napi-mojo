@@ -69,7 +69,7 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         # register_functions' newCounterFromRegistry reads it. The read side
         # null-checks (function_ops.mojo), so a reorder fails as a JS error
         # rather than a segfault — but keep counter before functions anyway.
-        register_counter(m, bindings_ptr.as_unsafe_any_origin())
+        register_counter(m, bindings_ptr.unsafe_origin_cast[MutUntrackedOrigin]())
         register_animal(m)
         register_functions(m)
         register_refs(m)
@@ -86,7 +86,7 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         # Registration failed AFTER init_bindings succeeded, so cached
         # bindings are available for the error report.
         try:
-            var b = bindings_ptr.as_unsafe_any_origin()
+            var b = bindings_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
             var null_code = NapiValue(unsafe_from_address=Int(0))
             var err_msg = JsString.create_literal(
                 b, env, "napi-mojo: register_module failed"

@@ -4,6 +4,7 @@ from std.memory.alloc import unsafe_alloc
 from napi.types import (
     NapiEnv,
     NapiValue,
+    NapiStore,
     NapiTypeTag,
     NAPI_TYPE_STRING,
     NAPI_TYPE_OBJECT,
@@ -55,14 +56,15 @@ def _animal_tag_ok(
 
 
 struct AnimalData(Movable):
-    @__allow_legacy_any_origin_fields
-    var name_ptr: OpaquePointer[MutAnyOrigin]
+    # Storage type is Untracked: this points at an unsafe_alloc block whose
+    # lifetime the finalizer manages explicitly, never at a Mojo local.
+    var name_ptr: NapiStore
     var name_len: UInt
 
     def __init__(
         out self, name_ptr: OpaquePointer[MutAnyOrigin], name_len: UInt
     ):
-        self.name_ptr = name_ptr
+        self.name_ptr = name_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
         self.name_len = name_len
 
     def __moveinit__(out self, deinit take: Self):
@@ -71,11 +73,11 @@ struct AnimalData(Movable):
 
 
 struct DogData(Movable):
-    @__allow_legacy_any_origin_fields
-    var name_ptr: OpaquePointer[MutAnyOrigin]
+    # Layout-compatible with AnimalData (see the accept-set note in CLAUDE.md),
+    # so its storage types must match AnimalData's exactly.
+    var name_ptr: NapiStore
     var name_len: UInt
-    @__allow_legacy_any_origin_fields
-    var breed_ptr: OpaquePointer[MutAnyOrigin]
+    var breed_ptr: NapiStore
     var breed_len: UInt
 
     def __init__(
@@ -85,9 +87,9 @@ struct DogData(Movable):
         breed_ptr: OpaquePointer[MutAnyOrigin],
         breed_len: UInt,
     ):
-        self.name_ptr = name_ptr
+        self.name_ptr = name_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
         self.name_len = name_len
-        self.breed_ptr = breed_ptr
+        self.breed_ptr = breed_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
         self.breed_len = breed_len
 
     def __moveinit__(out self, deinit take: Self):

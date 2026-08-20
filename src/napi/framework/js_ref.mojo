@@ -21,7 +21,6 @@ from napi.error import check_status
 
 
 struct JsRef:
-    @__allow_legacy_any_origin_fields
     var handle: NapiRef
 
     def __init__(out self, handle: NapiRef):

@@ -220,7 +220,7 @@ def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var hook_ptr = Pointer(to=hook_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
-        _ = add_async_cleanup_hook(b, env, hook_ptr, b.unsafe_bitcast[NoneType]())
+        _ = add_async_cleanup_hook(b, env, hook_ptr, b.unsafe_bitcast[NoneType]().as_unsafe_any_origin())
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "addAsyncCleanupHook failed")
@@ -235,7 +235,7 @@ def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             OpaquePointer[MutAnyOrigin]
         ]()[]
         var handle = add_async_cleanup_hook(
-            b, env, hook_ptr, b.unsafe_bitcast[NoneType]()
+            b, env, hook_ptr, b.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         )
         remove_async_cleanup_hook(b, handle)
         return JsBoolean.create(b, env, True).value

@@ -29,7 +29,6 @@ from napi.error import check_status
 
 
 struct ThreadsafeFunction:
-    @__allow_legacy_any_origin_fields
     var tsfn: NapiThreadsafeFunction
 
     def __init__(out self, tsfn: NapiThreadsafeFunction):
@@ -76,7 +75,7 @@ struct ThreadsafeFunction:
                 # call_js_cb (3rd param) and to finalize_cb (finalize_hint),
                 # so both can run on cached pointers via
                 # bindings_from_context() — no per-call dlsym.
-                b.unsafe_bitcast[NoneType](),
+                b.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 call_js_cb,
                 Pointer(to=tsfn).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )

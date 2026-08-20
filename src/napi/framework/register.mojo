@@ -76,9 +76,7 @@ comptime MAX_DESCRIPTORS: Int = 192
 
 
 struct ModuleBuilder(Movable):
-    @__allow_legacy_any_origin_fields
     var env: NapiEnv
-    @__allow_legacy_any_origin_fields
     var exports: NapiValue
     var data: NapiStore
     var _descs: Pointer[NapiPropertyDescriptor, MutUntrackedOrigin]
@@ -89,7 +87,11 @@ struct ModuleBuilder(Movable):
         out self,
         env: NapiEnv,
         exports: NapiValue,
-        data: NapiValue,
+        # Spelled literally, NOT as NapiValue: every addon's register_module
+        # builds cb_data with .as_unsafe_any_origin(), and that boilerplate is
+        # in the CLI scaffold, the tutorial and all five examples. Absorbing
+        # the narrowing here keeps every existing addon source-compatible.
+        data: OpaquePointer[MutAnyOrigin],
     ):
         self.env = env
         self.exports = exports
@@ -204,9 +206,7 @@ struct ModuleBuilder(Movable):
 ## methods, getters, setters, and static members to a class. Sets desc.data
 ## on all property descriptors so callbacks get the bindings pointer.
 struct ClassBuilder:
-    @__allow_legacy_any_origin_fields
     var env: NapiEnv
-    @__allow_legacy_any_origin_fields
     var ctor: NapiValue
     var data: NapiStore
 
@@ -214,7 +214,11 @@ struct ClassBuilder:
         out self,
         env: NapiEnv,
         ctor: NapiValue,
-        data: NapiValue,
+        # Spelled literally, NOT as NapiValue: every addon's register_module
+        # builds cb_data with .as_unsafe_any_origin(), and that boilerplate is
+        # in the CLI scaffold, the tutorial and all five examples. Absorbing
+        # the narrowing here keeps every existing addon source-compatible.
+        data: OpaquePointer[MutAnyOrigin],
     ):
         self.env = env
         self.ctor = ctor
@@ -343,7 +347,6 @@ def _bytes_equal(
 struct ClassEntry(Movable):
     var name_ptr: NapiConstStore  # StringLiteral .rodata pointer
     var name_len: Int
-    @__allow_legacy_any_origin_fields
     var ctor_ref: NapiRef
 
     def __init__(out self):

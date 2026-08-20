@@ -41,13 +41,16 @@ struct MojoFloat64Array(Movable):
     __del__ automatically frees the buffer to prevent leaks.
     """
 
-    @__allow_legacy_any_origin_fields
-    var ptr: Pointer[Float64, MutAnyOrigin]
+    # Storage type is Untracked: an unsafe_alloc block whose ownership moves
+    # to the GC finalizer on to_js(). Never a pointer to a Mojo local.
+    var ptr: Pointer[Float64, MutUntrackedOrigin]
     var length: Int
     var _transferred: Bool
 
     def __init__(out self, length: Int):
-        self.ptr = unsafe_alloc[Float64](length).as_unsafe_any_origin()
+        self.ptr = unsafe_alloc[Float64](length).unsafe_origin_cast[
+            MutUntrackedOrigin
+        ]()
         self.length = length
         self._transferred = False
 

@@ -485,7 +485,7 @@ struct NapiBindings(Movable):
         self.magic = take.magic
 
 
-comptime Bindings = Pointer[NapiBindings, MutAnyOrigin]
+comptime Bindings = Pointer[NapiBindings, MutUntrackedOrigin]
 
 
 ## _slot — resolve a host-process symbol straight into a cache slot.

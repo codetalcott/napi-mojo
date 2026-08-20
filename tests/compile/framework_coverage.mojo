@@ -704,7 +704,9 @@ def cover_register(b: Bindings, env: NapiEnv, v: NapiValue) raises:
     # ModuleBuilder's data slot must be the bindings pointer — flush(),
     # class_def(), and every ClassBuilder member derive cached bindings from
     # it via bindings_from_context(). Compile-only, so the null b is fine.
-    var m = ModuleBuilder(env, v, b.unsafe_bitcast[NoneType]())
+    var m = ModuleBuilder(
+        env, v, b.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+    )
     m.method("cover", p)
     var c1 = m.class_def("Cover", p)
     var c2 = m.class_def("Cover2", p)
