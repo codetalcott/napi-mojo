@@ -53,8 +53,8 @@ from napi.error import check_status
 ##   fn_ptr(ref)
 ##
 ## The caller's var binding keeps the reference alive (ASAP safety).
-def fn_ptr[T: AnyType](func: T) -> NapiStore:
-    return Pointer(to=func).unsafe_bitcast[NapiStore]()[]
+def fn_ptr[T: AnyType](func: T) -> OpaquePointer[MutAnyOrigin]:
+    return Pointer(to=func).unsafe_bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 
 ## ModuleBuilder — chainable module registration with batched flush
@@ -114,7 +114,7 @@ struct ModuleBuilder(Movable):
     ##
     ## Sets desc.data = self.data so the callback can retrieve bindings.
     def method(
-        mut self, name: StringLiteral, ptr: NapiStore
+        mut self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
     ) raises:
         if self._count >= self._capacity:
             raise Error(
@@ -125,8 +125,8 @@ struct ModuleBuilder(Movable):
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
-        desc.method = ptr
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+        desc.method = ptr.unsafe_origin_cast[MutUntrackedOrigin]()
         desc.data = self.data
         desc.attributes = 0
         self._descs.unsafe_offset(self._count).unsafe_write(desc^)
@@ -159,7 +159,7 @@ struct ModuleBuilder(Movable):
             self._free_descs()
             return
         try:
-            var b = bindings_from_context(self.data)
+            var b = bindings_from_context(self.data.as_unsafe_any_origin())
             check_status(
                 raw_define_properties(
                     b,
@@ -185,9 +185,9 @@ struct ModuleBuilder(Movable):
 
     ## class_def — define a class and attach it to exports, returns ClassBuilder
     def class_def(
-        self, name: StringLiteral, ctor_ptr: NapiStore
+        self, name: StringLiteral, ctor_ptr: OpaquePointer[MutAnyOrigin]
     ) raises -> ClassBuilder:
-        var b = bindings_from_context(self.data)
+        var b = bindings_from_context(self.data.as_unsafe_any_origin())
         var ctor = define_class(b, self.env, name, ctor_ptr, self.data)
         JsObject(self.exports).set_property(b, self.env, name, ctor)
         return ClassBuilder(self.env, ctor, self.data.as_unsafe_any_origin())
@@ -217,29 +217,29 @@ struct ClassBuilder:
 
     ## instance_method — add an instance method to the class prototype
     def instance_method(
-        self, name: StringLiteral, ptr: NapiStore
+        self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
     ) raises:
-        var b = bindings_from_context(self.data)
+        var b = bindings_from_context(self.data.as_unsafe_any_origin())
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
-        desc.method = ptr
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+        desc.method = ptr.unsafe_origin_cast[MutUntrackedOrigin]()
         desc.data = self.data
         desc.attributes = 0
         define_property(b, self.env, proto, desc)
 
     ## getter — add a read-only getter to the class prototype
     def getter(
-        self, name: StringLiteral, ptr: NapiStore
+        self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
     ) raises:
-        var b = bindings_from_context(self.data)
+        var b = bindings_from_context(self.data.as_unsafe_any_origin())
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         desc.getter = ptr
         desc.data = self.data
         desc.attributes = 0
@@ -252,41 +252,41 @@ struct ClassBuilder:
         get_ptr: OpaquePointer[MutAnyOrigin],
         set_ptr: OpaquePointer[MutAnyOrigin],
     ) raises:
-        var b = bindings_from_context(self.data)
+        var b = bindings_from_context(self.data.as_unsafe_any_origin())
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
-        desc.getter = get_ptr
-        desc.setter = set_ptr
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+        desc.getter = get_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
+        desc.setter = set_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
         desc.data = self.data
         desc.attributes = 0
         define_property(b, self.env, proto, desc)
 
     ## static_method — add a static method to the constructor
     def static_method(
-        self, name: StringLiteral, ptr: NapiStore
+        self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
     ) raises:
-        var b = bindings_from_context(self.data)
+        var b = bindings_from_context(self.data.as_unsafe_any_origin())
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
-        desc.method = ptr
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+        desc.method = ptr.unsafe_origin_cast[MutUntrackedOrigin]()
         desc.data = self.data
         desc.attributes = 0
         define_property(b, self.env, self.ctor, desc)
 
     ## static_getter — add a read-only static getter to the constructor
     def static_getter(
-        self, name: StringLiteral, ptr: NapiStore
+        self, name: StringLiteral, ptr: OpaquePointer[MutAnyOrigin]
     ) raises:
-        var b = bindings_from_context(self.data)
+        var b = bindings_from_context(self.data.as_unsafe_any_origin())
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         desc.getter = ptr
         desc.data = self.data
         desc.attributes = 0
@@ -299,20 +299,20 @@ struct ClassBuilder:
         get_ptr: OpaquePointer[MutAnyOrigin],
         set_ptr: OpaquePointer[MutAnyOrigin],
     ) raises:
-        var b = bindings_from_context(self.data)
+        var b = bindings_from_context(self.data.as_unsafe_any_origin())
         var desc = NapiPropertyDescriptor()
         desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
-        desc.getter = get_ptr
-        desc.setter = set_ptr
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+        desc.getter = get_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
+        desc.setter = set_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
         desc.data = self.data
         desc.attributes = 0
         define_property(b, self.env, self.ctor, desc)
 
     ## inherits — set up prototype chain inheritance from parent class
     def inherits(self, parent: ClassBuilder) raises:
-        var b = bindings_from_context(self.data)
+        var b = bindings_from_context(self.data.as_unsafe_any_origin())
         set_class_prototype(b, self.env, self.ctor, parent.ctor)
 
 
@@ -342,7 +342,7 @@ struct ClassEntry(Movable):
     var ctor_ref: NapiRef
 
     def __init__(out self):
-        self.name_ptr = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
+        self.name_ptr = NapiConstStore(unsafe_from_address=Int(0))
         self.name_len = 0
         self.ctor_ref = NapiRef(unsafe_from_address=Int(0))
 
@@ -388,7 +388,9 @@ struct ClassRegistry(Movable):
         if self._count >= 16:
             raise Error("ClassRegistry: capacity exceeded (max 16 classes)")
         var entry = ClassEntry()
-        entry.name_ptr = name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+        entry.name_ptr = name.unsafe_ptr().unsafe_bitcast[
+            NoneType
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         entry.name_len = name.byte_length()
         entry.ctor_ref = JsRef.create(b, env, ctor, 1).handle
         self._entries.unsafe_offset(self._count).unsafe_write(entry^)
@@ -411,7 +413,7 @@ struct ClassRegistry(Movable):
         for i in range(self._count):
             var ep = self._entries.unsafe_offset(i)
             if ep[].name_len == target_len and _bytes_equal(
-                ep[].name_ptr, target_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), target_len
+                ep[].name_ptr.as_unsafe_any_origin(), target_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), target_len
             ):
                 var ctor_val = JsRef(ep[].ctor_ref).get(b, env)
                 var result = NapiValue(unsafe_from_address=Int(0))

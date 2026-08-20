@@ -35,7 +35,7 @@ comptime NapiValue = OpaquePointer[MutAnyOrigin]
 # See docs/plan-origin-migration.md.
 # ---------------------------------------------------------------------------
 comptime NapiStore = OpaquePointer[MutUntrackedOrigin]
-comptime NapiConstStore = OpaquePointer[ImmutUntrackedOrigin]
+comptime NapiConstStore = OpaquePointer[ImmUntrackedOrigin]
 comptime NapiStatus = Int32
 comptime NAPI_OK: NapiStatus = 0
 

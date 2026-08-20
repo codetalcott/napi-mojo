@@ -75,7 +75,7 @@ def define_class(
     env: NapiEnv,
     name: StringLiteral,
     constructor_ptr: OpaquePointer[MutAnyOrigin],
-    data_ptr: NapiStore,
+    data_ptr: OpaquePointer[MutAnyOrigin],
 ) raises -> NapiValue:
     var result = NapiValue(unsafe_from_address=Int(0))
     var auto_length: UInt = ~UInt(0)
@@ -100,14 +100,14 @@ def register_instance_method(
     env: NapiEnv,
     constructor: NapiValue,
     name: StringLiteral,
-    method_ptr: NapiStore,
+    method_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var proto = _get_prototype(b, env, constructor)
     var desc = NapiPropertyDescriptor()
     desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
-    desc.method = method_ptr
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+    desc.method = method_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
     desc.attributes = 0
     define_property(b, env, proto, desc)
 
@@ -117,14 +117,14 @@ def register_getter(
     env: NapiEnv,
     constructor: NapiValue,
     name: StringLiteral,
-    getter_ptr: NapiStore,
+    getter_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var proto = _get_prototype(b, env, constructor)
     var desc = NapiPropertyDescriptor()
     desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
-    desc.getter = getter_ptr
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+    desc.getter = getter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
     desc.attributes = 0
     define_property(b, env, proto, desc)
 
@@ -134,16 +134,16 @@ def register_getter_setter(
     env: NapiEnv,
     constructor: NapiValue,
     name: StringLiteral,
-    getter_ptr: NapiStore,
-    setter_ptr: NapiStore,
+    getter_ptr: OpaquePointer[MutAnyOrigin],
+    setter_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var proto = _get_prototype(b, env, constructor)
     var desc = NapiPropertyDescriptor()
     desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
-    desc.getter = getter_ptr
-    desc.setter = setter_ptr
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+    desc.getter = getter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
+    desc.setter = setter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
     desc.attributes = 0
     define_property(b, env, proto, desc)
 
@@ -153,13 +153,13 @@ def register_static_method(
     env: NapiEnv,
     constructor: NapiValue,
     name: StringLiteral,
-    method_ptr: NapiStore,
+    method_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
     desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
-    desc.method = method_ptr
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+    desc.method = method_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
     desc.attributes = 0
     define_property(b, env, constructor, desc)
 
@@ -169,13 +169,13 @@ def register_static_getter(
     env: NapiEnv,
     constructor: NapiValue,
     name: StringLiteral,
-    getter_ptr: NapiStore,
+    getter_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
     desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
-    desc.getter = getter_ptr
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+    desc.getter = getter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
     desc.attributes = 0
     define_property(b, env, constructor, desc)
 
@@ -219,15 +219,15 @@ def register_static_getter_setter(
     env: NapiEnv,
     constructor: NapiValue,
     name: StringLiteral,
-    getter_ptr: NapiStore,
-    setter_ptr: NapiStore,
+    getter_ptr: OpaquePointer[MutAnyOrigin],
+    setter_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
     desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
             NoneType
-        ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
-    desc.getter = getter_ptr
-    desc.setter = setter_ptr
+        ]().unsafe_origin_cast[ImmUntrackedOrigin]()
+    desc.getter = getter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
+    desc.setter = setter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
     desc.attributes = 0
     define_property(b, env, constructor, desc)
 
@@ -294,7 +294,7 @@ def wrap_native(
     b: Bindings,
     env: NapiEnv,
     this_val: NapiValue,
-    data_ptr: NapiStore,
+    data_ptr: OpaquePointer[MutAnyOrigin],
     finalize_ptr: OpaquePointer[MutAnyOrigin],
     tag: NapiTypeTag,
 ) raises:
