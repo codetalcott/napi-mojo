@@ -31,12 +31,12 @@ def register_method(
     env: NapiEnv,
     exports: NapiValue,
     name: StringLiteral,
-    method_ptr: OpaquePointer[MutAnyOrigin],
+    method_ptr: NapiStore,
 ) raises:
     var desc = NapiPropertyDescriptor()
     desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
         NoneType
-    ]().as_unsafe_any_origin()
+    ]().unsafe_origin_cast[ImmutUntrackedOrigin]()
     desc.method = method_ptr
     desc.attributes = 0
     define_property(b, env, exports, desc)

@@ -239,14 +239,13 @@ struct NapiNodeVersion:
     var major: UInt32
     var minor: UInt32
     var patch: UInt32
-    @__allow_legacy_any_origin_fields
-    var release: OpaquePointer[ImmutAnyOrigin]  # const char*
+    var release: NapiConstStore  # const char*
 
     def __init__(out self):
         self.major = 0
         self.minor = 0
         self.patch = 0
-        self.release = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
+        self.release = NapiConstStore(unsafe_from_address=Int(0))
 
     def __init__(
         out self,
@@ -294,31 +293,24 @@ struct NapiPropertyDescriptor(Movable):
     # utf8name is const char* in C — immutable pointer to a null-terminated UTF-8
     # string. Must remain alive until napi_define_properties returns. Use string
     # literals (static lifetime) rather than Mojo heap Strings (ASAP-freed).
-    @__allow_legacy_any_origin_fields
-    var utf8name: OpaquePointer[ImmutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var name: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var method: OpaquePointer[MutAnyOrigin]  # napi_callback def pointer
-    @__allow_legacy_any_origin_fields
-    var getter: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var setter: OpaquePointer[MutAnyOrigin]
-    @__allow_legacy_any_origin_fields
-    var value: OpaquePointer[MutAnyOrigin]
+    var utf8name: NapiConstStore
+    var name: NapiStore
+    var method: NapiStore  # napi_callback def pointer
+    var getter: NapiStore
+    var setter: NapiStore
+    var value: NapiStore
     var attributes: UInt32  # napi_property_attributes; 0 = napi_default
-    @__allow_legacy_any_origin_fields
-    var data: OpaquePointer[MutAnyOrigin]
+    var data: NapiStore
 
     def __init__(out self):
-        self.utf8name = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
-        self.name = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.method = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.getter = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.setter = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
-        self.value = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        self.utf8name = NapiConstStore(unsafe_from_address=Int(0))
+        self.name = NapiStore(unsafe_from_address=Int(0))
+        self.method = NapiStore(unsafe_from_address=Int(0))
+        self.getter = NapiStore(unsafe_from_address=Int(0))
+        self.setter = NapiStore(unsafe_from_address=Int(0))
+        self.value = NapiStore(unsafe_from_address=Int(0))
         self.attributes = 0
-        self.data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+        self.data = NapiStore(unsafe_from_address=Int(0))
 
     def __moveinit__(out self, deinit take: Self):
         self.utf8name = take.utf8name
