@@ -5,12 +5,16 @@ Mojo function. This module serves the other one — a Mojo program that drives
 Node, using the JavaScript runtime and npm as its standard library.
 
 ```mojo
-def mojo_main(b: Bindings, env: NapiEnv, ctx: NapiValue) raises -> NapiValue:
-    var host = NodeHost.from_context(b, env, ctx)
-    var fs = host.require("fs")
-    var txt = fs.call_method(b, env, "readFileSync", args)
-    host.console_log("read the file")
+# inside mojo_main(b, env, ctx) — see examples/host/main.mojo for the whole file
+var host = NodeHost.from_context(b, env, ctx)
+var fs = host.require("fs")
+var txt = fs.call_method(b, env, "readFileSync", args)
+host.console_log("read the file")
 ```
+
+(The example deliberately shows the body rather than the `def` line:
+scripts/check-compile-coverage.mjs scans this file for public declarations by
+regex, and a `def` inside a doc fence reads to it as an uncovered method.)
 
 `napi-mojo run main.mojo` builds a wrapper that registers mojo_main and
 launches Node on a bootstrap that calls it. The user writes no N-API
