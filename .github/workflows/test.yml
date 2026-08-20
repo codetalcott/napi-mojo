@@ -254,6 +254,24 @@ jobs:
           # The generated wrapper must not survive the run.
           test ! -f examples/host/_napi_mojo_host_entry.mojo
 
+      # The pipeline demo doubles as the regression test for module-name
+      # collision: an entry basename becomes a TOP-LEVEL Mojo module name, and
+      # `pipeline` is shadowed by MAX's own `pipeline` package. Before the
+      # `_napi_mojo_src_` alias this failed with "package 'pipeline' does not
+      # contain 'mojo_main'". Do not rename this file to dodge that.
+      - name: Host-mode pipeline demo end-to-end
+        run: |
+          out=$(node bin/napi-mojo.mjs run examples/host/pipeline.mojo -- 50000)
+          echo "$out"
+          node -e "
+            const assert = require('assert');
+            const out = process.argv[1];
+            assert.match(out, /samples      50000/);
+            assert.match(out, /gzipped\s+\d+ bytes \(node:zlib\)/);
+            assert.match(out, /round-trip   OK/);
+            console.log('pipeline demo OK');
+          " "$out"
+
       # A scaffolded host program must run with no edits, the same contract
       # `napi-mojo init` has for addons.
       - name: Host-mode scaffold end-to-end
