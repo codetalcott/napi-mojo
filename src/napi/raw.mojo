@@ -28,7 +28,13 @@ from napi.types import (
     NapiValue,
     NapiStatus,
     NapiAsyncContext,
+    NapiAsyncWork,
     NapiCallbackScope,
+    NapiDeferred,
+    NapiEscapableHandleScope,
+    NapiHandleScope,
+    NapiRef,
+    NapiThreadsafeFunction,
 )
 from napi.bindings import NapiBindings, Bindings
 
