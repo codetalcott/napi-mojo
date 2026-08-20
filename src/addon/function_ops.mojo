@@ -1,7 +1,7 @@
 ## src/addon/function_ops.mojo — function creation, closures, varargs, named fns
 
 from std.memory.alloc import unsafe_alloc
-from napi.types import NapiEnv, NapiValue, NAPI_TYPE_NUMBER
+from napi.types import NapiEnv, NapiValue, NapiStore, NAPI_TYPE_NUMBER
 from napi.bindings import NapiBindings, Bindings
 from napi.error import throw_js_error, throw_js_error_dynamic, check_status
 from napi.framework.js_string import JsString
@@ -15,7 +15,7 @@ from napi.framework.register import fn_ptr, ModuleBuilder, ClassRegistry
 ## AdderCapture — closure data for inner_adder_fn (captured n + bindings)
 struct AdderCapture(Movable):
     var n: Float64
-    var b_raw: OpaquePointer[MutAnyOrigin]
+    var b_raw: NapiStore
 
     def __init__(out self, n: Float64, b: Bindings):
         self.n = n
@@ -42,7 +42,7 @@ def create_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             OpaquePointer[MutAnyOrigin]
         ]()[]
         return JsFunction.create_with_data(
-            b, env, "innerCallback", cb_ptr, b.unsafe_bitcast[NoneType]()
+            b, env, "innerCallback", cb_ptr, b.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         ).value
     except:
         throw_js_error(env, "createCallback failed")
@@ -121,7 +121,7 @@ def create_named_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var cb_ref = inner_callback_fn
         var name = String("myFn")
         var func = JsFunction.create_named(
-            b, env, name, 2, fn_ptr(cb_ref), b.unsafe_bitcast[NoneType]()
+            b, env, name, 2, fn_ptr(cb_ref), b.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         )
         return func.value
     except:

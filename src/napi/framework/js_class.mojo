@@ -305,7 +305,7 @@ def wrap_native(
             this_val,
             data_ptr,
             finalize_ptr,
-            b.unsafe_bitcast[NoneType](),  # finalize_hint = cached bindings
+            b.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),  # finalize_hint = cached bindings
             OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
         )
     )

@@ -468,18 +468,18 @@ def raw_open_handle_scope(
 def raw_close_handle_scope(
     b: Bindings,
     env: NapiEnv,
-    scope: OpaquePointer[MutAnyOrigin],
+    scope: NapiHandleScope,
 ) -> NapiStatus:
     var f = Pointer(to=b[].close_handle_scope).unsafe_bitcast[
         def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), scope)
+    return f(env.as_unsafe_any_origin(), scope.as_unsafe_any_origin())
 
 
 def raw_create_promise(
     b: Bindings,
     env: NapiEnv,
-    deferred: OpaquePointer[MutAnyOrigin],
+    deferred: NapiDeferred,
     promise: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
     var f = Pointer(to=b[].create_promise).unsafe_bitcast[
@@ -487,31 +487,31 @@ def raw_create_promise(
             OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), deferred, promise)
+    return f(env.as_unsafe_any_origin(), deferred.as_unsafe_any_origin(), promise)
 
 
 def raw_resolve_deferred(
     b: Bindings,
     env: NapiEnv,
-    deferred: OpaquePointer[MutAnyOrigin],
+    deferred: NapiDeferred,
     resolution: NapiValue,
 ) -> NapiStatus:
     var f = Pointer(to=b[].resolve_deferred).unsafe_bitcast[
         def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), deferred, resolution.as_unsafe_any_origin())
+    return f(env.as_unsafe_any_origin(), deferred.as_unsafe_any_origin(), resolution.as_unsafe_any_origin())
 
 
 def raw_reject_deferred(
     b: Bindings,
     env: NapiEnv,
-    deferred: OpaquePointer[MutAnyOrigin],
+    deferred: NapiDeferred,
     rejection: NapiValue,
 ) -> NapiStatus:
     var f = Pointer(to=b[].reject_deferred).unsafe_bitcast[
         def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), deferred, rejection.as_unsafe_any_origin())
+    return f(env.as_unsafe_any_origin(), deferred.as_unsafe_any_origin(), rejection.as_unsafe_any_origin())
 
 
 def raw_create_error(
@@ -564,23 +564,23 @@ def raw_create_async_work(
 def raw_queue_async_work(
     b: Bindings,
     env: NapiEnv,
-    work: OpaquePointer[MutAnyOrigin],
+    work: NapiAsyncWork,
 ) -> NapiStatus:
     var f = Pointer(to=b[].queue_async_work).unsafe_bitcast[
         def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), work)
+    return f(env.as_unsafe_any_origin(), work.as_unsafe_any_origin())
 
 
 def raw_delete_async_work(
     b: Bindings,
     env: NapiEnv,
-    work: OpaquePointer[MutAnyOrigin],
+    work: NapiAsyncWork,
 ) -> NapiStatus:
     var f = Pointer(to=b[].delete_async_work).unsafe_bitcast[
         def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), work)
+    return f(env.as_unsafe_any_origin(), work.as_unsafe_any_origin())
 
 
 def raw_create_int32(
@@ -1101,18 +1101,18 @@ def raw_create_reference(
 def raw_delete_reference(
     b: Bindings,
     env: NapiEnv,
-    napi_ref: OpaquePointer[MutAnyOrigin],
+    napi_ref: NapiRef,
 ) -> NapiStatus:
     var f = Pointer(to=b[].delete_reference).unsafe_bitcast[
         def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), napi_ref)
+    return f(env.as_unsafe_any_origin(), napi_ref.as_unsafe_any_origin())
 
 
 def raw_reference_ref(
     b: Bindings,
     env: NapiEnv,
-    napi_ref: OpaquePointer[MutAnyOrigin],
+    napi_ref: NapiRef,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
     var f = Pointer(to=b[].reference_ref).unsafe_bitcast[
@@ -1120,13 +1120,13 @@ def raw_reference_ref(
             OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), napi_ref, result)
+    return f(env.as_unsafe_any_origin(), napi_ref.as_unsafe_any_origin(), result)
 
 
 def raw_reference_unref(
     b: Bindings,
     env: NapiEnv,
-    napi_ref: OpaquePointer[MutAnyOrigin],
+    napi_ref: NapiRef,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
     var f = Pointer(to=b[].reference_unref).unsafe_bitcast[
@@ -1134,13 +1134,13 @@ def raw_reference_unref(
             OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), napi_ref, result)
+    return f(env.as_unsafe_any_origin(), napi_ref.as_unsafe_any_origin(), result)
 
 
 def raw_get_reference_value(
     b: Bindings,
     env: NapiEnv,
-    napi_ref: OpaquePointer[MutAnyOrigin],
+    napi_ref: NapiRef,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
     var f = Pointer(to=b[].get_reference_value).unsafe_bitcast[
@@ -1148,7 +1148,7 @@ def raw_get_reference_value(
             OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
         ) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), napi_ref, result)
+    return f(env.as_unsafe_any_origin(), napi_ref.as_unsafe_any_origin(), result)
 
 
 def raw_open_escapable_handle_scope(
@@ -1165,18 +1165,18 @@ def raw_open_escapable_handle_scope(
 def raw_close_escapable_handle_scope(
     b: Bindings,
     env: NapiEnv,
-    scope: OpaquePointer[MutAnyOrigin],
+    scope: NapiEscapableHandleScope,
 ) -> NapiStatus:
     var f = Pointer(to=b[].close_escapable_handle_scope).unsafe_bitcast[
         def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), scope)
+    return f(env.as_unsafe_any_origin(), scope.as_unsafe_any_origin())
 
 
 def raw_escape_handle(
     b: Bindings,
     env: NapiEnv,
-    scope: OpaquePointer[MutAnyOrigin],
+    scope: NapiEscapableHandleScope,
     escapee: NapiValue,
     result: OpaquePointer[MutAnyOrigin],
 ) -> NapiStatus:
@@ -1188,7 +1188,7 @@ def raw_escape_handle(
             OpaquePointer[MutAnyOrigin],
         ) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), scope, escapee.as_unsafe_any_origin(), result)
+    return f(env.as_unsafe_any_origin(), scope.as_unsafe_any_origin(), escapee.as_unsafe_any_origin(), result)
 
 
 def raw_create_bigint_int64(
@@ -1516,7 +1516,7 @@ def raw_create_threadsafe_function(
 
 def raw_call_threadsafe_function(
     b: Bindings,
-    func: OpaquePointer[MutAnyOrigin],
+    func: NapiThreadsafeFunction,
     data: OpaquePointer[MutAnyOrigin],
     is_blocking: Int32,
 ) -> NapiStatus:
@@ -1525,28 +1525,28 @@ def raw_call_threadsafe_function(
             OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], Int32
         ) thin abi("C") -> NapiStatus
     ]()[]
-    return f(func, data, is_blocking)
+    return f(func.as_unsafe_any_origin(), data, is_blocking)
 
 
 def raw_acquire_threadsafe_function(
     b: Bindings,
-    func: OpaquePointer[MutAnyOrigin],
+    func: NapiThreadsafeFunction,
 ) -> NapiStatus:
     var f = Pointer(to=b[].acquire_threadsafe_function).unsafe_bitcast[
         def(OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(func)
+    return f(func.as_unsafe_any_origin())
 
 
 def raw_release_threadsafe_function(
     b: Bindings,
-    func: OpaquePointer[MutAnyOrigin],
+    func: NapiThreadsafeFunction,
     mode: Int32,
 ) -> NapiStatus:
     var f = Pointer(to=b[].release_threadsafe_function).unsafe_bitcast[
         def(OpaquePointer[MutAnyOrigin], Int32) thin abi("C") -> NapiStatus
     ]()[]
-    return f(func, mode)
+    return f(func.as_unsafe_any_origin(), mode)
 
 
 # ---------------------------------------------------------------------------
@@ -1918,12 +1918,12 @@ def raw_remove_env_cleanup_hook(
 def raw_cancel_async_work(
     b: Bindings,
     env: NapiEnv,
-    work: OpaquePointer[MutAnyOrigin],
+    work: NapiAsyncWork,
 ) -> NapiStatus:
     var f = Pointer(to=b[].cancel_async_work).unsafe_bitcast[
         def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), work)
+    return f(env.as_unsafe_any_origin(), work.as_unsafe_any_origin())
 
 
 def raw_is_error(

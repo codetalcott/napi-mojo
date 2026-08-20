@@ -75,7 +75,7 @@ struct ThreadsafeFunction:
                 # call_js_cb (3rd param) and to finalize_cb (finalize_hint),
                 # so both can run on cached pointers via
                 # bindings_from_context() — no per-call dlsym.
-                b.unsafe_bitcast[NoneType](),
+                b.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 call_js_cb,
                 Pointer(to=tsfn).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )

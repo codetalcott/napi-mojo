@@ -36,7 +36,9 @@ from napi.bindings import NapiBindings, Bindings, BINDINGS_MAGIC
 def _verified_bindings(data: OpaquePointer[MutAnyOrigin]) raises -> Bindings:
     if Int(data) == 0:
         raise Error("get_bindings: callback data is NULL, not NapiBindings")
-    var b = data.unsafe_bitcast[NapiBindings]()
+    var b = data.unsafe_bitcast[NapiBindings]().unsafe_origin_cast[
+        MutUntrackedOrigin
+    ]()
     if b[].magic != BINDINGS_MAGIC:
         raise Error(
             "get_bindings: callback data is not a NapiBindings pointer"
