@@ -4,7 +4,12 @@
 ## to the addon's exports object. Both wrap raw N-API calls with check_status()
 ## so any failure is immediately surfaced as a raised error.
 
-from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor
+from napi.types import (
+    NapiEnv,
+    NapiValue,
+    NapiPropertyDescriptor,
+    NapiStore,
+)
 from napi.bindings import Bindings
 from napi.raw import raw_define_properties
 from napi.error import check_status

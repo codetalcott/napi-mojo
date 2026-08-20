@@ -5,7 +5,13 @@
 ## constructor napi_value. Instance properties go on the prototype (retrieved
 ## via constructor.prototype).
 
-from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor, NapiTypeTag
+from napi.types import (
+    NapiEnv,
+    NapiValue,
+    NapiPropertyDescriptor,
+    NapiTypeTag,
+    NapiStore,
+)
 from napi.bindings import Bindings
 from napi.raw import (
     raw_define_class,

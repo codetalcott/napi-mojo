@@ -17,7 +17,14 @@
 ##   c.instance_method("increment", fn_ptr(inc_ref))
 
 from std.memory.alloc import unsafe_alloc
-from napi.types import NapiEnv, NapiValue, NapiPropertyDescriptor, NapiRef
+from napi.types import (
+    NapiEnv,
+    NapiValue,
+    NapiPropertyDescriptor,
+    NapiRef,
+    NapiStore,
+    NapiConstStore,
+)
 from napi.bindings import Bindings
 from napi.framework.args import bindings_from_context
 from napi.module import register_method, define_property
