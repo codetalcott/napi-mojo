@@ -118,6 +118,23 @@ const obj = { x: 42, y: 'hello' };
 bench('getProperty(obj, "x")', () => addon.getProperty(obj, 'x'));
 bench('strictEquals(1, 1)', () => addon.strictEquals(1, 1));
 
+section('\n--- Mojo -> JS (host direction) ---\n');
+
+// These measure the OTHER direction: Mojo calling back into JavaScript. Each
+// figure is a full JS -> Mojo -> JS -> Mojo -> JS round trip, so the marginal
+// Mojo -> JS cost is the difference against a forward-only call of similar
+// shape (compare `callN(fn, [])` against `hello()`).
+//
+// The callees are deliberately trivial: this is overhead, not callee work.
+const noop = () => 0;
+const adder = (a, b, c) => a + b + c;
+const methodObj = { base: 1, m(x) { return this.base + x; } };
+
+bench('callN(fn, [])', () => addon.callN(noop, []));
+bench('callN(fn, [1,2,3])', () => addon.callN(adder, [1, 2, 3]));
+bench('callMethod(obj, "m", [1])', () => addon.callMethod(methodObj, 'm', [1]));
+bench('scopedCall(1, fn)', () => addon.scopedCall(1, noop));
+
 if (JSON_MODE) {
   console.log(
     JSON.stringify(

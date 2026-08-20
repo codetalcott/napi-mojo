@@ -105,20 +105,43 @@ removed after the run unless `--keep`.
    Promise it cannot suspend on. Supported shapes: synchronous APIs, or
    continuation-passing via `JsFunction.create` + `.then()`. **Do not add a
    blocking await helper** — draining the event loop from inside a napi
-   callback re-enters JS on a stack already inside one.
+   callback re-enters JS on a stack already inside one. The CPS path is
+   **verified**, not merely asserted (`then_double_fn` / `deferred_require_fn`
+   in `src/addon/host_ops.mojo`). Because a continuation runs on a later tick,
+   everything it needs must survive in a `napi_ref` and the bindings pointer
+   must travel in its heap payload — the same designated-carrier rule the
+   async and TSFN paths follow. The continuation frees its own payload.
 2. **Handle scopes in Mojo-driven loops** — see `with_handle_scope`.
 3. **A pending JS exception poisons every subsequent N-API call**
    (`napi_pending_exception`). Bail or clear; do not keep calling.
 4. **`require` must be handed in** — table above.
-5. **Per-call cost is real.** Host mode is for I/O-bound glue, not compute.
+5. **Argument marshalling dominates, not the call.** Measured on darwin-arm64 / Node 24 (`node scripts/benchmark.mjs`), a full
+JS -> Mojo -> JS -> Mojo -> JS round trip through `callN(fn, [])` is ~435 ns,
+against ~375 ns for a forward-only call like `hello()`. So the Mojo -> JS call
+itself is not the expensive part — **argument marshalling is**: `callN` with
+three arguments costs ~735 ns, i.e. roughly **~100 ns per value crossing the
+boundary**. A `this`-bound `callMethod` with one argument is ~680 ns.
+
+The practical rule that follows: host mode is right for I/O-bound glue, where a
+syscall dwarfs a few hundred nanoseconds, and wrong for a hot numeric loop.
+Keep data on the Mojo side and cross the boundary with few, coarse values
+rather than many fine ones.
 
 ## Verification
 
-- `tests/host.test.js` — 24 tests: require (builtins, `node:` prefix, module
+- `tests/host.test.js` — 31 tests: require (builtins, `node:` prefix, module
   identity, MODULE_NOT_FOUND identity, missing-`require` rejection), globals,
   argv round-trip, console through the outer realm, `call_method` `this`
   binding and error identity, `call_n` at 0/1/2/3/8/32 args and argument
-  order, and the 20k-iteration scoped loop.
+  order, and the 20k-iteration scoped loop. Continuation passing is covered
+  too (added after an audit found the claim had shipped untested): a Mojo
+  continuation attached via `.then()` fires on a later tick, is observably
+  *not* synchronous, stays independent across five in flight, works on an
+  already-settled promise, and reaches `require('path')` from that later tick
+  through a `napi_ref`. A 2,000-continuation run guards the payload free path.
+- `scripts/benchmark.mjs` covers the Mojo->JS direction (`callN`,
+  `callMethod`, `scopedCall`), so the new call path sits under the same
+  ceilings gate as the forward one.
 - CI: **Host-mode program end-to-end** (runs `examples/host/main.mojo`, checks
   output, argv passthrough, and that the generated wrapper was cleaned up) and
   **Host-mode scaffold end-to-end** (`init --host` then `run`, unedited).

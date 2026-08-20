@@ -187,3 +187,72 @@ describe('with_handle_scope — Mojo-driven loops', () => {
     expect(calls).toBe(20000);
   });
 });
+
+describe('continuation passing — the documented async shape', () => {
+  // Mojo has no `await`. The README, CLAUDE.md and plan doc all say the
+  // supported shape for async is to hand JS a Mojo callback and return, letting
+  // the event loop fire it on a later tick. These tests exist because that
+  // claim shipped with no coverage at all.
+
+  test('a Mojo continuation fires on a later tick', async () => {
+    const value = await new Promise((resolve) => {
+      addon.thenDouble(Promise.resolve(21), resolve);
+    });
+    expect(value).toBe(42);
+  });
+
+  test('the continuation really is deferred, not synchronous', () => {
+    let fired = false;
+    addon.thenDouble(Promise.resolve(1), () => {
+      fired = true;
+    });
+    // Still on the same tick: .then() callbacks cannot have run yet.
+    expect(fired).toBe(false);
+  });
+
+  test('several continuations in flight stay independent', async () => {
+    const results = await Promise.all(
+      [1, 2, 3, 4, 5].map(
+        (n) =>
+          new Promise((resolve) => addon.thenDouble(Promise.resolve(n), resolve))
+      )
+    );
+    expect(results).toEqual([2, 4, 6, 8, 10]);
+  });
+
+  test('a continuation on an already-settled promise still defers', async () => {
+    const p = Promise.resolve(50);
+    await null; // let p settle fully
+    const value = await new Promise((resolve) => addon.thenDouble(p, resolve));
+    expect(value).toBe(100);
+  });
+
+  test('require survives into a later tick via a napi_ref', async () => {
+    // The documented persistence story: a host program can still reach npm
+    // after the call that received `ctx` has returned.
+    const sep = await new Promise((resolve) => {
+      addon.deferredRequire(ctx, resolve);
+    });
+    expect(sep).toBe(path.sep);
+  });
+
+  test('deferred require rejects a context without require', () => {
+    expect(() => addon.deferredRequire({}, () => {})).toThrow(/require/);
+  });
+
+  test('many continuations do not leak their payload', async () => {
+    // Each continuation heap-allocates a payload and frees it when it fires.
+    // Run enough that a per-continuation leak would show up under the
+    // checking allocator the async-stress CI job uses.
+    const N = 2000;
+    const results = await Promise.all(
+      Array.from(
+        { length: N },
+        (_, i) =>
+          new Promise((resolve) => addon.thenDouble(Promise.resolve(i), resolve))
+      )
+    );
+    expect(results).toHaveLength(N);
+    expect(results[N - 1]).toBe((N - 1) * 2);
+  });
+});
