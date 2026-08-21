@@ -1,0 +1,27 @@
+{
+    "cSpell.words": [
+        "arraybuffer",
+        "BIGUINT",
+        "bitcast",
+        "comptime",
+        "dataview",
+        "dlopen",
+        "dlsym",
+        "finalizer",
+        "finalizers",
+        "Ints",
+        "libc",
+        "Napi",
+        "nonblocking",
+        "pointee",
+        "prebuildify",
+        "propname",
+        "RAII",
+        "rodata",
+        "Serde",
+        "Threadsafe",
+        "tsfn",
+        "typedarray",
+        "unref"
+    ]
+}

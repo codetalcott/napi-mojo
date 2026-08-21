@@ -7,6 +7,14 @@ build/
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+# macOS Finder metadata, at any depth
+.DS_Store
+# Editor config: settings.json is a SHARED cSpell dictionary of this project's
+# jargon (bitcast, comptime, dlsym, tsfn, ...), so it is committed — without it
+# every contributor's spell-checker flags the same two dozen domain words.
+# Anything else under .vscode/ is machine-local.
+.vscode/*
+!.vscode/settings.json
 # Claude session data
 .claude/
 # Agent skills (installed via npx skills)
