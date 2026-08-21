@@ -1,22 +1,42 @@
-## src/napi/framework/args.mojo — callback argument extraction helpers
-##
-## CbArgs centralizes the boilerplate of calling napi_get_cb_info and
-## validating argc, so that napi_callback implementations don't repeat
-## the same Array/pointer/check_status dance.
-##
-## Usage (preferred — bindings-aware, single napi_get_cb_info call):
-##   var a   = CbArgs.get_bindings_and_one(env, info)   # a.b=bindings, a.arg0=value
-##   var ab  = CbArgs.get_bindings_and_two(env, info)   # ab.b, ab.arg0, ab.arg1
-##
-## Or retrieve bindings first, then args:
-##   var _b  = CbArgs.get_bindings(env, info)
-##   var arg = CbArgs.get_one(_b, env, info)             # raises if argc < 1
-##
-## This file is (with error.mojo) the surviving env-only surface: every
-## method here bottoms out in the ONE kept per-call-dlsym symbol,
-## napi_get_cb_info — the bootstrap that runs before bindings are available.
-## The env-only get_one/get_two/... overloads cost nothing extra to keep and
-## serve callbacks that only need raw argv without touching other N-API.
+"""Reading a callback's arguments, receiver, and cached bindings.
+
+`CbArgs` wraps `napi_get_cb_info`, which is the single call that unpacks
+everything a `napi_callback` was invoked with. The first thing almost every
+callback does is fetch its cached bindings:
+
+```mojo
+# inside a napi_callback — see examples/hello-addon.mojo for the whole file
+try:
+    var r = CbArgs.get_bindings_and_one(env, info)
+    return JsString.create(r.b, env, "hi").value
+except:
+    throw_js_error(env, "greet failed")
+    return NapiValue(unsafe_from_address=Int(0))
+```
+
+(The example shows the body rather than the `def` line on purpose:
+scripts/check-compile-coverage.mjs scans for public declarations by regex, and
+a `def` inside a doc fence reads to it as an uncovered method — the same
+reason js_host.mojo writes its example that way.)
+
+**Prefer the fused `get_bindings_and_*` accessors.** They make ONE
+`napi_get_cb_info` call and return both the bindings and the arguments;
+calling `get_bindings` and then `get_one` makes two.
+
+**Overload pairs.** Most accessors exist twice — taking cached `Bindings`,
+and env-only. The env-only forms resolve `napi_get_cb_info` per call and
+exist for contexts where bindings are genuinely unavailable: async complete
+callbacks, ThreadsafeFunction callbacks, finalizers, and `except:` blocks
+reached because bindings retrieval itself failed. Everywhere else, pass
+Bindings.
+
+**Arity is checked, not padded.** `get_one`/`get_two`/`get_three`/`get_four`
+raise when the caller supplied fewer arguments. For a variadic callback,
+use `argc` to size a buffer and `get_argv` to fill it — N-API pads argv
+with `undefined` and drops extras, so compare `get_argv`'s return value
+against your buffer size to detect either case.
+"""
+
 
 from napi.types import NapiEnv, NapiValue
 from napi.raw import raw_get_cb_info
@@ -52,87 +72,181 @@ def _verified_bindings(data: OpaquePointer[MutAnyOrigin]) raises -> Bindings:
 ## For callbacks that receive the bindings pointer through a channel other
 ## than napi_callback data:
 ##   - TSFN call_js_cb: ThreadsafeFunction.create(b, ...) registers the
-##     bindings pointer as the TSFN context, which N-API hands to call_js_cb
-##     as its `context` parameter.
-##   - TSFN finalize_cb: N-API passes the same context as `finalize_hint`.
-##   - wrap_native finalizers: the bindings pointer is the finalize_hint.
-## Verifies the BINDINGS_MAGIC sentinel and raises if the pointer is null or
-## not a NapiBindings — check Int(ptr) first in teardown paths where a null
-## is expected and the call should be silently dropped.
 def bindings_from_context(
     context: OpaquePointer[MutAnyOrigin],
 ) raises -> Bindings:
+    """Recover cached bindings from a designated carrier pointer.
+
+    For callbacks N-API does not hand `info` to, the bindings pointer travels
+    in whatever slot that callback *does* receive: the TSFN `context` (and
+    the same pointer as the TSFN finalize_cb's `finalize_hint`), or a
+    `wrap_native` finalizer's `finalize_hint`.
+
+    Verifies the BINDINGS_MAGIC sentinel. In a teardown path where a null is
+    expected, check `Int(ptr)` first and drop the call rather than relying on
+    the raise.
+
+    Args:
+        context: The carrier pointer.
+
+    Returns:
+        The cached Bindings.
+
+    Raises:
+        If the pointer is null or does not carry the magic sentinel.
+    """
     return _verified_bindings(context)
 
 
-## BindingsAndOne — bindings pointer + one argument (single napi_get_cb_info call)
 struct BindingsAndOne:
+    """Result of a fused accessor: bindings plus one argument.
+
+    Returned by the matching `CbArgs.get_bindings_*` method, which fills
+    it from a single `napi_get_cb_info` call.
+    """
     var b: Bindings
+    """The cached N-API bindings for this environment."""
     var arg0: NapiValue
+    """The first callback argument."""
 
     def __init__(out self, b: Bindings, arg0: NapiValue):
+        """Build the result directly.
+
+        Normally produced by the matching `CbArgs.get_bindings_*` method
+        rather than constructed by hand.
+
+        Args:
+            b: The cached N-API bindings for this environment.
+            arg0: The first callback argument.
+        """
         self.b = b
         self.arg0 = arg0
 
 
-## BindingsAndTwo — bindings pointer + two arguments (single napi_get_cb_info call)
 struct BindingsAndTwo:
+    """Result of a fused accessor: bindings plus two arguments.
+
+    Returned by the matching `CbArgs.get_bindings_*` method, which fills
+    it from a single `napi_get_cb_info` call.
+    """
     var b: Bindings
+    """The cached N-API bindings for this environment."""
     var arg0: NapiValue
+    """The first callback argument."""
     var arg1: NapiValue
+    """The second callback argument."""
 
     def __init__(out self, b: Bindings, arg0: NapiValue, arg1: NapiValue):
+        """Build the result directly.
+
+        Normally produced by the matching `CbArgs.get_bindings_*` method
+        rather than constructed by hand.
+
+        Args:
+            b: The cached N-API bindings for this environment.
+            arg0: The first callback argument.
+            arg1: The second callback argument.
+        """
         self.b = b
         self.arg0 = arg0
         self.arg1 = arg1
 
 
-## BindingsAndThree — bindings pointer + three arguments (single napi_get_cb_info call)
 struct BindingsAndThree:
+    """Result of a fused accessor: bindings plus three arguments.
+
+    Returned by the matching `CbArgs.get_bindings_*` method, which fills
+    it from a single `napi_get_cb_info` call.
+    """
     var b: Bindings
+    """The cached N-API bindings for this environment."""
     var arg0: NapiValue
+    """The first callback argument."""
     var arg1: NapiValue
+    """The second callback argument."""
     var arg2: NapiValue
+    """The third callback argument."""
 
     def __init__(
         out self, b: Bindings, arg0: NapiValue, arg1: NapiValue, arg2: NapiValue
     ):
+        """Build the result directly.
+
+        Normally produced by the matching `CbArgs.get_bindings_*` method
+        rather than constructed by hand.
+
+        Args:
+            b: The cached N-API bindings for this environment.
+            arg0: The first callback argument.
+            arg1: The second callback argument.
+            arg2: The third callback argument.
+        """
         self.b = b
         self.arg0 = arg0
         self.arg1 = arg1
         self.arg2 = arg2
 
 
-## BindingsAndThis — bindings pointer + this value (single napi_get_cb_info call)
-##
-## Used by zero-argument class method/getter callbacks. Pass this_val directly
-## to unwrap_native_from_this[T](b, env, this_val) to skip a second get_cb_info.
 struct BindingsAndThis:
+    """Result of a fused accessor: bindings plus the receiver.
+
+    Returned by the matching `CbArgs.get_bindings_*` method, which fills
+    it from a single `napi_get_cb_info` call.
+    """
     var b: Bindings
+    """The cached N-API bindings for this environment."""
     var this_val: NapiValue
+    """The callback's receiver (`this`)."""
 
     def __init__(out self, b: Bindings, this_val: NapiValue):
+        """Build the result directly.
+
+        Normally produced by the matching `CbArgs.get_bindings_*` method
+        rather than constructed by hand.
+
+        Args:
+            b: The cached N-API bindings for this environment.
+            this_val: The callback's receiver (`this`).
+        """
         self.b = b
         self.this_val = this_val
 
 
-## BindingsThisAndOne — bindings pointer + this value + one argument (single napi_get_cb_info call)
-##
-## Used by one-argument class method/setter callbacks. Replaces the triple call:
-##   get_bindings + get_one(b,...) + get_this inside unwrap_native.
 struct BindingsThisAndOne:
+    """Result of a fused accessor: bindings, the receiver, and one argument.
+
+    Returned by the matching `CbArgs.get_bindings_*` method, which fills
+    it from a single `napi_get_cb_info` call.
+    """
     var b: Bindings
+    """The cached N-API bindings for this environment."""
     var this_val: NapiValue
+    """The callback's receiver (`this`)."""
     var arg0: NapiValue
+    """The first callback argument."""
 
     def __init__(out self, b: Bindings, this_val: NapiValue, arg0: NapiValue):
+        """Build the result directly.
+
+        Normally produced by the matching `CbArgs.get_bindings_*` method
+        rather than constructed by hand.
+
+        Args:
+            b: The cached N-API bindings for this environment.
+            this_val: The callback's receiver (`this`).
+            arg0: The first callback argument.
+        """
         self.b = b
         self.this_val = this_val
         self.arg0 = arg0
 
 
-## CbArgs — typed helpers for extracting napi_callback arguments
 struct CbArgs:
+    """Static accessors over `napi_get_cb_info`.
+
+    Never instantiated — a namespace for the callback-unpacking helpers.
+    See the module docstring for the overload and arity rules.
+    """
     ## get_one — extract exactly one callback argument (env-only)
     ##
     ## env-only: for async complete, TSFN, finalizer, and except-block callbacks
@@ -142,6 +256,25 @@ struct CbArgs:
     ## provided fewer than 1 argument.
     @staticmethod
     def get_one(env: NapiEnv, info: NapiValue) raises -> NapiValue:
+        """Extract exactly one callback argument.
+
+        Raises when the caller supplied fewer than 1 — arguments are checked,
+        not silently padded with undefined.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            The argument.
+
+        Raises:
+            If fewer than 1 arguments were supplied, or napi_get_cb_info fails.
+        """
         var argc: UInt = 1
         var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -161,6 +294,25 @@ struct CbArgs:
 
     @staticmethod
     def get_one(b: Bindings, env: NapiEnv, info: NapiValue) raises -> NapiValue:
+        """Extract exactly one callback argument.
+
+        Raises when the caller supplied fewer than 1 — arguments are checked,
+        not silently padded with undefined.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            The argument.
+
+        Raises:
+            If fewer than 1 arguments were supplied, or napi_get_cb_info fails.
+        """
         var argc: UInt = 1
         var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -188,6 +340,25 @@ struct CbArgs:
     def get_two(
         env: NapiEnv, info: NapiValue
     ) raises -> Array[NapiValue, 2]:
+        """Extract exactly two callback arguments.
+
+        Raises when the caller supplied fewer than 2 — arguments are checked,
+        not silently padded with undefined.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            A tuple of the two arguments, in order.
+
+        Raises:
+            If fewer than 2 arguments were supplied, or napi_get_cb_info fails.
+        """
         var argc: UInt = 2
         var args = Array[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -209,6 +380,25 @@ struct CbArgs:
     def get_two(
         b: Bindings, env: NapiEnv, info: NapiValue
     ) raises -> Array[NapiValue, 2]:
+        """Extract exactly two callback arguments.
+
+        Raises when the caller supplied fewer than 2 — arguments are checked,
+        not silently padded with undefined.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            A tuple of the two arguments, in order.
+
+        Raises:
+            If fewer than 2 arguments were supplied, or napi_get_cb_info fails.
+        """
         var argc: UInt = 2
         var args = Array[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -232,6 +422,22 @@ struct CbArgs:
     def get_three(
         b: Bindings, env: NapiEnv, info: NapiValue
     ) raises -> Array[NapiValue, 3]:
+        """Extract exactly three callback arguments.
+
+        Raises when the caller supplied fewer than 3 — arguments are checked,
+        not silently padded with undefined.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            A tuple of the three arguments, in order.
+
+        Raises:
+            If fewer than 3 arguments were supplied, or napi_get_cb_info fails.
+        """
         var argc: UInt = 3
         var args = Array[NapiValue, 3](fill=NapiValue(unsafe_from_address=Int(0)))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -255,6 +461,22 @@ struct CbArgs:
     def get_four(
         b: Bindings, env: NapiEnv, info: NapiValue
     ) raises -> Array[NapiValue, 4]:
+        """Extract exactly four callback arguments.
+
+        Raises when the caller supplied fewer than 4 — arguments are checked,
+        not silently padded with undefined.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            A tuple of the four arguments, in order.
+
+        Raises:
+            If fewer than 4 arguments were supplied, or napi_get_cb_info fails.
+        """
         var argc: UInt = 4
         var args = Array[NapiValue, 4](fill=NapiValue(unsafe_from_address=Int(0)))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -278,6 +500,25 @@ struct CbArgs:
     ## Used by class method/getter/setter callbacks to get the JS instance.
     @staticmethod
     def get_this(env: NapiEnv, info: NapiValue) raises -> NapiValue:
+        """Return the callback's receiver (`this`).
+
+        The value a constructor wraps native state onto, and what an instance
+        method unwraps from.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            The receiver.
+
+        Raises:
+            If napi_get_cb_info does not return napi_ok.
+        """
         var argc: UInt = 0
         var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -301,6 +542,25 @@ struct CbArgs:
     def get_this(
         b: Bindings, env: NapiEnv, info: NapiValue
     ) raises -> NapiValue:
+        """Return the callback's receiver (`this`).
+
+        The value a constructor wraps native state onto, and what an instance
+        method unwraps from.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            The receiver.
+
+        Raises:
+            If napi_get_cb_info does not return napi_ok.
+        """
         var argc: UInt = 0
         var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -328,6 +588,25 @@ struct CbArgs:
     def get_this_and_one(
         env: NapiEnv, info: NapiValue
     ) raises -> Array[NapiValue, 2]:
+        """Return the receiver and exactly one argument.
+
+        One `napi_get_cb_info` call — the shape a setter or a single-argument
+        instance method wants.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            A tuple of (this, arg0).
+
+        Raises:
+            If fewer than one argument was supplied, or napi_get_cb_info fails.
+        """
         var argc: UInt = 1
         var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))
@@ -353,6 +632,25 @@ struct CbArgs:
     def get_this_and_one(
         b: Bindings, env: NapiEnv, info: NapiValue
     ) raises -> Array[NapiValue, 2]:
+        """Return the receiver and exactly one argument.
+
+        One `napi_get_cb_info` call — the shape a setter or a single-argument
+        instance method wants.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            A tuple of (this, arg0).
+
+        Raises:
+            If fewer than one argument was supplied, or napi_get_cb_info fails.
+        """
         var argc: UInt = 1
         var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))
@@ -378,6 +676,24 @@ struct CbArgs:
     ## argc — query the number of arguments without reading any
     @staticmethod
     def argc(env: NapiEnv, info: NapiValue) raises -> UInt:
+        """Return how many arguments the caller actually supplied.
+
+        Use it to size a buffer before `get_argv` for a variadic callback.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            The supplied argument count.
+
+        Raises:
+            If napi_get_cb_info does not return napi_ok.
+        """
         var count: UInt = 0
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
@@ -394,6 +710,24 @@ struct CbArgs:
 
     @staticmethod
     def argc(b: Bindings, env: NapiEnv, info: NapiValue) raises -> UInt:
+        """Return how many arguments the caller actually supplied.
+
+        Use it to size a buffer before `get_argv` for a variadic callback.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            The supplied argument count.
+
+        Raises:
+            If napi_get_cb_info does not return napi_ok.
+        """
         var count: UInt = 0
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
@@ -424,6 +758,29 @@ struct CbArgs:
         count: UInt,
         argv_ptr: Pointer[NapiValue, MutAnyOrigin],
     ) raises -> UInt:
+        """Fill a caller-provided buffer with the callback's arguments.
+
+        N-API pads the buffer with `undefined` when fewer arguments were
+        supplied and drops the extras when more were, so compare the RETURN
+        value against `count` to detect either case. Discard it with `_ =` when
+        the buffer was sized from `argc` and you do not care.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+            count: Capacity of the buffer, in elements.
+            argv: Buffer receiving the arguments.
+
+        Returns:
+            The number of arguments the caller actually supplied.
+
+        Raises:
+            If napi_get_cb_info does not return napi_ok.
+        """
         var actual = count
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
@@ -446,6 +803,29 @@ struct CbArgs:
         count: UInt,
         argv_ptr: Pointer[NapiValue, MutAnyOrigin],
     ) raises -> UInt:
+        """Fill a caller-provided buffer with the callback's arguments.
+
+        N-API pads the buffer with `undefined` when fewer arguments were
+        supplied and drops the extras when more were, so compare the RETURN
+        value against `count` to detect either case. Discard it with `_ =` when
+        the buffer was sized from `argc` and you do not care.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+            count: Capacity of the buffer, in elements.
+            argv: Buffer receiving the arguments.
+
+        Returns:
+            The number of arguments the caller actually supplied.
+
+        Raises:
+            If napi_get_cb_info does not return napi_ok.
+        """
         var actual = count
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         check_status(
@@ -468,6 +848,27 @@ struct CbArgs:
     def get_data(
         env: NapiEnv, info: NapiValue
     ) raises -> OpaquePointer[MutAnyOrigin]:
+        """Return the callback's associated data pointer.
+
+        For a function made by `JsFunction.create_with_data`, this is that
+        closure data. For a callback registered through `ModuleBuilder` or
+        `ClassBuilder`, it is the cached bindings pointer — which is what
+        `get_bindings` reads.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            The data pointer.
+
+        Raises:
+            If napi_get_cb_info does not return napi_ok.
+        """
         var argc: UInt = 0
         var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -488,6 +889,27 @@ struct CbArgs:
     def get_data(
         b: Bindings, env: NapiEnv, info: NapiValue
     ) raises -> OpaquePointer[MutAnyOrigin]:
+        """Return the callback's associated data pointer.
+
+        For a function made by `JsFunction.create_with_data`, this is that
+        closure data. For a callback registered through `ModuleBuilder` or
+        `ClassBuilder`, it is the cached bindings pointer — which is what
+        `get_bindings` reads.
+
+        Exists as a Bindings overload and an env-only overload; prefer the
+        Bindings form outside finalizer/TSFN/except contexts.
+
+        Args:
+            b: Cached N-API bindings (Bindings overload only).
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            The data pointer.
+
+        Raises:
+            If napi_get_cb_info does not return napi_ok.
+        """
         var argc: UInt = 0
         var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         var null = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -513,6 +935,22 @@ struct CbArgs:
     ## then all subsequent framework calls use cached function pointers.
     @staticmethod
     def get_bindings(env: NapiEnv, info: NapiValue) raises -> Bindings:
+        """Fetch the cached N-API bindings attached to this callback.
+
+        The bootstrap almost every callback begins with. Prefer a fused
+        `get_bindings_and_*` accessor when you also need arguments — that is one
+        `napi_get_cb_info` call instead of two.
+
+        Args:
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            The cached Bindings.
+
+        Raises:
+            If the data pointer is missing or fails the magic check.
+        """
         var data = CbArgs.get_data(env, info)
         return _verified_bindings(data)
 
@@ -525,6 +963,22 @@ struct CbArgs:
     def get_bindings_and_one(
         env: NapiEnv, info: NapiValue
     ) raises -> BindingsAndOne:
+        """Fetch cached bindings and one argument in ONE napi_get_cb_info call.
+
+        The preferred entry point for a callback that needs both — the
+        unfused pair costs a second N-API call.
+
+        Args:
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            A BindingsAndOne.
+
+        Raises:
+            If too few arguments were supplied, the data pointer is
+                missing, or napi_get_cb_info fails.
+        """
         var argc: UInt = 1
         var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -548,6 +1002,22 @@ struct CbArgs:
     def get_bindings_and_two(
         env: NapiEnv, info: NapiValue
     ) raises -> BindingsAndTwo:
+        """Fetch cached bindings and two arguments in ONE napi_get_cb_info call.
+
+        The preferred entry point for a callback that needs both — the
+        unfused pair costs a second N-API call.
+
+        Args:
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            A BindingsAndTwo.
+
+        Raises:
+            If too few arguments were supplied, the data pointer is
+                missing, or napi_get_cb_info fails.
+        """
         var argc: UInt = 2
         var args = Array[NapiValue, 2](fill=NapiValue(unsafe_from_address=Int(0)))
         var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -571,6 +1041,22 @@ struct CbArgs:
     def get_bindings_and_three(
         env: NapiEnv, info: NapiValue
     ) raises -> BindingsAndThree:
+        """Fetch cached bindings and three arguments in ONE napi_get_cb_info call.
+
+        The preferred entry point for a callback that needs both — the
+        unfused pair costs a second N-API call.
+
+        Args:
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            A BindingsAndThree.
+
+        Raises:
+            If too few arguments were supplied, the data pointer is
+                missing, or napi_get_cb_info fails.
+        """
         var argc: UInt = 3
         var args = Array[NapiValue, 3](fill=NapiValue(unsafe_from_address=Int(0)))
         var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -600,6 +1086,22 @@ struct CbArgs:
     def get_bindings_and_this(
         env: NapiEnv, info: NapiValue
     ) raises -> BindingsAndThis:
+        """Fetch cached bindings and the receiver in ONE napi_get_cb_info call.
+
+        The preferred entry point for a callback that needs both — the
+        unfused pair costs a second N-API call.
+
+        Args:
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            A BindingsAndThis.
+
+        Raises:
+            If too few arguments were supplied, the data pointer is
+                missing, or napi_get_cb_info fails.
+        """
         var argc: UInt = 0
         var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var data = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
@@ -626,6 +1128,22 @@ struct CbArgs:
     def get_bindings_this_and_one(
         env: NapiEnv, info: NapiValue
     ) raises -> BindingsThisAndOne:
+        """Fetch cached bindings and the receiver and one argument in ONE napi_get_cb_info call.
+
+        The preferred entry point for a callback that needs both — the
+        unfused pair costs a second N-API call.
+
+        Args:
+            env: The N-API environment.
+            info: The callback info handle.
+
+        Returns:
+            A BindingsThisAndOne.
+
+        Raises:
+            If too few arguments were supplied, the data pointer is
+                missing, or napi_get_cb_info fails.
+        """
         var argc: UInt = 1
         var arg0: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var this_val: NapiValue = NapiValue(unsafe_from_address=Int(0))

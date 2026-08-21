@@ -27,6 +27,14 @@ from napi.framework.register import fn_ptr, ModuleBuilder
 # Wrap the body in try/except — exceptions must never escape into C. The first
 # line fetches the cached bindings pointer that ModuleBuilder attached as
 # callback data; every subsequent N-API call runs on cached function pointers.
+#
+# The except block must THROW before it returns. Returning a null napi_value
+# with no pending exception is not "returning an error" — N-API reads it as
+# `undefined`, so the Mojo Error vanishes and JS sees a successful call that
+# quietly produced nothing. `napi_throw_error` is a documented no-op while an
+# exception is already pending, so throwing unconditionally is also correct on
+# the path where the callback already threw (greet_fn's type check below):
+# the original error keeps its identity.
 
 
 def hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -34,6 +42,7 @@ def hello_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var b = CbArgs.get_bindings(env, info)
         return JsString.create_literal(b, env, "Hello from Mojo!").value
     except:
+        throw_js_error(env, "hello failed")
         return NapiValue(unsafe_from_address=Int(0))
 
 
@@ -48,6 +57,7 @@ def greet_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var name = JsString.from_napi_value(b, env, arg0)
         return JsString.create(b, env, "Hello, " + name + "!").value
     except:
+        throw_js_error(env, "greet failed")
         return NapiValue(unsafe_from_address=Int(0))
 
 
@@ -59,6 +69,7 @@ def add_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var n = JsNumber.from_napi_value(b, env, args[1])
         return JsNumber.create(b, env, a + n).value
     except:
+        throw_js_error(env, "add failed")
         return NapiValue(unsafe_from_address=Int(0))
 
 
@@ -94,6 +105,9 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         m.method("add", fn_ptr(add_ref))
         m.flush()
     except:
-        pass
+        # Same rule as the callbacks: a silent failure here would hand JS a
+        # half-populated exports object, and the first missing function would
+        # surface as "m.add is not a function" with no clue why.
+        throw_js_error(env, "hello-addon: failed to register exports")
 
     return exports

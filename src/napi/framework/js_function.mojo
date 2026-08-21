@@ -1,18 +1,26 @@
-## src/napi/framework/js_function.mojo — ergonomic wrapper for JavaScript function values
-##
-## JsFunction wraps the calling convention for JS functions:
-##
-##   var func = JsFunction(napi_val)
-##   var result = func.call0(env)               # no args
-##   var result = func.call1(env, arg0)          # one arg
-##   var result = func.call2(env, arg0, arg1)    # two args
-##   var result = func.call_n(env, args)         # runtime-length List
-##   var result = func.call_with(env, recv, args) # explicit `this`
-##
-## call0/call1/call2/call_n use `undefined` as the `this` value; call_with
-## takes it explicitly, which is what method invocation requires (see
-## JsObject.call_method). The function must already be a valid JS function
-## napi_value (check with js_typeof first).
+"""Ergonomic wrapper for calling and creating JavaScript functions.
+
+```mojo
+var f = JsFunction(some_callback_value)
+var out = f.call1(b, env, arg)
+```
+
+**`this` binding is the trap here.** `call0`/`call1`/`call2`/`call_n` all
+pass `undefined` as the receiver, which silently breaks any callee that
+reads `this` — a method pulled off an object and called this way loses its
+object. Use `call_with` for an explicit receiver, or
+`JsObject.call_method`, which looks the method up and binds `this` for you.
+
+**Argument lifetime.** The variadic forms build an argv buffer from a
+`List[NapiValue]` and keep it alive across the FFI call. An empty list
+passes a genuine null argv rather than the data pointer of an empty List.
+
+**Created functions are not garbage-collected on the Mojo side.** Data
+passed via `create_with_data` has no finalizer hook, so it leaks unless
+you free it yourself. Use `JsExternal` or a class wrap when you need the
+GC to own the lifetime.
+"""
+
 
 from napi.types import NapiEnv, NapiValue, NapiStore, NapiConstStore, NapiPropertyDescriptor
 from napi.bindings import Bindings
@@ -25,15 +33,39 @@ from napi.keepalive import pin_across_ffi
 
 ## JsFunction — typed wrapper for a JavaScript function napi_value
 struct JsFunction:
+    """Typed wrapper for a callable JavaScript napi_value.
+    """
     ## The underlying napi_value handle. Valid within the current handle scope.
     var value: NapiValue
+    """The underlying napi_value handle. Valid within the current handle scope.
+    """
 
     def __init__(out self, value: NapiValue):
+        """Wrap an existing napi_value known to be callable.
+
+        This does not validate the handle; `js_typeof` reports
+        `NAPI_TYPE_FUNCTION` for callables.
+
+        Args:
+            value: The napi_value to wrap.
+        """
         self.value = value
 
     # --- Bindings-aware overloads ---
 
     def call0(self, b: Bindings, env: NapiEnv) raises -> NapiValue:
+        """Call the function with no arguments and `undefined` as `this`.
+
+        Args:
+            b: Cached N-API bindings.
+            env: The N-API environment.
+
+        Returns:
+            The function's return value.
+
+        Raises:
+            If the call throws, or napi_call_function fails.
+        """
         var recv: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var recv_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=recv
@@ -54,6 +86,21 @@ struct JsFunction:
     def call1(
         self, b: Bindings, env: NapiEnv, arg0: NapiValue
     ) raises -> NapiValue:
+        """Call the function with one argument and `undefined` as `this`.
+
+        Use `call_with` if the callee reads `this`.
+
+        Args:
+            b: Cached N-API bindings.
+            env: The N-API environment.
+            arg: The single argument.
+
+        Returns:
+            The function's return value.
+
+        Raises:
+            If the call throws, or napi_call_function fails.
+        """
         var recv: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var recv_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=recv
@@ -75,6 +122,22 @@ struct JsFunction:
     def call2(
         self, b: Bindings, env: NapiEnv, arg0: NapiValue, arg1: NapiValue
     ) raises -> NapiValue:
+        """Call the function with two arguments and `undefined` as `this`.
+
+        Use `call_with` if the callee reads `this`.
+
+        Args:
+            b: Cached N-API bindings.
+            env: The N-API environment.
+            arg1: The first argument.
+            arg2: The second argument.
+
+        Returns:
+            The function's return value.
+
+        Raises:
+            If the call throws, or napi_call_function fails.
+        """
         var recv: NapiValue = NapiValue(unsafe_from_address=Int(0))
         var recv_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
             to=recv
@@ -180,6 +243,23 @@ struct JsFunction:
         name: StringLiteral,
         cb_ptr: OpaquePointer[MutAnyOrigin],
     ) raises -> JsFunction:
+        """Create a JS function backed by a Mojo callback.
+
+        The callback must have the napi_callback signature and must not let a
+        Mojo exception escape into C.
+
+        Args:
+            b: Cached N-API bindings.
+            env: The N-API environment.
+            name: The function's name, as a compile-time literal.
+            cb_ptr: The callback, via `fn_ptr(...)`.
+
+        Returns:
+            A JsFunction wrapping the new function.
+
+        Raises:
+            If napi_create_function does not return napi_ok.
+        """
         var result = NapiValue(unsafe_from_address=Int(0))
         var auto_length: UInt = ~UInt(0)
         check_status(
@@ -203,6 +283,27 @@ struct JsFunction:
         cb_ptr: OpaquePointer[MutAnyOrigin],
         data: OpaquePointer[MutAnyOrigin],
     ) raises -> JsFunction:
+        """Create a JS function carrying an arbitrary data pointer.
+
+        The callback retrieves the pointer with `CbArgs.get_data`. This is the
+        closure mechanism for plain functions.
+
+        **The data is never freed for you** — a plain function has no finalizer
+        hook, so heap data passed here leaks unless you free it yourself.
+
+        Args:
+            b: Cached N-API bindings.
+            env: The N-API environment.
+            name: The function's name, as a compile-time literal.
+            cb_ptr: The callback, via `fn_ptr(...)`.
+            data: Pointer handed to the callback on every invocation.
+
+        Returns:
+            A JsFunction wrapping the new function.
+
+        Raises:
+            If napi_create_function does not return napi_ok.
+        """
         var result = NapiValue(unsafe_from_address=Int(0))
         var auto_length: UInt = ~UInt(0)
         check_status(
@@ -226,6 +327,26 @@ struct JsFunction:
         length: Int,
         cb_ptr: OpaquePointer[MutAnyOrigin],
     ) raises -> JsFunction:
+        """Create a JS function with a runtime name and declared arity.
+
+        The String overload of `create`, for a name computed at runtime. The
+        `data_ptr` overload additionally carries closure data, with the same
+        no-finalizer caveat as `create_with_data`.
+
+        Args:
+            b: Cached N-API bindings.
+            env: The N-API environment.
+            name: The function's name.
+            length: The value reported as the function's `length`.
+            cb_ptr: The callback, via `fn_ptr(...)`.
+            data_ptr: Closure data (data overload only).
+
+        Returns:
+            A JsFunction wrapping the new function.
+
+        Raises:
+            If napi_create_function does not return napi_ok.
+        """
         return JsFunction.create_named(
             b, env, name, length, cb_ptr, OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
         )
@@ -239,6 +360,26 @@ struct JsFunction:
         cb_ptr: OpaquePointer[MutAnyOrigin],
         data_ptr: OpaquePointer[MutAnyOrigin],
     ) raises -> JsFunction:
+        """Create a JS function with a runtime name and declared arity.
+
+        The String overload of `create`, for a name computed at runtime. The
+        `data_ptr` overload additionally carries closure data, with the same
+        no-finalizer caveat as `create_with_data`.
+
+        Args:
+            b: Cached N-API bindings.
+            env: The N-API environment.
+            name: The function's name.
+            length: The value reported as the function's `length`.
+            cb_ptr: The callback, via `fn_ptr(...)`.
+            data_ptr: Closure data (data overload only).
+
+        Returns:
+            A JsFunction wrapping the new function.
+
+        Raises:
+            If napi_create_function does not return napi_ok.
+        """
         var result = NapiValue(unsafe_from_address=Int(0))
         # Explicit byte length: a heap String has no guaranteed NUL
         # terminator, so NAPI_AUTO_LENGTH (strlen) would read out of bounds.

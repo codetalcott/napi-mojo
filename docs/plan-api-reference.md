@@ -1,8 +1,24 @@
 # Plan: an API reference for the framework
 
-**Status:** scoped 2026-08-19, tooling **verified in CI**, work **not started.**
-The recommendation is still content first — but the tooling turned out to be
-cheaper and better than the original scoping assumed.
+**Status:** steps 1, 2 and 4 **done**; step 3 (content) **in progress — 149 of
+~351 symbols documented**, covering the consumer-facing core.
+
+- Step 1 (convention) — done; recorded in `CONTRIBUTING.md`.
+- Step 2 (ratcheting gate) — done; `scripts/check-docstring-coverage.mjs`.
+- Step 3 (content) — the consumer core is documented: `args.mojo` (CbArgs),
+  `error.mojo`, `js_object`, `js_array`, `js_function`, `js_value`, and every
+  primitive wrapper. The floor moved 351 -> 202. **The rest of step 3 is what
+  remains**, and the highest-value next targets are `convert.mojo` (35),
+  `js_typedarray.mojo` (23), `js_class.mojo` (16) and `async_work.mojo` (10).
+- Step 4 (renderer) — done; `scripts/generate-api-reference.mjs` renders
+  `docs/api/`, and `npm run check:api-reference` gates it in CI.
+
+**The renderer honours this plan's central finding rather than working around
+it**: a module below 75% documented is NOT rendered. It is listed in the index
+with its ratio and linked to source, so the reference cannot become the "87%
+bare signatures" artifact this document warned about. Modules cross into the
+reference as their docstrings land — which makes step 3's remaining work
+visible in the published output instead of only in a floor file.
 
 ## The problem
 

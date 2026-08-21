@@ -16,7 +16,7 @@ import {
   copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync,
   symlinkSync, writeFileSync,
 } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
@@ -53,18 +53,57 @@ function parseArgs(argv, flagsWithValue, boolFlags = []) {
 
 // --- mojo compiler resolution -------------------------------------------------
 // Priority: --mojo flag > NAPI_MOJO_MOJO env > `pixi run mojo` when a
-// pixi.toml is found from cwd upward > bare `mojo` on PATH.
+// pixi.toml is found from cwd upward AND pixi is actually runnable > bare
+// `mojo` on PATH.
+//
+// The pixi-availability check is load-bearing, not defensive politeness.
+// `napi-mojo init` scaffolds a pixi.toml so that `init && build` works with no
+// toolchain setup; without this check that file would also hijack the build for
+// someone who has `mojo` on PATH and no pixi at all, turning a working setup
+// into "could not run pixi". Finding a manifest proves a pixi project, not a
+// pixi installation.
+let _pixiOk;
+function pixiAvailable() {
+  if (_pixiOk === undefined) {
+    const probe = spawnSync('pixi', ['--version'], { stdio: 'ignore' });
+    _pixiOk = !probe.error && probe.status === 0;
+  }
+  return _pixiOk;
+}
+
 function resolveMojoCmd(flagValue) {
   const cmd = flagValue || process.env.NAPI_MOJO_MOJO;
   if (cmd) return cmd.split(/\s+/);
   let dir = process.cwd();
   for (;;) {
-    if (existsSync(join(dir, 'pixi.toml'))) return ['pixi', 'run', 'mojo'];
+    if (existsSync(join(dir, 'pixi.toml'))) {
+      if (pixiAvailable()) return ['pixi', 'run', 'mojo'];
+      break;
+    }
     const parent = dirname(dir);
     if (parent === dir) break;
     dir = parent;
   }
   return ['mojo'];
+}
+
+// One message for both call sites (build and run), so the advice cannot drift
+// between them.
+function mojoRunFailure(mojo, err) {
+  const lines = [
+    `could not run "${mojo[0]}" (${err.message})`,
+  ];
+  if (mojo[0] === 'pixi') {
+    lines.push('  This project has a pixi.toml but pixi is not installed.');
+    lines.push('  Install it from https://pixi.sh, or pass --mojo "<command>".');
+  } else {
+    lines.push('  No Mojo toolchain found. Either:');
+    lines.push('    - install pixi (https://pixi.sh) and run from a directory');
+    lines.push('      with a pixi.toml (napi-mojo init scaffolds one), or');
+    lines.push('    - install Mojo on your PATH (https://mojolang.org/install/), or');
+    lines.push('    - pass --mojo "<command>" / set NAPI_MOJO_MOJO.');
+  }
+  return lines.join('\n');
 }
 
 // --- init ---------------------------------------------------------------------
@@ -141,13 +180,52 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         register_generated(m)
         m.flush()
     except:
-        pass
+        # Throw here too. Returning silently would hand JS a half-populated
+        # exports object, and the first missing function would surface as
+        # "m.greet is not a function" with nothing pointing at the real cause.
+        throw_js_error(env, "addon: failed to register exports")
     return exports
+`;
+
+// The scaffolded pixi.toml pins the SAME max version this framework is built
+// and tested against, read out of the framework's own pixi.toml rather than
+// duplicated here — a second copy of the pin is a thing that drifts, and a
+// scaffold pinning a max the framework was never compiled against is worse
+// than no pin at all. pixi.toml is in package.json "files" so this resolves
+// from an npm install too; if it somehow cannot be read we skip the file and
+// say so, rather than guessing a version.
+function frameworkMaxPin() {
+  try {
+    const toml = readFileSync(join(PKG_ROOT, 'pixi.toml'), 'utf8');
+    return /^\s*max\s*=\s*"([^"]+)"/m.exec(toml)?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+const TEMPLATE_PIXI_TOML = (name, pin) => `# Provisions the Mojo toolchain for this project.
+#
+# \`napi-mojo build\` (and \`run\`) use \`pixi run mojo\` when a pixi.toml is in
+# scope and pixi is installed, so with this file present you need no other
+# toolchain setup — the first build downloads the compiler, later ones reuse it.
+# If you would rather use a \`mojo\` already on your PATH, delete this file.
+#
+# The max version is pinned to the one napi-mojo is built and tested against.
+
+[workspace]
+name = "${name}"
+channels = ["conda-forge", "https://conda.modular.com/max/"]
+platforms = ["osx-arm64", "linux-64"]
+version = "0.1.0"
+
+[dependencies]
+max = "${pin}"
 `;
 
 const TEMPLATE_GITIGNORE = `generated/
 build/
 *.node
+.pixi/
 `;
 
 const TEMPLATE_README = `# My napi-mojo addon
@@ -159,9 +237,17 @@ node -e "console.log(require('./build/index.node').greet('world'))"
 \`\`\`
 
 Declare functions in \`exports.toml\`, implement them in \`fns.mojo\`, rerun
-\`napi-mojo generate\`. Requires the Mojo toolchain (the CLI uses
-\`pixi run mojo\` when a pixi.toml is in scope, or \`mojo\` on PATH; override
-with \`--mojo "<command>"\`).
+\`napi-mojo generate\`.
+
+## Toolchain
+
+The included \`pixi.toml\` pins the Mojo version napi-mojo is tested against, so
+\`napi-mojo build\` works with no further setup as long as
+[pixi](https://pixi.sh) is installed — the first build downloads the compiler
+(a few minutes), later ones reuse it.
+
+Prefer a \`mojo\` already on your PATH? Delete \`pixi.toml\`. Need a different
+compiler entirely? Pass \`--mojo "<command>"\` or set \`NAPI_MOJO_MOJO\`.
 `;
 
 function cmdInit(argv) {
@@ -179,8 +265,12 @@ function cmdInit(argv) {
   if (opts.host) {
     const hostFiles = {
       'main.mojo': TEMPLATE_MAIN_MOJO,
-      '.gitignore': '.napi-mojo/\n_napi_mojo_host_entry.mojo\n',
+      '.gitignore': '.napi-mojo/\n_napi_mojo_host_entry.mojo\n.pixi/\n',
     };
+    const hostPin = frameworkMaxPin();
+    if (hostPin) {
+      hostFiles['pixi.toml'] = TEMPLATE_PIXI_TOML(basename(dir), hostPin);
+    }
     for (const [name, content] of Object.entries(hostFiles)) {
       writeFileSync(join(dir, name), content);
       console.log(`  created ${join(target, name)}`);
@@ -191,6 +281,7 @@ function cmdInit(argv) {
     return;
   }
 
+  const pin = frameworkMaxPin();
   const files = {
     'exports.toml': TEMPLATE_EXPORTS_TOML,
     'fns.mojo': TEMPLATE_FNS_MOJO,
@@ -198,9 +289,16 @@ function cmdInit(argv) {
     '.gitignore': TEMPLATE_GITIGNORE,
     'README.md': TEMPLATE_README,
   };
+  if (pin) files['pixi.toml'] = TEMPLATE_PIXI_TOML(basename(dir), pin);
   for (const [name, content] of Object.entries(files)) {
     writeFileSync(join(dir, name), content);
     console.log(`  created ${join(target, name)}`);
+  }
+  if (!pin) {
+    console.log(
+      '\n  note: could not read napi-mojo\'s pixi.toml, so no pixi.toml was\n' +
+      '        scaffolded. Install Mojo yourself, or pass --mojo "<command>".',
+    );
   }
   console.log(`\nNext steps:
   cd ${target}
@@ -271,7 +369,7 @@ function cmdBuild(argv) {
   ];
   console.log(`$ ${mojo[0]} ${args.join(' ')}`);
   const res = spawnSync(mojo[0], args, { stdio: 'inherit' });
-  if (res.error) fail(`could not run "${mojo[0]}" (${res.error.message}) — install Mojo or pass --mojo "<command>"`);
+  if (res.error) fail(mojoRunFailure(mojo, res.error));
   if (res.status !== 0) process.exit(res.status ?? 1);
   console.log(`Built ${out}`);
 
@@ -514,7 +612,7 @@ function cmdRun(argv) {
     // names a file the user never wrote.
     const bres = spawnSync(mojo[0], args, { encoding: 'utf8' });
     if (bres.error) {
-      fail(`could not run "${mojo[0]}" (${bres.error.message}) — install Mojo or pass --mojo "<command>"`);
+      fail(mojoRunFailure(mojo, bres.error));
     }
     const unalias = (t) =>
       (t || '').split(`${aliasModule}.mojo`).join(`${moduleName}.mojo`);

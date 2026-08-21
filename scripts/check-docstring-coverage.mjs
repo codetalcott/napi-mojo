@@ -35,56 +35,24 @@ import { execFile } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir, cpus } from 'node:os';
 import { join } from 'node:path';
+import {
+  FRAMEWORK_DIR, EXTRA_FILES, KNOWN_UNDOCUMENTABLE, docTargets, resolveMojo,
+} from './doc-targets.mjs';
 
 const FLOOR_FILE = 'scripts/docstring-floor.json';
-const FRAMEWORK_DIR = 'src/napi/framework';
 
-// Beyond framework/, these carry public defs a consumer calls directly.
-// DELIBERATELY OUT OF SCOPE, and this list is the whole argument:
-//   - raw.mojo      147 thin FFI wrappers over cached symbol slots. An
-//                   implementation detail; documenting each would be
-//                   restating its N-API name. Out of the reference too
-//                   (docs/plan-api-reference.md, step 3).
-//   - bindings.mojo the symbol cache; consumers hold the pointer, never
-//                   touch the fields.
-//   - types.mojo    aliases and constants, no def bodies.
-const EXTRA_FILES = ['src/napi/error.mojo', 'src/napi/module.mojo'];
-
-// `mojo doc` compiles the file NAMED ON THE COMMAND LINE as a main module, even
-// with -I src. That is the exact context in which an explicit
-//   def __moveinit__(out self, deinit take: Self)
-// fails with `'None' has no attributes` on `self` — a Mojo bug CLAUDE.md already
-// documents, and which does not fire when the same file is compiled as part of
-// the package (build.sh compiles all three of these every run).
-//
-// So these are not undocumentable code; they are files the doc tool cannot open.
-// They are excluded from the counts, and the script FAILS if one of them starts
-// succeeding — that is the signal to delete its entry here and fold the file
-// back into the floor.
-const KNOWN_UNDOCUMENTABLE = {
-  'src/napi/framework/js_string.mojo': "explicit __moveinit__ on Latin1Buf",
-  'src/napi/framework/js_mojo_array.mojo': "explicit __moveinit__ on MojoFloat64Array",
-  'src/napi/framework/register.mojo': "explicit __moveinit__ on ClassRegistry",
-};
-
+// FRAMEWORK_DIR / EXTRA_FILES / KNOWN_UNDOCUMENTABLE live in doc-targets.mjs so
+// this gate and scripts/generate-api-reference.mjs cannot disagree about which
+// modules are in scope. The rationale for each exclusion is documented there.
 const args = process.argv.slice(2);
 const mode = args.includes('--update')
   ? 'update'
   : args.includes('--print')
     ? 'print'
     : 'check';
-const mojoIdx = args.indexOf('--mojo');
-const mojoCmd =
-  (mojoIdx >= 0 ? args[mojoIdx + 1] : undefined) ??
-  process.env.NAPI_MOJO_MOJO ??
-  'pixi run mojo';
+const mojoCmd = resolveMojo(args);
 
-const targets = [
-  ...readdirSync(FRAMEWORK_DIR)
-    .filter((f) => f.endsWith('.mojo'))
-    .map((f) => `${FRAMEWORK_DIR}/${f}`),
-  ...EXTRA_FILES,
-].sort();
+const targets = docTargets();
 
 const scratch = mkdtempSync(join(tmpdir(), 'napi-mojo-doc-'));
 

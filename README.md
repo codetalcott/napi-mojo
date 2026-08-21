@@ -91,7 +91,7 @@ boundary.
 module-scoped in Node and is *not* reachable through `globalThis`, so the
 bootstrap hands it in rather than Mojo scavenging for it. See
 [`examples/host/`](examples/host/) and
-[`docs/plan-bidirectional.md`](docs/plan-bidirectional.md) for the design.
+[`docs/plan-bidirectional.md`](https://github.com/codetalcott/napi-mojo/blob/main/docs/plan-bidirectional.md) for the design.
 
 **Two hosts, one language.** For a standalone Mojo binary that owns `main()`
 and needs no Node at all, there is [`mojo-http`](https://github.com/codetalcott/mojo-http)
@@ -191,9 +191,11 @@ The install gives you:
 
 ### Build your own addon (CLI)
 
-Requires the [Mojo](https://mojolang.org/install/) toolchain (1.0.0 or newer);
-the CLI uses `pixi run mojo` when a `pixi.toml` is in scope, `mojo` on PATH
-otherwise, or whatever you pass via `--mojo "<command>"`.
+`init` scaffolds a `pixi.toml` pinned to the Mojo version this framework is
+tested against, so with [pixi](https://pixi.sh) installed the sequence below
+needs no other toolchain setup — the first build provisions the compiler.
+Already have `mojo` on your PATH? Delete that file. Want a different compiler?
+Pass `--mojo "<command>"` or set `NAPI_MOJO_MOJO`.
 
 ```bash
 npx napi-mojo init my-addon && cd my-addon
@@ -207,6 +209,11 @@ Declare functions in `exports.toml`, implement them as pure Mojo in
 the Mojo runtime libraries next to the `.node` and rewrites its load paths, so
 the result runs on machines with no Mojo installation (this is how the demo
 packages on npm are produced).
+
+**API reference:** [docs/api/](docs/api/) documents the framework surface your
+addon calls into — `JsObject`, `CbArgs`, the error helpers — generated from the
+Mojo docstrings. It covers the consumer-facing core today and names the modules
+that are not yet documented rather than rendering empty pages for them.
 
 **New here? [docs/TUTORIAL.md](docs/TUTORIAL.md)** walks the whole path — a
 function, a nullable return, a struct in both directions, async work on a
@@ -513,7 +520,7 @@ npm run generate:docs  # HTML API docs for the DEMO ADDON → docs/api-demo-addo
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for coding standards and
-[docs/METHODOLOGY.md](docs/METHODOLOGY.md) for the TDD workflow.
+[docs/METHODOLOGY.md](https://github.com/codetalcott/napi-mojo/blob/main/docs/METHODOLOGY.md) for the TDD workflow.
 
 ## License
 
