@@ -3,6 +3,93 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
+## 0.12.0 — 2026-08-20
+
+**The per-callback dlsym is gone.** Against napi-rs on identical workloads,
+napi-mojo went from a median **3.95x slower to 0.42x** — about 2.4x faster.
+Nothing about the public API changed; this is the same framework with ~330 ns
+removed from every single call.
+
+### Where the time was going
+
+Every callback begins by fetching its cached `NapiBindings` out of callback
+data, and reading callback data needs `napi_get_cb_info` — whose pointer cannot
+come from the cache it is fetching. So the env-only `raw_get_cb_info` ran
+`OwnedDLHandle()` + `get_symbol` on **every call**:
+
+```
+OwnedDLHandle() + get_symbol   ~346 ns/op
+  of which raw dlsym            ~280 ns
+  Mojo wrapper                   ~66 ns
+  the String copy inside it       ~8 ns   <- the tempting fix; not the problem
+```
+
+The new `bench/napi-rs` comparison is what exposed it. The *ratio* column hid
+it — `getNull()` read as 10.46x purely because napi-rs did the same work in
+38.8 ns. The **delta** was flat at ~330 ns across calls whose absolute cost
+varied 8x, which is the signature of a constant tax rather than a scaling
+penalty, and it matched the bootstrap almost exactly.
+
+### Mojo has no global `var`, but it does have `pop.global_alloc`
+
+Previous releases asserted — in CLAUDE.md and in `spike/global_probe.mojo` —
+that a process-lifetime cache was impossible because module-level `var` is a
+hard error. That error is real; the conclusion drawn from it was wrong.
+`__mlir_op.pop.global_alloc`, the mutable sibling of the op behind
+`builtin/globals.global_constant`, lowers to `llvm.mlir.global internal @<name>`:
+a zero-initialised, module-private slot in the data segment.
+`src/napi/global_cache.mojo` keeps the bootstrap symbol there. Both documents
+are corrected rather than left to mislead.
+
+Three properties are load-bearing and are documented at length in that file:
+
+- **`@no_inline` on the accessor.** The op is `Pure`, so each inlined copy
+  materialises its own global — without it, addresses come back sequential and
+  stores vanish.
+- **Only the symbol address is cached, never `NapiBindings`.** The struct's
+  `registry` holds env-specific `napi_ref`s, so caching it would let a
+  `worker_threads` callback in one env read another's constructor refs.
+- **A zero slot means "not cached".** If the internal MLIR op or `@no_inline`
+  ever breaks, every call falls back to dlsym — slower, never wrong.
+
+Because that failure is silent, **`globalCacheActive()`** is exported and
+`tests/global_cache.test.js` asserts it, the same way `runtime.test.js` guards
+`parallelize_safe`'s silent sequential fallback. Verified on macOS and Linux.
+
+### Added
+
+- **`bench/napi-rs`** — a napi-rs comparison harness, closing the
+  "performance benchmarking against napi-rs" gap the README has carried since
+  the project began. One process, one timing harness shared with
+  `scripts/benchmark.mjs` via `scripts/bench-harness.mjs`, semantics verified
+  identical before any timing runs (`--verify`), interleaved A/B rounds, and an
+  idiomatic `#[napi]` Rust baseline at `--release`. Not in CI: a periodic
+  measurement, not a gate.
+- **`globalCacheActive()`** (153 exported functions).
+- **`scripts/check-exports-doc.mjs`**, added in 0.11.0's release commit and now
+  load-bearing: it caught the missing `globalCacheActive()` row and count in
+  this very release.
+
+### Changed
+
+- **Benchmark ceilings reseeded on both platforms.** Against the new numbers
+  the old ceilings left 4–15% headroom, so a full regression back to dlsym
+  would still have passed — the gate would have gone blind to the exact thing
+  it exists to catch. A second independent CI sample on each platform lands at
+  25–27%, inside the documented healthy band.
+- **Benchmark fairness fix**: the Rust `hello()` returned an owned `String`
+  while Mojo's uses `create_literal` (a `.rodata` pointer, no allocation). It
+  now returns `&'static str`. This *cost* napi-mojo that row, 0.42x → 0.61x,
+  and the published figures include it.
+
+### Note on risk
+
+`__mlir_op` is an internal compiler interface with no stability guarantee and
+`_get_kgen_string` is a private stdlib import. This project otherwise pins
+*stable* Mojo precisely to avoid that exposure, so the tension is real; the
+graceful fallback and the active-state test are the mitigation, not a
+guarantee. A first-class Mojo global would be the better home if one ships.
+
 ## 0.11.0 — 2026-08-20
 
 **napi-mojo is bidirectional.** Alongside addons (JS calls Mojo) it now hosts
