@@ -1,0 +1,22 @@
+{
+  "name": "@napi-mojo/linux-arm64",
+  "version": "0.12.0",
+  "description": "napi-mojo prebuilt binary for Linux arm64",
+  "main": "index.node",
+  "files": [
+    "index.node",
+    "*.so*"
+  ],
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "license": "MIT",
+  "author": "Wm Talcott <wtalcott@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codetalcott/napi-mojo.git"
+  }
+}
