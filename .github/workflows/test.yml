@@ -171,6 +171,16 @@ jobs:
       - name: Exports doc + prose counts
         run: node scripts/check-exports-doc.mjs
 
+      # Prebuild platforms are named in six places (npm/, package.json,
+      # demo.js, pixi.toml, pixi.lock, publish.yml) plus the README. A platform
+      # missed in one of them fails at a consumer's require(), or worse, ships
+      # a tarball with files silently subtracted — publish.yml's comments
+      # record exactly that happening to linux-x64 for several releases.
+      # This is the cheap structural half; the publish pipeline still verifies
+      # the actual tarball bytes.
+      - name: Prebuild platform consistency
+        run: node scripts/check-platforms.mjs
+
       # The drift gate above only proves the templates src/exports.toml
       # happens to instantiate. Three latent template bugs shipped through
       # branches nothing instantiates (two Int(0)-literal-era rots, one bare

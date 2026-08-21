@@ -43,9 +43,13 @@ classes, 650+ tests). Expect breaking changes as the project matures.
   handling, TypeScript definition generation, and a TOML-driven code generator
   with `mojo_fn` auto-trampolines, nullable returns, and struct-to-object
   mapping — all validated by the test suite.
-- **What's missing:** Production hardening, cross-platform prebuild
-  distribution (currently darwin-arm64 + linux-x64 only), and documentation
-  beyond this README and the generated `.d.ts`.
+- **What's missing:** Production hardening, and documentation beyond this
+  README, the [API reference](docs/api/) and the generated `.d.ts`.
+- **Prebuilt platforms:** darwin-arm64, linux-x64, linux-arm64 — which is
+  every platform the Mojo toolchain itself targets. The `max` package
+  publishes no osx-64 (Intel Mac) or win-64 build, so a prebuild for either is
+  not something this project can produce; building from source on those
+  platforms is equally blocked, for the same reason.
 - **Performance vs napi-rs:** measured — **median 0.42x**, i.e. about 2.4x
   faster per call. See [Performance](#performance) for the method and caveats.
 
@@ -184,10 +188,11 @@ The install gives you:
   exports in TOML, generate the N-API trampolines. See
   [`examples/codegen/`](examples/codegen/) for a worked example.
 - **The demo addon** (`require('napi-mojo/demo')`) — prebuilt for
-  **darwin-arm64** and **linux-x64** (Node.js 22.12+ / N-API v10) so you can
-  poke at a napi-mojo-built binary without a Mojo toolchain. On other
-  platforms the demo throws on load; the framework itself works anywhere Mojo
-  does.
+  **darwin-arm64**, **linux-x64** and **linux-arm64** (Node.js 22.12+ /
+  N-API v10) so you can poke at a napi-mojo-built binary without a Mojo
+  toolchain. On other platforms the demo throws on load with a message saying
+  so; the framework itself works anywhere Mojo does, which is those same three
+  platforms.
 
 ### Build your own addon (CLI)
 

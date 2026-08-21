@@ -13,8 +13,12 @@
 // examples/codegen/ for how to build your own addon against it.
 const path = require('path');
 
+// Keep in sync with scripts/platforms.mjs — scripts/check-platforms.mjs fails
+// CI if these drift. (This file is CJS and ships to consumers, so it carries
+// its own copy rather than importing the table.)
 const PLATFORMS = {
   'darwin-arm64': '@napi-mojo/darwin-arm64',
+  'linux-arm64': '@napi-mojo/linux-arm64',
   'linux-x64': '@napi-mojo/linux-x64',
 };
 

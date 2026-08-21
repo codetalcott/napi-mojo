@@ -29,7 +29,13 @@ function fixture(overrides = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'sync-versions-'));
   const v = '1.2.3';
   mkdirSync(join(dir, 'scripts'));
+  // Mirrors the platform set in scripts/platforms.mjs. Adding a platform there
+  // without adding it here makes these tests fail loudly (the script reads
+  // every manifest in its platformPkgs list), which is the intended signal —
+  // scripts/check-platforms.mjs gates the shipping surface, this fixture just
+  // has to stay structurally complete.
   mkdirSync(join(dir, 'npm', 'darwin-arm64'), { recursive: true });
+  mkdirSync(join(dir, 'npm', 'linux-arm64'), { recursive: true });
   mkdirSync(join(dir, 'npm', 'linux-x64'), { recursive: true });
   copyFileSync(SCRIPT, join(dir, 'scripts', 'sync-versions.mjs'));
 
@@ -41,15 +47,24 @@ function fixture(overrides = {}) {
     version: overrides.rootVersion ?? v,
     optionalDependencies: {
       '@napi-mojo/darwin-arm64': overrides.optDep ?? v,
+      '@napi-mojo/linux-arm64': v,
       '@napi-mojo/linux-x64': v,
     },
   });
   write('npm/darwin-arm64/package.json', { version: overrides.darwin ?? v });
+  write('npm/linux-arm64/package.json', { version: v });
   write('npm/linux-x64/package.json', { version: v });
   write('package-lock.json', {
     version: v,
     packages: {
-      '': { version: overrides.lockRoot ?? v, optionalDependencies: { '@napi-mojo/darwin-arm64': v, '@napi-mojo/linux-x64': v } },
+      '': {
+        version: overrides.lockRoot ?? v,
+        optionalDependencies: {
+          '@napi-mojo/darwin-arm64': v,
+          '@napi-mojo/linux-arm64': v,
+          '@napi-mojo/linux-x64': v,
+        },
+      },
       'node_modules/@napi-mojo/darwin-arm64': {
         version: v,
         ...(overrides.resolved ? { resolved: overrides.resolved } : {}),

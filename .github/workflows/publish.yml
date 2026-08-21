@@ -25,12 +25,25 @@ concurrency:
 jobs:
   build:
     strategy:
+      # Keep in step with scripts/platforms.mjs (runner + key);
+      # scripts/check-platforms.mjs fails CI if they drift.
+      #
+      # ubuntu-24.04-arm is GitHub's public arm64 Linux runner, free for public
+      # repositories. If this repo ever goes private, this entry needs a paid
+      # larger runner or a self-hosted one — it will not silently fall back.
+      #
+      # fail-fast is off so one platform's failure still lets the others finish
+      # and upload. A release missing one prebuild is recoverable by re-running;
+      # a release where you cannot see which platforms are broken is not.
+      fail-fast: false
       matrix:
         include:
           - os: macos-latest
             platform: darwin-arm64
           - os: ubuntu-latest
             platform: linux-x64
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -64,6 +77,15 @@ jobs:
       # release.
       - name: Run GC finalizer tests
         run: npm run test:gc
+
+      # bundle-runtime.sh shells out to patchelf on Linux. It happens to be
+      # preinstalled on the x64 runner image, which is why nothing needed this
+      # before — but that is an image detail, not a guarantee, and the arm64
+      # image is a different build. A missing patchelf would fail the bundle
+      # step with a bare "command not found" on one platform only.
+      - name: Ensure patchelf (Linux)
+        if: runner.os == 'Linux'
+        run: command -v patchelf || (sudo apt-get update && sudo apt-get install -y patchelf)
 
       - name: Bundle runtime libraries
         run: pixi run bash scripts/bundle-runtime.sh
@@ -176,8 +198,9 @@ jobs:
             done < "artifacts/${platform}/bundled-libs.txt"
             echo "staged ${platform}: index.node + $(wc -l < "artifacts/${platform}/bundled-libs.txt" | tr -d ' ') libraries"
           }
-          stage darwin-arm64
-          stage linux-x64
+          for platform in darwin-arm64 linux-x64 linux-arm64; do
+            stage "$platform"
+          done
 
       - name: Sync versions from root package.json
         run: node scripts/sync-versions.mjs
@@ -222,8 +245,9 @@ jobs:
             done < "artifacts/${platform}/bundled-libs.txt"
             echo "$platform tarball contains index.node + all $(wc -l < "artifacts/${platform}/bundled-libs.txt" | tr -d ' ') libraries"
           }
-          check_contents darwin-arm64
-          check_contents linux-x64
+          for platform in darwin-arm64 linux-x64 linux-arm64; do
+            check_contents "$platform"
+          done
 
           # Load the packed linux-x64 binary the way a consumer would: no pixi,
           # no Mojo, library search paths cleared.
@@ -291,6 +315,11 @@ jobs:
         if: github.event_name == 'release'
         run: npm publish --access public --provenance || [[ "$?" == "1" && $(npm view @napi-mojo/linux-x64 version 2>/dev/null) == "$(node -p 'require("./package.json").version')" ]]
         working-directory: npm/linux-x64
+
+      - name: Publish @napi-mojo/linux-arm64
+        if: github.event_name == 'release'
+        run: npm publish --access public --provenance || [[ "$?" == "1" && $(npm view @napi-mojo/linux-arm64 version 2>/dev/null) == "$(node -p 'require("./package.json").version')" ]]
+        working-directory: npm/linux-arm64
 
       - name: Publish napi-mojo
         if: github.event_name == 'release'

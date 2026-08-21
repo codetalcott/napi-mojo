@@ -68,7 +68,8 @@
     "test": "jest",
     "test:gc": "NODE_OPTIONS='--expose-gc' npx jest tests/finalizer_gc.test.js",
     "version": "node scripts/sync-versions.mjs",
-    "check:exports": "node scripts/check-exports-doc.mjs"
+    "check:exports": "node scripts/check-exports-doc.mjs",
+    "check:platforms": "node scripts/check-platforms.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -85,6 +86,7 @@
   ],
   "optionalDependencies": {
     "@napi-mojo/darwin-arm64": "0.12.0",
+    "@napi-mojo/linux-arm64": "0.12.0",
     "@napi-mojo/linux-x64": "0.12.0"
   },
   "devDependencies": {

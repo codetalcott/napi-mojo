@@ -18,8 +18,17 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 
+// Kept in sync with scripts/platforms.mjs by scripts/check-platforms.mjs
+// rather than imported from it. This script is copied ALONE into a fixture
+// tree by tests/sync_versions.test.js, so a sibling import would break that
+// harness — and it runs in publish.yml, where fewer moving parts is a virtue.
+// Same trade as demo.js: carry the list, gate the drift.
+//
+// A stale entry here means a platform package publishes at the wrong version,
+// which npm resolves as "no prebuild for you".
 const platformPkgs = [
   'npm/darwin-arm64/package.json',
+  'npm/linux-arm64/package.json',
   'npm/linux-x64/package.json',
 ];
 
