@@ -108,7 +108,36 @@ for (const p of PLATFORMS) {
   }
 }
 
-// --- 5. sync-versions.mjs platform manifests ---------------------------------
+// --- 5. package-lock.json entries --------------------------------------------
+// `npm ci` on npm 11+ REFUSES to install when an optionalDependency has no
+// lock entry ("Missing: <pkg>@ from lock file"), and npm cannot write one for
+// a version that is not published yet — which is every platform's first
+// release. npm 10 tolerated it, so this fails only on the Node 24 job, which
+// is a confusing place to discover it.
+//
+// The entry is therefore added by hand, in the shape sync-versions.mjs already
+// maintains for the others: version + os + cpu + optional, and deliberately NO
+// resolved/integrity (that script strips those, because a stale tarball URL is
+// what once made three suites run against a v0.2.10 binary). This check exists
+// so the requirement is enforced rather than rediscovered.
+const lock = readJson('package-lock.json');
+for (const p of PLATFORMS) {
+  const key = `node_modules/${p.pkg}`;
+  const entry = lock.packages?.[key];
+  if (!entry) {
+    fail('package-lock.json', `no "${key}" entry — \`npm ci\` on npm 11+ fails with "Missing: ${p.pkg}@ from lock file". Add it by hand: {version, os, cpu, optional} with no resolved/integrity.`);
+    continue;
+  }
+  if (!sameSet(entry.os ?? [], [p.os])) fail('package-lock.json', `${key}.os is ${JSON.stringify(entry.os)}, expected ${JSON.stringify([p.os])}`);
+  if (!sameSet(entry.cpu ?? [], [p.cpu])) fail('package-lock.json', `${key}.cpu is ${JSON.stringify(entry.cpu)}, expected ${JSON.stringify([p.cpu])}`);
+  if (entry.optional !== true) fail('package-lock.json', `${key} is not marked optional:true — npm would treat a missing prebuild as a hard install failure`);
+}
+const lockOpt = Object.keys(lock.packages?.['']?.optionalDependencies ?? {}).sort();
+if (!sameSet(lockOpt, PLATFORM_PKGS)) {
+  fail('package-lock.json', `packages[""].optionalDependencies ${JSON.stringify(lockOpt)} != ${JSON.stringify(PLATFORM_PKGS)}`);
+}
+
+// --- 6. sync-versions.mjs platform manifests ---------------------------------
 // It carries its own list (it is copied alone into a test fixture, and runs in
 // publish.yml), so verify rather than import.
 const sync = read('scripts/sync-versions.mjs');
@@ -123,7 +152,7 @@ if (!syncBlock) {
   }
 }
 
-// --- 6. publish.yml ----------------------------------------------------------
+// --- 7. publish.yml ----------------------------------------------------------
 // Text assertions rather than a YAML parse: the literal strings are what the
 // runner executes, and there is no YAML parser in this repo's dependencies.
 const publish = read('.github/workflows/publish.yml');
@@ -153,7 +182,7 @@ for (const label of ['Stage platform packages', 'Verify packed tarballs']) {
   }
 }
 
-// --- 7. README's supported-platform prose ------------------------------------
+// --- 8. README's supported-platform prose ------------------------------------
 // Prose goes stale silently; CLAUDE.md says so about embedded counts. Only
 // check that each key appears somewhere, not how it is phrased.
 const readme = read('README.md');
