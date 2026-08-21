@@ -37,6 +37,7 @@ from napi.bindings import Bindings
 from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof
 from napi.framework.js_coerce import js_coerce_to_string
+from napi.keepalive import pin_across_ffi
 
 
 ## Latin1Buf — heap-allocated Latin-1 byte buffer returned by JsString.read_latin1
@@ -303,6 +304,9 @@ struct JsString:
                 copied_ptr,
             )
         )
+        # `copied` is an IGNORED output slot — napi reports whether it had to
+        # copy the external buffer and this wrapper does not surface it.
+        pin_across_ffi(copied)
         return JsString(result)
 
 

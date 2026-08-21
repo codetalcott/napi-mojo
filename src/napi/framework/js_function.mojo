@@ -20,6 +20,7 @@ from napi.raw import raw_call_function, raw_get_undefined, raw_create_function
 from napi.error import check_status
 from napi.module import define_property
 from napi.framework.js_number import JsNumber
+from napi.keepalive import pin_across_ffi
 
 
 ## JsFunction — typed wrapper for a JavaScript function napi_value
@@ -68,6 +69,7 @@ struct JsFunction:
         check_status(
             raw_call_function(b, env, recv, self.value, 1, argv_ptr, result_ptr)
         )
+        pin_across_ffi(arg0)  # napi reads argv during the call
         return result
 
     def call2(
@@ -91,6 +93,7 @@ struct JsFunction:
         check_status(
             raw_call_function(b, env, recv, self.value, 2, argv_ptr, result_ptr)
         )
+        pin_across_ffi(args)  # napi reads argv during the call
         return result
 
     def call_n(
@@ -164,11 +167,11 @@ struct JsFunction:
                 b, env, recv, self.value, UInt(len(args)), argv_ptr, result_ptr
             )
         )
-        # Keep `args` alive past the FFI call. `unsafe_ptr()` is NOT a tracked
-        # use, so ASAP destruction is otherwise free to release the buffer
-        # napi is mid-read on. Same idiom as create_named's `_ = name`; this
-        # is the argv lifetime hazard CLAUDE.md flags for call1/call2.
-        _ = args
+        # Keep `args`'s heap buffer alive past the FFI call. `unsafe_ptr()` is
+        # NOT a tracked use, so ASAP destruction is otherwise free to release
+        # the buffer napi is mid-read on. This is the argv lifetime hazard
+        # CLAUDE.md flags for call1/call2.
+        pin_across_ffi(args)
         return result
     @staticmethod
     def create(
@@ -253,7 +256,7 @@ struct JsFunction:
                 Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
-        _ = name  # keep name alive past FFI call (ASAP safety)
+        pin_across_ffi(name)  # napi reads name_ptr during the call
         # Set fn.length = length via napi_define_properties
         var len_val = JsNumber.create_int(b, env, length).value
         var desc = NapiPropertyDescriptor()

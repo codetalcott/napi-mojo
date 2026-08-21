@@ -110,6 +110,17 @@ jobs:
             console.log('ffi probe:', p.originProbe());
           "
 
+      # The framework's FFI safety rests on locals outliving the N-API call
+      # that reads or writes through a pointer to them. The move-discard
+      # docs/plan-origin-migration.md prescribed for that (`_ = x^`) is a NO-OP
+      # for trivially register-passable types — which is nearly every slot
+      # here — so src/napi/keepalive.mojo uses a real escape-plus-clobber
+      # barrier instead. This gate compiles both forms to LLVM IR and asserts
+      # the difference, so "the keep-alive stopped keeping anything alive"
+      # fails a check rather than waiting to become silent corruption.
+      - name: Keep-alive barrier counterfactual
+        run: node scripts/check-keepalive-barrier.mjs
+
       # Mojo elaborates imported-package `def` bodies lazily, per METHOD: a
       # body full of type errors compiles unless something in the compiled
       # graph calls that exact method. 0.5.1 shipped four broken framework

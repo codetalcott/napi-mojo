@@ -18,6 +18,7 @@ from napi.raw import (
 )
 from std.memory.alloc import unsafe_alloc
 from napi.error import check_status
+from napi.keepalive import pin_across_ffi
 
 
 struct JsBigInt:
@@ -115,6 +116,9 @@ struct JsBigInt:
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
             )
         )
+        # `sign` is an IGNORED output slot — this overload only reports the
+        # word count. `count` is pinned by the return below; `sign` is not.
+        pin_across_ffi(sign)
         return count
 
     @staticmethod

@@ -15,6 +15,7 @@ from napi.raw import (
     raw_is_detached_arraybuffer,
 )
 from napi.error import check_status
+from napi.keepalive import pin_across_ffi
 
 
 struct JsArrayBuffer:
@@ -38,6 +39,10 @@ struct JsArrayBuffer:
                 Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
+        # `data` is an IGNORED output slot — napi writes the backing-store
+        # pointer into it and this overload discards it. Nothing else keeps
+        # the slot alive across the write, so pin it explicitly.
+        pin_across_ffi(data)
         return JsArrayBuffer(result)
 
     @staticmethod

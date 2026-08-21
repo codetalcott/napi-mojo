@@ -22,6 +22,7 @@ from napi.types import NapiEnv, NapiValue
 from napi.raw import raw_get_cb_info
 from napi.error import check_status
 from napi.bindings import NapiBindings, Bindings, BINDINGS_MAGIC
+from napi.keepalive import pin_across_ffi
 
 
 ## _verified_bindings — bitcast callback data to Bindings, checking the magic
@@ -290,6 +291,10 @@ struct CbArgs:
                 null,
             )
         )
+        # `argc` is an IGNORED output slot: napi writes the arg count through
+        # the pointer and nothing reads it back, so nothing else keeps the
+        # slot alive across the call. Pin it explicitly.
+        pin_across_ffi(argc)
         return this_val
 
     @staticmethod
@@ -310,6 +315,10 @@ struct CbArgs:
                 null,
             )
         )
+        # `argc` is an IGNORED output slot: napi writes the arg count through
+        # the pointer and nothing reads it back, so nothing else keeps the
+        # slot alive across the call. Pin it explicitly.
+        pin_across_ffi(argc)
         return this_val
 
     ## get_this_and_one — extract `this` plus one argument
@@ -472,6 +481,7 @@ struct CbArgs:
                 Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
+        pin_across_ffi(argc)  # ignored output slot — see get_this
         return data
 
     @staticmethod
@@ -492,6 +502,7 @@ struct CbArgs:
                 Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
+        pin_across_ffi(argc)  # ignored output slot — see get_this
         return data
 
     ## get_bindings — retrieve the NapiBindings pointer from callback data
@@ -603,6 +614,7 @@ struct CbArgs:
                 Pointer(to=data).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
+        pin_across_ffi(argc)  # ignored output slot — see get_this
         return BindingsAndThis(_verified_bindings(data), this_val)
 
     ## get_bindings_this_and_one — extract bindings + this + 1 arg in a single napi_get_cb_info call
