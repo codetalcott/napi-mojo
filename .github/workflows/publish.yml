@@ -59,8 +59,32 @@ jobs:
         with:
           pixi-version: latest
 
+      # `npm ci`, then DROP the napi-mojo platform packages.
+      #
+      # They are the PUBLISHED binaries, and demo.js prefers an installed
+      # platform package over build/index.node — so leaving them in place makes
+      # CI resolve the registry's binary for this version instead of the one
+      # this commit just built, and a regression in the fresh build gets masked
+      # by the last good release. Same shape as the incident already on record
+      # here: a lockfile reading 0.6.0 whose `resolved` still pointed at the
+      # 0.2.10 tarball, with three suites testing a stale registry binary.
+      #
+      # NOT `npm ci --omit=optional`, which was tried and reverted: it prunes
+      # optional edges across the WHOLE tree, and on the Node 22 runners that
+      # removed jest-circus, failing every `npm test` with "Module
+      # .../jest-circus/build/runner.js in the testRunner option was not
+      # found". It did NOT reproduce under npm 11 locally, which is exactly why
+      # it reached CI. Removing our own scoped directory cannot have that
+      # effect.
+      #
+      # Nothing here needs those packages — the addon is built from source. The
+      # platform-package resolution path stays covered in publish.yml's tarball
+      # verification, and tests/package_entry.test.js compares the demo export
+      # set against build/index.node so a shadowing install fails loudly.
       - name: Install Node.js dependencies
-        run: npm ci
+        run: |
+          npm ci
+          rm -rf node_modules/@napi-mojo
 
       - name: Build Mojo addon
         run: pixi run bash build.sh
