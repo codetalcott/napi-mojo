@@ -28,54 +28,123 @@ that an explicit one is in place.
 
 ## Is it still elective?
 
-CLAUDE.md notes upstream documents `UnsafeAnyOrigin` as slated for deprecation
-and removal, which is the eventual forcing function. As of 2026-08-20 that had
-not landed:
+**Yes — and the evidence has moved AWAY from the forcing function, not toward
+it.** Re-checked 2026-08-21 against `modular/modular@main`.
 
-- The 26.6 nightly changelog lists origin **renames**, not removals —
-  `ImmutUnsafeAnyOrigin`→`ImmUnsafeAnyOrigin`, `ExternalOrigin`→`UntrackedOrigin`,
-  `MutExternalOrigin`→`MutUntrackedOrigin`, and so on.
-- **This codebase uses zero of the renamed spellings.** Verified counts:
-  `ImmutUnsafeAnyOrigin` 0, `MutUnsafeAnyOrigin` 0, `ImmutUntrackedOrigin` 0,
-  `StaticConstantOrigin` 0, `ExternalOrigin` 0. It uses `MutAnyOrigin` (~946),
-  `ImmutAnyOrigin` (~138), and the already-modern `MutUntrackedOrigin` (~55) /
-  `ImmUntrackedOrigin` (~18).
+An origin **removal** did land in the 26.6 nightly since our 1.0.0 pin. It is
+not ours:
 
-Re-run those counts against the current changelog before starting. If removal
-has landed, this stops being elective and the schedule is no longer yours —
-which is exactly the situation `docs/plan-origin-migration.md` warns about:
-*"the alternative is doing it against a broken build on a deadline, in the one
-area of this codebase that has already produced SIGSEGVs."*
+> Removed the origin aliases left over from the `Immut` to `Imm` and `External`
+> to `Untracked` renames. Use the surviving spelling in each case: `ImmOrigin`
+> for `ImmutOrigin`, `ImmUnsafeAnyOrigin` for `ImmutUnsafeAnyOrigin`,
+> `ImmStaticOrigin` for `StaticConstantOrigin`, `UntrackedOrigin` for
+> `ExternalOrigin`, `MutUntrackedOrigin` for `MutExternalOrigin`, and
+> `ImmUntrackedOrigin` for both `ImmutUntrackedOrigin` and `ImmutExternalOrigin`.
+
+This codebase uses **zero** of the removed spellings (verified: each count is
+0). It uses `MutAnyOrigin` (~990), `ImmutAnyOrigin` (~142), and the already-
+modern `MutUntrackedOrigin` (~63) / `ImmUntrackedOrigin` (~21).
+
+**The premise worth correcting.** CLAUDE.md reasons that upstream documents
+`UnsafeAnyOrigin` as slated for deprecation and removal, "so expect a future
+forced migration of the whole `MutAnyOrigin` surface". Reading the authoritative
+module — `mojo/stdlib/std/origin/__init__.mojo` — that inference is weaker than
+it looks, in two specific ways:
+
+- **`AnyOrigin` and `UnsafeAnyOrigin` are two separate aliases** that expand to
+  the byte-identical MLIR attribute (`#lit.any.origin : !lit.origin<mut>`).
+  Only `UnsafeAnyOrigin` carries the removal notice and the safety essay;
+  `AnyOrigin` has a bare two-line docstring with no deprecation language at
+  all. We are on the `AnyOrigin` family.
+- **The rename sweep treated the two families differently on purpose.**
+  `ImmUnsafeAnyOrigin` was renamed and its `Immut` spelling deleted, while
+  `ImmutAnyOrigin` was left untouched under its `Immut` spelling. If both
+  families were headed for the same removal, that asymmetry would be pointless.
+
+The honest read is that `AnyOrigin` is presently the sanctioned spelling and
+`UnsafeAnyOrigin` is the legacy one being retired. That is not a guarantee —
+the attributes are identical, so upstream could still retire the escape hatch
+wholesale — but there is no deadline visible today, and the schedule is still
+ours.
+
+What has NOT changed: the *behaviour* population B depends on is documented
+upstream, under `UnsafeAnyOrigin`, as a defect to migrate away from —
+
+> It extends unrelated lifetimes. Every other value in scope is kept alive for
+> as long as the reference is live, even values it never points to, effectively
+> halting ASAP destruction.
+
+That is precisely the implicit guarantee this migration exists to stop relying
+on. Elective, not pointless.
+
+**Re-check before starting** — the two commands are in CLAUDE.md's changelog
+section; diff BOTH `nightly-changelog.md` and `docs/releases/`, since content
+rotates out of the former at release close. As of 2026-08-21 the newest release
+file is `v1.0.0.md`, i.e. nothing has rotated since our pin.
 
 ## Deriving the population fresh
 
-Do not trust a number in a document, including this one. The counts above came
-from a script that joins line-wrapped statements before matching, because most
-sites are wrapped:
+Do not trust a number in a document, including this one. **`node
+scripts/derive-population-b.mjs` derives it from source** — that is what makes
+the answer re-runnable instead of transcribed. `--all` lists every site,
+`--json` is machine-readable, `--check` exits non-zero if anything is at risk.
 
-```mojo
-var recv_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
-    to=recv
-).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+Current output (2026-08-21, tree green at 753 tests):
+
+```
+population B sites      223
+  pinned                 24   (explicit pin_across_ffi)
+  post-use              199   (tracked use after the call)
+  AT-RISK                 0
 ```
 
-A same-line grep finds ~153 of the ~247 that exist. **Two false-positive
-classes** a naive pattern sweeps in and that are NOT population B:
+All 23 `pin_across_ffi` call sites in the tree reconcile against detected
+sites, which is the check that the matcher is not simply missing the
+population.
 
-- **Function-pointer reinterprets** — `Pointer(to=x).unsafe_bitcast[SomeFn]()[]`.
-  The trailing `[]` dereferences immediately, before any call, so no lifetime
-  spans the FFI boundary. `raw.mojo`'s ~150 slot casts and every
-  `var fn_ref = my_callback` are this. Filter on
-  `.unsafe_bitcast[NoneType]()` *not* followed by `[]`.
-- **`StringLiteral` / `StaticString` parameters** — `name.unsafe_ptr()` in
-  `define_class`, `JsFunction.create`, `JsSymbol.create_for`, ... static
-  `.rodata`, never freed.
+**The unit is one FORMATION of a pointer-to-a-local**, not one
+`.as_unsafe_any_origin()` occurrence — a `var argv_ptr = Pointer(to=arg0)...`
+later passed to a call counts once, at the formation. An earlier hand-count
+using a different unit reported ~247; the numbers are not comparable, which is
+the whole reason the definition now lives in code.
 
-And one class that reads dangerous but is not: a **borrowed non-register-
-passable struct**, e.g. `define_property`'s `desc: NapiPropertyDescriptor`. It
-is memory-passed, so the pointer is to the *caller's* storage and the caller's
-borrow guarantees liveness through the nested FFI call. The risk for those, if
-any, lives at the call site.
+Two formation shapes reach an `AnyOrigin` parameter:
+
+- **address-of** — `Pointer(to=local)...`: output slots, argv, in/out `argc`.
+- **buffer-pointer** — `local.unsafe_ptr()...`: a `String`'s or `List`'s heap
+  buffer, whose *owner* is the local being tracked. `JsFunction.create_named`
+  pins its `name: String` for exactly this reason.
+
+**False-positive classes the script filters** (counts as of the same run):
+
+| class | n | why it is not population B |
+|---|---|---|
+| fn-ptr reinterpret | 175 | `Pointer(to=x).unsafe_bitcast[F]()[]` derefs inside the statement — `raw.mojo`'s slot casts |
+| static string | 33 | `StringLiteral` / `StaticString` / a bare `"literal".unsafe_ptr()` — `.rodata` |
+| no FFI in scope | 3 | the file crosses no boundary (`src/addon/user_fns.mojo` is pure Mojo by construction) |
+| borrowed struct param | 1 | memory-passed, so the pointer is to the *caller's* storage — `define_property`'s `desc` |
+| struct field | 1 | `b[].slot` is the cached `NapiBindings` allocation, never freed |
+
+**Four bugs this script had before it was believable**, all of which made it
+*under*-report and any of which would have made "0 at-risk" a lie:
+
+1. `includes('Pointer(to=')` on a joined statement. Joining inserts a space, so
+   the wrapped form becomes `Pointer( to=recv )` and never matched —
+   `JsFunction.call1`/`call2`, the top two rows of the regression table below,
+   were invisible. That is the same-line-grep failure in a new costume.
+2. A body scan that stopped at the first line whose indent was `<=` the def's.
+   A wrapped signature puts `) raises -> X:` back at the def's own indent, so
+   every such def reported an empty body and its sites fell through to at-risk.
+3. A `[^\]]+` class in the fn-ptr filter, which cannot span a bitcast type
+   parameter containing nested brackets — so all 142 of `raw.mojo`'s slot casts
+   failed the filter open and were admitted as population B.
+4. A +/-60-line window for the static-string test, which let a neighbouring
+   def's `name: StringLiteral` mask `create_named`'s real `name: String`.
+
+**`post-use` is a heuristic** — it asks whether the identifier appears again
+inside the enclosing def. It cannot prove the use is a *tracked* one. Treat a
+`post-use` classification as "not obviously at risk", never as a clearance;
+`--emit llvm` and Guard Malloc remain the authorities, as below.
 
 ## What broke last time
 
@@ -122,6 +191,7 @@ node -e "require('./build/index.node').hello()"           # smoke: module load
                                                           # the first CALL is the
                                                           # first deref
 node scripts/check-keepalive-barrier.mjs                  # the barrier still binds
+node scripts/derive-population-b.mjs --check              # zero at-risk sites
 pixi run mojo build --emit shared-lib -I src \
   tests/compile/framework_coverage.mojo -o /tmp/gate.so   # per-method elaboration
 node scripts/check-compile-coverage.mjs
@@ -148,7 +218,10 @@ the pair and read the IR — do not wait for a crash that may never come.
 
 - Every FFI signature off `AnyOrigin`, or a written reason why a given one
   stays.
-- The at-risk set re-derived after the flip, with zero unpinned sites.
+- The at-risk set re-derived after the flip, with zero unpinned sites
+  (`node scripts/derive-population-b.mjs --check`). Re-run it after EVERY
+  batch, not once at the end: a site that gains a new local, or loses its
+  post-call use, becomes at-risk without anything else changing.
 - Full stack above green on macOS and Linux, Guard Malloc banner confirmed.
 - Benchmark ceilings unchanged or reseeded deliberately.
 - This document and `docs/plan-origin-migration.md` closed out.
