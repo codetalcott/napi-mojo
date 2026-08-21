@@ -156,9 +156,84 @@ defects rather than spelling gaps:
   distinct type is what turned it into a diagnostic. That is the clearest
   single argument for having done the flip rather than only the fields.
 
+## Population B, step 1 — landed, and the recipe it corrected
+
+The keep-alive half of population B is **done**; only the FFI signature flip
+remains. Derived fresh rather than quoted: 247 population-B sites exist today,
+of which **19 had no tracked use after the FFI call** and therefore nothing
+keeping their slot alive but `AnyOrigin`'s implicit extension. Those 19 — the
+`argc` in/out slots in `CbArgs.get_this`/`get_data`/`get_bindings_and_this`,
+the ignored output slots (`data` in `JsArrayBuffer.create` and
+`JsBuffer.create`, `copy_data`, `sign`, `copied`, `removed`), the argv slots in
+`call1`/`call2`/`make_callback1`/`make_callback2`/`Counter.fromValue`/
+`newCounterFromRegistry`, and the tag inputs — now carry an explicit barrier.
+The other 228 are pinned by a real use after the call (usually `return`), which
+is a keep-alive already and needs nothing.
+
+**The recipe above was wrong about the mechanism, and the compiler says so.**
+`_ = x^` is a genuine use only for a type with something to move. For a
+trivially register-passable one it is rejected outright:
+
+```
+warning: transfer from a value of trivial register type 'UInt' has no effect
+and can be removed
+```
+
+That covers `UInt`, `Bool`, `Int32` and every `OpaquePointer` alias including
+`NapiValue` — i.e. **12 of the 19**, and the entire argv/argc/ignored-output
+population this document warns about. Emitted IR for the two forms, from
+`spike/keepalive_probe.mojo`:
+
+```llvm
+define i64 @without_pin(i64 %0) {          ; _ = slot^
+  ret i64 %0                               ; the alloca is GONE
+}
+define i64 @with_pin(i64 %0) {             ; pin_across_ffi(slot)
+  %2 = alloca i64, i64 1, align 8
+  call void @llvm.lifetime.start.p0(ptr %2)
+  store i64 0, ptr %2, align 8
+  call void asm sideeffect "", "r,~{memory}"(ptr %2)
+  call void @llvm.lifetime.end.p0(ptr %2)
+  ret i64 %0
+}
+```
+
+Had the flip landed with `_ = x^` in place, every one of those sites would have
+looked migrated while N-API wrote into a slot the compiler had already
+reclaimed — the silent class, at scale.
+
+`src/napi/keepalive.mojo`'s **`pin_across_ffi`** is the replacement: it wraps
+`std.benchmark.keep`, which takes `ref [origin]` (a tracked use, so the
+lifetime cannot end before it) and passes the address into empty inline
+assembly with `~{memory}` and `has_side_effect=True`. It emits no instructions,
+and measured cost is zero — it sits immediately after an opaque external call
+that already clobbers memory. All 18 benchmarks stayed in the same 23–26%-of-
+ceiling band.
+
+Taking `ref [origin]` also **retires recipe point 2**: pinning works on a
+borrowed register-passable parameter directly, and the IR confirms it is the
+same `alloca` that `Pointer(to=param)` materialised. No copy-into-an-owned-
+local step is needed. Two pre-existing borrow-form discards meant as
+keep-alives — `JsFunction.call_with`'s `_ = args` and `create_named`'s
+`_ = name` — were upgraded for the same reason.
+
+`scripts/check-keepalive-barrier.mjs` asserts both halves of the IR
+counterfactual in CI, including that `without_pin` still loses its alloca —
+without that half the gate would pass on a compiler where both forms work and
+would stop being evidence of anything.
+
 ## Revisit when
 
-Nothing here is pending. If `UnsafeAnyOrigin` is eventually removed outright,
-the remaining surface is the FFI signatures and the 159 population-B argument
-sites — a genuinely harder problem than this one was, and the SIGSEGV warning
-above applies to it in full.
+**Step 3, the FFI signature flip, is the only part left** — moving `raw.mojo`'s
+143 literal `OpaquePointer[MutAnyOrigin]` FFI type expressions off `AnyOrigin`.
+That is still elective: as of 2026-08-20 the upstream 26.6 changelog lists
+origin *renames*, not removals, and this codebase uses zero of the renamed
+spellings. Re-run those counts before starting; if removal has landed, the
+schedule is no longer yours to choose.
+
+The SIGSEGV warning above applies to that flip in full, with one thing now
+different: the keep-alives it depends on are in place and are real, and
+`spike/keepalive_probe.mojo` proves the mechanism rather than assuming it. Do
+it in small batches driven by compiler diagnostics, never a global sed, and
+re-run the whole verification stack (including the Guard Malloc run, with the
+banner confirmed) after each batch.

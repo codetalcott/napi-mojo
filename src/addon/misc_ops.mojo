@@ -26,6 +26,7 @@ from napi.framework.js_exception import (
 )
 from napi.framework.js_version import get_napi_version, get_node_version_ptr
 from napi.framework.register import fn_ptr, ModuleBuilder
+from napi.keepalive import pin_across_ffi
 
 
 def throw_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -159,6 +160,7 @@ def type_tag_object_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             to=tag
         ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         check_status(raw_type_tag_object(b, env, obj, tag_ptr))
+        pin_across_ffi(tag)  # napi reads the tag through tag_ptr during the call
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "typeTagObject failed")
@@ -189,6 +191,7 @@ def check_object_type_tag_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
+        pin_across_ffi(tag)  # napi reads the tag through tag_ptr during the call
         return JsBoolean.create(b, env, result).value
     except:
         throw_js_error(env, "checkObjectTypeTag failed")

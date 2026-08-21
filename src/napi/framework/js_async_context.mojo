@@ -18,6 +18,7 @@ from napi.types import NapiEnv, NapiValue, NapiAsyncContext
 from napi.bindings import Bindings
 from napi.raw import raw_async_init, raw_async_destroy, raw_make_callback
 from napi.error import check_status
+from napi.keepalive import pin_across_ffi
 
 
 struct JsAsyncContext:
@@ -106,6 +107,7 @@ struct JsAsyncContext:
                 Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
+        pin_across_ffi(arg0)  # napi reads argv during the call
         return result
 
     ## make_callback2 — call a JS function with two arguments in this context
@@ -137,4 +139,5 @@ struct JsAsyncContext:
                 Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
+        pin_across_ffi(args)  # napi reads argv during the call
         return result

@@ -10,6 +10,7 @@ from napi.framework.js_function import JsFunction
 from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof, js_type_name, js_get_global
 from napi.framework.register import fn_ptr, ModuleBuilder, ClassRegistry
+from napi.keepalive import pin_across_ffi
 
 
 ## AdderCapture — closure data for inner_adder_fn (captured n + bindings)
@@ -145,7 +146,9 @@ def new_counter_from_registry_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var argv_ptr: OpaquePointer[ImmutAnyOrigin] = Pointer(
             to=arg0
         ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        return registry[].new_instance(b, env, "Counter", 1, argv_ptr)
+        var instance = registry[].new_instance(b, env, "Counter", 1, argv_ptr)
+        pin_across_ffi(arg0)  # napi reads argv during the nested call
+        return instance
     except:
         throw_js_error(env, "newCounterFromRegistry failed")
         return NapiValue(unsafe_from_address=Int(0))

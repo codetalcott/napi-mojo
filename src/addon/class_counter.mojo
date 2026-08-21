@@ -24,6 +24,7 @@ from napi.framework.js_class import (
 from napi.framework.args import CbArgs
 from napi.framework.js_value import js_typeof
 from napi.framework.register import fn_ptr, ModuleBuilder, ClassRegistry
+from napi.keepalive import pin_across_ffi
 
 
 # 128-bit type tag stamped on every Counter instance by wrap_native and
@@ -189,6 +190,7 @@ def counter_from_value_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
+        pin_across_ffi(arg0)  # napi reads argv during the call
         return result
     except:
         throw_js_error(env, "Counter.fromValue failed")

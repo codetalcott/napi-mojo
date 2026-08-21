@@ -28,6 +28,7 @@ from napi.framework.args import CbArgs
 from napi.module import define_property
 from napi.framework.js_value import js_get_global
 from napi.framework.js_function import JsFunction
+from napi.keepalive import pin_across_ffi
 
 
 def _get_prototype(
@@ -246,6 +247,9 @@ def type_tag_object(
         to=t
     ).unsafe_bitcast[NoneType]().as_unsafe_any_origin()
     check_status(raw_type_tag_object(b, env, value, tag_ptr))
+    # napi READS the 128-bit tag through `tag_ptr` during the call and `t` has
+    # no later use, so pin its slot until the call has returned.
+    pin_across_ffi(t)
 
 
 ## check_object_type_tag — does the object carry exactly this tag?
@@ -269,6 +273,7 @@ def check_object_type_tag(
             Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
+    pin_across_ffi(t)  # napi reads the tag through tag_ptr — see type_tag_object
     return result
 
 
@@ -319,6 +324,8 @@ def wrap_native(
             this_val,
             Pointer(to=removed).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
+        # `removed` is an IGNORED output slot on the unwind path.
+        pin_across_ffi(removed)
         raise e^
 
 

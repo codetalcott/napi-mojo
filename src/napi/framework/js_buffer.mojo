@@ -15,6 +15,7 @@ from napi.raw import (
 )
 from napi.framework.js_arraybuffer import JsArrayBuffer
 from napi.error import check_status
+from napi.keepalive import pin_across_ffi
 
 
 struct JsBuffer:
@@ -36,6 +37,8 @@ struct JsBuffer:
                 Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
+        # `data` is an IGNORED output slot — see JsArrayBuffer.create.
+        pin_across_ffi(data)
         return JsBuffer(result)
 
     @staticmethod
@@ -112,6 +115,8 @@ struct JsBuffer:
                 Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
         )
+        # `copy_data` is an IGNORED output slot — see JsArrayBuffer.create.
+        pin_across_ffi(copy_data)
         return JsBuffer(result)
 
     ## from_arraybuffer — zero-copy Buffer view into an ArrayBuffer slice (N-API v10)
