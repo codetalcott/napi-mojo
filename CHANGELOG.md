@@ -3,6 +3,169 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
+## 0.13.0 — 2026-08-21
+
+**Reach and onboarding.** Prebuilt binaries now cover every platform the Mojo
+toolchain targets, the framework has an API reference for the first time, and
+`napi-mojo init && napi-mojo build` works with no toolchain flags. Nothing in
+the Mojo source API changed — downstream addons compile against 0.13.0
+unmodified.
+
+### linux-arm64, and the end of "cross-platform distribution" as an open task
+
+`@napi-mojo/linux-arm64` joins darwin-arm64 and linux-x64. That is not one more
+step along a road — it is the **last** one. The `max` conda channel publishes
+exactly three subdirs:
+
+```
+osx-arm64      ✅        linux-64   ✅        linux-aarch64  ✅  (new)
+osx-64         no repodata          win-64     no repodata
+```
+
+There is no Mojo build for Intel Macs or Windows, so a prebuild for either is
+not something this project can choose to produce — and building from source on
+those platforms is blocked for the same reason. Previous releases listed
+"cross-platform prebuild distribution" under what is missing, which implied
+unbounded remaining work. It was one platform.
+
+It is a valuable one: AWS Graviton, Ampere, and `docker run node` on an Apple
+Silicon Mac, which defaults to linux/arm64.
+
+**The platform set is now gated.** A platform is named in seven places —
+`npm/<key>/`, root `optionalDependencies`, `demo.js`'s loader map,
+`sync-versions.mjs`, `pixi.toml`, `pixi.lock`, `publish.yml` (matrix, staging,
+tarball verification, publish step) and the README. `scripts/platforms.mjs` is
+now the single declaration and `scripts/check-platforms.mjs` asserts the rest
+agree. This repo has already shipped the failure that motivates it: a broken
+linux-x64 package that survived several releases because each layer between the
+bundler and the registry silently subtracted a file.
+
+**aarch64 is tested continuously, not only at release.** `ubuntu-24.04-arm`
+joins the PR test matrix, running the full suite — examples, the FFI probe, the
+keep-alive IR gate, the framework-coverage compile, `mojo doc` over every
+module, the codegen kitchen sink, and the CLI/tutorial/host end-to-end steps.
+
+### An API reference that refuses to pad itself
+
+`docs/api/` is generated from Mojo docstrings by
+`scripts/generate-api-reference.mjs` and gated in CI. 19 modules are rendered
+today, including `args` (CbArgs), `error`, `js_object`, `js_function`,
+`js_array`, `js_value`, `convert`, `js_class` and every primitive wrapper.
+
+The scoping document for this work measured that 87% of public defs were bare
+signatures and concluded that a reference rendered over them would be *worse
+than none, because it looks complete and says nothing*. The renderer honours
+that: **a module below 75% documented is not rendered.** It is listed in the
+index with its ratio and linked to source instead, so coverage gaps are visible
+in the published output rather than hidden behind empty headings. Modules join
+the reference as their docstrings land.
+
+The undocumented count went 351 → 147 and is ratcheted — it can fall, never
+rise.
+
+### `init` → `build`, with no flags
+
+`napi-mojo init` now scaffolds a `pixi.toml` pinned to the exact Mojo version
+this framework is built and tested against, read from the framework's own
+manifest rather than duplicated. Previously the scaffold emitted no manifest,
+so `napi-mojo build` fell through to a bare `mojo` and failed with ENOENT for
+anyone who installed Mojo the documented way — which meant the tutorial's
+promised output never appeared.
+
+Compiler resolution also got a fix that matters independently: a `pixi.toml` in
+scope no longer selects `pixi run mojo` unless pixi is actually runnable.
+Finding a manifest proves a pixi project, not a pixi installation, and without
+the probe the new scaffold would have hijacked the build for anyone with `mojo`
+on PATH and no pixi.
+
+### Callbacks that fail now say so
+
+A Mojo `Error` raised inside a callback whose `except:` returns a null
+napi_value **without throwing** reaches JavaScript as a plain `undefined` — no
+exception, no message, a failure indistinguishable from success. The code
+generator already did the right thing and CLAUDE.md already stated the rule,
+but `examples/hello-addon.mojo` and the `init` scaffold both violated it, which
+is precisely where a newcomer copies from. Both now throw. The tutorial no
+longer claims `lib.mojo` throws from `require()` on registration failure, which
+was true of one of its two failure paths.
+
+### Keep-alives: making the origin flip safe before attempting it
+
+Population B step 1 of the origin migration. 247 sites were derived fresh; 19
+had no tracked use after their FFI call and now carry an explicit
+`pin_across_ffi` barrier.
+
+**This is a semantic no-op today** — signatures are unchanged, so `AnyOrigin`
+still provides the lifetime extension these sites rely on. What it removes is
+the *dependency* on that extension, which is what makes the deferred signature
+flip survivable.
+
+The finding worth carrying: the migration plan's prescribed `_ = x^`
+move-discard **does not work**. It is a no-op for trivially register-passable
+types — `UInt`, `Bool`, `Int32` and every `OpaquePointer` alias including
+`NapiValue`, which is nearly the entire population — and the compiler says so
+(`transfer from a value of trivial register type … has no effect`). The IR is
+unambiguous: `_ = slot^` loses its alloca entirely, while the pinned form keeps
+it behind `call void asm sideeffect "", "r,~{memory}"`. Had the flip landed on
+the move-discard, every site would have *looked* migrated while N-API wrote
+into a slot the compiler had already reclaimed.
+
+### Agent context: CLAUDE.md split
+
+CLAUDE.md went 86KB → 64KB (~21.4K → ~16.1K tokens loaded into every session).
+Roughly 40% of its FFI section was adoption narrative spanning nine nightly
+dates, including ~30 explicitly superseded paragraphs — so an agent had to
+re-derive "does this still apply?" on every task.
+
+The split is by tense, not by relevance: CLAUDE.md states what to write today;
+[`docs/toolchain-migrations.md`](docs/toolchain-migrations.md) holds when each
+change was adopted and what broke. Every DO-NOT warning and the full
+origin/keep-alive rules stayed behind.
+
+### Added
+
+- `@napi-mojo/linux-arm64` prebuilt platform package.
+- `docs/api/` — generated framework API reference (19 modules), with
+  `npm run generate:api-reference` and a CI drift gate.
+- `scripts/platforms.mjs` + `scripts/check-platforms.mjs` — one platform
+  declaration, six consumers, gated.
+- `docs/toolchain-migrations.md` — the dated migration record.
+- `docs/TUTORIAL.md` and `docs/EXPORTS.md` are now **published to npm**. The
+  README linked to the tutorial as a relative path, which was dead in
+  `node_modules` and on npmjs.com.
+- 149 docstrings across the consumer-facing core.
+- `pixi.toml` in the `init` scaffold, and in the published package (the CLI
+  reads its `max` pin from there).
+
+### Changed
+
+- `examples/hello-addon.mojo` and the `init` scaffold throw from every
+  `except:` block instead of returning a null napi_value.
+- CI drops `node_modules/@napi-mojo` after `npm ci`, so it tests the binary the
+  commit built rather than the last published one. `demo.js` prefers an
+  installed platform package, so without this a regression in the fresh build
+  could be masked by the previous release.
+- `.vscode/settings.json` is now committed — it is a shared cSpell dictionary
+  of this project's jargon, not personal preference.
+
+### Note on risk
+
+`src/` gained docstrings only; no signature changed, so downstream addons
+compile unmodified.
+
+The publish pipeline itself changed materially this cycle — a third build
+matrix entry, an explicit `patchelf` step, and staging/verification loops in
+place of hardcoded platform lists. It was exercised end to end through
+`publish.yml`'s `workflow_dispatch` rehearsal, which built all three platforms
+and verified all three tarballs. **`@napi-mojo/linux-arm64` has never been
+pushed to the registry**, so this release is the first real test of that path;
+the tarball-contents check runs on an x64 runner and cannot execute the arm64
+binary, though the arm64 build job does execute its own bundled binary with the
+library search paths cleared.
+
+The deferred FFI signature flip (`raw.mojo`'s 143 literal
+`OpaquePointer[MutAnyOrigin]` type expressions) is **not** in this release.
+
 ## 0.12.0 — 2026-08-20
 
 **The per-callback dlsym is gone.** Against napi-rs on identical workloads,
