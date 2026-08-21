@@ -3,7 +3,7 @@ authors = ["Wm Talcott <wtalcott@gmail.com>"]
 channels = ["conda-forge", "https://conda.modular.com/max/"]
 name = "napi-mojo"
 platforms = ["osx-arm64", "linux-64", "linux-aarch64"]
-version = "0.12.0"
+version = "0.13.0"
 
 [tasks]
 # WARNING: this rewrites only the `max = ` line, NOT the channel. Since the
