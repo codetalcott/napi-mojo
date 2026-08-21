@@ -59,8 +59,20 @@ jobs:
         with:
           pixi-version: latest
 
+      # --omit=optional is load-bearing, not tidiness. The optionalDependencies
+      # are the PUBLISHED platform binaries, and demo.js prefers an installed
+      # platform package over build/index.node — so a plain `npm ci` makes CI
+      # resolve the registry's binary for this version instead of the one this
+      # commit just built. A regression in the fresh build would be masked by
+      # the last good release. That is the shape of the incident already on
+      # record here: a lockfile reading 0.6.0 whose `resolved` still pointed at
+      # the 0.2.10 tarball, with three suites testing a stale registry binary.
+      #
+      # Nothing in this repo needs those packages — the addon is built from
+      # source. The platform-package resolution path is covered where it
+      # actually matters, in publish.yml's tarball verification.
       - name: Install Node.js dependencies
-        run: npm ci
+        run: npm ci --omit=optional
 
       - name: Build Mojo addon
         run: pixi run bash build.sh

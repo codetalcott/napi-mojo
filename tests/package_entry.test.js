@@ -40,4 +40,28 @@ describe('package entry: napi-mojo/demo (compiled demo addon)', () => {
     expect(demo.hello()).toBe('Hello from Mojo!');
     expect(demo.add(2, 3)).toBe(5);
   });
+
+  // CI installs with --omit=optional so this file exercises the binary this
+  // commit BUILT, not the last published one. That flag is easy to drop, and
+  // dropping it is silent: demo.js prefers an installed platform package, the
+  // assertions above still pass against a stale release, and a regression in
+  // the fresh build gets masked by it.
+  //
+  // Comparing the export SETS is what makes that visible. Any change to
+  // src/exports.toml or src/addon/ moves the fresh build's surface away from
+  // the published one, so a shadowing install fails here with a readable diff
+  // instead of quietly testing the wrong artifact.
+  test('resolves the freshly built addon, not a published one', () => {
+    const built = require('../build/index.node');
+    const demo = require('../demo.js');
+    // getOwnPropertyNames, NOT Object.keys. napi_define_properties creates
+    // non-enumerable properties by default, so Object.keys sees 5 of the 158
+    // exports — the five classes — and would compare almost nothing.
+    const names = (m) => Object.getOwnPropertyNames(m).sort();
+    const built_ = names(built);
+    const demo_ = names(demo);
+    expect(built_.length).toBeGreaterThan(100);
+    expect(demo_.filter((n) => !built_.includes(n))).toEqual([]);
+    expect(built_.filter((n) => !demo_.includes(n))).toEqual([]);
+  });
 });

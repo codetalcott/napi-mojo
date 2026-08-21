@@ -26,8 +26,23 @@ concurrency:
 jobs:
   test:
     strategy:
+      # ubuntu-24.04-arm builds the third prebuild platform (linux-arm64).
+      # Before this, the first real aarch64 build of any change happened in the
+      # release pipeline — which is the same "the only way to find out is to cut
+      # a release and watch" problem publish.yml's workflow_dispatch rehearsal
+      # exists to solve, just moved one step later.
+      #
+      # PR-only, like ubuntu-latest: a push to main runs macOS alone, so the
+      # required checks stay satisfiable on a direct push (see the note at the
+      # top of this file about paths-ignore and required checks). `test
+      # (ubuntu-24.04-arm)` is a NEW check name, so it does not rename or
+      # invalidate the two required ones.
+      #
+      # fail-fast is off so an arm64-only failure still lets macOS and x64
+      # report — otherwise one platform's break hides whether the others work.
+      fail-fast: false
       matrix:
-        os: ${{ github.event_name == 'pull_request' && fromJSON('["macos-latest", "ubuntu-latest"]') || fromJSON('["macos-latest"]') }}
+        os: ${{ github.event_name == 'pull_request' && fromJSON('["macos-latest", "ubuntu-latest", "ubuntu-24.04-arm"]') || fromJSON('["macos-latest"]') }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -43,8 +58,20 @@ jobs:
         with:
           pixi-version: latest
 
+      # --omit=optional is load-bearing, not tidiness. The optionalDependencies
+      # are the PUBLISHED platform binaries, and demo.js prefers an installed
+      # platform package over build/index.node — so a plain `npm ci` makes CI
+      # resolve the registry's binary for this version instead of the one this
+      # commit just built. A regression in the fresh build would be masked by
+      # the last good release. That is the shape of the incident already on
+      # record here: a lockfile reading 0.6.0 whose `resolved` still pointed at
+      # the 0.2.10 tarball, with three suites testing a stale registry binary.
+      #
+      # Nothing in this repo needs those packages — the addon is built from
+      # source. The platform-package resolution path is covered where it
+      # actually matters, in publish.yml's tarball verification.
       - name: Install Node.js dependencies
-        run: npm ci
+        run: npm ci --omit=optional
 
       # The release surface spans five files (root package.json + its
       # optionalDependencies, two platform package.jsons, package-lock.json,
@@ -394,7 +421,7 @@ jobs:
           pixi-version: latest
 
       - name: Install Node.js dependencies
-        run: npm ci
+        run: npm ci --omit=optional
 
       - name: Build Mojo addon
         run: pixi run bash build.sh
@@ -423,7 +450,7 @@ jobs:
           pixi-version: latest
 
       - name: Install Node.js dependencies
-        run: npm ci
+        run: npm ci --omit=optional
 
       - name: Build Mojo addon
         run: pixi run bash build.sh
@@ -525,7 +552,7 @@ jobs:
           pixi-version: latest
 
       - name: Install Node.js dependencies
-        run: npm ci
+        run: npm ci --omit=optional
 
       - name: Build Mojo addon
         run: pixi run bash build.sh
