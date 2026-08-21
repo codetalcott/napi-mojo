@@ -51,12 +51,23 @@ describe('napi-mojo CLI', () => {
     const proj = path.join(dir, 'proj');
     const res = run(['init', proj]);
     expect(res.status).toBe(0);
-    for (const f of ['exports.toml', 'fns.mojo', 'lib.mojo', '.gitignore', 'README.md']) {
+    for (const f of ['exports.toml', 'fns.mojo', 'lib.mojo', '.gitignore', 'README.md', 'pixi.toml']) {
       expect(existsSync(path.join(proj, f))).toBe(true);
     }
     expect(readFileSync(path.join(proj, 'lib.mojo'), 'utf8')).toContain(
       'napi_register_module_v1'
     );
+  });
+
+  test('scaffolded pixi.toml pins the same max as the framework', () => {
+    const proj = path.join(dir, 'pinproj');
+    expect(run(['init', proj]).status).toBe(0);
+    const pinOf = (t) => /^\s*max\s*=\s*"([^"]+)"/m.exec(t)?.[1];
+    const framework = pinOf(
+      readFileSync(path.join(__dirname, '..', 'pixi.toml'), 'utf8')
+    );
+    expect(framework).toBeTruthy();
+    expect(pinOf(readFileSync(path.join(proj, 'pixi.toml'), 'utf8'))).toBe(framework);
   });
 
   test('init refuses a non-empty directory without --force', () => {

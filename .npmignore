@@ -13,7 +13,10 @@
 spike/
 build/
 build.sh
-pixi.toml
+# pixi.toml IS published (see package.json "files", which takes precedence over
+# this file): `napi-mojo init` reads the `max` pin out of it so a scaffolded
+# project pins the exact toolchain this framework was tested against, instead
+# of duplicating the version into the CLI where it would drift.
 pixi.lock
 
 # Tests and benchmarks

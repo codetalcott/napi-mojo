@@ -1,14 +1,40 @@
-## src/napi/error.mojo — N-API error handling
-##
-## Provides `check_status()` which every N-API call must use after receiving
-## its NapiStatus return value. Satisfies the CONTRIBUTING.md requirement:
-## "Every N-API call returning napi_status must be immediately passed to
-## check_status()."
-##
-## check_status() raises a built-in `Error` carrying the status name from
-## `napi_status_name()`. There is no typed error struct: Mojo cannot raise
-## custom struct types, so one would only ever be constructed and stringified,
-## which is what the message already does.
+"""Status checking and JavaScript exception throwing.
+
+Two distinct jobs that are easy to confuse:
+
+- `check_status` turns a non-`napi_ok` status into a **Mojo** `Error`, so
+  the failure propagates up your Mojo call stack. Every N-API call that
+  returns a status must go through it.
+- The `throw_js_*` functions set a **pending JavaScript exception** on the
+  environment. They do not raise in Mojo and do not return a value.
+
+**A callback must do both.** Raising in Mojo unwinds to your `except:`
+block, but JavaScript learns nothing from that — so the `except:` block
+must call a `throw_js_*` before returning. Returning a null napi_value
+with no pending exception reaches JavaScript as `undefined`, turning a
+failure into a silently successful call:
+
+```mojo
+except:
+    throw_js_error(env, "myFunction failed")
+    return NapiValue(unsafe_from_address=Int(0))
+```
+
+Throwing while an exception is already pending is a documented N-API
+no-op, so an unconditional throw in `except:` is safe: an error that
+originated in JavaScript keeps its own identity and code.
+
+**Literal vs. dynamic.** The `StringLiteral` variants take a static,
+NUL-terminated `.rodata` message — the type enforces at compile time that
+only a literal is passed. Use the `_dynamic` variants for a computed
+message; they copy the String to keep it alive across the FFI call.
+
+**Overloads.** Each thrower exists twice: taking cached `Bindings`, and
+env-only. The env-only forms resolve the symbol per call, and exist
+precisely for `except:` blocks reached *because* fetching the bindings
+failed. Prefer the Bindings form everywhere else.
+"""
+
 
 from napi.types import NapiEnv, NapiStatus, NAPI_OK
 from napi.bindings import Bindings
@@ -28,6 +54,17 @@ from napi.raw import (
 # up the napi_status enum.
 # ---------------------------------------------------------------------------
 def napi_status_name(status: NapiStatus) -> String:
+    """Human-readable name for a napi_status code.
+
+    Turns an opaque integer into the spelling used in the N-API docs, e.g.
+    `napi_string_expected`, which is what makes a raised error legible.
+
+    Args:
+        status: The status code returned by an N-API call.
+
+    Returns:
+        The status name, or a generic label for an unknown code.
+    """
     if status == 0:
         return "napi_ok"
     if status == 1:
@@ -91,6 +128,21 @@ def napi_status_name(status: NapiStatus) -> String:
 #   check_status(status)
 # ---------------------------------------------------------------------------
 def check_status(status: NapiStatus) raises:
+    """Raise a Mojo Error unless the status is `napi_ok`.
+
+    The single funnel for N-API failures. Call it on the result of every
+    N-API call that returns a status, immediately.
+
+    Note this raises in **Mojo** only — it does not set a pending JavaScript
+    exception. A callback still has to throw one from its `except:` block.
+
+    Args:
+        status: The status code returned by an N-API call.
+
+    Raises:
+        If status is anything other than napi_ok; the message is
+            the name from `napi_status_name`.
+    """
     if status != NAPI_OK:
         raise Error(napi_status_name(status))
 
@@ -110,6 +162,21 @@ def check_status(status: NapiStatus) raises:
 #   return NapiValue(unsafe_from_address=Int(0))
 # ---------------------------------------------------------------------------
 def throw_js_error(env: NapiEnv, msg: StringLiteral):
+    """Set a pending JavaScript `Error` with a static literal message.
+
+    The StringLiteral parameter type enforces at compile time
+    that only a static, NUL-terminated message is passed.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     try:
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
         var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().unsafe_bitcast[
@@ -137,6 +204,20 @@ def throw_js_error(env: NapiEnv, msg: StringLiteral):
 #   return NapiValue(unsafe_from_address=Int(0))
 # ---------------------------------------------------------------------------
 def throw_js_error_dynamic(env: NapiEnv, msg: String):
+    """Set a pending JavaScript `Error` with a computed String message.
+
+    The String is copied so it stays alive across the FFI call.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     try:
         var msg_copy = msg  # owns the heap String bytes
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
@@ -153,6 +234,21 @@ def throw_js_error_dynamic(env: NapiEnv, msg: String):
 # throw_js_type_error — set a pending JavaScript TypeError exception
 # ---------------------------------------------------------------------------
 def throw_js_type_error(env: NapiEnv, msg: StringLiteral):
+    """Set a pending JavaScript `TypeError` with a static literal message.
+
+    The StringLiteral parameter type enforces at compile time
+    that only a static, NUL-terminated message is passed.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     try:
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
         var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().unsafe_bitcast[
@@ -164,6 +260,20 @@ def throw_js_type_error(env: NapiEnv, msg: StringLiteral):
 
 
 def throw_js_type_error_dynamic(env: NapiEnv, msg: String):
+    """Set a pending JavaScript `TypeError` with a computed String message.
+
+    The String is copied so it stays alive across the FFI call.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     try:
         var msg_copy = msg
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
@@ -180,6 +290,21 @@ def throw_js_type_error_dynamic(env: NapiEnv, msg: String):
 # throw_js_range_error — set a pending JavaScript RangeError exception
 # ---------------------------------------------------------------------------
 def throw_js_range_error(env: NapiEnv, msg: StringLiteral):
+    """Set a pending JavaScript `RangeError` with a static literal message.
+
+    The StringLiteral parameter type enforces at compile time
+    that only a static, NUL-terminated message is passed.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     try:
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
         var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().unsafe_bitcast[
@@ -191,6 +316,20 @@ def throw_js_range_error(env: NapiEnv, msg: StringLiteral):
 
 
 def throw_js_range_error_dynamic(env: NapiEnv, msg: String):
+    """Set a pending JavaScript `RangeError` with a computed String message.
+
+    The String is copied so it stays alive across the FFI call.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     try:
         var msg_copy = msg
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
@@ -209,6 +348,21 @@ def throw_js_range_error_dynamic(env: NapiEnv, msg: String):
 
 
 def throw_js_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
+    """Set a pending JavaScript `Error` with a static literal message.
+
+    The StringLiteral parameter type enforces at compile time
+    that only a static, NUL-terminated message is passed.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().unsafe_bitcast[
         NoneType
@@ -217,6 +371,20 @@ def throw_js_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
 
 
 def throw_js_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
+    """Set a pending JavaScript `Error` with a computed String message.
+
+    The String is copied so it stays alive across the FFI call.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().unsafe_bitcast[
@@ -227,6 +395,21 @@ def throw_js_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
 
 
 def throw_js_type_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
+    """Set a pending JavaScript `TypeError` with a static literal message.
+
+    The StringLiteral parameter type enforces at compile time
+    that only a static, NUL-terminated message is passed.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().unsafe_bitcast[
         NoneType
@@ -235,6 +418,20 @@ def throw_js_type_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
 
 
 def throw_js_type_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
+    """Set a pending JavaScript `TypeError` with a computed String message.
+
+    The String is copied so it stays alive across the FFI call.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().unsafe_bitcast[
@@ -245,6 +442,21 @@ def throw_js_type_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
 
 
 def throw_js_range_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
+    """Set a pending JavaScript `RangeError` with a static literal message.
+
+    The StringLiteral parameter type enforces at compile time
+    that only a static, NUL-terminated message is passed.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().unsafe_bitcast[
         NoneType
@@ -253,6 +465,20 @@ def throw_js_range_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
 
 
 def throw_js_range_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
+    """Set a pending JavaScript `RangeError` with a computed String message.
+
+    The String is copied so it stays alive across the FFI call.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().unsafe_bitcast[
@@ -268,6 +494,21 @@ def throw_js_range_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
 # Uses node_api_throw_syntax_error (node_api_ prefix, N-API v9).
 # ---------------------------------------------------------------------------
 def throw_js_syntax_error(env: NapiEnv, msg: StringLiteral):
+    """Set a pending JavaScript `SyntaxError` with a static literal message.
+
+    The StringLiteral parameter type enforces at compile time
+    that only a static, NUL-terminated message is passed.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     try:
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
         var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().unsafe_bitcast[
@@ -279,6 +520,20 @@ def throw_js_syntax_error(env: NapiEnv, msg: StringLiteral):
 
 
 def throw_js_syntax_error_dynamic(env: NapiEnv, msg: String):
+    """Set a pending JavaScript `SyntaxError` with a computed String message.
+
+    The String is copied so it stays alive across the FFI call.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     try:
         var msg_copy = msg
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
@@ -294,6 +549,21 @@ def throw_js_syntax_error_dynamic(env: NapiEnv, msg: String):
 
 
 def throw_js_syntax_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
+    """Set a pending JavaScript `SyntaxError` with a static literal message.
+
+    The StringLiteral parameter type enforces at compile time
+    that only a static, NUL-terminated message is passed.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg.unsafe_ptr().unsafe_bitcast[
         NoneType
@@ -302,6 +572,20 @@ def throw_js_syntax_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
 
 
 def throw_js_syntax_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
+    """Set a pending JavaScript `SyntaxError` with a computed String message.
+
+    The String is copied so it stays alive across the FFI call.
+
+    Does not raise in Mojo and does not return a value — the exception
+    surfaces when control returns to JavaScript. A no-op if an exception
+    is already pending, so calling it unconditionally in an `except:`
+    block is safe.
+
+    Args:
+        b: Cached N-API bindings (Bindings overload only).
+        env: The N-API environment.
+        msg: The error message.
+    """
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
     var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().unsafe_bitcast[

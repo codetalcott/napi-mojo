@@ -13,10 +13,12 @@ CI generates, compiles and calls both on macOS and Linux on every pull request
 — so a snippet that stops working fails the build instead of quietly misleading
 you.
 
-**Prerequisites:** Node.js 22.12 or newer (N-API v10), and the Mojo toolchain —
-either [pixi](https://pixi.sh) with a `pixi.toml` in scope, or `mojo` on your
-`PATH`. Installing napi-mojo's own prebuilt demo needs no Mojo; building *your*
-addon does.
+**Prerequisites:** Node.js 22.12 or newer (N-API v10), and a way to get the
+Mojo compiler. The simplest is [pixi](https://pixi.sh): `napi-mojo init`
+scaffolds a `pixi.toml` pinned to the Mojo version napi-mojo is tested against,
+and the build provisions it for you. If you already have `mojo` on your `PATH`,
+delete that file and it will be used instead. Installing napi-mojo's own
+prebuilt demo needs no Mojo at all; building *your* addon does.
 
 ## 1. Scaffold
 
@@ -31,12 +33,17 @@ You get:
 exports.toml    what JavaScript sees — functions, structs, classes
 fns.mojo        your logic, in pure Mojo. No N-API here.
 lib.mojo        the entry point. You will not need to edit it.
+pixi.toml       pins the Mojo toolchain. Delete it to use `mojo` from PATH.
 ```
 
 `lib.mojo` is the only file that touches N-API directly: it resolves all 142
 N-API symbols once into a `NapiBindings` struct, hands that to the generated
-callbacks, and registers them. If symbol resolution fails — an old Node, say —
-it throws from `require()` instead of returning an empty object.
+callbacks, and registers them. Both of its failure paths throw from
+`require()` rather than returning a half-built module: symbol resolution
+failing (an old Node, say) and registration failing. That is the rule for
+every callback you write too — an `except:` block must throw before it
+returns, because a null return with no pending exception reaches JavaScript
+as `undefined`, not as an error.
 
 ## 2. Generate, build, run
 
@@ -46,6 +53,9 @@ npx napi-mojo build                       # lib.mojo    -> build/index.node
 node -e "console.log(require('./build/index.node').greet('world'))"
 # Hello, world!
 ```
+
+The first `build` downloads the pinned Mojo toolchain, so it takes a few
+minutes; later builds reuse it and take seconds.
 
 `generate` writes `generated/callbacks.mojo` (the N-API trampolines) and
 `generated/structs.mojo`. Both are derived — regenerate them, don't edit them,
@@ -382,6 +392,9 @@ toolchain.
 
 ## Where to go next
 
+- **[docs/api/](api/)** — the framework API reference, generated from the Mojo
+  docstrings: `JsObject`, `CbArgs`, the error helpers, and the rest of the
+  surface a hand-written callback calls into.
 - **[README — Code Generator](../README.md#code-generator)** — the full token
   and declaration reference.
 - **[docs/EXPORTS.md](EXPORTS.md)** — every export of the demo addon, which is

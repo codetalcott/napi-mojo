@@ -78,9 +78,17 @@ node scripts/check-docstring-coverage.mjs --update   # rewrite the floor, then c
 
 `src/napi/raw.mojo` is deliberately out of scope: its 147 thin FFI wrappers are an implementation detail, and a docstring on each would only restate the N-API name.
 
+**Docstrings feed a checked-in artifact.** `docs/api/` is rendered from them by `npm run generate:api-reference`, so adding or editing one makes that directory stale and CI fails on `npm run check:api-reference`. Regenerate and commit the result in the same change — the same lockstep rule `src/generated/` has, for the same reason.
+
+A module is only rendered once 75% of its public symbols are documented; below that the index lists it with its ratio and links to source. That threshold is the point of the reference — `docs/plan-api-reference.md` measured that a reference of bare signatures is worse than none, because it looks complete and says nothing. Do not lower it to get a module listed.
+
 ### Toolchain and Imports (Mojo 1.0.0 stable)
 
-The pin lives in `pixi.toml` and is part of the public contract (downstream packages compile against the published `src/`). Stdlib imports use the `std.` prefix:
+The pin lives in `pixi.toml` and is part of the public contract (downstream packages compile against the published `src/`).
+
+Bumping it? Read [docs/toolchain-migrations.md](docs/toolchain-migrations.md) first — it holds the upgrade runbook, the changelog-diffing recipe, and the dated record of every API migration this codebase has been through. The operative rules for writing code today are in CLAUDE.md under "Mojo dialect and FFI rules".
+
+Stdlib imports use the `std.` prefix:
 
 ```mojo
 from std.ffi import OwnedDLHandle

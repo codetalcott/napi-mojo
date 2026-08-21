@@ -153,6 +153,15 @@ jobs:
       - name: Docstring coverage (ratchet)
         run: node scripts/check-docstring-coverage.mjs
 
+      # docs/api/ is generated from those same docstrings and checked in, so it
+      # can drift from its source exactly the way src/generated/ could — and for
+      # the same reason: nothing in `npm run build` regenerates it. This is the
+      # `git diff --exit-code` equivalent for the reference. It reuses the doc
+      # target list from scripts/doc-targets.mjs, so the gate above and the
+      # reference cannot disagree about which modules are in scope.
+      - name: API reference is up to date
+        run: node scripts/generate-api-reference.mjs --check
+
       # A fourth lazily-checked thing: the exported-function table and the
       # counts embedded in prose. CLAUDE.md already warned that "nothing
       # updates numbers embedded in prose", and the count went stale within a
