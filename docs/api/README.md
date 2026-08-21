@@ -12,10 +12,12 @@ addon's own exports are listed separately in [EXPORTS.md](../EXPORTS.md).
 | module | symbols documented |
 |---|---|
 | [`args`](args.md) | 48 / 48 |
+| [`convert`](convert.md) | 35 / 35 |
 | [`error`](error.md) | 18 / 18 |
 | [`instance_data`](instance_data.md) | 2 / 2 |
 | [`js_array`](js_array.md) | 9 / 9 |
 | [`js_boolean`](js_boolean.md) | 5 / 5 |
+| [`js_class`](js_class.md) | 16 / 16 |
 | [`js_coerce`](js_coerce.md) | 4 / 4 |
 | [`js_function`](js_function.md) | 12 / 12 |
 | [`js_host`](js_host.md) | 10 / 10 |
@@ -39,14 +41,12 @@ each carries a module header comment with usage examples.
 |---|---|
 | [`async_work.mojo`](../../src/napi/framework/async_work.mojo) | 0 / 10 |
 | [`callback_scope.mojo`](../../src/napi/framework/callback_scope.mojo) | 0 / 5 |
-| [`convert.mojo`](../../src/napi/framework/convert.mojo) | 0 / 35 |
 | [`escapable_handle_scope.mojo`](../../src/napi/framework/escapable_handle_scope.mojo) | 0 / 6 |
 | [`handle_scope.mojo`](../../src/napi/framework/handle_scope.mojo) | 1 / 6 |
 | [`js_arraybuffer.mojo`](../../src/napi/framework/js_arraybuffer.mojo) | 0 / 10 |
 | [`js_async_context.mojo`](../../src/napi/framework/js_async_context.mojo) | 0 / 8 |
 | [`js_bigint.mojo`](../../src/napi/framework/js_bigint.mojo) | 0 / 10 |
 | [`js_buffer.mojo`](../../src/napi/framework/js_buffer.mojo) | 0 / 10 |
-| [`js_class.mojo`](../../src/napi/framework/js_class.mojo) | 0 / 16 |
 | [`js_dataview.mojo`](../../src/napi/framework/js_dataview.mojo) | 0 / 9 |
 | [`js_date.mojo`](../../src/napi/framework/js_date.mojo) | 0 / 6 |
 | [`js_exception.mojo`](../../src/napi/framework/js_exception.mojo) | 0 / 5 |
