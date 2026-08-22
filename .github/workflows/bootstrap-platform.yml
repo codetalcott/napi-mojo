@@ -1,0 +1,181 @@
+name: Bootstrap platform package (one-off)
+
+# TEMPORARY. Delete once @napi-mojo/linux-arm64 exists on npm.
+#
+# WHY THIS EXISTS. npm's OIDC trusted publishing cannot BOOTSTRAP a package: it
+# matches a per-package trusted publisher configured on npmjs.com, and a
+# package that has never been published has nothing to match against. The
+# 0.13.0 release hit exactly this — the linux-arm64 publish failed with
+# `E404 ... PUT`, which for a scoped package is an authorization failure
+# wearing a disguise, after all three platform builds had already run.
+#
+# So the FIRST publish of a new platform package has to authenticate some other
+# way. This workflow does that once, with the NPM_TOKEN already stored in the
+# `npm` environment, and is then deleted. Every later release of that package
+# goes over OIDC through publish.yml like the other two.
+#
+# WHY IT BUILDS RATHER THAN PUBLISHING npm/<platform> DIRECTLY. That directory
+# holds only package.json — the .node and the runtime libraries are staged into
+# it from build artifacts. Publishing it as-is would irreversibly burn version
+# 0.13.0 on a package containing no binary at all. So this rebuilds the
+# platform natively and reuses publish.yml's self-containment check before
+# pushing anything.
+#
+# publish.yml is deliberately NOT modified: its no-token, OIDC-only design is a
+# considered decision (a present token can take precedence over the OIDC path
+# and put you back on the 90-day expiry treadmill that broke v0.5.0).
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform key (must match a directory under npm/)'
+        required: true
+        default: 'linux-arm64'
+      runner:
+        description: 'Runner that can build it natively'
+        required: true
+        default: 'ubuntu-24.04-arm'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.platform }}
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    runs-on: ${{ inputs.runner }}
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install pixi
+        uses: prefix-dev/setup-pixi@v0.10.1
+        with:
+          pixi-version: latest
+
+      # Refuse to run if the package already exists. This workflow exists only
+      # to create one; re-running it against an existing package would be a
+      # token-authenticated publish bypassing the OIDC path, which is exactly
+      # what publish.yml's design avoids.
+      - name: Refuse if the package already exists
+        run: |
+          set -euo pipefail
+          pkg="@napi-mojo/${{ inputs.platform }}"
+          if npm view "$pkg" version >/dev/null 2>&1; then
+            echo "::error::$pkg already exists ($(npm view "$pkg" version)). This workflow is for bootstrapping only — use publish.yml, and delete this file."
+            exit 1
+          fi
+          echo "$pkg does not exist yet; proceeding to bootstrap it."
+
+      - name: Install Node.js dependencies
+        run: |
+          npm ci
+          rm -rf node_modules/@napi-mojo
+
+      - name: Build Mojo addon
+        run: pixi run bash build.sh
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run GC finalizer tests
+        run: npm run test:gc
+
+      - name: Ensure patchelf (Linux)
+        if: runner.os == 'Linux'
+        run: command -v patchelf || (sudo apt-get update && sudo apt-get install -y patchelf)
+
+      - name: Bundle runtime libraries
+        run: pixi run bash scripts/bundle-runtime.sh
+
+      # Same check publish.yml runs. Publishing an unverified bundle would burn
+      # the version number irreversibly, and a botched rpath rewrite is silent:
+      # asyncRuntimeInitOk() returning false costs every consumer all thread
+      # parallelism with no error anywhere.
+      - name: Verify bundled binary is self-contained
+        run: |
+          set -euo pipefail
+          test -s build/bundled-libs.txt \
+            || { echo "::error::bundle-runtime.sh produced no manifest"; exit 1; }
+          rm -rf /tmp/selfcontained && mkdir -p /tmp/selfcontained
+          cp build/index.node /tmp/selfcontained/
+          while read -r lib; do
+            [ -n "$lib" ] || continue
+            test -f "build/${lib}" \
+              || { echo "::error::manifest lists ${lib} but build/ does not have it"; exit 1; }
+            cp "build/${lib}" /tmp/selfcontained/
+          done < build/bundled-libs.txt
+          env -u DYLD_LIBRARY_PATH -u DYLD_FALLBACK_LIBRARY_PATH -u LD_LIBRARY_PATH \
+            node -e "
+              const a = require('/tmp/selfcontained/index.node');
+              if (a.hello() !== 'Hello from Mojo!') throw new Error('bad greeting: ' + a.hello());
+              if (a.asyncRuntimeInitOk() !== true) {
+                throw new Error('async runtime did not initialize from the bundled libraries');
+              }
+              console.log('bundled binary is self-contained');
+            "
+
+      - name: Stage the platform package
+        run: |
+          set -euo pipefail
+          dest="npm/${{ inputs.platform }}"
+          test -d "$dest" || { echo "::error::$dest does not exist"; exit 1; }
+          cp build/index.node "$dest/index.node"
+          while read -r lib; do
+            [ -n "$lib" ] || continue
+            cp "build/${lib}" "$dest/${lib}"
+          done < build/bundled-libs.txt
+          echo "staged: index.node + $(wc -l < build/bundled-libs.txt | tr -d ' ') libraries"
+
+      # Verify the TARBALL, not the directory — the npm `files` globs sit
+      # between the two, and a bare "*.so" silently drops versioned sonames.
+      # That has shipped here before.
+      - name: Verify the packed tarball
+        run: |
+          set -euo pipefail
+          dest="npm/${{ inputs.platform }}"
+          tgz="$(cd "$dest" && npm pack --silent)"
+          mkdir -p /tmp/packed
+          tar xzf "$dest/$tgz" -C /tmp/packed --strip-components=1
+          test -f /tmp/packed/index.node || { echo "::error::tarball has no index.node"; exit 1; }
+          while read -r lib; do
+            [ -n "$lib" ] || continue
+            test -f "/tmp/packed/$lib" \
+              || { echo "::error::tarball is missing $lib (files glob dropped it?)"; exit 1; }
+          done < build/bundled-libs.txt
+          env -u LD_LIBRARY_PATH node -e "
+            const a = require('/tmp/packed/index.node');
+            if (a.hello() !== 'Hello from Mojo!') throw new Error('packed binary broken');
+            if (a.asyncRuntimeInitOk() !== true) throw new Error('packed binary: async runtime dead');
+            console.log('packed tarball loads standalone');
+          "
+
+      # No --provenance here, deliberately: provenance is attested through the
+      # OIDC path, and this publish is token-authenticated precisely because
+      # OIDC cannot create the package. Releases after this one publish through
+      # publish.yml and do carry provenance.
+      - name: Publish (token auth, bootstrap only)
+        run: npm publish --access public
+        working-directory: npm/${{ inputs.platform }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Next steps
+        run: |
+          echo "Published @napi-mojo/${{ inputs.platform }}."
+          echo
+          echo "1. On npmjs.com, add its trusted publisher:"
+          echo "     repository codetalcott/napi-mojo, workflow publish.yml, environment npm"
+          echo "2. Re-run the failed release publish so the root package ships:"
+          echo "     gh run rerun --failed <run-id>"
+          echo "3. DELETE .github/workflows/bootstrap-platform.yml — it has done its job."
