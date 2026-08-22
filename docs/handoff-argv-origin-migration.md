@@ -5,7 +5,25 @@
 > step 1), and it defines the two populations this document depends on. Do not
 > start here.
 
-## State: step 1 is done, step 3 is what remains
+## State: step 1 done, step 3 PART done — 19 of 147 wrappers
+
+> **Update 2026-08-21.** Phase 1 of step 3 has landed: the **19 handle-only
+> wrappers** are flipped off `AnyOrigin`. They were chosen precisely because
+> they carry zero population-B exposure — every argument is a V8 handle already
+> aliased `MutUntrackedOrigin`, and nothing forms a pointer to a Mojo local, so
+> the widening calls were ceremony rather than load-bearing. Verified with the
+> whole stack below, Guard Malloc banner confirmed.
+>
+> **The 128 pointer-taking wrappers remain deferred**, and they are the real
+> work: they are the argv / in-out `argc` / output-slot path. Sizing note that
+> cost time to establish — the remainder is **~775 `MutAnyOrigin` occurrences
+> and ~493 `as_unsafe_any_origin()` sites across 40+ files**, not "143 type
+> expressions". The FFI type, the wrapper parameter and the caller's widening
+> are one chain; flipping the type alone relocates the cast and removes no
+> dependency on the implicit extension. Budget for batches of ~10 wrappers with
+> the full stack between each.
+
+## Step 1 is done, and step 3 is what remains
 
 The staged plan was: (1) add keep-alives with the FFI signatures unchanged,
 (2) prove the recipe in a spike, (3) flip the signatures off `AnyOrigin`.

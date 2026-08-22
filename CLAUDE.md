@@ -355,10 +355,27 @@ without that half the gate would stop being evidence.
 (derive it fresh with `scripts/derive-population-b.mjs` rather than trusting a
 number in a document — most are line-wrapped, so a same-line grep undercounts).
 19 had no tracked use after the FFI call and carry an explicit barrier; the
-other 228 are pinned by a real post-call use, usually `return`. **Still
-deferred, and the only part left: the FFI signature flip itself** —
-`raw.mojo`'s 143 literal `OpaquePointer[MutAnyOrigin]` type expressions. Every
-warning above applies to it in full. Background:
+other 228 are pinned by a real post-call use, usually `return`.
+
+**The signature flip is PART DONE and the rest is still deferred, deliberately.**
+Of `raw.mojo`'s 147 wrappers, the **19 handle-only ones are flipped** — every
+argument a V8 handle already aliased `MutUntrackedOrigin`, nothing anywhere
+forming a `Pointer(to=<local>)`, so there was no lifetime for `AnyOrigin` to
+extend and the widening calls were pure ceremony. The remaining **128 take a
+raw pointer parameter**, which is precisely the argv / in-out `argc` / output-slot
+path population B lives on; every warning above applies to those in full and
+they are NOT to be swept.
+
+**Do not size the rest from "143 type expressions."** That is the count of FFI
+type declarations, and they are not independent: the FFI type, the wrapper
+parameter and the caller's widening are one chain, so flipping the type without
+the callers only relocates the cast and removes no dependency on the implicit
+extension. Measured 2026-08-21, the remainder is ~775 `MutAnyOrigin`
+occurrences and ~493 `as_unsafe_any_origin()` sites across 40+ files in `src/`,
+plus `examples/`, `spike/`, `tests/compile/` and the code generator. It is
+elective — there is no upstream forcing function (see below) — and it wants
+batches of ~10 wrappers with the full verification stack between each, not
+momentum. Background:
 [`docs/plan-origin-migration.md`](docs/plan-origin-migration.md) and
 [`docs/handoff-argv-origin-migration.md`](docs/handoff-argv-origin-migration.md).
 
