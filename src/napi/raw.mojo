@@ -362,9 +362,9 @@ def raw_set_element(
     value: NapiValue,
 ) -> NapiStatus:
     var f = Pointer(to=b[].set_element).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], UInt32, OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin], UInt32, OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), object.as_unsafe_any_origin(), index, value.as_unsafe_any_origin())
+    return f(env, object, index, value)
 
 
 def raw_get_element(
@@ -496,9 +496,9 @@ def raw_close_handle_scope(
     scope: NapiHandleScope,
 ) -> NapiStatus:
     var f = Pointer(to=b[].close_handle_scope).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), scope.as_unsafe_any_origin())
+    return f(env, scope)
 
 
 def raw_create_promise(
@@ -527,9 +527,9 @@ def raw_resolve_deferred(
     resolution: NapiValue,
 ) -> NapiStatus:
     var f = Pointer(to=b[].resolve_deferred).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), deferred.as_unsafe_any_origin(), resolution.as_unsafe_any_origin())
+    return f(env, deferred, resolution)
 
 
 def raw_reject_deferred(
@@ -539,9 +539,9 @@ def raw_reject_deferred(
     rejection: NapiValue,
 ) -> NapiStatus:
     var f = Pointer(to=b[].reject_deferred).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), deferred.as_unsafe_any_origin(), rejection.as_unsafe_any_origin())
+    return f(env, deferred, rejection)
 
 
 def raw_create_error(
@@ -597,9 +597,9 @@ def raw_queue_async_work(
     work: NapiAsyncWork,
 ) -> NapiStatus:
     var f = Pointer(to=b[].queue_async_work).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), work.as_unsafe_any_origin())
+    return f(env, work)
 
 
 def raw_delete_async_work(
@@ -608,9 +608,9 @@ def raw_delete_async_work(
     work: NapiAsyncWork,
 ) -> NapiStatus:
     var f = Pointer(to=b[].delete_async_work).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), work.as_unsafe_any_origin())
+    return f(env, work)
 
 
 def raw_create_int32(
@@ -839,9 +839,9 @@ def raw_detach_arraybuffer(
     arraybuffer: NapiValue,
 ) -> NapiStatus:
     var f = Pointer(to=b[].detach_arraybuffer).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), arraybuffer.as_unsafe_any_origin())
+    return f(env, arraybuffer)
 
 
 def raw_create_buffer(
@@ -1134,9 +1134,9 @@ def raw_delete_reference(
     napi_ref: NapiRef,
 ) -> NapiStatus:
     var f = Pointer(to=b[].delete_reference).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), napi_ref.as_unsafe_any_origin())
+    return f(env, napi_ref)
 
 
 def raw_reference_ref(
@@ -1198,9 +1198,9 @@ def raw_close_escapable_handle_scope(
     scope: NapiEscapableHandleScope,
 ) -> NapiStatus:
     var f = Pointer(to=b[].close_escapable_handle_scope).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), scope.as_unsafe_any_origin())
+    return f(env, scope)
 
 
 def raw_escape_handle(
@@ -1441,10 +1441,17 @@ def raw_object_freeze(
     env: NapiEnv,
     object: NapiValue,
 ) -> NapiStatus:
+    # PILOT of the population-B signature flip (docs/handoff-argv-origin-migration.md).
+    # Every argument here is a V8-owned handle whose storage alias is already
+    # MutUntrackedOrigin, and nothing in this wrapper forms a pointer to a Mojo
+    # local — so there is no lifetime for AnyOrigin to have been extending, and
+    # the widening calls were pure ceremony.
     var f = Pointer(to=b[].object_freeze).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(
+            OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]
+        ) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), object.as_unsafe_any_origin())
+    return f(env, object)
 
 
 def raw_object_seal(
@@ -1453,9 +1460,9 @@ def raw_object_seal(
     object: NapiValue,
 ) -> NapiStatus:
     var f = Pointer(to=b[].object_seal).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), object.as_unsafe_any_origin())
+    return f(env, object)
 
 
 def raw_has_element(
@@ -1563,9 +1570,9 @@ def raw_acquire_threadsafe_function(
     func: NapiThreadsafeFunction,
 ) -> NapiStatus:
     var f = Pointer(to=b[].acquire_threadsafe_function).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(func.as_unsafe_any_origin())
+    return f(func)
 
 
 def raw_release_threadsafe_function(
@@ -1574,9 +1581,9 @@ def raw_release_threadsafe_function(
     mode: Int32,
 ) -> NapiStatus:
     var f = Pointer(to=b[].release_threadsafe_function).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], Int32) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], Int32) thin abi("C") -> NapiStatus
     ]()[]
-    return f(func.as_unsafe_any_origin(), mode)
+    return f(func, mode)
 
 
 # ---------------------------------------------------------------------------
@@ -1651,9 +1658,9 @@ def raw_set_property(
     value: NapiValue,
 ) -> NapiStatus:
     var f = Pointer(to=b[].set_property).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), object.as_unsafe_any_origin(), key.as_unsafe_any_origin(), value.as_unsafe_any_origin())
+    return f(env, object, key, value)
 
 
 def raw_has_property(
@@ -1677,9 +1684,9 @@ def raw_throw(
     error: NapiValue,
 ) -> NapiStatus:
     var f = Pointer(to=b[].throw_).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), error.as_unsafe_any_origin())
+    return f(env, error)
 
 
 def raw_is_exception_pending(
@@ -1951,9 +1958,9 @@ def raw_cancel_async_work(
     work: NapiAsyncWork,
 ) -> NapiStatus:
     var f = Pointer(to=b[].cancel_async_work).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), work.as_unsafe_any_origin())
+    return f(env, work)
 
 
 def raw_is_error(
@@ -2061,9 +2068,9 @@ def raw_fatal_exception(
     err: NapiValue,
 ) -> NapiStatus:
     var f = Pointer(to=b[].fatal_exception).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), err.as_unsafe_any_origin())
+    return f(env, err)
 
 
 def raw_type_tag_object(
@@ -2165,9 +2172,9 @@ def raw_async_destroy(
     async_context: NapiAsyncContext,
 ) -> NapiStatus:
     var f = Pointer(to=b[].async_destroy).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), async_context.as_unsafe_any_origin())
+    return f(env, async_context)
 
 
 ## raw_make_callback — wraps napi_make_callback (N-API v1)
@@ -2236,9 +2243,9 @@ def raw_close_callback_scope(
     scope: NapiCallbackScope,
 ) -> NapiStatus:
     var f = Pointer(to=b[].close_callback_scope).unsafe_bitcast[
-        def(OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]) thin abi("C") -> NapiStatus
+        def(OpaquePointer[MutUntrackedOrigin], OpaquePointer[MutUntrackedOrigin]) thin abi("C") -> NapiStatus
     ]()[]
-    return f(env.as_unsafe_any_origin(), scope.as_unsafe_any_origin())
+    return f(env, scope)
 
 
 ## raw_get_value_string_latin1 — wraps napi_get_value_string_latin1 (N-API v1)
