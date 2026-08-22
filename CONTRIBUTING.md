@@ -116,6 +116,24 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
 
 See `examples/hello-addon.mojo` for the full pattern, including the `NapiBindings` allocation that must precede `ModuleBuilder`.
 
+### Adding a prebuild platform
+
+`scripts/platforms.mjs` is the single declaration; `npm run check:platforms`
+verifies the six other places that name a platform agree with it, and CI runs
+it. Add the entry there first and let the gate tell you what else to touch.
+
+One thing the gate cannot fix for you: **the first publish of a new
+`@napi-mojo/<platform>` package must be done manually.** npm's OIDC trusted
+publishing matches a per-package configuration on npmjs.com, so it cannot
+create a package that does not exist yet — the publish fails with a misleading
+`E404 ... PUT`, which for a scoped package means "not authorized", not "not
+found". Publish it once with a token, add its trusted publisher (repository
+`codetalcott/napi-mojo`, workflow `publish.yml`, environment `npm`), and every
+later release goes over OIDC.
+
+`publish.yml`'s `preflight` job catches this before the builds run rather than
+after them.
+
 ## Interaction Protocol (for LLM Agents)
 
 - Present complete code first, then explanation.

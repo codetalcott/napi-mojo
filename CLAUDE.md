@@ -616,4 +616,22 @@ The target's first run surfaced **61** further latent errors across 18 files, al
 
 **Per-call overhead gate** (`benchmark` job, non-required, both OSes): `scripts/check-benchmark.mjs` runs `scripts/benchmark.mjs --json` and compares median ns/call against per-platform ceilings in `scripts/benchmark-ceilings.json`. Ceilings carry **4x headroom**, so it catches an order-of-magnitude regression — specifically a per-call `OwnedDLHandle()`+dlsym sneaking back onto the hot path, which is the thing cached `NapiBindings` exists to prevent and which nothing else in CI would notice — and explicitly *not* a 10% one. Every run prints observed/ceiling as a percentage so creep is visible while still passing. Reseed with `node scripts/check-benchmark.mjs --update` **on a runner of that platform** (the two platforms are not comparable). Non-required because a timing measurement must never block a merge.
 
+**Adding a prebuild platform costs one manual npm publish, once.** npm's OIDC
+trusted publishing cannot BOOTSTRAP a package — it matches a per-package
+trusted publisher configured on npmjs.com, and a package that has never been
+published has nothing to match. The first publish of a new
+`@napi-mojo/<platform>` must therefore be done another way (a granular token
+from a workstation), after which its trusted publisher is configured and every
+later release goes over OIDC like the others. The failure is disguised:
+`E404 ... PUT` for a scoped package is an *authorization* failure, because npm
+returns 404 rather than 401/403 so a stranger cannot probe which packages
+exist. This bit 0.13.0 — linux-arm64 failed at the last step, after all three
+platform builds, leaving two platform packages published at the new version
+and the root package still on the old one. `publish.yml`'s `preflight` job
+(`scripts/check-publishable.mjs`) now stops that in ~20 seconds instead;
+`workflow_dispatch` only warns, so the rehearsal stays usable while a new
+package waits on its first publish. **The platform set itself is gated
+separately** by `scripts/check-platforms.mjs` — that catches a platform missing
+from one of its seven declaration sites, which is a different failure.
+
 **Nightly Canary** runs Tue/Fri 22:00 UTC on `macos-latest` + `ubuntu-latest`, unpinning to `max = "*"` to catch breaking nightlies early. Dispatch it on demand with `gh workflow run nightly-canary.yml --ref main`; it accepts an optional `max_version` input for bisection probes. Green runs record the resolved version to the job summary — that, not the gitignored `.last-good-nightly`, is the portable record.
