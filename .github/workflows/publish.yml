@@ -23,7 +23,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Fail before spending three platform builds, not after.
+  #
+  # The 0.13.0 release failed at the very last step: @napi-mojo/linux-arm64 was
+  # a brand-new package, and npm's OIDC trusted publishing cannot BOOTSTRAP one
+  # — trusted publishing is configured per package on npmjs.com, and a package
+  # that has never been published has nothing to match against. The error was
+  # `E404 ... PUT`, which for a scoped package is an authorization failure
+  # wearing a disguise (npm returns 404 so a stranger cannot probe which
+  # packages exist).
+  #
+  # The cost was not the failure but the ORDER: two platform packages published
+  # at the new version, the third did not, and the root package's publish step
+  # never ran — a half-applied release needing a human to finish it. This job
+  # turns that into a 20-second stop before anything is pushed.
+  #
+  # Needs no npm credentials: `npm view` is a public read.
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      # A real release must stop; the workflow_dispatch rehearsal only warns,
+      # so the pipeline stays exercisable while a new platform package is still
+      # waiting on its first manual publish.
+      - name: Every target package can be published
+        run: node scripts/check-publishable.mjs ${{ github.event_name == 'release' && '' || '--warn' }}
+
   build:
+    needs: preflight
     strategy:
       # Keep in step with scripts/platforms.mjs (runner + key);
       # scripts/check-platforms.mjs fails CI if they drift.
