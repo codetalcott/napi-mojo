@@ -32,6 +32,16 @@
  * @property {string} condaSubdir the matching conda subdir in pixi.toml platforms
  * @property {string} runner     the GitHub Actions runner label that builds it
  * @property {string} libGlob    npm "files" glob for the bundled runtime libraries
+ * @property {string[]} licenseFiles  Licence texts this platform's tarball must
+ *   carry, relative to the repository root. Per-platform, like `license`: the
+ *   macOS package contains no GCC runtime, so shipping GPLv3 alongside a
+ *   declaration that does not mention it would be misleading, not thorough.
+ * @property {string} license    SPDX expression covering EVERYTHING in the tarball.
+ *   Not "MIT": the prebuilt packages ship third-party runtime libraries beside
+ *   index.node, and the declaration has to describe what is actually inside.
+ *   It differs per platform — the Linux packages carry GCC's libstdc++ and
+ *   libgcc_s, and the macOS one does not, because Mojo's runtime links the
+ *   system libc++ there. licenses/NOTICE.bundle.txt is the long form.
  * @property {boolean} nativelyTestableOnPublishRunner
  *   Whether the publish job (ubuntu x64) can EXECUTE this tarball, as opposed
  *   to only checking its contents against the bundler's manifest. Each platform
@@ -48,6 +58,8 @@ export const PLATFORMS = [
     condaSubdir: 'osx-arm64',
     runner: 'macos-latest',
     libGlob: '*.dylib*',
+    license: 'MIT AND Apache-2.0 WITH LLVM-exception',
+    licenseFiles: ['licenses/NOTICE.bundle.txt', 'licenses/LICENSE.mojo-runtime.txt'],
     nativelyTestableOnPublishRunner: false,
   },
   {
@@ -58,6 +70,13 @@ export const PLATFORMS = [
     condaSubdir: 'linux-64',
     runner: 'ubuntu-latest',
     libGlob: '*.so*',
+    license: 'MIT AND Apache-2.0 WITH LLVM-exception AND GPL-3.0-or-later WITH GCC-exception-3.1',
+    licenseFiles: [
+      'licenses/NOTICE.bundle.txt',
+      'licenses/LICENSE.mojo-runtime.txt',
+      'licenses/LICENSE.gcc-runtime-gpl3.txt',
+      'licenses/LICENSE.gcc-runtime-exception.txt',
+    ],
     nativelyTestableOnPublishRunner: true,
   },
   {
@@ -71,6 +90,13 @@ export const PLATFORMS = [
     // a self-hosted one, so check that before assuming this label works.
     runner: 'ubuntu-24.04-arm',
     libGlob: '*.so*',
+    license: 'MIT AND Apache-2.0 WITH LLVM-exception AND GPL-3.0-or-later WITH GCC-exception-3.1',
+    licenseFiles: [
+      'licenses/NOTICE.bundle.txt',
+      'licenses/LICENSE.mojo-runtime.txt',
+      'licenses/LICENSE.gcc-runtime-gpl3.txt',
+      'licenses/LICENSE.gcc-runtime-exception.txt',
+    ],
     nativelyTestableOnPublishRunner: false,
   },
 ];
@@ -80,6 +106,16 @@ export const PLATFORM_KEYS = PLATFORMS.map((p) => p.key).sort();
 
 /** The npm package names, sorted. */
 export const PLATFORM_PKGS = PLATFORMS.map((p) => p.pkg).sort();
+
+/**
+ * Every licence text any platform ships, deduplicated — what must exist in
+ * `licenses/`. Which subset a given tarball carries is `p.licenseFiles`.
+ * A tarball that declares a third-party licence and does not carry its text
+ * is not distributable.
+ */
+export const ALL_LICENSE_FILES = [
+  ...new Set(PLATFORMS.flatMap((p) => p.licenseFiles)),
+].sort();
 
 /** Relative paths to each platform package manifest. */
 export const PLATFORM_MANIFESTS = PLATFORMS.map((p) => `npm/${p.key}/package.json`).sort();
