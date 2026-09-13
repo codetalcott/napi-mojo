@@ -405,11 +405,27 @@ with no checkout and no toolchain**. That last job is the one that matters: a
 test run where the artifact was built passes even when the artifact only works
 there.
 
-One thing it cannot do for you. npm's trusted publishing matches a
-per-package publisher configured on npmjs.com, and a package that has never
-been published has nothing to match — so the first publish of each
-`<name>-<platform>` needs a granular token from your own machine. The command
-prints the exact lines. After that, every release goes over OIDC from CI.
+One step needs you. npm's trusted publishing matches a per-package publisher
+configured on npmjs.com, and a package that has never been published has
+nothing to match. So once, from your own machine:
+
+```bash
+npm login
+npx napi-mojo release --bootstrap   # add --dry-run to preview
+```
+
+That publishes a placeholder — version `0.0.0-bootstrap.0`, dist-tag
+`bootstrap` — for your package and each `<name>-<platform>`, skipping any that
+already exist. It deliberately does *not* publish `npm/<platform>/` as it
+stands: those directories hold only a `package.json` until CI stages the
+binary into them, and a version published empty can never be republished.
+Then add a trusted publisher to each package on npmjs.com (this repository,
+workflow file `release.yml`), and every release after that goes over OIDC.
+
+Versions stay in step on their own: the scaffold adds a `version` script, so
+`npm version minor` also updates the platform manifests (`napi-mojo release
+--sync` does the same by hand), and the release workflow refuses to publish if
+they disagree.
 
 ## Where to go next
 

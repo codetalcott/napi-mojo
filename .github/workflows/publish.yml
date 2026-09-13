@@ -302,6 +302,52 @@ jobs:
               console.log('loads on Debian 12 (glibc 2.36):', a.hello());
             "
 
+      # Bun and Deno are supported runtimes, and the argument for leaving the
+      # GCC runtime to the host ("Node links libstdc++, so it is present")
+      # does NOT carry over to them: Bun's glibc build links its C++ runtime
+      # statically and Deno needs only libgcc_s. The IMAGE has to provide
+      # libstdc++. These official images do; the versions match the pins in
+      # test.yml's runtimes job. Images that do not are the next step.
+      - name: Loads on Bun and Deno images that provide libstdc++
+        env:
+          BUN_VERSION: '1.3.11'
+          DENO_VERSION: '2.9.6'
+        run: |
+          set -euo pipefail
+          mkdir -p smoke
+          cat > smoke/smoke.cjs <<'EOF'
+          const a = require('/w/index.node');
+          if (a.hello() !== 'Hello from Mojo!') throw new Error('wrong greeting: ' + a.hello());
+          if (a.asyncRuntimeInitOk() !== true) throw new Error('loaded, but the Mojo async runtime did not initialize');
+          console.log('loaded:', a.hello());
+          EOF
+          docker run --rm -v "$PWD/bundle:/w:ro" -v "$PWD/smoke:/s:ro" \
+            --entrypoint /usr/local/bin/bun "oven/bun:${BUN_VERSION}-slim" /s/smoke.cjs
+          docker run --rm -v "$PWD/bundle:/w:ro" -v "$PWD/smoke:/s:ro" \
+            "denoland/deno:distroless-${DENO_VERSION}" run --allow-all /s/smoke.cjs
+
+      # oven/bun:<v>-distroless contains no libstdc++ and nothing in it needs
+      # one, so the bundle cannot load there — nor on denoland/deno:alpine,
+      # whose glibc compatibility layer omits it. That is a documented
+      # limitation (docs/plan-distribution.md), not a regression, so what this
+      # asserts is that the failure is the loader's clear error rather than a
+      # crash. If the image ever gains libstdc++ the bundle loads, and that is
+      # a prompt to update the docs, not a reason to block a release.
+      - name: Refused cleanly on an image with no libstdc++
+        env:
+          BUN_VERSION: '1.3.11'
+        run: |
+          set -euo pipefail
+          if docker run --rm -v "$PWD/bundle:/w:ro" -v "$PWD/smoke:/s:ro" \
+               "oven/bun:${BUN_VERSION}-distroless" /s/smoke.cjs 2>err; then
+            echo "::warning::oven/bun:${BUN_VERSION}-distroless now loads the bundle — update the unsupported-image list in docs/plan-distribution.md"
+            exit 0
+          fi
+          cat err
+          grep -qF 'libstdc++.so.6' err \
+            || { echo "::error::refused, but not for the missing-libstdc++ reason — check for a crash"; exit 1; }
+          echo "correctly refused: the image provides no libstdc++"
+
       # The removal, guarded. bundle-runtime.sh discovers its closure at build
       # time, so this is what catches a toolchain change quietly putting the
       # GCC runtime back — which would grow the package by an order of

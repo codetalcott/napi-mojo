@@ -317,14 +317,26 @@ function main() {
         continue;
       }
       const got = runScenario(rt, addonPath, defect.body, dir, defect.id);
-      const reproduced = defect.expect.test(got.stderr) || defect.expect.test(got.stdout) || !got.ok;
+      // Only the defect's own signature counts as the defect. Any other
+      // failure — a timeout, a different crash — used to count too, so a
+      // runtime that fixed this bug and grew another kept the entry alive,
+      // which is exactly the allowance outliving the bug.
+      const reproduced = defect.expect.test(got.stderr) || defect.expect.test(got.stdout);
+      const failedDifferently = !reproduced && !got.ok;
       rows.push({
         kind: 'defect',
         runtime: defect.runtime,
         scenario: defect.id,
-        verdict: reproduced ? 'still reproduces' : 'NO LONGER REPRODUCES',
+        verdict: reproduced ? 'still reproduces' : failedDifferently ? 'FAILS DIFFERENTLY' : 'NO LONGER REPRODUCES',
       });
-      if (!reproduced) {
+      if (failedDifferently) {
+        failures.push(
+          `${defect.runtime}/${defect.id}: failed, but not with the recorded signature ${defect.expect} — ` +
+          `${got.spawnError || `exit ${got.status}${got.signal ? ` (${got.signal})` : ''}`}.\n` +
+          `    Either the defect's output changed (update \`expect\`) or this is a different failure.\n` +
+          (got.stderr ? `    stderr: ${got.stderr.split('\n').slice(0, 3).join(' / ')}` : '')
+        );
+      } else if (!reproduced) {
         failures.push(
           `${defect.runtime}/${defect.id}: no longer reproduces — ${versions[rt.name]} appears to have fixed it.\n` +
           `    Remove the entry from KNOWN_DEFECTS in scripts/check-runtimes.mjs, and revisit anything\n` +

@@ -273,11 +273,42 @@ it is not needed.** Measured on `@napi-mojo/linux-x64@0.13.0`:
   `GLIBCXX_3.4.30`. **The two floors coincide**: every host that can satisfy
   the un-bundlable requirement already satisfies the bundled one.
 - Node itself is a C++ program linked against `libstdc++.so.6` and
-  `libgcc_s.so.1`, so both are present wherever the addon can run at all.
+  `libgcc_s.so.1`, so both are present wherever a Node process runs. **That
+  argument does not extend to Bun or Deno** — see *Bun and Deno images* below.
 - Direct test: deleting both files from the extracted package and loading it
   with `LD_LIBRARY_PATH` cleared works — `hello()`, `asyncRuntimeInitOk()`,
   `globalCacheActive()` and an async round trip all pass against the host's
   own libstdc++.
+
+#### Bun and Deno images — where the host argument stops
+
+Measured 2026-09-13 from the official release binaries (DT_NEEDED) and every
+layer of the official images, amd64 and arm64, at the versions pinned in
+`test.yml`:
+
+| | links libstdc++ | links libgcc_s |
+|---|---|---|
+| bun 1.3.11 (glibc build) | no — C++ runtime is static | no |
+| deno 2.9.6 | no | yes |
+
+So under Bun and Deno the **image** has to supply libstdc++, and a minimal
+image has no reason to:
+
+| image | libstdc++ | glibc | loads the 0.14.0 bundle |
+|---|---|---|---|
+| `oven/bun:1.3.11`, `-slim` (Debian 13) | 3.4.33 | 2.41 | yes |
+| `oven/bun:1.3.11-distroless` | **none** | 2.41 | **no** — `libstdc++.so.6` not found |
+| `oven/bun:1.3.11-alpine` | musl build only | none | **no** — musl; never could |
+| `denoland/deno:2.9.6`, `debian-`, `distroless-` | 3.4.33 | 2.41 | yes |
+| `denoland/deno:ubuntu-2.9.6` (22.04) | 3.4.30 | 2.35 | yes, exactly at the floor |
+| `denoland/deno:alpine-2.9.6` | **none** in its glibc layer | 2.36 | **no** — `libstdc++.so.6` not found |
+
+0.13.0, which bundled libstdc++, loads on Bun distroless and Deno alpine; 0.14.0
+does not. That is the one real cost of the removal, and it is a trade rather
+than a defect: re-bundling would restore those two images at 10x the package
+size for every user. `consume-oldest-linux` holds both sides — the bundle
+loads on `oven/bun:*-slim` and `denoland/deno:distroless`, and is refused on
+Bun distroless with the loader's `libstdc++.so.6` error rather than a crash.
 
 #### Done: both guards, then the removal.
 
@@ -358,7 +389,15 @@ prebuilt package per platform, leaving an existing `main` and an absent `files`
 alone — and each `npm/<platform>/package.json`, so re-running it resyncs
 versions without losing author fields. The loader (which prefers a local build
 over the registry) and the release workflow are written only when absent;
-`--force` overwrites them. The platform list comes from `scripts/platforms.mjs` — the same
+`--force` overwrites them. Platform manifests declare a licence covering what
+they carry (the author's, napi-mojo's MIT, and the Mojo runtime's terms from
+`platforms.mjs`) with the texts beside them, and inherit `repository` — taken
+from the git remote when absent — because provenance publishing rejects a
+package without a matching one. `release --sync` sets every manifest to the
+root version (wired to `npm version`, and checked by the workflow before it
+publishes), and `release --bootstrap` does the first publish as a
+`0.0.0-bootstrap.0` placeholder so trusted publishing can be configured
+without burning the real version on an empty package. The platform list comes from `scripts/platforms.mjs` — the same
 single declaration `check-platforms.mjs` gates — rather than a second list in
 the CLI.
 
