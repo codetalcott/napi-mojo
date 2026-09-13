@@ -54,7 +54,7 @@ jobs:
           node-version: '22'
 
       - name: Install pixi
-        uses: prefix-dev/setup-pixi@v0.10.1
+        uses: prefix-dev/setup-pixi@v0.10.2
         with:
           pixi-version: latest
 
@@ -557,7 +557,7 @@ jobs:
           node-version: '22'
 
       - name: Install pixi
-        uses: prefix-dev/setup-pixi@v0.10.1
+        uses: prefix-dev/setup-pixi@v0.10.2
         with:
           pixi-version: latest
 
@@ -624,7 +624,7 @@ jobs:
           bun-version: 1.3.11
 
       - name: Install pixi
-        uses: prefix-dev/setup-pixi@v0.10.1
+        uses: prefix-dev/setup-pixi@v0.10.2
         with:
           pixi-version: latest
 
@@ -655,7 +655,7 @@ jobs:
           node-version: '22'
 
       - name: Install pixi
-        uses: prefix-dev/setup-pixi@v0.10.1
+        uses: prefix-dev/setup-pixi@v0.10.2
         with:
           pixi-version: latest
 
@@ -764,7 +764,7 @@ jobs:
           node-version: '24'
 
       - name: Install pixi
-        uses: prefix-dev/setup-pixi@v0.10.1
+        uses: prefix-dev/setup-pixi@v0.10.2
         with:
           pixi-version: latest
 
