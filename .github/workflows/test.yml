@@ -160,6 +160,19 @@ jobs:
       - name: Keep-alive barrier counterfactual
         run: node scripts/check-keepalive-barrier.mjs
 
+      # The portability gate that runs in publish.yml reads Mach-O and ELF
+      # load commands directly, and a parser that misreads a file reports the
+      # artifact as fine — the failure direction that makes a guard worse than
+      # none. Its self-test synthesises both formats, so it runs here on both
+      # platforms rather than only where the format is native, and covers the
+      # distinction that is invisible when you only ever look at one file: an
+      # executable has no LC_ID_DYLIB, a dylib does.
+      #
+      # publish.yml is where the real artifact is checked, and that is still
+      # the only place bundling itself is verified — release time, not PR time.
+      - name: Portability parser self-test
+        run: node scripts/check-portable.mjs --self-test
+
       # Mojo elaborates imported-package `def` bodies lazily, per METHOD: a
       # body full of type errors compiles unless something in the compiled
       # graph calls that exact method. 0.5.1 shipped four broken framework
