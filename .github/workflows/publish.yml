@@ -194,6 +194,25 @@ jobs:
               console.log('bundled binary is self-contained:', greeting);
             "
 
+      # The load above happens on the machine that built the artifact, which
+      # is the one place where a stale absolute rpath can still resolve — so
+      # it proves the bundle works HERE and can say nothing about a consumer.
+      # This reads the load commands instead: every recorded search path must
+      # be relative to the artifact, and every dependency a system library or
+      # one shipped beside it. A property no load attempt can establish.
+      #
+      # Run against /tmp/selfcontained, not build/: that directory is exactly
+      # the consumer's layout, and checking the build tree would let a library
+      # the manifest forgot resolve from a neighbour that never ships.
+      #
+      # Every bundled library is checked too, not just index.node — one of
+      # them carrying a build-tree rpath strands the consumer just as surely,
+      # and the addon's own load commands say nothing about it.
+      - name: Verify the bundle does not depend on this machine
+        run: |
+          node scripts/check-portable.mjs --require-self-contained \
+            --manifest build/bundled-libs.txt /tmp/selfcontained/index.node
+
       # The globs need the trailing `*`: Linux sonames are versioned
       # (libstdc++.so.6, libgcc_s.so.1) and `build/*.so` does not match them,
       # so two of the seven bundled libraries never left this job.

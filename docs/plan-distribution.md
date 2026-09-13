@@ -1,9 +1,10 @@
 # Plan: distribution — runtime reach, artifact portability, publishing
 
-**Status**: **P0 implemented** (2026-09-13) — the cross-runtime gate
+**Status**: **P0 and P1 implemented** (2026-09-13) — the cross-runtime gate
 (`scripts/check-runtimes.mjs`, the `runtimes` CI job), the
-`addAsyncCleanupHook` handle fix, and the README runtime matrix. **P1–P5
-remain proposals.** The measurements in
+`addAsyncCleanupHook` handle fix, the README runtime matrix, and the artifact
+portability gate (`scripts/check-portable.mjs`, wired into `publish.yml`).
+**P2–P5 remain proposals.** The measurements in
 [Findings](#findings-measured-2026-09-13) are real and reproducible.
 
 **Created**: 2026-09-13
@@ -169,25 +170,51 @@ the widest reach per unit of work.
    known-broken upstream, and the rule that a `napi_get_version` check would
    refuse Bun wrongly.
 
-### P1 — Artifact portability gate (port from mojo-http)
+### P1 — Artifact portability gate (port from mojo-http) — **DONE**
 
-Port `scripts/ffi_portability_check.py` to `scripts/check-portable.mjs`
-(JS, to match this repo's tooling — the logic is `otool -l` / `readelf -d`
-parsing and a set comparison, not Python-specific). Run it in `publish.yml`
-**before** the upload step, over `build/index.node` plus every library named in
-`build/bundled-libs.txt`.
+`scripts/check-portable.mjs`, ported from mojo-http's `binfmt.py` +
+`ffi_portability_check.py`, runs in `publish.yml` against
+`/tmp/selfcontained/` — the consumer's layout the step above it already
+assembles — over `index.node` and every library in `build/bundled-libs.txt`.
 
-It asserts what the current "Verify bundled binary is self-contained" step
-cannot: that step clears `DYLD_*`/`LD_LIBRARY_PATH` and loads the binary, which
-is a load attempt on the machine that built it. Static inspection catches a
-stale absolute rpath that happens to still resolve on that runner.
+It asserts what "Verify bundled binary is self-contained" cannot. That step
+clears `DYLD_*`/`LD_LIBRARY_PATH` and loads the binary, on the one machine
+where a stale absolute rpath can still resolve. This reads the load commands.
 
-**Done when**: the gate fails on a deliberately un-relocated build and passes
-on a bundled one, both platforms, and the sabotage is recorded the way
-mojo-http records its own.
+Three carried-over decisions, each of which mojo-http paid for:
 
-**Cost**: moderate, mechanical, no design risk — a reference implementation
-exists and is proven.
+- **Parse the bytes; do not shell out.** `otool` exists only on macOS, so a
+  Linux job cannot inspect a macOS artifact at all — and `llvm-objdump` *does*
+  exist on macOS but prints ELF dynamic entries in another format, so the
+  regexes matched nothing, the function returned empty lists, and a Linux
+  artifact was reported portable. A guard that answers "fine" when it cannot
+  read the file is worse than no guard.
+- **Three states, not one bit.** broken / satisfiable / self-contained. A
+  build can be moved to `satisfiable` unilaterally; `self-contained` depends
+  on the runtime-redistribution question that is P2's subject, so collapsing
+  them would make the gate either toothless or a release blocker.
+- **An executable has no `LC_ID_DYLIB`.** Treating the first dependency as the
+  install name is the bug the parser was extracted for, and it is invisible to
+  any test that only ever looks at one kind of file — hence the synthesised
+  fixtures for both.
+
+**Verified on real artifacts**, all three states, plus the parser self-test in
+`test.yml` on both platforms:
+
+| control | verdict | exit |
+|---|---|---|
+| published `@napi-mojo/linux-x64@0.13.0` bundle, all four files | self-contained | 0 |
+| the same `index.node` with its libraries absent | satisfiable | 0 |
+| …the same, with `--require-self-contained` | satisfiable, refused | 1 |
+| a `gcc -shared` ELF with an absolute rpath and an absent dependency | **broken** | 1 |
+
+The last row is the one that matters: a gate never seen to fail is not
+evidence. Its message names the recorded build path verbatim.
+
+**Still not covered**: bundling is verified only at release time, because
+`test.yml` builds without `bundle-runtime.sh`. Running the bundler per PR
+would catch a bundling regression earlier and is worth considering; it needs
+`patchelf` on Linux and codesigning on macOS, so it was not folded in here.
 
 ### P2 — Licensing and contents of the platform packages
 
