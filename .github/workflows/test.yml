@@ -108,6 +108,23 @@ jobs:
       - name: Build Mojo addon
         run: pixi run bash build.sh
 
+      # Does the host's own libstdc++ still satisfy the Mojo runtime?
+      #
+      # The Linux packages bundle libstdc++.so.6 (23.9 MB of 27 MB) and
+      # libgcc_s.so.1, and docs/plan-distribution.md's case for dropping them
+      # rests on an ordering that nothing enforced: the runtime needs at most
+      # GLIBCXX_3.4.30, while its GLIBC_2.35 requirement — unbundlable, because
+      # glibc is the loader — already implies a host that provides it. A Mojo
+      # release that raises the GLIBCXX requirement past that would make the
+      # bundled copy load-bearing again, silently.
+      #
+      # Runs PRE-bundle, which is why it can live here rather than only at
+      # release: the check walks the dependency closure through whatever search
+      # paths the artifact records, and before bundling those point at the pixi
+      # environment. It reports and exits 0 on macOS — no glibc to check.
+      - name: The host libstdc++ still satisfies the Mojo runtime
+        run: node scripts/check-glibc-floor.mjs build/index.node
+
       # examples/ is not reachable from src/lib.mojo, so build.sh never
       # type-checks it — which is exactly why all three examples had rotted
       # into non-compiling states across several nightlies. They also reach
@@ -172,6 +189,15 @@ jobs:
       # the only place bundling itself is verified — release time, not PR time.
       - name: Portability parser self-test
         run: node scripts/check-portable.mjs --self-test
+
+      # The other half of the same parser problem: this one walks ELF
+      # .gnu.version_r, and a mis-stepped offset there yields an EMPTY result,
+      # which reads as "requires nothing", which reads as "fine". The self-test
+      # pins it against a binary whose answer is independently knowable (this
+      # Node, which must require a versioned GLIBC symbol) and runs on both
+      # platforms so the table arithmetic is covered where there is no glibc.
+      - name: GLIBCXX floor parser self-test
+        run: node scripts/check-glibc-floor.mjs --self-test
 
       # Mojo elaborates imported-package `def` bodies lazily, per METHOD: a
       # body full of type errors compiles unless something in the compiled
