@@ -328,6 +328,20 @@ jobs:
               assert.ok(m.files.some((f) => f.endsWith('*')), 'lib glob must end in * for versioned sonames');
             }
             assert.ok(!(pkg.files || []).includes('build/index.node'), 'the root package must not ship the binary');
+            // The licence texts are copied out of the INSTALLED napi-mojo, so
+            // a missing "licenses/" entry in its files list only shows here.
+            for (const k of keys) {
+              const dir = 'npm/' + k.replace(pkg.name + '-', '');
+              const m = JSON.parse(readFileSync(dir + '/package.json', 'utf8'));
+              assert.ok(m.license.includes('Apache-2.0 WITH LLVM-exception'), dir + ' licence omits the Mojo runtime: ' + m.license);
+              for (const f of ['NOTICE.txt', 'LICENSE.napi-mojo.txt', 'LICENSE.mojo-runtime.txt']) {
+                assert.ok(existsSync(dir + '/licenses/' + f), dir + '/licenses/' + f + ' was not written');
+              }
+            }
+            const pixi = readFileSync('pixi.toml', 'utf8');
+            for (const sub of ['osx-arm64', 'linux-64', 'linux-aarch64']) {
+              assert.ok(pixi.includes(String.fromCharCode(34) + sub + String.fromCharCode(34)), 'pixi.toml does not declare ' + sub);
+            }
             assert.ok(existsSync('.github/workflows/release.yml'));
             assert.ok(existsSync('index.js'));
             console.log('release scaffold e2e OK');

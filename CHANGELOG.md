@@ -53,8 +53,21 @@ measurements behind all of it.
   toolchain. It is safe to run in an existing project: `package.json` and the
   platform manifests are patched (dependencies merged, an existing `main` and
   an absent `files` left alone, author fields kept), and an existing `index.js`
-  or `release.yml` is kept unless you pass `--force`. Re-running it resyncs
-  versions.
+  or `release.yml` is kept unless you pass `--force`. Platform manifests
+  declare a licence covering what they carry, with the texts, and inherit a
+  `repository` (from the git remote if needed) so provenance publishing
+  accepts them. `napi-mojo init`'s `pixi.toml` declares every prebuild
+  platform, and the workflow generates bindings before building and installs
+  exactly the version it published.
+- **`napi-mojo release --sync`** sets every platform manifest and
+  `optionalDependencies` entry to `package.json`'s version; the scaffold wires
+  it to `npm version`, and the release workflow refuses to publish when they
+  disagree.
+- **`napi-mojo release --bootstrap`** does the one-time first publish npm's
+  trusted publishing requires, as a `0.0.0-bootstrap.0` placeholder under the
+  `bootstrap` dist-tag. Publishing `npm/<platform>` directly — what the
+  scaffold's first version printed — pushes a package with no binary at the
+  real version, which can never be republished.
 - **`scripts/check-portable.mjs`**, a release gate that reads an artifact's
   Mach-O/ELF load commands and refuses one that depends on the machine that
   built it — the property a load test on the build machine cannot establish.
@@ -75,14 +88,21 @@ measurements behind all of it.
   9.4 MB → 0.9 MB tarball. GCC's `libstdc++.so.6` and `libgcc_s.so.1` are no
   longer bundled: the Mojo runtime needs at most `GLIBCXX_3.4.30`, and its
   `GLIBC_2.35` requirement — which cannot be bundled, glibc being the loader —
-  already implies a host that provides it. Node itself links both libraries,
-  so they exist wherever the addon can load at all.
+  already implies a host that provides it, and Node itself links both.
 
   **If you install on a host with glibc ≥ 2.35 but an unusually old
   libstdc++**, `require()` now fails with a loader version error instead of
   working. That combination is constructible but not something any mainstream
   distribution produces. Two CI gates hold the premise: `check-glibc-floor.mjs`
   on every PR, and a no-toolchain container consume job on every release.
+
+  **Under Bun or Deno, the container image must provide `libstdc++`.**
+  Neither runtime links it, so the "Node links it" argument does not apply.
+  `oven/bun:1.3.11-distroless` and `denoland/deno:alpine-2.9.6` contain none
+  and fail at `require()` with `libstdc++.so.6: cannot open shared object
+  file`, where 0.13.0 loaded. The Debian- and Ubuntu-based Bun and Deno images,
+  and `denoland/deno:distroless`, work. (`oven/bun:*-alpine` is musl and never
+  could load a glibc addon.)
 
 - **The Linux packages no longer declare `GPL-3.0-or-later WITH
   GCC-exception-3.1`**, because they no longer contain GCC's runtime. All

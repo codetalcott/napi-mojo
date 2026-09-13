@@ -14,9 +14,10 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
-  copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync,
+  copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync,
   symlinkSync, writeFileSync,
 } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -213,11 +214,14 @@ const TEMPLATE_PIXI_TOML = (name, pin) => `# Provisions the Mojo toolchain for t
 # If you would rather use a \`mojo\` already on your PATH, delete this file.
 #
 # The max version is pinned to the one napi-mojo is built and tested against.
+# \`platforms\` lists every prebuild target: the release workflow from
+# \`napi-mojo release --scaffold\` builds on each, and pixi refuses to install
+# on a platform the workspace does not declare.
 
 [workspace]
 name = "${name}"
 channels = ["conda-forge", "https://conda.modular.com/max/"]
-platforms = ["osx-arm64", "linux-64"]
+platforms = [${PLATFORMS.map((p) => `"${p.condaSubdir}"`).join(', ')}]
 version = "0.1.0"
 
 [dependencies]
@@ -687,32 +691,116 @@ if (existsSync(local)) {
 // must agree with the root package and the platform are reset, everything
 // else the author added — repository, license, keywords — is kept. That is
 // what makes re-running the scaffold a safe way to resync versions.
-const TEMPLATE_PLATFORM_PKG = (p, name, version, existing = {}) => {
+//
+// `license` and `repository` are owned too, derived from the root package:
+// the licence has to describe what the tarball CONTAINS (see platformLicense),
+// and `npm publish --provenance` rejects a package whose repository.url does
+// not match the repository the workflow runs in — so a platform manifest
+// without one fails every CI publish.
+const TEMPLATE_PLATFORM_PKG = (p, name, version, existing = {}, { license, repository } = {}) => {
   const owned = {
     name: `${name}-${p.key}`,
     version,
     main: 'index.node',
-    // The trailing `*` is load-bearing on Linux: sonames are versioned
-    // (libstdc++.so.6, libgcc_s.so.1) and a bare "*.so" silently drops them
-    // from the tarball. That shipped from napi-mojo itself, twice.
-    files: [...new Set(['index.node', p.libGlob, ...(existing.files || [])])],
+    // The trailing `*` is load-bearing on Linux: sonames are versioned and a
+    // bare "*.so" silently drops them from the tarball. That shipped from
+    // napi-mojo itself, twice.
+    files: [...new Set(['index.node', p.libGlob, 'licenses/', ...(existing.files || [])])],
     os: [p.os],
     cpu: [p.cpu],
+    license,
+    ...(repository ? { repository } : {}),
   };
   // Listing `owned` first fixes the key order of a new manifest; `existing`
   // then supplies the author's values, and `owned` again wins where it must.
   return JSON.stringify({
     ...owned,
     description: `${name} prebuilt binary for ${p.key}`,
-    license: 'MIT',
     ...existing,
     ...owned,
   }, null, 2) + '\n';
 };
 
+// A prebuilt package is not the author's source alone: index.node has the
+// napi-mojo framework compiled into it (MIT), and the Mojo runtime libraries
+// bundled beside it are Modular's (the non-MIT terms of `p.license` in
+// scripts/platforms.mjs — the same declaration napi-mojo's own packages use).
+// The author's licence joins those terms rather than replacing them.
+function platformLicense(p, authorLicense) {
+  const terms = p.license.split(' AND ');
+  if (!authorLicense || /^(UNLICENSED|SEE LICENSE)/i.test(authorLicense)) return terms.join(' AND ');
+  const author = /\s(OR|AND)\s/.test(authorLicense) && !/^\(.*\)$/.test(authorLicense)
+    ? `(${authorLicense})`
+    : authorLicense;
+  return [...new Set([author, ...terms])].join(' AND ');
+}
+
+// Copied beside every platform package, so the tarball carries the texts its
+// `license` names. LICENSE.* files from platforms.mjs are Modular's runtime
+// licence; napi-mojo's own NOTICE.bundle.txt describes napi-mojo's packages,
+// so an addon gets this NOTICE instead.
+const TEMPLATE_PLATFORM_NOTICE = (name, p, authorLicense) => `${name}-${p.key} — what is inside, and under what terms
+${'='.repeat(`${name}-${p.key} — what is inside, and under what terms`.length)}
+
+This package is not source. It ships a compiled index.node together with the
+Mojo runtime libraries it needs, so that installing it requires no Mojo
+toolchain.
+
+index.node
+  Compiled from ${name}'s own source${authorLicense ? ` (${authorLicense})` : ''}, with the napi-mojo framework
+  compiled in. napi-mojo is MIT licensed: see LICENSE.napi-mojo.txt.
+
+Mojo runtime libraries (every other shared library in this package)
+  From the Modular repository (https://github.com/modular/modular),
+  Copyright Modular Inc, under the Apache License 2.0 with LLVM Exceptions.
+  Full text: LICENSE.mojo-runtime.txt.
+
+  MODIFICATION NOTICE (Apache License 2.0, section 4(b)): each of these files
+  was changed by napi-mojo's scripts/bundle-runtime.sh at build time. Its
+  install name and rpath (Mach-O) or RUNPATH (ELF) were rewritten so the set
+  resolves beside itself, and on macOS each was re-signed ad-hoc. No source
+  was changed and nothing was recompiled.
+
+Generated by \`napi-mojo release --scaffold\`; re-running it refreshes this file.
+`;
+
+// "https://github.com/o/r", "git@github.com:o/r.git" → the repository object
+// npm provenance compares against the workflow's repository.
+function repositoryFromGit(dir) {
+  const res = spawnSync('git', ['-C', dir, 'remote', 'get-url', 'origin'], { encoding: 'utf8' });
+  if (res.error || res.status !== 0) return null;
+  const m = /github\.com[:/]([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/.exec(res.stdout.trim());
+  return m ? { type: 'git', url: `git+https://github.com/${m[1]}/${m[2]}.git` } : null;
+}
+
+// The version every manifest must agree on is the root package's. Patches
+// optionalDependencies and each npm/<platform>/package.json to it, touching
+// nothing else — so it is safe as an npm `version` lifecycle script.
+function syncVersions(dir) {
+  const pkgPath = join(dir, 'package.json');
+  if (!existsSync(pkgPath)) fail(`${pkgPath} does not exist`);
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+  if (!pkg.name || !pkg.version) fail('package.json needs a name and a version');
+  const changed = [];
+  const writeJson = (abs, obj) => { writeFileSync(abs, JSON.stringify(obj, null, 2) + '\n'); changed.push(abs); };
+
+  const deps = { ...(pkg.optionalDependencies || {}) };
+  let depsChanged = false;
+  for (const p of PLATFORMS) {
+    const dep = `${pkg.name}-${p.key}`;
+    if (deps[dep] !== pkg.version) { deps[dep] = pkg.version; depsChanged = true; }
+    const manifestPath = join(dir, 'npm', p.key, 'package.json');
+    if (!existsSync(manifestPath)) fail(`${manifestPath} does not exist — run \`napi-mojo release --scaffold\` first`);
+    const m = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    if (m.version !== pkg.version) writeJson(manifestPath, { ...m, version: pkg.version });
+  }
+  if (depsChanged) writeJson(pkgPath, { ...pkg, optionalDependencies: deps });
+  return { name: pkg.name, version: pkg.version, changed };
+}
+
 const TEMPLATE_RELEASE_WORKFLOW = (name) => `# Build a prebuild per platform, prove each one, then publish.
 #
-# Generated by \`napi-mojo release --scaffold\`. Three things in here are not
+# Generated by \`napi-mojo release --scaffold\`. Four things in here are not
 # obvious and are worth keeping:
 #
 #   1. The consume job has NO checkout and NO toolchain. It installs the
@@ -723,11 +811,16 @@ const TEMPLATE_RELEASE_WORKFLOW = (name) => `# Build a prebuild per platform, pr
 #   2. check-portable.mjs reads the binary's load commands. A load test on the
 #      build machine cannot tell you whether a recorded rpath points at the
 #      runner's own directory, because there it still resolves.
-#   3. npm's OIDC trusted publishing cannot BOOTSTRAP a package. The first
-#      publish of each ${name}-<platform> must be done another way (a granular
-#      token from a workstation); after that its trusted publisher is
-#      configured and releases go over OIDC. The failure is disguised as
-#      \`E404 ... PUT\`, which for a scoped package is an authorization error.
+#   3. npm's OIDC trusted publishing cannot BOOTSTRAP a package. Every package
+#      this publishes must already exist on the registry with a trusted
+#      publisher configured; \`npx napi-mojo release --bootstrap\` publishes
+#      placeholders (0.0.0-bootstrap.0, dist-tag "bootstrap") so no real
+#      version is burned on a package with no binary. Skipping it fails here
+#      as \`E404 ... PUT\`, which for a scoped package is an authorization error.
+#   4. Versions must agree across package.json, its optionalDependencies and
+#      npm/*/package.json. The publish job checks that before pushing anything;
+#      \`npx napi-mojo release --sync\` fixes it (the scaffold wires it to
+#      \`npm version\`).
 name: Release
 
 on:
@@ -766,6 +859,14 @@ ${PLATFORMS.map((p) => `          - os: ${p.runner}\n            platform: ${p.k
       - name: Ensure patchelf (Linux)
         if: runner.os == 'Linux'
         run: command -v patchelf || (sudo apt-get update && sudo apt-get install -y patchelf)
+
+      # \`build\` compiles lib.mojo, which imports generated/ — and generated/ is
+      # gitignored by \`napi-mojo init\`, so a fresh checkout does not have it.
+      - name: Generate bindings
+        run: |
+          if [ -f exports.toml ]; then
+            npx napi-mojo generate --dts index.d.ts
+          fi
 
       - name: Build and bundle
         run: npx napi-mojo build --bundle
@@ -806,6 +907,8 @@ ${PLATFORMS.map((p) => `          - os: ${p.runner}\n            platform: ${p.k
     permissions:
       contents: read
       id-token: write          # npm OIDC trusted publishing
+    outputs:
+      version: \${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -813,8 +916,40 @@ ${PLATFORMS.map((p) => `          - os: ${p.runner}\n            platform: ${p.k
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
+      # Before anything is pushed: a platform manifest left at the previous
+      # version makes \`npm publish\` fail with E403 halfway through a release,
+      # after some packages are already out.
+      - name: Versions agree
+        id: version
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const bad = [];
+            for (const key of '${PLATFORMS.map((p) => p.key).join(' ')}'.split(' ')) {
+              const dep = pkg.name + '-' + key;
+              const m = JSON.parse(fs.readFileSync('npm/' + key + '/package.json', 'utf8'));
+              if (m.version !== pkg.version) bad.push('npm/' + key + ' is ' + m.version);
+              if ((pkg.optionalDependencies || {})[dep] !== pkg.version) bad.push('optionalDependencies[' + dep + '] is ' + (pkg.optionalDependencies || {})[dep]);
+            }
+            if (bad.length) {
+              console.error('::error::versions disagree with package.json ' + pkg.version + ': ' + bad.join('; ') + '. Run npx napi-mojo release --sync and commit.');
+              process.exit(1);
+            }
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, 'version=' + pkg.version + '\\\\n');
+          "
+
       # npm 11.5.1+ for trusted publishing; Node 24 ships an older npm.
       - run: npm install -g npm@latest
+
+      # The root package's index.d.ts is generated from exports.toml, like the
+      # bindings, so it is not in the checkout either.
+      - name: Generate type declarations
+        run: |
+          if [ -f exports.toml ]; then
+            npm ci --ignore-scripts
+            npx napi-mojo generate --dts index.d.ts
+          fi
 
       - uses: actions/download-artifact@v8
         with:
@@ -865,14 +1000,22 @@ ${PLATFORMS.map((p) => `          - os: ${p.runner}\n            platform: ${p.k
           test ! -e .git || { echo "a checkout is present — this job would prove nothing"; exit 1; }
           test ! -e package.json || { echo "a project is present — this job would prove nothing"; exit 1; }
       - name: Install from the registry and run it
+        env:
+          VERSION: \${{ needs.publish.outputs.version }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/consume && cd /tmp/consume
           npm init -y >/dev/null
-          # @latest, not the tag: a release tag is usually v1.2.3, which is
-          # not a valid npm spec, and the publish job just made this version
-          # latest. Publishing under a dist-tag? Name it here instead.
-          npm install ${name}@latest
+          # The exact version just published, not @latest: the registry takes
+          # a while to serve a new version everywhere, and @latest in that
+          # window installs the PREVIOUS release and passes — proving nothing
+          # about this one. Wait for it rather than racing it.
+          for attempt in $(seq 1 30); do
+            npm view "${name}@\${VERSION}" version >/dev/null 2>&1 && break
+            echo "waiting for ${name}@\${VERSION} to appear on the registry (\${attempt}/30)"
+            sleep 10
+          done
+          npm install "${name}@\${VERSION}"
           node -e "const a = require('${name}'); console.log('loaded:', Object.keys(a).length, 'exports');"
 `;
 
@@ -889,9 +1032,12 @@ function scaffoldRelease(dir, target, { force = false } = {}) {
     existsSync(abs) ? JSON.parse(readFileSync(abs, 'utf8')) : null;
   const write = (rel, content, { patch = false } = {}) => {
     const abs = join(dir, rel);
-    if (existsSync(abs) && !patch && !force) {
-      if (readFileSync(abs, 'utf8') !== content) kept.push(join(target, rel));
-      return;
+    if (existsSync(abs)) {
+      if (readFileSync(abs, 'utf8') === content) return;
+      if (!patch && !force) {
+        kept.push(join(target, rel));
+        return;
+      }
     }
     mkdirSync(dirname(abs), { recursive: true });
     writeFileSync(abs, content);
@@ -932,27 +1078,178 @@ function scaffoldRelease(dir, target, { force = false } = {}) {
     ...Object.fromEntries(PLATFORMS.map((p) => [`${name}-${p.key}`, version])),
   };
   pkg.devDependencies = { ...(pkg.devDependencies || {}), 'napi-mojo': `^${framework}` };
+
+  // npm provenance compares repository.url with the repository the workflow
+  // runs in, for the root package and every platform package alike.
+  if (!pkg.repository) {
+    const fromGit = repositoryFromGit(dir);
+    if (fromGit) pkg.repository = fromGit;
+    else {
+      warnings.push(
+        'package.json has no "repository", and no GitHub remote named origin was found to derive one. ' +
+          '`npm publish --provenance` rejects a package whose repository.url does not match the ' +
+          'repository publishing it, so add one and re-run the scaffold before releasing.'
+      );
+    }
+  }
+
+  // exports.toml means the CLI generates index.d.ts; the release workflow
+  // regenerates it before publishing, and this is what points consumers at it.
+  if (existsSync(join(dir, 'exports.toml'))) {
+    pkg.types = pkg.types || 'index.d.ts';
+    if (Array.isArray(pkg.files) && pkg.types === 'index.d.ts') {
+      pkg.files = [...new Set([...pkg.files, 'index.d.ts'])];
+    }
+  }
+
+  // npm runs the `version` script after bumping package.json and before
+  // committing, so the platform manifests move in the same commit.
+  const syncScript = 'napi-mojo release --sync && git add package.json npm';
+  pkg.scripts = pkg.scripts || {};
+  if (!pkg.scripts.version) {
+    pkg.scripts.version = syncScript;
+  } else if (!pkg.scripts.version.includes('release --sync')) {
+    warnings.push(
+      `package.json already has a "version" script, so \`npm version\` will not resync the platform ` +
+        `manifests. Add \`${syncScript}\` to it, or run \`npx napi-mojo release --sync\` before each release.`
+    );
+  }
   write('package.json', JSON.stringify(pkg, null, 2) + '\n', { patch: true });
 
+  const license = platformLicense(PLATFORMS[0], pkg.license);
+  if (!pkg.license) {
+    warnings.push(
+      `package.json has no "license". The platform packages declare ${JSON.stringify(license)} — the ` +
+        'napi-mojo framework and the Mojo runtime they carry — and will add yours once it is set.'
+    );
+  }
+
   write('index.js', TEMPLATE_LOADER(name));
+  const napiMojoLicense = readFileSync(join(PKG_ROOT, 'LICENSE'), 'utf8');
   for (const p of PLATFORMS) {
     const rel = join('npm', p.key, 'package.json');
     const manifest = readJsonIfPresent(join(dir, rel)) || {};
-    write(rel, TEMPLATE_PLATFORM_PKG(p, name, version, manifest), { patch: true });
+    write(rel, TEMPLATE_PLATFORM_PKG(p, name, version, manifest, {
+      license: platformLicense(p, pkg.license),
+      repository: pkg.repository,
+    }), { patch: true });
+    // The texts the declaration names travel with it. Ours, not the author's,
+    // so always refreshed.
+    const licenses = join('npm', p.key, 'licenses');
+    write(join(licenses, 'NOTICE.txt'), TEMPLATE_PLATFORM_NOTICE(name, p, pkg.license), { patch: true });
+    write(join(licenses, 'LICENSE.napi-mojo.txt'), napiMojoLicense, { patch: true });
+    for (const f of p.licenseFiles.filter((f) => basename(f).startsWith('LICENSE.'))) {
+      write(join(licenses, basename(f)), readFileSync(join(PKG_ROOT, f), 'utf8'), { patch: true });
+    }
   }
   write(join('.github', 'workflows', 'release.yml'), TEMPLATE_RELEASE_WORKFLOW(name));
+
+  // pixi refuses to install on a platform the workspace does not declare, so
+  // a build job for a missing one fails at setup — and publish needs them all.
+  const pixiPath = join(dir, 'pixi.toml');
+  if (existsSync(pixiPath)) {
+    const toml = readFileSync(pixiPath, 'utf8');
+    const line = /^platforms\s*=\s*\[([^\]\n]*)\]/m.exec(toml);
+    const listed = line ? [...line[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]) : null;
+    const missing = listed ? PLATFORMS.map((p) => p.condaSubdir).filter((s) => !listed.includes(s)) : [];
+    if (!listed) {
+      warnings.push(
+        `could not read "platforms" in pixi.toml; make sure it lists ${PLATFORMS.map((p) => p.condaSubdir).join(', ')}.`
+      );
+    } else if (missing.length) {
+      const updated = [...listed, ...missing];
+      writeFileSync(pixiPath, toml.replace(line[0], `platforms = [${updated.map((s) => `"${s}"`).join(', ')}]`));
+      created.push(join(target, 'pixi.toml'));
+      if (existsSync(join(dir, 'pixi.lock'))) {
+        warnings.push(
+          `added ${missing.join(', ')} to pixi.toml's platforms. Run \`pixi install\` and commit pixi.lock — ` +
+            'CI installs from the lock, and a lock without these platforms fails there.'
+        );
+      }
+    }
+  }
 
   return { created, kept, warnings, name, version };
 }
 
+// The version npm will never serve as a real release, published under a
+// dist-tag nothing installs by default.
+const BOOTSTRAP_VERSION = '0.0.0-bootstrap.0';
+
+// npm's OIDC trusted publishing can only be configured on a package that
+// exists, so each package the release workflow publishes needs a first
+// publish from a workstation. Publishing npm/<platform> for that — what these
+// instructions used to say — pushes a package with no binary AT THE REAL
+// VERSION, which can never be republished: the first CI release of that
+// version then fails with E403. A placeholder avoids both problems.
+function bootstrapRelease(dir, { dryRun }) {
+  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  const packages = [
+    { name: pkg.name },
+    ...PLATFORMS.map((p) => ({ name: `${pkg.name}-${p.key}`, os: [p.os], cpu: [p.cpu] })),
+  ];
+  const results = [];
+  for (const target of packages) {
+    const view = spawnSync('npm', ['view', target.name, 'name'], { encoding: 'utf8' });
+    if (!view.error && view.status === 0 && view.stdout.trim() === target.name) {
+      results.push({ name: target.name, action: 'exists' });
+      continue;
+    }
+    if (!dryRun && !/E404|404 Not Found/.test(`${view.stderr}${view.stdout}`)) {
+      fail(`could not tell whether ${target.name} exists on the registry:\n${view.stderr || view.error}`);
+    }
+    const stage = mkdtempSync(join(tmpdir(), 'napi-mojo-bootstrap-'));
+    try {
+      writeFileSync(join(stage, 'package.json'), JSON.stringify({
+        name: target.name,
+        version: BOOTSTRAP_VERSION,
+        description: `Placeholder so ${target.name} can be configured for npm trusted publishing. Install ${pkg.name} instead.`,
+        ...(target.os ? { os: target.os, cpu: target.cpu } : {}),
+        ...(pkg.license ? { license: pkg.license } : {}),
+        ...(pkg.repository ? { repository: pkg.repository } : {}),
+      }, null, 2) + '\n');
+      writeFileSync(join(stage, 'README.md'),
+        `# ${target.name}\n\nPlaceholder published by \`napi-mojo release --bootstrap\`. Install \`${pkg.name}\`.\n`);
+      const args = ['publish', '--access', 'public', '--tag', 'bootstrap', ...(dryRun ? ['--dry-run'] : [])];
+      const res = spawnSync('npm', args, { cwd: stage, stdio: 'inherit' });
+      if (res.error || res.status !== 0) {
+        fail(`npm publish failed for ${target.name}${res.error ? `: ${res.error.message}` : ''}`);
+      }
+      results.push({ name: target.name, action: dryRun ? 'would publish' : 'published' });
+    } finally {
+      rmSync(stage, { recursive: true, force: true });
+    }
+  }
+  return results;
+}
+
 function cmdRelease(argv) {
-  const { opts, positional } = parseArgs(argv, [], ['--scaffold', '--force']);
-  if (!opts.scaffold) {
-    fail('usage: napi-mojo release --scaffold [--force] [dir]');
+  const { opts, positional } = parseArgs(argv, [], ['--scaffold', '--force', '--sync', '--bootstrap', '--dry-run']);
+  const modes = ['scaffold', 'sync', 'bootstrap'].filter((m) => opts[m]);
+  if (modes.length !== 1) {
+    fail('usage: napi-mojo release (--scaffold [--force] | --sync | --bootstrap [--dry-run]) [dir]');
   }
   const target = positional[0] || '.';
   const dir = resolve(target);
   if (!existsSync(dir)) fail(`${dir} does not exist`);
+
+  if (opts.sync) {
+    const { name, version, changed } = syncVersions(dir);
+    for (const f of changed) console.log(`  synced  ${f}`);
+    console.log(changed.length ? `\n${name}: platform versions set to ${version}.` : `${name}: already at ${version}.`);
+    return;
+  }
+
+  if (opts.bootstrap) {
+    for (const r of bootstrapRelease(dir, { dryRun: Boolean(opts['dry-run']) })) {
+      console.log(`  ${r.action === 'exists' ? 'exists       ' : r.action.padEnd(13)} ${r.name}`);
+    }
+    console.log(`
+Next, on npmjs.com, add a trusted publisher to EACH package above: this GitHub
+repository, workflow file release.yml. Then publish a GitHub release; the
+workflow publishes the real version over OIDC and moves "latest" to it.`);
+    return;
+  }
 
   const { created, kept, warnings, name, version } = scaffoldRelease(dir, target, {
     force: Boolean(opts.force),
@@ -963,15 +1260,19 @@ function cmdRelease(argv) {
   console.log(`
 Scaffolded prebuild publishing for ${name}@${version}.
 
-Before the first release, each platform package needs ONE manual publish:
+Before the first release:
 
-${PLATFORMS.map((p) => `  npm publish --access public npm/${p.key}`).join('\n')}
+  1. Commit what was written above.
+  2. npx napi-mojo release --bootstrap     (needs \`npm login\`)
+     npm's OIDC trusted publishing can only be configured on a package that
+     already exists. This publishes a placeholder (${BOOTSTRAP_VERSION}, dist-tag
+     "bootstrap") for ${name} and each platform package, so no real version is
+     spent on a package with no binary in it. Add --dry-run to preview.
+  3. On npmjs.com, add a trusted publisher to each package: this repository,
+     workflow file release.yml.
 
-npm's OIDC trusted publishing matches a per-package trusted publisher, and a
-package that has never been published has nothing to match — so the first
-publish must come from a workstation with a granular token. After that,
-configure each package's trusted publisher on npmjs.com and every later
-release goes over OIDC from the generated workflow.`);
+Then publish a GitHub release. \`npm version\` keeps the platform manifests in
+step through the "version" script added to package.json.`);
 }
 
 const HELP = `napi-mojo ${VERSION} — build Node.js native addons in Mojo
@@ -998,6 +1299,9 @@ Usage:
   napi-mojo release --scaffold [dir]     add prebuild + publish setup to an addon
       (package.json optionalDependencies, npm/<platform>/, a release workflow)
       --force            overwrite an existing index.js / release.yml
+  napi-mojo release --sync [dir]         set every platform manifest to package.json's version
+  napi-mojo release --bootstrap [dir]    first-publish placeholders so trusted publishing
+      --dry-run          can be configured (no real version is spent)
   napi-mojo --version | --help
 `;
 

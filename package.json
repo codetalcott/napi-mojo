@@ -46,6 +46,7 @@
     "scripts/bundle-runtime.sh",
     "scripts/platforms.mjs",
     "scripts/check-portable.mjs",
+    "licenses/",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"

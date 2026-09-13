@@ -1,25 +1,24 @@
 #!/usr/bin/env node
 /**
- * check-glibc-floor.mjs — would the HOST's libstdc++ satisfy what we ship?
+ * check-glibc-floor.mjs — would the HOST's GCC runtime satisfy what we ship?
  *
- * The Linux platform packages bundle GCC's libstdc++.so.6 and libgcc_s.so.1
- * alongside the Mojo runtime. libstdc++ alone is 23.9 MB of a 27 MB package,
- * and there is evidence it is redundant (docs/plan-distribution.md): the Mojo
- * runtime requires at most GLIBCXX_3.4.30, while its GLIBC_2.35 requirement —
- * which CANNOT be bundled, because glibc is the loader — already implies a
- * host whose own libstdc++ provides 3.4.30.
+ * The Linux platform packages do NOT bundle GCC's libstdc++.so.6 or
+ * libgcc_s.so.1 (HOST_PROVIDED in bundle-runtime.sh); they rely on the host's.
+ * That is sound because the Mojo runtime requires at most GLIBCXX_3.4.30,
+ * while its GLIBC_2.35 requirement — which CANNOT be bundled, because glibc is
+ * the loader — already implies a host whose own GCC runtime provides it
+ * (docs/plan-distribution.md).
  *
- * That argument holds only as long as the two floors stay in that order, and
+ * That argument holds only as long as the floors stay in that order, and
  * NOTHING WOULD NOTICE IF THEY STOPPED. A Mojo release that raises the
- * required GLIBCXX above what the glibc floor implies would either ship a
- * package that needs the bundled copy (fine while we bundle it, fatal the
- * moment we stop) or, after removal, a package that fails at require() on
- * hosts it claims to support. This gate turns that into a red build.
+ * required GLIBCXX (or libgcc_s's GCC_ version) above what the glibc floor
+ * implies would ship a package that fails at require() on hosts it claims to
+ * support. This gate turns that into a red build.
  *
  * THE QUESTION IT ANSWERS, precisely: taking the files we ship EXCEPT the GCC
- * runtime itself, what GLIBC / GLIBCXX / CXXABI versions do they require, and
- * is the GLIBCXX requirement satisfied by every mainstream distribution whose
- * glibc is new enough to load us at all?
+ * runtime itself, what GLIBC / GLIBCXX / CXXABI / GCC versions do they
+ * require, and are the GCC-runtime ones satisfied by every mainstream
+ * distribution whose glibc is new enough to load us at all?
  *
  * It reads ELF version requirements (.gnu.version_r) directly rather than
  * shelling out, for the reason check-portable.mjs records at length: readelf
@@ -38,12 +37,15 @@
 
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { dirname, basename, join, resolve, normalize } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // ---------------------------------------------------------------------------
 // What a host provides, by distribution.
 //
-// Each row is a mainstream distribution's shipped glibc and the GLIBCXX /
-// CXXABI its default libstdc++6 package provides. The gate does NOT trust any
+// Each row is a mainstream distribution's shipped glibc, the GLIBCXX / CXXABI
+// its default libstdc++6 package provides, and the GCC major its libgcc_s
+// comes from. A GCC_x.y.z symbol version is introduced by GCC x, so a libgcc_s
+// from GCC N provides every GCC_ version whose major is <= N. The gate does NOT trust any
 // single row: given a required glibc it takes every row that could host us
 // (glibc >= required) and uses the LOWEST GLIBCXX among them, so the answer is
 // the worst case a user might actually be on rather than a convenient one.
@@ -54,13 +56,21 @@ import { dirname, basename, join, resolve, normalize } from 'node:path';
 // publish.yml, not this gate alone.
 // ---------------------------------------------------------------------------
 const HOSTS = [
-  { distro: 'RHEL 8 / CentOS 8', glibc: '2.28', glibcxx: '3.4.25', cxxabi: '1.3.11' },
-  { distro: 'Ubuntu 20.04', glibc: '2.31', glibcxx: '3.4.28', cxxabi: '1.3.12' },
-  { distro: 'Debian 11', glibc: '2.31', glibcxx: '3.4.28', cxxabi: '1.3.12' },
-  { distro: 'RHEL 9', glibc: '2.34', glibcxx: '3.4.29', cxxabi: '1.3.13' },
-  { distro: 'Ubuntu 22.04', glibc: '2.35', glibcxx: '3.4.30', cxxabi: '1.3.13' },
-  { distro: 'Debian 12', glibc: '2.36', glibcxx: '3.4.30', cxxabi: '1.3.13' },
-  { distro: 'Ubuntu 24.04', glibc: '2.39', glibcxx: '3.4.32', cxxabi: '1.3.15' },
+  { distro: 'RHEL 8 / CentOS 8', glibc: '2.28', glibcxx: '3.4.25', cxxabi: '1.3.11', gcc: '8' },
+  { distro: 'Ubuntu 20.04', glibc: '2.31', glibcxx: '3.4.28', cxxabi: '1.3.12', gcc: '10' },
+  { distro: 'Debian 11', glibc: '2.31', glibcxx: '3.4.28', cxxabi: '1.3.12', gcc: '10' },
+  { distro: 'RHEL 9', glibc: '2.34', glibcxx: '3.4.29', cxxabi: '1.3.13', gcc: '11' },
+  { distro: 'Ubuntu 22.04', glibc: '2.35', glibcxx: '3.4.30', cxxabi: '1.3.13', gcc: '12' },
+  { distro: 'Debian 12', glibc: '2.36', glibcxx: '3.4.30', cxxabi: '1.3.13', gcc: '12' },
+  { distro: 'Ubuntu 24.04', glibc: '2.39', glibcxx: '3.4.33', cxxabi: '1.3.15', gcc: '14' },
+];
+
+// Host-provided families checked against the table, and the HOSTS column each
+// is compared with. GLIBC is not here: it is the floor that selects the rows.
+const HOST_FAMILIES = [
+  { family: 'GLIBCXX', column: 'glibcxx', lib: 'libstdc++' },
+  { family: 'CXXABI', column: 'cxxabi', lib: 'libstdc++' },
+  { family: 'GCC', column: 'gcc', lib: 'libgcc_s' },
 ];
 
 // The GCC runtime is what this gate is asking about, so its own requirements
@@ -244,6 +254,16 @@ export function closure(entry) {
 
 export function analyse(entry) {
   const { files, missing } = closure(entry);
+  return { entry, ...evaluate(files, missing) };
+}
+
+/**
+ * The verdict, from an already-walked closure. Separate from analyse() so the
+ * self-test drives THIS code with synthetic files — the failure paths are the
+ * ones a healthy artifact never exercises, so a test that re-derives them
+ * inline stays green while the real comparison is broken.
+ */
+export function evaluate(files, missing, hostTable = HOSTS) {
   const shipped = files.filter((f) => !GCC_RUNTIME.some((re) => re.test(basename(f.path))));
   const excluded = files.filter((f) => GCC_RUNTIME.some((re) => re.test(basename(f.path))));
 
@@ -264,18 +284,19 @@ export function analyse(entry) {
   const neededGlibc = maxOf('GLIBC');
   const neededGlibcxx = maxOf('GLIBCXX');
   const neededCxxabi = maxOf('CXXABI');
+  const neededGcc = maxOf('GCC');
 
   // Every distribution whose glibc is new enough to load us at all, and the
-  // worst GLIBCXX / CXXABI among them.
+  // worst of each host-provided version among them.
   const hosts = neededGlibc
-    ? HOSTS.filter((h) => cmpVersion(h.glibc, neededGlibc) >= 0)
-    : HOSTS.slice();
-  const impliedGlibcxx = hosts.length
-    ? hosts.map((h) => h.glibcxx).reduce((a, b) => (cmpVersion(a, b) <= 0 ? a : b))
+    ? hostTable.filter((h) => cmpVersion(h.glibc, neededGlibc) >= 0)
+    : hostTable.slice();
+  const worst = (column) => hosts.length
+    ? hosts.map((h) => h[column]).reduce((a, b) => (cmpVersion(a, b) <= 0 ? a : b))
     : null;
-  const impliedCxxabi = hosts.length
-    ? hosts.map((h) => h.cxxabi).reduce((a, b) => (cmpVersion(a, b) <= 0 ? a : b))
-    : null;
+  const impliedGlibcxx = worst('glibcxx');
+  const impliedCxxabi = worst('cxxabi');
+  const impliedGcc = worst('gcc');
 
   const problems = [];
   // An unresolved dependency is a FAILURE, not a note. The libraries we ship
@@ -298,22 +319,23 @@ export function analyse(entry) {
   if (!hosts.length) {
     problems.push(`GLIBC_${neededGlibc} is newer than every distribution in the table — the table is stale, or this build targets nothing shippable`);
   }
-  if (neededGlibcxx && impliedGlibcxx && cmpVersion(neededGlibcxx, impliedGlibcxx) > 0) {
+  const needed = { GLIBCXX: neededGlibcxx, CXXABI: neededCxxabi, GCC: neededGcc };
+  const implied = { GLIBCXX: impliedGlibcxx, CXXABI: impliedCxxabi, GCC: impliedGcc };
+  for (const { family, column, lib } of HOST_FAMILIES) {
+    const [need, have] = [needed[family], implied[family]];
+    if (!need || !have || cmpVersion(need, have) <= 0) continue;
+    const shownHave = family === 'GCC' ? `GCC_${have}.x (libgcc_s from GCC ${have})` : `${family}_${have}`;
     problems.push(
-      `GLIBCXX_${neededGlibcxx} is required but a GLIBC_${neededGlibc} host only guarantees GLIBCXX_${impliedGlibcxx} ` +
-      `(worst case: ${hosts.filter((h) => h.glibcxx === impliedGlibcxx).map((h) => h.distro).join(', ')}). ` +
-      `The bundled libstdc++ is now load-bearing: it can no longer be dropped, and docs/plan-distribution.md's argument for dropping it is void.`
-    );
-  }
-  if (neededCxxabi && impliedCxxabi && cmpVersion(neededCxxabi, impliedCxxabi) > 0) {
-    problems.push(
-      `CXXABI_${neededCxxabi} is required but a GLIBC_${neededGlibc} host only guarantees CXXABI_${impliedCxxabi}`
+      `${family}_${need} is required but a GLIBC_${neededGlibc} host only guarantees ${shownHave} ` +
+      `(worst case: ${hosts.filter((h) => h[column] === have).map((h) => h.distro).join(', ')}). ` +
+      `The host ${lib} no longer satisfies the Mojo runtime: bundle-runtime.sh's HOST_PROVIDED ` +
+      `premise is void — see docs/plan-distribution.md before shipping.`
     );
   }
 
   return {
-    entry, files: files.map((f) => basename(f.path)), excluded: excluded.map((f) => basename(f.path)),
-    missing, neededGlibc, neededGlibcxx, neededCxxabi, impliedGlibcxx, impliedCxxabi,
+    files: files.map((f) => basename(f.path)), excluded: excluded.map((f) => basename(f.path)),
+    missing, neededGlibc, neededGlibcxx, neededCxxabi, neededGcc, impliedGlibcxx, impliedCxxabi, impliedGcc,
     hosts: hosts.map((h) => h.distro), attributed, problems,
   };
 }
@@ -331,9 +353,13 @@ function report(a) {
   console.log(`requires GLIBC   : ${a.neededGlibc ?? '(none)'}   <- cannot be bundled; this is the real floor`);
   console.log(`requires GLIBCXX : ${a.neededGlibcxx ?? '(none)'}`);
   console.log(`requires CXXABI  : ${a.neededCxxabi ?? '(none)'}`);
+  console.log(`requires GCC     : ${a.neededGcc ?? '(none)'}   <- libgcc_s`);
   console.log('');
   console.log(`a GLIBC_${a.neededGlibc} host is at least: ${a.hosts.join(', ')}`);
-  console.log(`  and so provides at least GLIBCXX_${a.impliedGlibcxx}, CXXABI_${a.impliedCxxabi}`);
+  console.log(
+    `  and so provides at least GLIBCXX_${a.impliedGlibcxx}, CXXABI_${a.impliedCxxabi}, ` +
+    `and libgcc_s from GCC ${a.impliedGcc}`
+  );
 
   for (const [family, versions] of Object.entries(a.attributed)) {
     const top = maxVersion(Object.keys(versions));
@@ -345,8 +371,8 @@ function report(a) {
     for (const p of a.problems) console.error('  - ' + p + '\n');
     return 1;
   }
-  console.log('\ncheck-glibc-floor: the host libstdc++ implied by our own glibc floor satisfies us.');
-  console.log('The bundled GCC runtime is redundant on every distribution in the table.');
+  console.log('\ncheck-glibc-floor: the host GCC runtime implied by our own glibc floor satisfies us');
+  console.log('on every distribution in the table, so leaving libstdc++ and libgcc_s to the host is sound.');
   return 0;
 }
 
@@ -392,36 +418,81 @@ function selfTest() {
     }
   });
 
+  // The cases below drive evaluate() — the code the real run uses — with a
+  // synthetic closure. Their failure paths are the ones today's healthy
+  // artifact never reaches, so only a synthetic input can prove they fire.
+  const lib = (name, needs) => ({ path: `/fixture/${name}`, versionNeeds: needs });
+  const today = () => [
+    lib('index.node', { 'libc.so.6': ['GLIBC_2.34'] }),
+    lib('libKGENCompilerRTShared.so', {
+      'libc.so.6': ['GLIBC_2.35'],
+      'libstdc++.so.6': ['GLIBCXX_3.4.30', 'CXXABI_1.3.13'],
+      'libgcc_s.so.1': ['GCC_3.3'],
+    }),
+  ];
+  const problemsOf = (files, missing = []) => evaluate(files, missing).problems;
+
+  check('the shape of the current artifact passes', () => {
+    const p = problemsOf(today());
+    if (p.length) throw new Error(`expected no problems, got ${JSON.stringify(p)}`);
+  });
+
   check('a raised GLIBCXX requirement is caught', () => {
-    // The regression this gate exists for, simulated on the table alone.
-    const hosts = HOSTS.filter((h) => cmpVersion(h.glibc, '2.35') >= 0);
-    const implied = hosts.map((h) => h.glibcxx).reduce((a, b) => (cmpVersion(a, b) <= 0 ? a : b));
-    if (implied !== '3.4.30') throw new Error(`a GLIBC_2.35 host should imply GLIBCXX_3.4.30, got ${implied}`);
-    if (cmpVersion('3.4.31', implied) <= 0) throw new Error('GLIBCXX_3.4.31 must fail against a 3.4.30 floor');
-    if (cmpVersion('3.4.30', implied) > 0) throw new Error('GLIBCXX_3.4.30 must pass against a 3.4.30 floor');
+    const files = today();
+    files[1].versionNeeds['libstdc++.so.6'].push('GLIBCXX_3.4.31');
+    if (!problemsOf(files).some((p) => p.startsWith('GLIBCXX_3.4.31'))) {
+      throw new Error('GLIBCXX_3.4.31 against a GLIBC_2.35 (3.4.30) floor must be a problem');
+    }
+  });
+
+  check('a raised libgcc_s GCC_ requirement is caught', () => {
+    const files = today();
+    files[1].versionNeeds['libgcc_s.so.1'].push('GCC_13.0.0');
+    if (!problemsOf(files).some((p) => p.startsWith('GCC_13.0.0'))) {
+      throw new Error('GCC_13.0.0 against a GLIBC_2.35 floor (GCC 12 hosts) must be a problem');
+    }
+    const ok = today();
+    ok[1].versionNeeds['libgcc_s.so.1'].push('GCC_12.0.0');
+    if (problemsOf(ok).length) throw new Error('GCC_12.0.0 must pass against GCC 12 hosts');
   });
 
   check('an unresolvable dependency fails rather than passing empty', () => {
     // The regression found by running the gate on an artifact whose siblings
     // were absent: the tally came back empty and the gate said fine.
-    const fake = {
-      missing: [{ from: 'index.node', dep: 'libKGENCompilerRTShared.so' }],
-      neededGlibc: '2.34', neededGlibcxx: null,
-    };
-    if (!fake.missing.length) throw new Error('fixture is wrong');
-    // Mirrors the guard clause in analyse(); kept in step by the sabotage in
-    // the commit message rather than by construction.
-    const problems = [];
-    if (fake.missing.length) problems.push('incomplete');
-    if (!problems.length) throw new Error('an unresolved dependency must produce a problem');
+    const p = problemsOf(today().slice(0, 1), [{ from: 'index.node', dep: 'libKGENCompilerRTShared.so' }]);
+    if (!p.some((x) => x.startsWith('could not resolve'))) {
+      throw new Error('an unresolved dependency must produce a problem');
+    }
+  });
+
+  check('an empty tally is a parser failure, not a clean bill', () => {
+    if (!problemsOf([lib('index.node', {})]).some((x) => x.startsWith('no GLIBC requirement'))) {
+      throw new Error('no GLIBC requirement at all must be a problem');
+    }
   });
 
   check('the worst case is taken, not a convenient one', () => {
     // RHEL 9 is glibc 2.34 with GLIBCXX_3.4.29: a build needing only
     // GLIBC_2.34 must be held to 3.4.29, not to Ubuntu 22.04's 3.4.30.
-    const hosts = HOSTS.filter((h) => cmpVersion(h.glibc, '2.34') >= 0);
-    const implied = hosts.map((h) => h.glibcxx).reduce((a, b) => (cmpVersion(a, b) <= 0 ? a : b));
-    if (implied !== '3.4.29') throw new Error(`expected the RHEL 9 floor 3.4.29, got ${implied}`);
+    const files = [lib('index.node', { 'libc.so.6': ['GLIBC_2.34'], 'libstdc++.so.6': ['GLIBCXX_3.4.30'] })];
+    const a = evaluate(files, []);
+    if (a.impliedGlibcxx !== '3.4.29') throw new Error(`expected the RHEL 9 floor 3.4.29, got ${a.impliedGlibcxx}`);
+    if (!a.problems.some((p) => p.startsWith('GLIBCXX_3.4.30'))) throw new Error('3.4.30 must fail on RHEL 9');
+  });
+
+  check('host table rows are internally consistent', () => {
+    // CXXABI and GLIBCXX move together per GCC release; a row mixing two
+    // releases is a transcription error (Ubuntu 24.04 once had GCC 13's
+    // GLIBCXX beside GCC 14's CXXABI).
+    const byGcc = { 8: ['3.4.25', '1.3.11'], 10: ['3.4.28', '1.3.12'], 11: ['3.4.29', '1.3.13'],
+      12: ['3.4.30', '1.3.13'], 13: ['3.4.32', '1.3.14'], 14: ['3.4.33', '1.3.15'] };
+    for (const h of HOSTS) {
+      const want = byGcc[h.gcc];
+      if (!want) throw new Error(`${h.distro}: no reference for GCC ${h.gcc}`);
+      if (h.glibcxx !== want[0] || h.cxxabi !== want[1]) {
+        throw new Error(`${h.distro}: GCC ${h.gcc} ships GLIBCXX_${want[0]} / CXXABI_${want[1]}, row has ${h.glibcxx} / ${h.cxxabi}`);
+      }
+    }
   });
 
   const failed = cases.filter(([, e]) => e);
@@ -465,4 +536,5 @@ function main() {
   process.exit(report(a));
 }
 
-main();
+// Only when run as a script, so analyse()/evaluate() can be imported.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

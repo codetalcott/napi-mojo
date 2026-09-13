@@ -156,8 +156,9 @@ on the machine that built it**, publishes, and then installs the result on a
 machine with no checkout and no toolchain. Section 9 of the
 [tutorial](docs/TUTORIAL.md) walks it through, including the one step that
 cannot be automated: npm's trusted publishing has nothing to match against
-until a package has been published once, so the first publish of each
-platform package needs a token from your own machine.
+until a package has been published once, so `npx napi-mojo release
+--bootstrap` publishes a placeholder of each package from your own machine —
+without spending a real version on a package that has no binary in it.
 
 Two things to know before you plan a release:
 
@@ -174,7 +175,10 @@ Two things to know before you plan a release:
   host's `libstdc++` rather than shipping one, which is what keeps them small;
   every host new enough for the glibc floor already provides a new enough
   `libstdc++`, and `scripts/check-glibc-floor.mjs` fails the build if that
-  ever stops being true.
+  ever stops being true. **Under Bun or Deno, the image must provide
+  `libstdc++`** — neither runtime links it, so `oven/bun:*-distroless` and
+  `denoland/deno:alpine` cannot load a Linux prebuild; the Debian/Ubuntu-based
+  images and `denoland/deno:distroless` can.
 
 ## Runtimes
 

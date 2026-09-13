@@ -63,8 +63,10 @@ than an assumption. The Mojo runtime requires at most `GLIBCXX_3.4.30`, and
 it also requires `GLIBC_2.35` — which cannot be bundled, because glibc is the
 dynamic loader. Every mainstream distribution new enough to satisfy the glibc
 floor already ships a libstdc++ at 3.4.30 or better, and Node itself is a C++
-program linked against both libraries, so they are present wherever this addon
-can be loaded at all.
+program linked against both libraries, so they are present wherever a Node
+process runs. Bun and Deno do not link libstdc++, so under those runtimes the
+container image must provide it: oven/bun:*-distroless and
+denoland/deno:alpine do not, and cannot load these packages.
 
 That ordering is now enforced rather than believed:
 `scripts/check-glibc-floor.mjs` fails the build if the Mojo runtime's GLIBCXX

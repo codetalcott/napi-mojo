@@ -169,7 +169,13 @@ deps_of() {
 # requirement CANNOT be bundled because glibc is the loader. Every mainstream
 # distribution new enough to satisfy that glibc floor already ships a
 # libstdc++ at 3.4.30 or better, and Node itself is a C++ program linked
-# against both, so they exist wherever the addon can run at all.
+# against both, so they exist wherever a Node process runs.
+#
+# Bun and Deno do NOT link libstdc++ (Bun's glibc build carries its C++
+# runtime statically; Deno needs only libgcc_s), so under them the container
+# image has to provide it. oven/bun:*-distroless and denoland/deno:alpine do
+# not, and cannot load the bundle; publish.yml's consume-oldest-linux proves
+# both sides on the official images.
 #
 # Shipping them also forced the Linux packages to declare
 # `GPL-3.0-or-later WITH GCC-exception-3.1`, which licence scanners read
