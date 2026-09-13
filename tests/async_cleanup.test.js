@@ -44,4 +44,36 @@ describe('addAsyncCleanupHook / removeAsyncCleanupHook (Phase 26a)', () => {
     expect(() => addon.removeAsyncCleanupHook('handle')).toThrow();
     expect(() => addon.removeAsyncCleanupHook()).toThrow();
   });
+
+  // napi_remove_async_cleanup_hook FREES the handle, so the two misuses below
+  // used to reach freed or foreign memory and kill the process (SIGSEGV, exit
+  // 139). Each runs in a child process: if the guard regresses, the failure
+  // is a readable exit status here instead of a crashed Jest worker.
+  const runIsolated = (body) => {
+    const { spawnSync } = require('child_process');
+    const script =
+      `const addon = require(${JSON.stringify(require.resolve('../build/index.node'))});\n` +
+      `const threw = (fn) => { try { fn(); return 'no-throw'; } catch (e) { return e.message; } };\n` +
+      body;
+    const r = spawnSync(process.execPath, ['-e', script], { encoding: 'utf8' });
+    return { status: r.status, signal: r.signal, stdout: r.stdout.trim(), stderr: r.stderr };
+  };
+
+  test('removing the same handle twice throws instead of freeing it twice', () => {
+    const r = runIsolated(`
+      const h = addon.addAsyncCleanupHook();
+      addon.removeAsyncCleanupHook(h);
+      console.log(threw(() => addon.removeAsyncCleanupHook(h)));
+    `);
+    expect({ status: r.status, signal: r.signal }).toEqual({ status: 0, signal: null });
+    expect(r.stdout).toMatch(/already removed/);
+  });
+
+  test('an External that addAsyncCleanupHook did not create is rejected', () => {
+    const r = runIsolated(`
+      console.log(threw(() => addon.removeAsyncCleanupHook(addon.createExternal(1, 2))));
+    `);
+    expect({ status: r.status, signal: r.signal }).toEqual({ status: 0, signal: null });
+    expect(r.stdout).toMatch(/pass the handle returned by addAsyncCleanupHook/);
+  });
 });

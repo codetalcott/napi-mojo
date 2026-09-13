@@ -151,6 +151,10 @@ const SCENARIOS = [
     log('isHandle', addon.isExternal(h));
     log('removed', addon.removeAsyncCleanupHook(h));
     log('rejectsNonHandle', tryCatch(() => addon.removeAsyncCleanupHook(42)) !== 'no-throw');
+    // napi_remove_async_cleanup_hook frees the handle: a second remove, or a
+    // foreign External, used to reach freed/arbitrary memory and crash.
+    log('rejectsDoubleRemove', tryCatch(() => addon.removeAsyncCleanupHook(h)) !== 'no-throw');
+    log('rejectsForeignExternal', tryCatch(() => addon.removeAsyncCleanupHook(addon.createExternal(1, 2))) !== 'no-throw');
   `],
   ['host', `
     log('callN', addon.callN((a, b, c) => a + b + c, [1, 2, 3]));
