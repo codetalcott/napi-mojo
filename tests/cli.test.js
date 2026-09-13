@@ -329,9 +329,10 @@ describe('napi-mojo release: what the generated setup needs to actually publish'
       cwd: dir, encoding: 'utf8', env: { ...process.env, GITHUB_OUTPUT: output },
     });
 
+    // Status, not an empty stderr: the Guard Malloc recipe in CLAUDE.md
+    // injects a library that prints a banner into every child node process.
     const ok = step();
-    expect(ok.stderr).toBe('');
-    expect(ok.status).toBe(0);
+    expect({ status: ok.status, stderr: ok.stderr }).toMatchObject({ status: 0 });
     expect(readFileSync(output, 'utf8')).toBe('version=1.0.0\n');
 
     const manifest = path.join(dir, 'npm', 'linux-x64', 'package.json');
@@ -378,8 +379,7 @@ process.exit(2);
     const res = run(['release', '--bootstrap', dir], {
       env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` },
     });
-    expect(res.stderr).toBe('');
-    expect(res.status).toBe(0);
+    expect({ status: res.status, stderr: res.stderr }).toMatchObject({ status: 0 });
     const published = readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
     expect(published.map((p) => p.pkg.name).sort()).toEqual(['myaddon', 'myaddon-darwin-arm64', 'myaddon-linux-arm64']);
     for (const p of published) {
