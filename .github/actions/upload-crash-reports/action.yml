@@ -1,0 +1,30 @@
+name: Crash reports
+description: >-
+  On a failed macOS job, print a summary of every crash report the job left in
+  DiagnosticReports and upload the reports, so a native crash in CI leaves a
+  backtrace behind instead of only "signal=SIGSEGV".
+
+# Called with `if: failure() && runner.os == 'macOS'` from each job that loads
+# the addon. Why this exists: a Jest worker once died with SIGSEGV on
+# test-node24 (macos-latest), passed on re-run, and could not be reproduced in
+# 25 local runs or 5 under Guard Malloc. The crash report that would have
+# explained it was on a runner that no longer existed. See
+# scripts/summarize-crash-reports.mjs.
+runs:
+  using: composite
+  steps:
+    - name: Summarize crash reports
+      shell: bash
+      run: node "${GITHUB_WORKSPACE}/scripts/summarize-crash-reports.mjs" || true
+
+    - name: Upload crash reports
+      uses: actions/upload-artifact@v7
+      with:
+        # github.job + OS is unique within a run (only macOS uploads), and the
+        # attempt keeps a re-run from colliding with the first try's upload.
+        name: crash-reports-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}-attempt${{ github.run_attempt }}
+        path: |
+          ~/Library/Logs/DiagnosticReports/*.ips
+          /Library/Logs/DiagnosticReports/*.ips
+        if-no-files-found: ignore
+        retention-days: 14

@@ -507,6 +507,11 @@ jobs:
       - name: Run GC finalizer tests
         run: npm run test:gc
 
+      # Diagnostics for a crash that already happened; see the action.
+      - name: Crash reports (macOS, on failure)
+        if: failure() && runner.os == 'macOS'
+        uses: ./.github/actions/upload-crash-reports
+
   # Concurrent async work under a checking allocator.
   #
   # `returns = "string"` puts a Mojo String in the async data struct: allocated
@@ -566,6 +571,11 @@ jobs:
 
       - name: Check per-call overhead against ceilings
         run: node scripts/check-benchmark.mjs
+
+      # Diagnostics for a crash that already happened; see the action.
+      - name: Crash reports (macOS, on failure)
+        if: failure() && runner.os == 'macOS'
+        uses: ./.github/actions/upload-crash-reports
 
   # Does the addon behave the same on the other N-API runtimes?
   #
@@ -726,6 +736,11 @@ jobs:
           NAPI_MOJO_STRESS_WIDTH: '80'
         run: node ./node_modules/jest/bin/jest.js tests/async_stress.test.js --runInBand
 
+      # Diagnostics for a crash that already happened; see the action.
+      - name: Crash reports (macOS, on failure)
+        if: failure() && runner.os == 'macOS'
+        uses: ./.github/actions/upload-crash-reports
+
   # Node 24 coverage is a SEPARATE job, deliberately — not a node-version
   # matrix dimension on `test`. The required status checks on main are pinned
   # by NAME (`test (macos-latest)`, `test (ubuntu-latest)`); adding a matrix
@@ -766,3 +781,8 @@ jobs:
 
       - name: Run GC finalizer tests
         run: npm run test:gc
+
+      # Diagnostics for a crash that already happened; see the action.
+      - name: Crash reports (macOS, on failure)
+        if: failure() && runner.os == 'macOS'
+        uses: ./.github/actions/upload-crash-reports
