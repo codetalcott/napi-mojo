@@ -102,13 +102,18 @@ and needs no Node at all, there is [`mojo-http`](https://github.com/codetalcott/
 — an HTTP/1.1 server and web framework for Mojo. The two are complements, not
 competitors, and share no build-time dependency:
 
-| | owns `main()` | reaches npm | deployment |
+| | owns `main()` | reaches | deployment |
 |---|---|---|---|
-| **mojo-http** | Mojo | no | standalone binary |
-| **napi-mojo run** | Node | yes | Node + a `.node` |
+| **mojo-http** | Mojo | nothing foreign, in-process | standalone binary |
+| **napi-mojo run** | Node | npm | Node + a `.node` |
 
 Pick by whether you need the ecosystem more than you need the standalone
 binary.
+
+(mojo-http does reach a foreign ecosystem, just not from inside Mojo: its
+`m0serve` runs Python WSGI/ASGI applications, and ships to **PyPI** as a
+`pip install m0serve` wheel. That is the same move in the other direction —
+which is the subject of the next section.)
 
 **What it costs.** Measured on darwin-arm64 / Node 24 (`node scripts/benchmark.mjs`), a full
 JS -> Mojo -> JS -> Mojo -> JS round trip through `callN(fn, [])` is ~435 ns,
@@ -127,6 +132,42 @@ Promise hands Mojo a *pending* Promise it cannot suspend on. Use synchronous
 APIs (`readFileSync`), or pass a continuation — build a Mojo callback with
 `JsFunction.create` and give it to `.then()`; `mojo_main` returns, the event
 loop runs, and the callback fires later.
+
+## Shipping Mojo to npm
+
+The framework's most-used direction is not the one its name suggests. A Mojo
+author with something worth sharing has no registry of their own with much
+reach; npm is where the users are, and a napi-mojo addon is how Mojo code gets
+there — installed by people who never install a toolchain.
+
+That is what the framework's own release pipeline does, and
+`napi-mojo release --scaffold` writes the same thing for your project:
+
+```bash
+npx napi-mojo build --bundle      # one self-contained binary, this platform
+npx napi-mojo release --scaffold  # prebuilds for all of them, and the workflow
+```
+
+You get `optionalDependencies` on one prebuilt package per platform, a loader
+that picks the right one (preferring a local build so your own tests never
+resolve a stale published binary), `npm/<platform>/` manifests, and a release
+workflow that builds each platform, **checks that the bundle does not depend
+on the machine that built it**, publishes, and then installs the result on a
+machine with no checkout and no toolchain. Section 9 of the
+[tutorial](docs/TUTORIAL.md) walks it through, including the one step that
+cannot be automated: npm's trusted publishing has nothing to match against
+until a package has been published once, so the first publish of each
+platform package needs a token from your own machine.
+
+Two things to know before you plan a release:
+
+- **Prebuilds cover darwin-arm64, linux-x64 and linux-arm64** — every platform
+  the Mojo toolchain itself targets. There is no Intel Mac or Windows build of
+  `max` to build against.
+- **A prebuilt package carries the Mojo runtime**, so it is not MIT however
+  your own code is licensed. See [`licenses/NOTICE.bundle.txt`](licenses/NOTICE.bundle.txt)
+  for what this project's packages contain and under what terms; yours will
+  contain the same things.
 
 ## Runtimes
 

@@ -1,12 +1,12 @@
 # Plan: distribution — runtime reach, artifact portability, publishing
 
-**Status**: **P0–P3 implemented** (2026-09-13) — the cross-runtime gate
+**Status**: **P0–P4 implemented** (2026-09-13) — the cross-runtime gate
 (`scripts/check-runtimes.mjs`, the `runtimes` CI job), the
 `addAsyncCleanupHook` handle fix, the README runtime matrix, the artifact
 portability gate (`scripts/check-portable.mjs`, wired into `publish.yml`),
 per-platform licence declarations with their texts, and `napi-mojo release
---scaffold` for addon authors. **P4 and P5 remain proposals**, as does
-dropping the bundled GCC runtime. The measurements in
+--scaffold` for addon authors, and the positioning work. **P5 remains a
+proposal**, as does dropping the bundled GCC runtime. The measurements in
 [Findings](#findings-measured-2026-09-13) are real and reproducible.
 
 **Created**: 2026-09-13
@@ -335,13 +335,30 @@ refuses to build without a tag derived from the staged binaries; both this
 repo's platform packages and the scaffolded ones still declare `os`/`cpu` by
 hand. Worth revisiting if a platform is ever mis-declared.
 
-### P4 — Positioning
+### P4 — Positioning — **DONE**
 
-- A page for audience C: the Mojo author shipping to npm. Currently nothing
-  addresses them, and they are the only demonstrated consumers.
-- README "Two directions" table: mojo-http's row reads "reaches npm: no",
-  which implies it reaches no foreign ecosystem. It reaches PyPI. One line.
-- The export enumerability decision from Findings.
+- **A README section for audience C**, "Shipping Mojo to npm" — the framework's
+  most-used direction is not the one its name suggests, and nothing addressed
+  the author who has Mojo code and wants users. It points at
+  `release --scaffold`, the tutorial's section 9, the three-platform limit, and
+  the licence consequence of shipping a runtime.
+- **The mojo-http comparison row is honest now.** "reaches npm: no" implied
+  mojo-http reaches no foreign ecosystem; it reaches PyPI, from the other
+  direction, which is the whole reason this plan exists.
+- **Module exports are enumerable**, and writable and configurable — ordinary
+  `exports.foo = fn` semantics rather than `napi_default`. They were none of
+  the three, so `Object.keys(addon)` returned five names (the classes, which
+  are registered by another path and *were* enumerable), `{...addon}` lost
+  every function, and assigning over an export silently did nothing: two
+  behaviours in one module for no reason. Class prototype members deliberately
+  keep the old attributes — a JS class method is non-enumerable.
+
+  A side effect worth noting: `tests/typescript.test.js` asserts that every
+  enumerable function on the addon is declared in the `.d.ts`, and that loop
+  was **vacuous** — `Object.keys` handed it only the five classes, each of
+  which it skips. It now checks all 153. Verified statically before the
+  change: every exported name has an `export function` or `export class`
+  declaration, so the newly-live assertion passes.
 
 ### P5 — Host-mode marshalling codegen
 
