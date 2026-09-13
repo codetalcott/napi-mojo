@@ -327,10 +327,21 @@ jobs:
       - name: Lay out the consumer app
         run: |
           set -euo pipefail
-          mkdir -p app/build
+          # app/node_modules, even empty, is load-bearing. With NO node_modules
+          # directory, Bun auto-installs a missing bare specifier from npm — so
+          # demo.js's lookup of @napi-mojo/<platform> quietly fetched the
+          # PUBLISHED package (0.13.0, which bundles libstdc++) and every Bun
+          # step here tested npm's binary instead of this bundle. A real install
+          # always has node_modules; so does this one. check.cjs also refuses
+          # to run if any platform package resolves, whatever the cause.
+          mkdir -p app/build app/node_modules
           cp loader/demo.js loader/load-error.js app/
           cp bundle/* app/build/
           cat > app/check.cjs <<'EOF'
+          const key = process.platform + '-' + process.arch;
+          let resolved = null;
+          try { resolved = require.resolve('@napi-mojo/' + key); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e; }
+          if (resolved) throw new Error('@napi-mojo/' + key + ' resolved to ' + resolved + ' — this would test a published binary, not the bundle');
           const a = require('/app/demo.js');
           if (a.hello() !== 'Hello from Mojo!') throw new Error('wrong greeting: ' + a.hello());
           if (a.asyncRuntimeInitOk() !== true) throw new Error('loaded, but the Mojo async runtime did not initialize');
