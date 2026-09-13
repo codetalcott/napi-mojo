@@ -200,6 +200,14 @@ because the defects that show up here are process-level (an abort, a heap error
 at teardown) rather than wrong return values, and a same-process assertion
 would miss them.
 
+**On Linux, Bun and Deno need a container image with the C++ runtime** —
+neither runtime links it, and the prebuilds use the system's copy. When an
+image lacks it (`oven/bun:*-distroless`, `denoland/deno:alpine`), a scaffolded
+addon's loader says so, names the fix and links to
+[`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md), which also has the
+two-line Dockerfile fix and a check to put in your image build. Every image
+listed there as checked is loaded, or refused, on every release.
+
 **Two upstream caveats**, both reproducible from a plain C N-API addon with no
 Mojo involved, so neither is specific to this framework:
 

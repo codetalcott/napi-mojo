@@ -427,6 +427,18 @@ Versions stay in step on their own: the scaffold adds a `version` script, so
 --sync` does the same by hand), and the release workflow refuses to publish if
 they disagree.
 
+### When a user's `require()` fails
+
+Your users install a binary, so the failures they can hit are about their
+machine, not your code: a container image without the C++ runtime (common
+under Bun and Deno), a glibc older than 2.35, or Alpine. The generated
+`index.js` passes those through `load-error.js`, which rethrows under your
+package's name with an error `code`, the fix, and a link to
+[TROUBLESHOOTING.md](TROUBLESHOOTING.md) — rather than the loader's bare
+`libstdc++.so.6: cannot open shared object file`. Point your own README's
+installation section at that page; its "Catch it when the image is built"
+section is the one to quote for Docker users.
+
 ## Where to go next
 
 - **[docs/api/](api/)** — the framework API reference, generated from the Mojo

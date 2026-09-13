@@ -344,6 +344,8 @@ jobs:
             }
             assert.ok(existsSync('.github/workflows/release.yml'));
             assert.ok(existsSync('index.js'));
+            // Copied out of the INSTALLED napi-mojo; index.js requires it.
+            assert.ok(existsSync('load-error.js'), 'load-error.js was not written — is it in napi-mojo files?');
             console.log('release scaffold e2e OK');
           "
           # The generated files have to be valid: a scaffold that emits a
