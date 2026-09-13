@@ -168,6 +168,13 @@ Two things to know before you plan a release:
   your own code is licensed. See [`licenses/NOTICE.bundle.txt`](licenses/NOTICE.bundle.txt)
   for what this project's packages contain and under what terms; yours will
   contain the same things.
+- **Linux prebuilds require glibc 2.35 or newer** (Ubuntu 22.04, Debian 12,
+  RHEL 9 and later). That floor comes from the Mojo runtime and cannot be
+  bundled around — glibc is the dynamic loader. The packages rely on the
+  host's `libstdc++` rather than shipping one, which is what keeps them small;
+  every host new enough for the glibc floor already provides a new enough
+  `libstdc++`, and `scripts/check-glibc-floor.mjs` fails the build if that
+  ever stops being true.
 
 ## Runtimes
 

@@ -140,12 +140,9 @@ echo "Mojo runtime libraries: $PIXI_LIB"
 # environment. Libraries that resolve outside it (libc, libSystem, …) belong to
 # the host and are left alone.
 #
-# Note what this does include on Linux: pixi ships its own libstdc++.so.6 and
-# libgcc_s.so.1, and the Mojo runtime is built against those, so they are part
-# of the closure and get bundled. That is deliberate — it is what makes the
-# package work on a host whose C++ runtime is older than Mojo requires — and it
-# is permitted: libstdc++/libgcc carry the GCC Runtime Library Exception, which
-# exists precisely to allow redistribution alongside a binary.
+# Note what this deliberately does NOT include on Linux: pixi ships its own
+# libstdc++.so.6 and libgcc_s.so.1 and the Mojo runtime links them, so they are
+# in the closure — but they are SKIPPED (see HOST_PROVIDED below).
 #
 # Must run BEFORE any rpath rewriting, while the binaries still point at
 # PIXI_LIB — that is what lets the loader resolve them for us.
@@ -163,14 +160,54 @@ deps_of() {
     fi
 }
 
+# LIBRARIES THE HOST PROVIDES, which we therefore do not ship.
+#
+# pixi's libstdc++.so.6 and libgcc_s.so.1 are in the closure and used to be
+# bundled. Dropping them took the linux-x64 package from 26.1 MB to 2.4 MB
+# unpacked — 91% — and they were redundant, for a reason that is a property of
+# the artifact rather than a guess: the Mojo runtime requires at most GLIBCXX_3.4.30, and its GLIBC_2.35
+# requirement CANNOT be bundled because glibc is the loader. Every mainstream
+# distribution new enough to satisfy that glibc floor already ships a
+# libstdc++ at 3.4.30 or better, and Node itself is a C++ program linked
+# against both, so they exist wherever the addon can run at all.
+#
+# Shipping them also forced the Linux packages to declare
+# `GPL-3.0-or-later WITH GCC-exception-3.1`, which licence scanners read
+# without reading the exception.
+#
+# THIS IS GUARDED, NOT ASSUMED — do not re-add them because a load failed
+# somewhere; find out which floor moved first:
+#   - scripts/check-glibc-floor.mjs (test.yml, every PR) fails if the Mojo
+#     runtime's GLIBCXX requirement ever rises above what its own glibc floor
+#     implies on the WORST host that floor admits.
+#   - publish.yml's consume-oldest-linux loads the real bundle in a Debian 12
+#     container with no toolchain, and asserts it is refused below the floor.
+# docs/plan-distribution.md has the measurements.
+#
+# Empty on macOS: Mojo links the system libc++ there, so this never matches.
+HOST_PROVIDED="libstdc++.so libgcc_s.so"
+
+host_provides() {
+    for prefix in $HOST_PROVIDED; do
+        case "$1" in "$prefix"*) return 0 ;; esac
+    done
+    return 1
+}
+
 # Breadth-first walk from the addon until no new pixi-env library appears.
 bundled=""
+skipped=""
 worklist="$NODE_BIN"
 while [ -n "$worklist" ]; do
     next=""
     for f in $worklist; do
         for name in $(deps_of "$f"); do
             case " $bundled " in *" $name "*) continue ;; esac
+            if host_provides "$name"; then
+                case " $skipped " in *" $name "*) continue ;; esac
+                skipped="$skipped $name"
+                continue
+            fi
             [ -f "$PIXI_LIB/$name" ] || continue
             cp "$PIXI_LIB/$name" "$OUT_DIR/$name"
             bundled="$bundled $name"
@@ -240,11 +277,22 @@ fi
 
 # Record the exact set for downstream steps. publish.yml stages and packs from
 # this manifest rather than re-deriving it from a glob, because a glob is how
-# libstdc++.so.6 and libgcc_s.so.1 went missing: `build/*.so` does not match a
-# versioned soname, and neither does an npm `files` entry of "*.so".
+# libraries went missing before: `build/*.so` does not match a versioned
+# soname, and neither does an npm `files` entry of "*.so". The two that
+# incident was about — libstdc++.so.6 and libgcc_s.so.1 — are no longer
+# bundled at all, but the rule outlives them.
 printf '%s\n' $bundled > "$OUT_DIR/bundled-libs.txt"
 
 echo "Runtime bundled ($(printf '%s\n' $bundled | wc -w | tr -d ' ') libraries):"
 for name in $bundled; do
     echo "  $name"
 done
+
+# Say what was left out, and why. A skip that prints nothing is how a future
+# reader concludes the closure simply never contained these.
+if [ -n "$skipped" ]; then
+    echo "Left to the host (see HOST_PROVIDED above):"
+    for name in $skipped; do
+        echo "  $name"
+    done
+fi

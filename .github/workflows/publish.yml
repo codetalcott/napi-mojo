@@ -245,17 +245,19 @@ jobs:
   # Three cases, and the middle one is the point:
   #
   #   1. the bundle as shipped, on the oldest supported glibc  -> must load
-  #   2. the SAME bundle with the GCC runtime deleted           -> must load
+  #   2. the bundle contains NO GCC runtime                      -> must hold
   #   3. the bundle on a glibc BELOW the floor                  -> must be
   #      refused by the loader, with a version error rather than a crash
   #
-  # Case 2 is standing evidence for the open question in
-  # docs/plan-distribution.md: libstdc++.so.6 is 23.9 MB of a 27 MB package and
-  # the host's own copy should satisfy us, because the GLIBC floor we cannot
-  # bundle already implies a libstdc++ new enough. Checking it every release
-  # means the day that stops being true is the day this job goes red — before
-  # anyone drops the library, not after. check-glibc-floor.mjs asserts the same
-  # thing from the load commands; this asserts it by actually running.
+  # Case 1 is the one that matters now. The Linux packages no longer bundle
+  # libstdc++.so.6 or libgcc_s.so.1 — they were 23.9 MB of a 27 MB package and
+  # redundant, because the GLIBC_2.35 floor we cannot bundle already implies a
+  # host libstdc++ new enough. So this job is what proves the host's copy
+  # actually serves, on a machine that did not build the artifact.
+  #
+  # Case 2 guards the removal itself: bundle-runtime.sh discovers its closure
+  # at build time, so a toolchain change could quietly put them back and the
+  # package would grow an order of magnitude and a GPL declaration with it.
   #
   # Case 3 turns the floor into a measurement rather than a claim.
   #
@@ -300,25 +302,24 @@ jobs:
               console.log('loads on Debian 12 (glibc 2.36):', a.hello());
             "
 
-      # The evidence for dropping libstdc++, re-measured every release.
-      - name: Still loads with the GCC runtime removed
+      # The removal, guarded. bundle-runtime.sh discovers its closure at build
+      # time, so this is what catches a toolchain change quietly putting the
+      # GCC runtime back — which would grow the package by an order of
+      # magnitude and re-introduce a GPL declaration with it.
+      - name: The GCC runtime is not in the bundle
         run: |
           set -euo pipefail
-          rm -rf nogcc && cp -r bundle nogcc
-          rm -f nogcc/libstdc++.so.6* nogcc/libgcc_s.so.1*
-          ls nogcc
-          docker run --rm -v "$PWD/nogcc:/w:ro" node:22-bookworm \
-            node -e "
-              const a = require('/w/index.node');
-              if (a.hello() !== 'Hello from Mojo!') throw new Error('wrong greeting: ' + a.hello());
-              if (a.asyncRuntimeInitOk() !== true) {
-                throw new Error('loaded without the bundled GCC runtime, but the async runtime did not initialize');
-              }
-              console.log('the host libstdc++ suffices:', a.hello());
-            " || {
-              echo "::error::the bundled GCC runtime is now load-bearing — docs/plan-distribution.md's case for dropping it no longer holds. Do not remove those libraries."
+          ls -la bundle
+          for lib in libstdc++.so libgcc_s.so; do
+            if ls bundle/"${lib}"* >/dev/null 2>&1; then
+              echo "::error::${lib} is back in the bundle — bundle-runtime.sh's HOST_PROVIDED skip is not working, or the closure changed. See docs/plan-distribution.md before shipping this."
               exit 1
-            }
+            fi
+          done
+          grep -qE 'libstdc\+\+|libgcc_s' bundle/bundled-libs.txt \
+            && { echo "::error::the manifest names a GCC runtime library"; exit 1; } || true
+          echo "no GCC runtime in the bundle, as intended"
+
 
       # Refused, not crashed. A SIGSEGV here would mean the floor is not
       # actually enforced by the loader and a user below it gets corruption
