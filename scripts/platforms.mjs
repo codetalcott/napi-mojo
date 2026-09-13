@@ -33,15 +33,14 @@
  * @property {string} runner     the GitHub Actions runner label that builds it
  * @property {string} libGlob    npm "files" glob for the bundled runtime libraries
  * @property {string[]} licenseFiles  Licence texts this platform's tarball must
- *   carry, relative to the repository root. Per-platform, like `license`: the
- *   macOS package contains no GCC runtime, so shipping GPLv3 alongside a
- *   declaration that does not mention it would be misleading, not thorough.
+ *   carry, relative to the repository root. Per-platform, like `license`, even
+ *   though all three currently agree: they did not when the Linux packages
+ *   bundled GCC's libstdc++ and libgcc_s, and the shape is what kept the
+ *   declaration honest then. Keep it per-platform.
  * @property {string} license    SPDX expression covering EVERYTHING in the tarball.
- *   Not "MIT": the prebuilt packages ship third-party runtime libraries beside
- *   index.node, and the declaration has to describe what is actually inside.
- *   It differs per platform — the Linux packages carry GCC's libstdc++ and
- *   libgcc_s, and the macOS one does not, because Mojo's runtime links the
- *   system libc++ there. licenses/NOTICE.bundle.txt is the long form.
+ *   Not "MIT": the prebuilt packages ship the Mojo runtime beside index.node,
+ *   and the declaration has to describe what is actually inside.
+ *   licenses/NOTICE.bundle.txt is the long form.
  * @property {boolean} nativelyTestableOnPublishRunner
  *   Whether the publish job (ubuntu x64) can EXECUTE this tarball, as opposed
  *   to only checking its contents against the bundler's manifest. Each platform
@@ -70,13 +69,8 @@ export const PLATFORMS = [
     condaSubdir: 'linux-64',
     runner: 'ubuntu-latest',
     libGlob: '*.so*',
-    license: 'MIT AND Apache-2.0 WITH LLVM-exception AND GPL-3.0-or-later WITH GCC-exception-3.1',
-    licenseFiles: [
-      'licenses/NOTICE.bundle.txt',
-      'licenses/LICENSE.mojo-runtime.txt',
-      'licenses/LICENSE.gcc-runtime-gpl3.txt',
-      'licenses/LICENSE.gcc-runtime-exception.txt',
-    ],
+    license: 'MIT AND Apache-2.0 WITH LLVM-exception',
+    licenseFiles: ['licenses/NOTICE.bundle.txt', 'licenses/LICENSE.mojo-runtime.txt'],
     nativelyTestableOnPublishRunner: true,
   },
   {
@@ -90,13 +84,8 @@ export const PLATFORMS = [
     // a self-hosted one, so check that before assuming this label works.
     runner: 'ubuntu-24.04-arm',
     libGlob: '*.so*',
-    license: 'MIT AND Apache-2.0 WITH LLVM-exception AND GPL-3.0-or-later WITH GCC-exception-3.1',
-    licenseFiles: [
-      'licenses/NOTICE.bundle.txt',
-      'licenses/LICENSE.mojo-runtime.txt',
-      'licenses/LICENSE.gcc-runtime-gpl3.txt',
-      'licenses/LICENSE.gcc-runtime-exception.txt',
-    ],
+    license: 'MIT AND Apache-2.0 WITH LLVM-exception',
+    licenseFiles: ['licenses/NOTICE.bundle.txt', 'licenses/LICENSE.mojo-runtime.txt'],
     nativelyTestableOnPublishRunner: false,
   },
 ];

@@ -41,6 +41,28 @@ for the measurements behind all of it.
   Mach-O/ELF load commands and refuses one that depends on the machine that
   built it — the property a load test on the build machine cannot establish.
 
+### Changed
+
+- **The Linux packages are 91% smaller** — 26.1 MB → 2.4 MB unpacked, a
+  9.4 MB → 0.9 MB tarball. GCC's `libstdc++.so.6` and `libgcc_s.so.1` are no
+  longer bundled: the Mojo runtime needs at most `GLIBCXX_3.4.30`, and its
+  `GLIBC_2.35` requirement — which cannot be bundled, glibc being the loader —
+  already implies a host that provides it. Node itself links both libraries,
+  so they exist wherever the addon can load at all.
+
+  **If you install on a host with glibc ≥ 2.35 but an unusually old
+  libstdc++**, `require()` now fails with a loader version error instead of
+  working. That combination is constructible but not something any mainstream
+  distribution produces. Two CI gates hold the premise: `check-glibc-floor.mjs`
+  on every PR, and a no-toolchain container consume job on every release.
+
+- **The Linux packages no longer declare `GPL-3.0-or-later WITH
+  GCC-exception-3.1`**, because they no longer contain GCC's runtime. All
+  three platforms are now `MIT AND Apache-2.0 WITH LLVM-exception`. Tarballs
+  published at 0.13.0 and earlier do contain those libraries; the exception is
+  what permitted it, and `licenses/NOTICE.bundle.txt` says so for anyone
+  auditing one.
+
 ### Fixed
 
 - **The prebuilt platform packages declared `"license": "MIT"`** while shipping

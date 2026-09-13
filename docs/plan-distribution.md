@@ -1,12 +1,13 @@
 # Plan: distribution — runtime reach, artifact portability, publishing
 
-**Status**: **P0–P4 implemented** (2026-09-13) — the cross-runtime gate
-(`scripts/check-runtimes.mjs`, the `runtimes` CI job), the
-`addAsyncCleanupHook` handle fix, the README runtime matrix, the artifact
-portability gate (`scripts/check-portable.mjs`, wired into `publish.yml`),
-per-platform licence declarations with their texts, and `napi-mojo release
---scaffold` for addon authors, and the positioning work. **P5 remains a
-proposal**, as does dropping the bundled GCC runtime. The measurements in
+**Status**: **P0–P4 implemented, plus the GCC-runtime removal** (2026-09-13) —
+the cross-runtime gate (`scripts/check-runtimes.mjs`, the `runtimes` CI job),
+the `addAsyncCleanupHook` handle fix, the README runtime matrix, the artifact
+portability gate (`scripts/check-portable.mjs`), per-platform licence
+declarations with their texts, `napi-mojo release --scaffold` for addon
+authors, the positioning work, and dropping the bundled GCC runtime — which
+takes the Linux packages down 91% and removes their GPL declaration.
+**P5 remains a proposal.** The measurements in
 [Findings](#findings-measured-2026-09-13) are real and reproducible.
 
 **Created**: 2026-09-13
@@ -218,7 +219,7 @@ evidence. Its message names the recorded build path verbatim.
 would catch a bundling regression earlier and is worth considering; it needs
 `patchelf` on Linux and codesigning on macOS, so it was not folded in here.
 
-### P2 — Licensing and contents of the platform packages — **DONE** (attribution; the size question is recorded, not acted on)
+### P2 — Licensing and contents of the platform packages — **DONE**
 
 `npm/<platform>/package.json` declares `"license": "MIT"` and ships
 `"*.so*"` / `"*.dylib*"`. The published `@napi-mojo/linux-x64@0.13.0` tarball
@@ -278,7 +279,7 @@ it is not needed.** Measured on `@napi-mojo/linux-x64@0.13.0`:
   `globalCacheActive()` and an async round trip all pass against the host's
   own libstdc++.
 
-#### Both prerequisites are now in place. The removal itself is still held.
+#### Done: both guards, then the removal.
 
 The two things this asked for before anyone deleted a library:
 
@@ -307,14 +308,40 @@ because it is the failure shape this whole document is about: run against an
 **passed** — while the library it could not open was the one carrying the
 `3.4.30` requirement. An unresolved dependency is now a failure, not a note.
 
-**What is still not done is the removal**, and the reason is unchanged: the
-risk is a consumer's `ERR_DLOPEN_FAILED` on glibc ≥ 2.35 with an older
-libstdc++, which is unusual but constructible and which no table or container
-in CI represents. The guards make that a measured risk rather than an
-argued one.
+#### The removal
 
-The prize is real: ~88% off both Linux packages, and the GPL declaration
-above disappears with them.
+`bundle-runtime.sh` now skips `libstdc++.so*` and `libgcc_s.so*` via an
+explicit `HOST_PROVIDED` list rather than dropping them from the closure walk
+silently, and prints what it left behind. Measured on the published linux-x64
+0.13.0 package, the result is **26.1 MB → 2.4 MB unpacked, a 9.4 MB → 0.9 MB
+tarball: 91% either way** — more than the 88% estimated from libstdc++ alone,
+because libgcc_s goes too.
+
+The GPL declaration went with them. All three platform packages are now
+`MIT AND Apache-2.0 WITH LLVM-exception`, `licenses/` no longer carries GPLv3
+or the GCC Runtime Library Exception, and `NOTICE.bundle.txt` records what
+0.13.0-and-earlier tarballs do contain for anyone auditing one.
+
+`consume-oldest-linux`'s second case changed with it. "The same bundle with
+the GCC runtime deleted also loads" is now a no-op — there is nothing to
+delete — so it asserts the inverse: the bundle contains **no** GCC runtime and
+the manifest names none. `bundle-runtime.sh` discovers its closure at build
+time, so a toolchain change could put them back and the package would silently
+regain an order of magnitude and a GPL declaration.
+
+**Verified before pushing**, on the real published artifact with both
+libraries removed: it loads with `LD_LIBRARY_PATH` cleared —`hello()`,
+`asyncRuntimeInitOk()`, `globalCacheActive()` and an async round trip all pass
+against the host's libstdc++ — `check-portable.mjs --require-self-contained`
+still reads self-contained across all four files, and `check-glibc-floor.mjs`
+passes. What is **not** verified locally is `bundle-runtime.sh` itself: there
+is no Mojo toolchain or patchelf in the session that wrote this, so the skip
+logic was simulated against the real library names and the first real run is
+CI's.
+
+**The residual risk is unchanged and now bounded**: a host with glibc ≥ 2.35
+and an older libstdc++ is constructible and no table or container represents
+it. Such a host gets a loader version error at `require()`, not corruption.
 
 ### P3 — Publishing scaffolding for addon authors — **DONE**
 

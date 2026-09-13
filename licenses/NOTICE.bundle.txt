@@ -28,6 +28,7 @@ Full text: LICENSE.mojo-runtime.txt.
     linux-x64      libKGENCompilerRTShared.so
     linux-arm64    libMSupportGlobals.so
                    libAsyncRTRuntimeGlobals.so
+                   (all three, on both Linux platforms)
 
 MODIFICATION NOTICE (Apache License 2.0, section 4(b)): each of these files
 has been changed by `scripts/bundle-runtime.sh`. Its install name and rpath
@@ -48,37 +49,34 @@ mojo-http reached the same conclusion for the same files; see its
 docs/FFI_DISTRIBUTION.md for the longer argument.
 
 
-GCC runtime libraries — Linux packages only
--------------------------------------------
+What the Linux packages do NOT carry
+------------------------------------
 
-    linux-x64      libstdc++.so.6
-    linux-arm64    libgcc_s.so.1
-                   (both files, on both Linux platforms)
+Up to and including 0.13.0 the Linux packages also bundled GCC's
+`libstdc++.so.6` and `libgcc_s.so.1`, copied from the pixi environment the
+Mojo runtime was built against. They no longer do. Measured on the
+published linux-x64 0.13.0 package, that is 26.1 MB -> 2.4 MB unpacked and a
+9.4 MB -> 0.9 MB tarball: 91% smaller, either way.
 
-Part of GCC, Copyright (C) Free Software Foundation, Inc., under the GNU
-General Public License version 3 or later, WITH the GCC Runtime Library
-Exception version 3.1. Full texts: LICENSE.gcc-runtime-gpl3.txt and
-LICENSE.gcc-runtime-exception.txt.
+They were redundant, for a reason that is a property of the artifact rather
+than an assumption. The Mojo runtime requires at most `GLIBCXX_3.4.30`, and
+it also requires `GLIBC_2.35` — which cannot be bundled, because glibc is the
+dynamic loader. Every mainstream distribution new enough to satisfy the glibc
+floor already ships a libstdc++ at 3.4.30 or better, and Node itself is a C++
+program linked against both libraries, so they are present wherever this addon
+can be loaded at all.
 
-**The Exception is what makes this package distributable under its own
-terms.** It grants permission to propagate Target Code formed by combining
-the Runtime Library with Independent Modules, under terms of your choice,
-provided the Target Code was produced by an Eligible Compilation Process.
-Nothing here changes the licence of napi-mojo's own code or of anything that
-depends on this package.
+That ordering is now enforced rather than believed:
+`scripts/check-glibc-floor.mjs` fails the build if the Mojo runtime's GLIBCXX
+requirement ever rises above what its own glibc floor guarantees on the worst
+host that floor admits, and `publish.yml`'s `consume-oldest-linux` job loads
+the real bundle in a Debian 12 container with no toolchain and asserts it is
+refused below the floor. See docs/plan-distribution.md.
 
-MODIFICATION NOTICE: these files were also rewritten by
-`scripts/bundle-runtime.sh`, in the same narrow way — RUNPATH set to
-`$ORIGIN` so the set resolves beside itself. No source was changed and
-nothing was recompiled.
-
-The macOS package contains neither file: Mojo's runtime links against the
-system libc++ there, which is not redistributed.
-
-These two are the largest things in the Linux packages by an order of
-magnitude, and there is evidence they are redundant — see "the bundled GCC
-runtime" in docs/plan-distribution.md. Removing them is deferred to a change
-that can test an old-distribution host, not asserted here.
+**Consequence for this file**: no part of any napi-mojo package is under the
+GPL, with or without the GCC Runtime Library Exception. If you are auditing a
+tarball published at 0.13.0 or earlier, it does contain those two libraries,
+and the exception is what permitted their redistribution.
 
 
 Verifying this file
