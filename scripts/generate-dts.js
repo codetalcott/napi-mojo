@@ -31,6 +31,8 @@ const OVERRIDES = {
   createCallback: '(): (...args: any[]) => any',
   createAdder: '(n: number): (x: number) => number',
   getGlobal: '(): typeof globalThis',
+  addAsyncCleanupHook: '(): unknown',
+  removeAsyncCleanupHook: '(handle: unknown): boolean',
   testRef: '(): object',
   testRefObject: '(): object',
   testRefString: '(s: string): object',
@@ -222,7 +224,9 @@ function inferReturnType(body) {
   // "JsBuffer.create(" — without these two checks they fell through to the
   // throw-based "never" rule below (createBufferCopy used to emit `: never`).
   if (body.includes('JsBuffer.create(') || body.includes('JsBuffer.create_copy(') || body.includes('JsBuffer.from_arraybuffer(')) return 'Buffer';
-  if (body.includes('JsExternal.create(')) return 'unknown';
+  // create_no_release does not contain the substring "JsExternal.create("
+  // — same near-miss as JsBuffer.create_copy above.
+  if (body.includes('JsExternal.create(') || body.includes('JsExternal.create_no_release(')) return 'unknown';
   if (body.includes('JsArray.create_with_length(')) return 'any[]';
   if (body.includes('JsObject.create(')) return 'object';
 
@@ -571,8 +575,8 @@ const DOCS = {
   getInstanceData:   'Retrieves the per-environment singleton number.',
   addCleanupHook:    'Registers an env cleanup hook; returns true.',
   removeCleanupHook: 'Registers then removes an env cleanup hook; returns true.',
-  addAsyncCleanupHook:    'Registers an async env cleanup hook; returns true.',
-  removeAsyncCleanupHook: 'Registers then removes an async env cleanup hook; returns true.',
+  addAsyncCleanupHook:    'Registers an async env cleanup hook; returns its handle.',
+  removeAsyncCleanupHook: 'Removes the async env cleanup hook the handle identifies.',
   addObservableCleanupHook: 'Registers a cleanup hook that prints a marker at env teardown; returns true.',
   asyncLabel: 'Appends " done" to a string on a worker thread; resolves with the result.',
   // Runtime introspection
