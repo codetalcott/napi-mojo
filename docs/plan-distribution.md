@@ -1,8 +1,10 @@
 # Plan: distribution — runtime reach, artifact portability, publishing
 
-**Status**: **Proposed** (2026-09-13). Nothing here is implemented. The
-measurements in [Findings](#findings-measured-2026-09-13) are real and
-reproducible; everything below them is a proposal.
+**Status**: **P0 implemented** (2026-09-13) — the cross-runtime gate
+(`scripts/check-runtimes.mjs`, the `runtimes` CI job), the
+`addAsyncCleanupHook` handle fix, and the README runtime matrix. **P1–P5
+remain proposals.** The measurements in
+[Findings](#findings-measured-2026-09-13) are real and reproducible.
 
 **Created**: 2026-09-13
 **Driver**: the sibling [`mojo-http`](https://github.com/codetalcott/mojo-http)
@@ -86,26 +88,37 @@ nothing to start making.
 `napi_get_version` and stores primitives in a reference anyway. So a version
 check would refuse Bun wrongly; do not add one.
 
-**3. Two real defects, found only by leaving Node.**
+**3. Two defects, found only by leaving Node — and both are upstream.**
 
-- **Deno: `free(): double free detected in tcache 2` at process teardown**,
-  triggered by *any* `addAsyncCleanupHook()` — with or without a later remove,
-  and silent under Node and Bun. `async_cleanup_hook_noop`
-  (`src/addon/env_ops.mojo:206`) calls `napi_remove_async_cleanup_hook` from
-  inside the hook, which is the documented way to signal completion; Deno
-  appears to free the handle again afterwards. Attribution is not settled —
-  it may be Deno's bug — but it manifests as heap corruption in the user's
-  process, which makes it ours to characterise.
-- **Bun: process abort** (`ASSERTION FAILED: Attempted to add a duplicate
-  async NAPI environment cleanup hook`) on add-then-remove. The cause is on
-  our side and is a smell independent of Bun:
-  `remove_async_cleanup_hook_fn` (`src/addon/env_ops.mojo:230`) *registers a
-  second hook with an identical `(function, data)` pair* — same
-  `async_cleanup_hook_noop`, same bindings pointer — purely so it has a handle
-  to remove. Node and Deno tolerate the duplicate; Bun asserts on it.
+Attribution was settled by rebuilding each sequence as a **plain C N-API
+addon** (`gcc -shared -fPIC -I <node>/include/node`) with no Mojo anywhere in
+it. Both reproduce:
 
-Neither is reachable from `npm test`, and neither would ever have been found by
-a gate that only runs Node.
+| C addon does | Node | Deno | Bun |
+|---|---|---|---|
+| register one hook; it calls `napi_remove_async_cleanup_hook` from inside itself, the documented completion signal | ok | **`free(): double free detected in tcache 2`** | ok |
+| register one hook, remove it from JS before exit | ok | ok | ok |
+| register two hooks with an identical `(function, data)` pair | ok | **`double free or corruption (fasttop)`** | **abort: "duplicate async NAPI environment cleanup hook"** |
+
+So **neither is napi-mojo's bug to fix.** Deno double-frees a handle after the
+hook has already surrendered it, on the documented happy path; Bun asserts that
+`(function, data)` is unique, which N-API nowhere requires.
+
+What *was* ours is that `remove_async_cleanup_hook_fn`
+(`src/addon/env_ops.mojo`) walked straight into the second row. It registered a
+second hook with an identical pair — same `async_cleanup_hook_noop`, same
+bindings pointer — purely to obtain a handle it could remove, because
+`addAsyncCleanupHook` returned `true` and dropped the real handle. The pair it
+removed was therefore never the pair the caller added, and the caller's hook
+stayed registered: the function's name did not describe what it did. Fixed by
+returning the handle (as an External) and removing *that* — the middle row,
+which is clean everywhere.
+
+Deno's remains reachable by any addon that registers an async cleanup hook and
+lets it run at exit, which is the normal use. That is documented, not fixed.
+
+Neither defect is reachable from `npm test`, and neither would ever have been
+found by a gate that only runs Node.
 
 **Unrelated finding, same probe.** `Object.keys(addon)` returns **5** — the
 classes. Every function export is non-enumerable (`napi_default`), so
@@ -117,40 +130,44 @@ see almost nothing. napi-rs marks exports enumerable. Worth a decision.
 Ordered by evidence and by cost, not by appeal. Each item states what would
 make it done.
 
-### P0 — Cross-runtime gate, and the two defects it found
+### P0 — Cross-runtime gate, and the two defects it found — **DONE**
 
-**Why first**: it is the only item with defects already on the table, and the
+**Why first**: it was the only item with defects already on the table, and the
 cheapest instrument that would have caught them. It also converts "works in
 Node" into "works in Node, Deno and Bun", which is the positioning claim with
 the widest reach per unit of work.
 
-1. **Fix `remove_async_cleanup_hook_fn`.** Registering an identical
-   `(fn, data)` pair to obtain a removable handle is wrong on its own terms.
-   Give the second registration a distinguishing `data` (a distinct heap word
-   the hook frees), or restructure so `addAsyncCleanupHook` returns a real
-   handle the JS side can pass back. RED test first: the Bun abort is the
-   failing case.
-2. **Characterise the Deno double free.** Determine whether removing the
-   in-hook `napi_remove_async_cleanup_hook` call changes it, whether a
-   minimal C addon reproduces it (if so it is Deno's, and gets an upstream
-   issue with that reproducer), and what an addon author should do meanwhile.
-   Record the answer in `docs/` regardless of who owns the bug.
+1. **`remove_async_cleanup_hook_fn` fixed.** `addAsyncCleanupHook` now returns
+   the `napi_async_cleanup_hook_handle` as an External and
+   `removeAsyncCleanupHook(handle)` removes *that* hook, so no duplicate
+   `(function, data)` pair is ever registered. The old shape also meant remove
+   never removed what add had registered — the name did not describe the
+   behaviour. `tests/async_cleanup.test.js` pins the API; the runtimes gate
+   pins the process-level consequence.
+2. **The Deno double free is characterised and is Deno's.** A plain C addon
+   reproduces it on the documented happy path (table in
+   [Findings](#findings-measured-2026-09-13)). Not fixable here; recorded in
+   the README's runtime matrix and in `KNOWN_DEFECTS`, with a two-line
+   reproducer. **Still to do: report it upstream**, with the C reproducer —
+   worth doing, and a decision for a human rather than something to file
+   automatically.
 3. **`scripts/check-runtimes.mjs` + a non-required `runtimes` CI job**
-   (ubuntu-latest; Bun and Deno installed by their official actions). It loads
-   the **bundled** binary and asserts a fixed surface list on each runtime,
-   comparing against Node as the control, and **fails on a heap error or a
-   non-zero exit**, not only on a wrong value — both defects here surfaced as
-   process-level events, not as assertion failures.
-   - Non-required, like the `benchmark` job: a third-party runtime's
-     regression must not block a merge. It must still be loud.
-   - Build the surface list from `tests/` call signatures, as the probe behind
-     [Findings](#findings-measured-2026-09-13) did, and name each N-API area
-     in it so a gap is visible rather than merely absent.
-4. **README: a runtime support matrix**, stating what is verified, on which
-   versions, and what is known-broken. Re-measured per release, not written once.
-
-**Cost**: the fix is small; the CI job is ordinary workflow work; the Deno
-investigation is open-ended and should be timeboxed and reported either way.
+   (ubuntu-latest; Bun and Deno at pinned versions via their official actions).
+   Each scenario runs as its own child process, compared against Node as the
+   control, and **fails on a heap error or a non-zero exit**, not only on a
+   wrong value — both defects surfaced as process-level events, not assertion
+   failures, and one of them printed after the last line of user code with a
+   zero exit status.
+   - `KNOWN_DEFECTS` is a ratchet, not a mute: each entry must still
+     reproduce, so a runtime that ships a fix turns the gate red and the
+     allowance cannot outlive the bug. Same shape as `KNOWN_UNDOCUMENTABLE`
+     in `check-docstring-coverage.mjs`.
+   - It runs against the ordinary `build/index.node`, not a bundled one:
+     this gate is about runtime semantics, and artifact portability is P1's
+     subject with its own gate.
+4. **README runtime matrix** — what is verified, on which versions, what is
+   known-broken upstream, and the rule that a `napi_get_version` check would
+   refuse Bun wrongly.
 
 ### P1 — Artifact portability gate (port from mojo-http)
 
@@ -288,17 +305,38 @@ tar xzf napi-mojo-linux-x64-*.tgz
 # tests/-derived call signatures; compare against Node as the control.
 ```
 
-The minimal reproducers for both defects are two lines each:
+The attribution recipe — a plain C addon, no Mojo, no build system:
+
+```bash
+gcc -shared -fPIC -I "$(dirname "$(command -v node)")/../include/node" \
+    -o cprobe.node addon.c
+```
+
+`addon.c` needs `#include <node_api.h>`, a `NAPI_MODULE_INIT()` exporting three
+functions, and a hook body of `napi_remove_async_cleanup_hook(handle);`. The
+three rows of the table above are: register once; register once and
+`napi_remove_async_cleanup_hook` from JS before exit; register twice with the
+same `(hook, NULL)` pair. Deliberately not checked in — an unbuilt file in this
+tree rots, and this one is minutes to rewrite from the table.
+
+The minimal reproducers against the addon itself are two lines each:
 
 ```js
-const a = require('./package/index.node');
-a.addAsyncCleanupHook();                       // Deno: double free at teardown
+const a = require('./build/index.node');
+a.addAsyncCleanupHook();          // Deno: double free at teardown
 ```
 
 ```js
-const a = require('./package/index.node');
-a.removeAsyncCleanupHook(a.addAsyncCleanupHook());   // Bun: process abort
+const a = require('./build/index.node');
+a.addAsyncCleanupHook();
+a.addAsyncCleanupHook();          // Bun: process abort on the duplicate pair
 ```
+
+Both are `KNOWN_DEFECTS` entries in `scripts/check-runtimes.mjs`, where the
+gate asserts they *still* reproduce. On the published 0.13.0 binary the second
+one was reachable as `a.removeAsyncCleanupHook(a.addAsyncCleanupHook())`,
+because remove registered the duplicate itself; that is the part this change
+fixed.
 
 ## Reference
 
