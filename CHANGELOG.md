@@ -3,10 +3,20 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
-## Unreleased
+## 0.14.0 — 2026-09-13
 
-**Distribution and reach.** See [`docs/plan-distribution.md`](docs/plan-distribution.md)
-for the measurements behind all of it.
+**Distribution.** A napi-mojo addon now runs on Deno and Bun as well as Node,
+the Linux prebuilds are 91% smaller, every platform package declares what it
+actually contains, and `napi-mojo release --scaffold` gives an addon author the
+same publishing setup this repo uses. Three new CI gates hold the claims: a
+cross-runtime job, an artifact-portability parser, and a glibc-floor check.
+
+No Mojo signature changed, so downstream addons compile against 0.14.0
+unmodified — but recompiling does change one runtime behaviour, module export
+attributes, described first below.
+
+See [`docs/plan-distribution.md`](docs/plan-distribution.md) for the
+measurements behind all of it.
 
 ### Behaviour changes
 
@@ -40,6 +50,11 @@ for the measurements behind all of it.
 - **`scripts/check-portable.mjs`**, a release gate that reads an artifact's
   Mach-O/ELF load commands and refuses one that depends on the machine that
   built it — the property a load test on the build machine cannot establish.
+- **`publish.yml` preflights its publish targets** before spending three
+  platform builds. The 0.13.0 release failed at the last step on a package npm
+  had never seen, leaving two platform packages published at the new version
+  and the root package on the old one. That is now a 20-second stop before
+  anything is pushed.
 
 ### Changed
 
@@ -62,6 +77,14 @@ for the measurements behind all of it.
   published at 0.13.0 and earlier do contain those libraries; the exception is
   what permitted it, and `licenses/NOTICE.bundle.txt` says so for anyone
   auditing one.
+
+- **The 19 handle-only `raw_*` wrappers no longer take `AnyOrigin`** — phase 1
+  of the deferred signature flip. Every argument was already a V8 handle
+  aliased `MutUntrackedOrigin`, so nothing formed a `Pointer(to=<local>)` and
+  there was no lifetime for `AnyOrigin` to extend: the widening calls were
+  ceremony. Semantically a no-op. The remaining 128 wrappers take a raw pointer
+  and stay deferred; see
+  [`docs/plan-origin-migration.md`](docs/plan-origin-migration.md).
 
 ### Fixed
 
