@@ -213,6 +213,14 @@ jobs:
           node scripts/check-portable.mjs --require-self-contained \
             --manifest build/bundled-libs.txt /tmp/selfcontained/index.node
 
+      # Same question the runtimes-and-licensing work left open, asked of the
+      # SHIPPED set rather than the build tree: is the bundled GCC runtime
+      # still redundant? The consume job below proves it by running; this
+      # proves it from the load commands, which is cheaper and names the
+      # library responsible when it changes.
+      - name: The host libstdc++ still satisfies the shipped bundle
+        run: node scripts/check-glibc-floor.mjs /tmp/selfcontained/index.node
+
       # The globs need the trailing `*`: Linux sonames are versioned
       # (libstdc++.so.6, libgcc_s.so.1) and `build/*.so` does not match them,
       # so two of the seven bundled libraries never left this job.
@@ -226,8 +234,113 @@ jobs:
             build/*.dylib*
             build/*.so*
 
-  publish:
+  # Does the bundle load on the OLDEST host it claims to support?
+  #
+  # Everything upstream of here runs on the machine that built the artifact, or
+  # inspects it statically. Neither can answer the question a user asks, which
+  # is whether it works on their older box. This job has NO CHECKOUT and NO
+  # TOOLCHAIN: its whole value is being a machine that did not build the thing,
+  # and adding a checkout "to get a test app" silently retires it.
+  #
+  # Three cases, and the middle one is the point:
+  #
+  #   1. the bundle as shipped, on the oldest supported glibc  -> must load
+  #   2. the SAME bundle with the GCC runtime deleted           -> must load
+  #   3. the bundle on a glibc BELOW the floor                  -> must be
+  #      refused by the loader, with a version error rather than a crash
+  #
+  # Case 2 is standing evidence for the open question in
+  # docs/plan-distribution.md: libstdc++.so.6 is 23.9 MB of a 27 MB package and
+  # the host's own copy should satisfy us, because the GLIBC floor we cannot
+  # bundle already implies a libstdc++ new enough. Checking it every release
+  # means the day that stops being true is the day this job goes red — before
+  # anyone drops the library, not after. check-glibc-floor.mjs asserts the same
+  # thing from the load commands; this asserts it by actually running.
+  #
+  # Case 3 turns the floor into a measurement rather than a claim.
+  #
+  # node:22-bookworm is Debian 12 / glibc 2.36 — the closest official Node
+  # image to the GLIBC_2.35 floor. node:22-bullseye is Debian 11 / glibc 2.31,
+  # comfortably below it.
+  consume-oldest-linux:
     needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ matrix.platform }}
+          path: bundle
+
+      - name: Assert this machine did not build the bundle
+        run: |
+          set -euo pipefail
+          test ! -e src || { echo "::error::a checkout is present — this job would prove nothing"; exit 1; }
+          test ! -e package.json || { echo "::error::a project is present — this job would prove nothing"; exit 1; }
+
+      - name: Loads on the oldest supported glibc
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD/bundle:/w:ro" node:22-bookworm \
+            node -e "
+              const a = require('/w/index.node');
+              if (a.hello() !== 'Hello from Mojo!') throw new Error('wrong greeting: ' + a.hello());
+              if (a.asyncRuntimeInitOk() !== true) {
+                throw new Error('loaded, but the Mojo async runtime did not initialize');
+              }
+              console.log('loads on Debian 12 (glibc 2.36):', a.hello());
+            "
+
+      # The evidence for dropping libstdc++, re-measured every release.
+      - name: Still loads with the GCC runtime removed
+        run: |
+          set -euo pipefail
+          rm -rf nogcc && cp -r bundle nogcc
+          rm -f nogcc/libstdc++.so.6* nogcc/libgcc_s.so.1*
+          ls nogcc
+          docker run --rm -v "$PWD/nogcc:/w:ro" node:22-bookworm \
+            node -e "
+              const a = require('/w/index.node');
+              if (a.hello() !== 'Hello from Mojo!') throw new Error('wrong greeting: ' + a.hello());
+              if (a.asyncRuntimeInitOk() !== true) {
+                throw new Error('loaded without the bundled GCC runtime, but the async runtime did not initialize');
+              }
+              console.log('the host libstdc++ suffices:', a.hello());
+            " || {
+              echo "::error::the bundled GCC runtime is now load-bearing — docs/plan-distribution.md's case for dropping it no longer holds. Do not remove those libraries."
+              exit 1
+            }
+
+      # Refused, not crashed. A SIGSEGV here would mean the floor is not
+      # actually enforced by the loader and a user below it gets corruption
+      # instead of an error.
+      - name: Refused below the glibc floor
+        run: |
+          set -euo pipefail
+          if docker run --rm -v "$PWD/bundle:/w:ro" node:22-bullseye \
+               node -e "require('/w/index.node')" 2>err; then
+            echo "::error::Debian 11 (glibc 2.31) loaded a bundle that requires GLIBC_2.35"
+            exit 1
+          fi
+          cat err
+          # The loader's own phrasing, version-agnostic: a hardcoded 2.35
+          # would stop matching the day the floor moves, and a bare "GLIBC"
+          # would match an unrelated failure that happens to mention it.
+          grep -qE "version .GLIBC_[0-9.]+. not found" err \
+            || { echo "::error::refused, but not for the glibc-version reason — check for a crash"; exit 1; }
+          echo "correctly refused below the floor"
+
+  publish:
+    needs: [build, consume-oldest-linux]
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -278,13 +278,40 @@ it is not needed.** Measured on `@napi-mojo/linux-x64@0.13.0`:
   `globalCacheActive()` and an async round trip all pass against the host's
   own libstdc++.
 
-**Not acted on here**, because the failure it risks is a consumer's
-`ERR_DLOPEN_FAILED` on a host this session cannot simulate: glibc ≥ 2.35 with
-an older libstdc++ is unusual but constructible. Removing them wants (a) an
-old-distribution consume job — mojo-http's `release.yml` already runs one
-against an `oldglibc` container, which is the pattern to copy — and (b) a
-guard that fails if a future Mojo release raises the required `GLIBCXX` above
-what the glibc floor implies, since otherwise that regression is silent.
+#### Both prerequisites are now in place. The removal itself is still held.
+
+The two things this asked for before anyone deleted a library:
+
+1. **`scripts/check-glibc-floor.mjs`** — reads ELF `.gnu.version_r` and asserts
+   that the `GLIBCXX` the shipped set requires is provided by *every*
+   distribution whose glibc is new enough to load us. It takes the **worst**
+   host, not a convenient one: a build needing only `GLIBC_2.34` is held to
+   RHEL 9's `GLIBCXX_3.4.29`, not Ubuntu 22.04's `3.4.30`. Runs pre-bundle in
+   `test.yml` on every PR (the closure resolves through whatever search paths
+   the artifact records, which before bundling point at the pixi environment)
+   and again on the staged set in `publish.yml`. Reports and exits 0 on macOS.
+2. **`consume-oldest-linux`** in `publish.yml` — no checkout, no toolchain,
+   three docker cases on each Linux platform: the bundle loads on Debian 12
+   (glibc 2.36, the closest official Node image to the floor); **the same
+   bundle with the GCC runtime deleted also loads**; and the bundle is
+   *refused* below the floor on Debian 11, with a loader version error rather
+   than a crash. `publish` now needs it, so a release cannot outrun it.
+
+Case 2 is the point: the evidence for dropping the libraries is re-measured on
+every release, so the day it stops holding is the day the job goes red —
+before anyone removes them, not after.
+
+Writing the first guard found a bug in the first guard, worth recording
+because it is the failure shape this whole document is about: run against an
+`index.node` whose siblings were absent, it reported `GLIBCXX: (none)` and
+**passed** — while the library it could not open was the one carrying the
+`3.4.30` requirement. An unresolved dependency is now a failure, not a note.
+
+**What is still not done is the removal**, and the reason is unchanged: the
+risk is a consumer's `ERR_DLOPEN_FAILED` on glibc ≥ 2.35 with an older
+libstdc++, which is unusual but constructible and which no table or container
+in CI represents. The guards make that a measured risk rather than an
+argued one.
 
 The prize is real: ~88% off both Linux packages, and the GPL declaration
 above disappears with them.
