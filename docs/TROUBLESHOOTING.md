@@ -45,8 +45,8 @@ then fails — with the explanation — instead of the deployed service. The exe
 form (`["…"]`) needs no shell, so it works on distroless images too.
 
 ```dockerfile
-# Bun
-RUN ["bun", "-e", "require('your-addon')"]
+# Bun — import, NOT require (see below)
+RUN ["bun", "-e", "import 'your-addon'"]
 
 # Node
 RUN ["node", "-e", "require('your-addon')"]
@@ -54,6 +54,13 @@ RUN ["node", "-e", "require('your-addon')"]
 # Deno: a one-line file containing  require('your-addon')
 RUN ["deno", "run", "--allow-all", "check-addon.cjs"]
 ```
+
+**Under Bun, use `import` in `-e`, never `require`.** `bun -e
+"require('your-addon')"` exits 0 and prints nothing when the required module
+throws or does not exist (measured on Bun 1.3.7 and 1.3.11), so that line
+passes on exactly the image it is meant to catch. `import` fails the build as
+it should, and so does running a file (`bun check-addon.cjs`). Node's
+`node -e "require(…)"` is not affected.
 
 A `postinstall` script is not a substitute. Bun and Deno do not run
 dependencies' lifecycle scripts by default, and in a multi-stage build the

@@ -72,6 +72,12 @@ describe('explainLoadError', () => {
     const anchors = [...src.matchAll(/anchor: '([a-z0-9-]+)'/g)].map((m) => m[1]);
     expect(anchors.length).toBeGreaterThanOrEqual(4);
     for (const a of anchors) expect(doc).toContain(`<a id="${a}"></a>`);
+    // Bun exits 0 on `bun -e "require(x)"` when x throws, so a documented
+    // Bun check using require can never fail. publish.yml builds the doc's
+    // own line; this keeps a require form from being written back in.
+    const bunChecks = doc.match(/^RUN \["bun", [^\n]*$/gm) || [];
+    expect(bunChecks.length).toBeGreaterThanOrEqual(1);
+    for (const line of bunChecks) expect(line).not.toMatch(/require\(/);
     // The exact loader strings users search for are in the doc verbatim.
     for (const s of ['libstdc++.so.6: cannot open shared object file', "version `GLIBC_", "version `GLIBCXX_"]) {
       expect(doc).toContain(s);

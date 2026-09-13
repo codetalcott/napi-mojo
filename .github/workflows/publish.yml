@@ -374,12 +374,23 @@ jobs:
           grep -qx "FROM oven/bun:${BUN_VERSION}-distroless" <<<"$(head -n1 <<<"$recipe")" \
             || { echo "::error::the documented recipe does not start FROM oven/bun:${BUN_VERSION}-distroless — the doc and this job's pin disagree"; exit 1; }
           printf '%s\n' "$recipe" > recipe.dockerfile
-          # The documented build-time check, in the final stage, in the
-          # documented form (bun -e require).
-          check="RUN [\"bun\", \"-e\", \"require('/app/check.cjs')\"]"
+          # The documented Bun build-time check, EXTRACTED FROM THE DOC too, with
+          # the placeholder pointed at the test app. The first version of this
+          # step hardcoded `bun -e "require(...)"`, which Bun exits 0 on when the
+          # module throws — so the unfixed image "built", the step took the
+          # warning path below, and a check that could never fail went green.
+          check="$(grep -m1 -E '^RUN \["bun", ' loader/docs/TROUBLESHOOTING.md)"
+          test -n "$check" || { echo "::error::no Bun RUN check in docs/TROUBLESHOOTING.md"; exit 1; }
+          check="${check//your-addon//app/check.cjs}"
           { head -n1 recipe.dockerfile; echo 'COPY app /app'; echo "$check"; } > Dockerfile.unfixed
           { cat recipe.dockerfile; echo 'COPY app /app'; echo "$check"; } > Dockerfile.fixed
+          echo "build-time check under test: $check"
           if docker build --progress=plain -f Dockerfile.unfixed . > unfixed.log 2>&1; then
+            cat unfixed.log
+            # A build that succeeded is only "the image loads now" if the check
+            # visibly ran and loaded. Otherwise the check is what is broken.
+            grep -qF 'loaded: Hello from Mojo!' unfixed.log \
+              || { echo "::error::the unfixed image built, but the build-time check never reported loading the addon — the documented check is not failing when it should"; exit 1; }
             echo "::warning::oven/bun:${BUN_VERSION}-distroless now loads the bundle — update docs/TROUBLESHOOTING.md"
             exit 0
           fi
@@ -393,7 +404,10 @@ jobs:
       - name: The documented two-line fix makes Bun distroless load
         run: |
           set -euo pipefail
-          docker build --progress=plain -f Dockerfile.fixed -t addon-on-bun-distroless .
+          docker build --progress=plain -f Dockerfile.fixed -t addon-on-bun-distroless . 2>&1 | tee fixed.log
+          # The build-time check must have run and loaded, not merely not failed.
+          grep -qF 'loaded: Hello from Mojo!' fixed.log \
+            || { echo "::error::the fixed image built, but its build-time check never reported loading the addon"; exit 1; }
           docker run --rm addon-on-bun-distroless /app/check.cjs
 
       # The removal, guarded. bundle-runtime.sh discovers its closure at build
