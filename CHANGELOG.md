@@ -59,6 +59,18 @@ measurements behind all of it.
   accepts them. `napi-mojo init`'s `pixi.toml` declares every prebuild
   platform, and the workflow generates bindings before building and installs
   exactly the version it published.
+- **Load failures explain themselves.** When a prebuilt binary is installed
+  but cannot load — a container image without the C++ runtime
+  (`oven/bun:*-distroless`, `denoland/deno:alpine`), glibc older than 2.35, or
+  musl — `napi-mojo/demo` and every scaffolded addon loader now throw an error
+  with a `code` (`ERR_NATIVE_NO_CXX_RUNTIME`, `ERR_NATIVE_GLIBC_TOO_OLD`,
+  `ERR_NATIVE_LIBSTDCXX_TOO_OLD`, `ERR_NATIVE_MUSL`), the fix, and a link to
+  the new [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md); the loader's
+  message is kept as `cause`. `demo.js` used to report every such failure as
+  "No prebuilt demo binary available". The doc carries a support matrix, a
+  Dockerfile build-time check, and a two-line fix for Bun distroless — all
+  built and loaded on both Linux architectures on every release, with the
+  recipe extracted from the doc itself.
 - **`napi-mojo release --sync`** sets every platform manifest and
   `optionalDependencies` entry to `package.json`'s version; the scaffold wires
   it to `npm version`, and the release workflow refuses to publish when they

@@ -11,7 +11,9 @@
 //
 // The framework itself is Mojo source — see require('napi-mojo').include and
 // examples/codegen/ for how to build your own addon against it.
+const fs = require('fs');
 const path = require('path');
+const { explainLoadError } = require('./load-error.js');
 
 // Keep in sync with scripts/platforms.mjs — scripts/check-platforms.mjs fails
 // CI if these drift. (This file is CJS and ships to consumers, so it carries
@@ -24,28 +26,37 @@ const PLATFORMS = {
 
 const key = `${process.platform}-${process.arch}`;
 const pkg = PLATFORMS[key];
+const local = path.join(__dirname, 'build', 'index.node');
 
-if (pkg) {
+// "Not installed" and "installed but cannot load" are different failures and
+// must not share a catch. This file used to treat every require() error as
+// the former, so an image missing libstdc++ was told there was no prebuilt
+// binary for its platform — while the binary sat right there.
+function load(id) {
   try {
-    module.exports = require(pkg);
-  } catch {
-    // Platform package not installed — fall back to local build (development)
-    try {
-      module.exports = require(path.join(__dirname, 'build', 'index.node'));
-    } catch {
-      throw new Error(
-        `napi-mojo/demo: No prebuilt demo binary available for ${key}.\n` +
-        `Build it from source (requires Mojo): https://github.com/codetalcott/napi-mojo`
-      );
-    }
+    return require(id);
+  } catch (err) {
+    throw explainLoadError(err, { name: 'napi-mojo/demo' });
   }
+}
+
+function installed(id) {
+  try {
+    require.resolve(id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+if (pkg && installed(pkg)) {
+  module.exports = load(pkg);
+} else if (fs.existsSync(local)) {
+  // Platform package not installed — the local build (development).
+  module.exports = load(local);
 } else {
-  try {
-    module.exports = require(path.join(__dirname, 'build', 'index.node'));
-  } catch {
-    throw new Error(
-      `napi-mojo/demo: Unsupported platform ${key}.\n` +
-      `Build it from source (requires Mojo): https://github.com/codetalcott/napi-mojo`
-    );
-  }
+  throw new Error(
+    `napi-mojo/demo: ${pkg ? `No prebuilt demo binary is installed for ${key}` : `Unsupported platform ${key}`}.\n` +
+    `Build it from source (requires Mojo): https://github.com/codetalcott/napi-mojo`
+  );
 }

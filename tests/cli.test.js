@@ -170,7 +170,7 @@ describe('napi-mojo release --scaffold on an existing project', () => {
   test('adds index.js to an existing files list', () => {
     write('package.json', JSON.stringify({ name: 'myaddon', version: '1.2.3', files: ['lib/'] }));
     expect(run(['release', '--scaffold', dir]).status).toBe(0);
-    expect(readJson(path.join(dir, 'package.json')).files).toEqual(['lib/', 'index.js']);
+    expect(readJson(path.join(dir, 'package.json')).files).toEqual(['lib/', 'index.js', 'load-error.js']);
   });
 
   test('re-running patches platform manifests: version synced, author fields kept', () => {
@@ -195,7 +195,7 @@ describe('napi-mojo release --scaffold on an existing project', () => {
     expect(res.status).toBe(0);
     const pkg = readJson(path.join(dir, 'package.json'));
     expect(pkg.main).toBe('index.js');
-    expect(pkg.files).toEqual(['index.js']);
+    expect(pkg.files).toEqual(['index.js', 'load-error.js']);
     expect(existsSync(path.join(dir, 'index.js'))).toBe(true);
     expect(existsSync(path.join(dir, '.github/workflows/release.yml'))).toBe(true);
   });
@@ -387,5 +387,43 @@ process.exit(2);
       expect(p.args).toEqual(expect.arrayContaining(['--tag', 'bootstrap', '--access', 'public']));
     }
     expect(res.stdout).toMatch(/exists\s+myaddon-linux-x64/);
+  });
+});
+
+describe('the scaffolded loader explains load failures', () => {
+  const { writeFileSync, mkdirSync } = require('fs');
+  const key = `${process.platform}-${process.arch}`;
+
+  const scaffold = () => {
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'myaddon', version: '1.0.0' }));
+    expect(run(['release', '--scaffold', dir]).status).toBe(0);
+    expect(existsSync(path.join(dir, 'load-error.js'))).toBe(true);
+  };
+  const requireProject = () => spawnSync(process.execPath, ['-e', `
+    try { require(${JSON.stringify(dir)}); console.log('loaded'); }
+    catch (e) { console.log(JSON.stringify({ code: e.code, message: e.message, cause: e.cause && e.cause.message })); }
+  `], { encoding: 'utf8' });
+
+  test('an installed binary that cannot load gets the fix, under the addon name', () => {
+    scaffold();
+    // Stands in for the platform package on an image with no libstdc++: it
+    // resolves, and loading it throws what the dynamic loader throws.
+    const fake = path.join(dir, 'node_modules', `myaddon-${key}`);
+    mkdirSync(fake, { recursive: true });
+    writeFileSync(path.join(fake, 'package.json'), JSON.stringify({ name: `myaddon-${key}`, main: 'index.js' }));
+    writeFileSync(path.join(fake, 'index.js'),
+      "throw new Error('libstdc++.so.6: cannot open shared object file: No such file or directory');");
+    const out = JSON.parse(requireProject().stdout);
+    expect(out.code).toBe('ERR_NATIVE_NO_CXX_RUNTIME');
+    expect(out.message).toMatch(/^myaddon: /);
+    expect(out.message).toContain('TROUBLESHOOTING.md#missing-cpp-runtime');
+    expect(out.cause).toContain('libstdc++.so.6');
+  });
+
+  test('no binary installed says so, and is not mistaken for a load failure', () => {
+    scaffold();
+    const out = JSON.parse(requireProject().stdout);
+    expect(out.code).toBeUndefined();
+    expect(out.message).toContain(`no prebuilt binary is installed for ${key}`);
   });
 });

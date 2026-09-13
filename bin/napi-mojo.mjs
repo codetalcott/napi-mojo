@@ -664,26 +664,49 @@ const TEMPLATE_LOADER = (name) => `// ${name} — load the prebuilt binary for t
 // that \`napi-mojo build\` and \`npm test\` exercise what you just compiled
 // rather than the last published release — a stale registry binary passing
 // your tests is a hard failure to spot.
+//
+// A binary that is installed but cannot LOAD — a container image without the
+// C++ runtime, a glibc that is too old, Alpine — is explained by load-error.js,
+// which names the fix and links to it. Not having a binary installed at all is
+// a different failure, reported separately below; the two must not share a
+// catch, or users are told nothing is installed while the binary sits there.
 'use strict';
 
 const { existsSync } = require('node:fs');
 const { join } = require('node:path');
+const { explainLoadError } = require('./load-error.js');
 
+const NAME = ${JSON.stringify(name)};
 const local = join(__dirname, 'build', 'index.node');
-if (existsSync(local)) {
-  module.exports = require(local);
-} else {
-  const key = \`\${process.platform}-\${process.arch}\`;
+const key = \`\${process.platform}-\${process.arch}\`;
+const platformPackage = \`\${NAME}-\${key}\`;
+
+function load(id) {
   try {
-    module.exports = require(\`${name}-\${key}\`);
+    return require(id);
   } catch (err) {
-    throw new Error(
-      \`${name}: no prebuilt binary for \${key}, and no local build at \${local}.\\n\` +
-      \`Install the platform package, or build from source with \` +
-      \`\\\`npx napi-mojo build\\\`.\\n\` +
-      \`  cause: \${err.message}\`
-    );
+    throw explainLoadError(err, { name: NAME });
   }
+}
+
+function installed(id) {
+  try {
+    require.resolve(id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+if (existsSync(local)) {
+  module.exports = load(local);
+} else if (installed(platformPackage)) {
+  module.exports = load(platformPackage);
+} else {
+  throw new Error(
+    \`\${NAME}: no prebuilt binary is installed for \${key} (\${platformPackage}), and there is no local build at \${local}.\\n\` +
+    'Reinstall without --no-optional / --omit=optional, or build from source with \`npx napi-mojo build\`.'
+  );
 }
 `;
 
@@ -1071,7 +1094,7 @@ function scaffoldRelease(dir, target, { force = false } = {}) {
   // NOT build/index.node: the binary ships in the platform packages, and
   // including it here would publish it twice and defeat the os/cpu split.
   if (!existing || Array.isArray(pkg.files)) {
-    pkg.files = [...new Set([...(pkg.files || []), 'index.js'])];
+    pkg.files = [...new Set([...(pkg.files || []), 'index.js', 'load-error.js'])];
   }
   pkg.optionalDependencies = {
     ...(pkg.optionalDependencies || {}),
@@ -1125,6 +1148,10 @@ function scaffoldRelease(dir, target, { force = false } = {}) {
   }
 
   write('index.js', TEMPLATE_LOADER(name));
+  // Ours, not the author's: refreshed on every run so a user's addon gets the
+  // current explanations. Kept even beside an author-written index.js, which
+  // can require it (docs/TROUBLESHOOTING.md, "For addon authors").
+  write('load-error.js', readFileSync(join(PKG_ROOT, 'load-error.js'), 'utf8'), { patch: true });
   const napiMojoLicense = readFileSync(join(PKG_ROOT, 'LICENSE'), 'utf8');
   for (const p of PLATFORMS) {
     const rel = join('npm', p.key, 'package.json');
@@ -1272,7 +1299,11 @@ Before the first release:
      workflow file release.yml.
 
 Then publish a GitHub release. \`npm version\` keeps the platform manifests in
-step through the "version" script added to package.json.`);
+step through the "version" script added to package.json.
+
+When a user's require() fails on their machine (a container image without the
+C++ runtime, an old glibc, Alpine), index.js explains it via load-error.js.
+Point your README at https://github.com/codetalcott/napi-mojo/blob/main/docs/TROUBLESHOOTING.md`);
 }
 
 const HELP = `napi-mojo ${VERSION} — build Node.js native addons in Mojo

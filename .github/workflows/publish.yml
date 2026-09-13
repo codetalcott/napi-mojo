@@ -234,6 +234,20 @@ jobs:
             build/*.dylib*
             build/*.so*
 
+      # What a consumer's require() goes through, for consume-oldest-linux,
+      # which has no checkout: the loader and the doc whose recipe it builds.
+      # Uploaded once; the files are the same on every platform.
+      - name: Upload the consumer loader
+        if: matrix.platform == 'linux-x64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: consumer-loader
+          path: |
+            demo.js
+            load-error.js
+            docs/TROUBLESHOOTING.md
+          if-no-files-found: error
+
   # Does the bundle load on the OLDEST host it claims to support?
   #
   # Everything upstream of here runs on the machine that built the artifact, or
@@ -283,6 +297,11 @@ jobs:
           name: ${{ matrix.platform }}
           path: bundle
 
+      - uses: actions/download-artifact@v8
+        with:
+          name: consumer-loader
+          path: loader
+
       - name: Assert this machine did not build the bundle
         run: |
           set -euo pipefail
@@ -302,51 +321,80 @@ jobs:
               console.log('loads on Debian 12 (glibc 2.36):', a.hello());
             "
 
+      # Everything below loads the binary THROUGH THE SHIPPED LOADER (demo.js
+      # and load-error.js, from the consumer-loader artifact), because what a
+      # user sees when a load fails is the loader's message, not dlerror's.
+      - name: Lay out the consumer app
+        run: |
+          set -euo pipefail
+          mkdir -p app/build
+          cp loader/demo.js loader/load-error.js app/
+          cp bundle/* app/build/
+          cat > app/check.cjs <<'EOF'
+          const a = require('/app/demo.js');
+          if (a.hello() !== 'Hello from Mojo!') throw new Error('wrong greeting: ' + a.hello());
+          if (a.asyncRuntimeInitOk() !== true) throw new Error('loaded, but the Mojo async runtime did not initialize');
+          console.log('loaded:', a.hello());
+          EOF
+
       # Bun and Deno are supported runtimes, and the argument for leaving the
       # GCC runtime to the host ("Node links libstdc++, so it is present")
       # does NOT carry over to them: Bun's glibc build links its C++ runtime
       # statically and Deno needs only libgcc_s. The IMAGE has to provide
       # libstdc++. These official images do; the versions match the pins in
-      # test.yml's runtimes job. Images that do not are the next step.
+      # test.yml's runtimes job, and docs/TROUBLESHOOTING.md's support matrix
+      # lists them as checked here (tests/load_error.test.js holds the two
+      # together).
       - name: Loads on Bun and Deno images that provide libstdc++
         env:
           BUN_VERSION: '1.3.11'
           DENO_VERSION: '2.9.6'
         run: |
           set -euo pipefail
-          mkdir -p smoke
-          cat > smoke/smoke.cjs <<'EOF'
-          const a = require('/w/index.node');
-          if (a.hello() !== 'Hello from Mojo!') throw new Error('wrong greeting: ' + a.hello());
-          if (a.asyncRuntimeInitOk() !== true) throw new Error('loaded, but the Mojo async runtime did not initialize');
-          console.log('loaded:', a.hello());
-          EOF
-          docker run --rm -v "$PWD/bundle:/w:ro" -v "$PWD/smoke:/s:ro" \
-            --entrypoint /usr/local/bin/bun "oven/bun:${BUN_VERSION}-slim" /s/smoke.cjs
-          docker run --rm -v "$PWD/bundle:/w:ro" -v "$PWD/smoke:/s:ro" \
-            "denoland/deno:distroless-${DENO_VERSION}" run --allow-all /s/smoke.cjs
+          docker run --rm -v "$PWD/app:/app:ro" \
+            --entrypoint /usr/local/bin/bun "oven/bun:${BUN_VERSION}-slim" /app/check.cjs
+          docker run --rm -v "$PWD/app:/app:ro" \
+            "denoland/deno:distroless-${DENO_VERSION}" run --allow-all /app/check.cjs
 
-      # oven/bun:<v>-distroless contains no libstdc++ and nothing in it needs
-      # one, so the bundle cannot load there — nor on denoland/deno:alpine,
-      # whose glibc compatibility layer omits it. That is a documented
-      # limitation (docs/plan-distribution.md), not a regression, so what this
-      # asserts is that the failure is the loader's clear error rather than a
-      # crash. If the image ever gains libstdc++ the bundle loads, and that is
-      # a prompt to update the docs, not a reason to block a release.
-      - name: Refused cleanly on an image with no libstdc++
+      # docs/TROUBLESHOOTING.md tells a user on oven/bun:*-distroless (no C++
+      # runtime) two things: put a load check in the final image stage, and
+      # here is a two-line fix. Both are built here exactly as written — the
+      # recipe is EXTRACTED FROM THE DOC, so the doc is only as true as this
+      # step. The unfixed image must fail its build, with the loader's
+      # explanation in the output. If Bun's image ever gains libstdc++ it will
+      # build instead: that is a prompt to update the doc, not a reason to
+      # block a release.
+      - name: Unfixed Bun distroless fails its build check with the explanation
         env:
           BUN_VERSION: '1.3.11'
         run: |
           set -euo pipefail
-          if docker run --rm -v "$PWD/bundle:/w:ro" -v "$PWD/smoke:/s:ro" \
-               "oven/bun:${BUN_VERSION}-distroless" /s/smoke.cjs 2>err; then
-            echo "::warning::oven/bun:${BUN_VERSION}-distroless now loads the bundle — update the unsupported-image list in docs/plan-distribution.md"
+          recipe="$(awk '/^### Fix: copy the C\+\+ runtime in/{f=1} f && /^```dockerfile/{c=1; next} c && /^```/{exit} c' loader/docs/TROUBLESHOOTING.md)"
+          test -n "$recipe" || { echo "::error::no dockerfile block under 'Fix: copy the C++ runtime in' in docs/TROUBLESHOOTING.md"; exit 1; }
+          grep -qx "FROM oven/bun:${BUN_VERSION}-distroless" <<<"$(head -n1 <<<"$recipe")" \
+            || { echo "::error::the documented recipe does not start FROM oven/bun:${BUN_VERSION}-distroless — the doc and this job's pin disagree"; exit 1; }
+          printf '%s\n' "$recipe" > recipe.dockerfile
+          # The documented build-time check, in the final stage, in the
+          # documented form (bun -e require).
+          check="RUN [\"bun\", \"-e\", \"require('/app/check.cjs')\"]"
+          { head -n1 recipe.dockerfile; echo 'COPY app /app'; echo "$check"; } > Dockerfile.unfixed
+          { cat recipe.dockerfile; echo 'COPY app /app'; echo "$check"; } > Dockerfile.fixed
+          if docker build --progress=plain -f Dockerfile.unfixed . > unfixed.log 2>&1; then
+            echo "::warning::oven/bun:${BUN_VERSION}-distroless now loads the bundle — update docs/TROUBLESHOOTING.md"
             exit 0
           fi
-          cat err
-          grep -qF 'libstdc++.so.6' err \
-            || { echo "::error::refused, but not for the missing-libstdc++ reason — check for a crash"; exit 1; }
-          echo "correctly refused: the image provides no libstdc++"
+          cat unfixed.log
+          grep -qF 'libstdc++.so.6' unfixed.log \
+            || { echo "::error::the build failed, but not for the missing-libstdc++ reason — check for a crash"; exit 1; }
+          grep -qF 'TROUBLESHOOTING.md#missing-cpp-runtime' unfixed.log \
+            || { echo "::error::the loader did not explain the failure — load-error.js did not recognise it"; exit 1; }
+          echo "unfixed image refused at build time, with the explanation"
+
+      - name: The documented two-line fix makes Bun distroless load
+        run: |
+          set -euo pipefail
+          docker build --progress=plain -f Dockerfile.fixed -t addon-on-bun-distroless .
+          docker run --rm addon-on-bun-distroless /app/check.cjs
 
       # The removal, guarded. bundle-runtime.sh discovers its closure at build
       # time, so this is what catches a toolchain change quietly putting the
@@ -534,7 +582,9 @@ jobs:
           tgz="$(npm pack --silent)"
           mkdir -p /tmp/packed/root
           tar xzf "$tgz" -C /tmp/packed/root --strip-components=1
-          for f in build/index.d.ts index.js index.d.ts demo.js \
+          # load-error.js: demo.js requires it, and the scaffold copies it into
+          # addon projects from the installed package.
+          for f in build/index.d.ts index.js index.d.ts demo.js load-error.js \
                    scripts/generate-addon.mjs scripts/generate-dts.js scripts/toml-lite.js \
                    src/napi/bindings.mojo src/napi/framework/register.mojo \
                    examples/codegen/build.sh examples/codegen/exports.toml; do
