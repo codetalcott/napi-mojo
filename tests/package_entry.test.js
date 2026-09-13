@@ -54,14 +54,50 @@ describe('package entry: napi-mojo/demo (compiled demo addon)', () => {
   test('resolves the freshly built addon, not a published one', () => {
     const built = require('../build/index.node');
     const demo = require('../demo.js');
-    // getOwnPropertyNames, NOT Object.keys. napi_define_properties creates
-    // non-enumerable properties by default, so Object.keys sees 5 of the 158
-    // exports — the five classes — and would compare almost nothing.
+    // getOwnPropertyNames, not Object.keys. Module exports are enumerable
+    // now, so the two would agree — but getOwnPropertyNames is what this
+    // comparison actually wants, and it does not quietly narrow if an export
+    // is ever registered with different attributes.
     const names = (m) => Object.getOwnPropertyNames(m).sort();
     const built_ = names(built);
     const demo_ = names(demo);
     expect(built_.length).toBeGreaterThan(100);
     expect(demo_.filter((n) => !built_.includes(n))).toEqual([]);
     expect(built_.filter((n) => !demo_.includes(n))).toEqual([]);
+  });
+});
+
+// Module exports behave like `exports.foo = fn`, not like napi_default.
+//
+// They used to be registered with attributes 0 — non-enumerable, non-writable
+// AND non-configurable — so Object.keys(addon) returned five names (the
+// classes, registered by a different path, which were enumerable), spreading
+// the module lost every function, and assigning over an export silently did
+// nothing. Class PROTOTYPE members deliberately keep the old attributes: a JS
+// class method is non-enumerable, and matching that is correct.
+describe('module export property attributes', () => {
+  const addon = require('../build/index.node');
+
+  test('functions are enumerable, like the classes beside them', () => {
+    const keys = Object.keys(addon);
+    expect(keys).toContain('hello');
+    expect(keys).toContain('Counter');
+    expect(keys.length).toBe(Object.getOwnPropertyNames(addon).length);
+    expect(keys.length).toBeGreaterThan(100);
+  });
+
+  test('an export is writable and configurable', () => {
+    const d = Object.getOwnPropertyDescriptor(addon, 'hello');
+    expect(d).toMatchObject({ writable: true, enumerable: true, configurable: true });
+  });
+
+  test('spreading the module keeps the functions', () => {
+    expect(typeof { ...addon }.hello).toBe('function');
+  });
+
+  test('class prototype methods stay non-enumerable', () => {
+    const proto = addon.Counter.prototype;
+    expect(Object.getOwnPropertyNames(proto)).toContain('increment');
+    expect(Object.keys(proto)).not.toContain('increment');
   });
 });

@@ -3,6 +3,50 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
+## Unreleased
+
+**Distribution and reach.** See [`docs/plan-distribution.md`](docs/plan-distribution.md)
+for the measurements behind all of it.
+
+### Behaviour changes
+
+- **Module exports are now enumerable, writable and configurable** — ordinary
+  `exports.foo = fn` semantics instead of `napi_default`. They were none of the
+  three, so `Object.keys(addon)` returned only the classes, `{...addon}` lost
+  every function, and assigning over an export silently did nothing. Class
+  *prototype* members are unchanged: a JS class method is non-enumerable, and
+  matching that is correct. If your code worked around the old behaviour with
+  `Object.getOwnPropertyNames`, it still works.
+- **`addAsyncCleanupHook()` returns its handle** (an External) rather than
+  `true`, and **`removeAsyncCleanupHook(handle)` takes it**. The old pair could
+  not work: add dropped the handle, so remove registered a *second* hook with
+  an identical `(function, data)` pair just to have one to remove, and the
+  caller's hook stayed registered. The duplicate also aborted Bun and corrupted
+  Deno's heap.
+
+### Added
+
+- **Deno and Bun are supported and gated.** Every surface this framework
+  exposes behaves identically on Node, Deno and Bun — async work,
+  ThreadsafeFunction, type tagging, primitives in a `napi_ref` included. The
+  `runtimes` CI job keeps that true. Two upstream defects are recorded with
+  reproducers; neither is napi-mojo's, and both reproduce from a plain C addon.
+  **Do not gate on `napi_get_version`**: Bun answers 9 and implements the v10
+  behaviour anyway.
+- **`napi-mojo release --scaffold`** writes an addon author's prebuild and
+  publish setup: `optionalDependencies` per platform, a loader, platform
+  manifests, and a release workflow whose consume job has no checkout and no
+  toolchain.
+- **`scripts/check-portable.mjs`**, a release gate that reads an artifact's
+  Mach-O/ELF load commands and refuses one that depends on the machine that
+  built it — the property a load test on the build machine cannot establish.
+
+### Fixed
+
+- **The prebuilt platform packages declared `"license": "MIT"`** while shipping
+  the Mojo runtime and, on Linux, GCC's `libstdc++` and `libgcc_s`. Each now
+  declares what it actually contains and carries the licence texts.
+
 ## 0.13.0 — 2026-08-21
 
 **Reach and onboarding.** Prebuilt binaries now cover every platform the Mojo

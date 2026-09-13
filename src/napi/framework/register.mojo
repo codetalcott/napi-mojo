@@ -24,6 +24,9 @@ from napi.types import (
     NapiRef,
     NapiStore,
     NapiConstStore,
+    NAPI_PROPERTY_WRITABLE,
+    NAPI_PROPERTY_ENUMERABLE,
+    NAPI_PROPERTY_CONFIGURABLE,
 )
 from napi.bindings import Bindings
 from napi.framework.args import bindings_from_context
@@ -130,7 +133,20 @@ struct ModuleBuilder(Movable):
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         desc.method = ptr.unsafe_origin_cast[MutUntrackedOrigin]()
         desc.data = self.data
-        desc.attributes = 0
+        # Module exports get ordinary JS object semantics — the same as
+        # `exports.foo = fn` — not napi_default. With attributes 0 an export
+        # is non-enumerable, non-writable AND non-configurable, so
+        # Object.keys(addon) returned only the classes (registered elsewhere,
+        # and enumerable), console.log(addon) showed
+        # almost nothing, {...addon} lost every function, and assigning over
+        # one silently did nothing. Two behaviours in one module, for no
+        # reason. Class PROTOTYPE members deliberately keep 0: a JS class
+        # method is non-enumerable, and matching that is correct.
+        desc.attributes = (
+            NAPI_PROPERTY_WRITABLE
+            | NAPI_PROPERTY_ENUMERABLE
+            | NAPI_PROPERTY_CONFIGURABLE
+        )
         self._descs.unsafe_offset(self._count).unsafe_write(desc^)
         self._count += 1
 

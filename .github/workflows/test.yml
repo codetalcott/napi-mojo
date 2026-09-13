@@ -266,6 +266,75 @@ jobs:
             console.log('CLI e2e OK');
           "
 
+      # `release --scaffold` FROM THE PACKED TARBALL, not from this checkout.
+      #
+      # The CLI imports scripts/platforms.mjs and the workflow it generates
+      # calls scripts/check-portable.mjs — neither of which is in package.json
+      # "files" by default. Running the CLI from the repo cannot see that: the
+      # files are on disk either way. Packing first is the only thing that
+      # proves what an installed user actually gets, and a missing entry there
+      # breaks EVERY CLI invocation, not just this verb.
+      - name: Release scaffold end-to-end (from the packed tarball)
+        run: |
+          set -euo pipefail
+          tarball="$(npm pack --silent)"
+          work="$RUNNER_TEMP/scaffold-e2e"
+          rm -rf "$work" && mkdir -p "$work"
+          mv "$tarball" "$work/napi-mojo.tgz"
+          cd "$work"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund ./napi-mojo.tgz >/dev/null
+          npx napi-mojo init addon >/dev/null
+          cd addon
+          npx napi-mojo release --scaffold .
+          node -e "
+            const assert = require('assert');
+            const { readFileSync, existsSync } = require('fs');
+            const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+            const keys = Object.keys(pkg.optionalDependencies || {});
+            assert.strictEqual(keys.length, 3, 'expected three platform packages, got ' + keys);
+            for (const k of keys) {
+              const dir = 'npm/' + k.replace(pkg.name + '-', '');
+              assert.ok(existsSync(dir + '/package.json'), 'missing ' + dir);
+              const m = JSON.parse(readFileSync(dir + '/package.json', 'utf8'));
+              assert.strictEqual(m.name, k, 'platform package name disagrees with optionalDependencies');
+              assert.strictEqual(m.version, pkg.version);
+              assert.ok(m.files.some((f) => f.endsWith('*')), 'lib glob must end in * for versioned sonames');
+            }
+            assert.ok(!(pkg.files || []).includes('build/index.node'), 'the root package must not ship the binary');
+            assert.ok(existsSync('.github/workflows/release.yml'));
+            assert.ok(existsSync('index.js'));
+            console.log('release scaffold e2e OK');
+          "
+          # The generated files have to be valid: a scaffold that emits a
+          # broken one is worse than none, because the author debugs their own
+          # project first.
+          #
+          # The workflow check is STRUCTURAL, not a YAML parse. There is no
+          # YAML parser on both runners — PyYAML is on the ubuntu image and
+          # not the macOS one, which is how the first version of this step
+          # failed — and adding a dependency for one assertion is not worth
+          # it. What it checks instead is the thing that can actually break:
+          # the matrix block is built by interpolating a list into a
+          # whitespace-significant template, so it asserts each platform's
+          # two lines appear exactly once at exactly the right indentation,
+          # plus the job names and the absence of tabs (which YAML forbids
+          # for indentation and a template could introduce).
+          node --check index.js
+          node -e "
+            const assert = require('assert');
+            const wf = require('fs').readFileSync('.github/workflows/release.yml', 'utf8');
+            assert.ok(!/^\t| \t/m.test(wf), 'generated workflow contains a tab');
+            for (const job of ['build:', 'publish:', 'consume:']) {
+              assert.ok(wf.includes('\n  ' + job), 'missing job ' + job + ' at top level');
+            }
+            const entries = [...wf.matchAll(/^          - os: (\S+)\n            platform: (\S+)$/gm)];
+            assert.ok(entries.length >= 3, 'matrix has ' + entries.length + ' entries, expected one per platform');
+            const keys = entries.map((m) => m[2]);
+            assert.strictEqual(new Set(keys).size, keys.length, 'duplicate platform in the matrix: ' + keys);
+            console.log('generated workflow structure OK:', keys.join(', '));
+          "
+
       # docs/TUTORIAL.md quotes examples/tutorial/ line for line, so the
       # tutorial is only as true as this step. It builds that addon through the
       # CLI exactly as the doc tells a reader to, then calls every export —
