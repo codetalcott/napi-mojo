@@ -1,10 +1,11 @@
 # Plan: distribution — runtime reach, artifact portability, publishing
 
-**Status**: **P0 and P1 implemented** (2026-09-13) — the cross-runtime gate
+**Status**: **P0, P1 and P2 implemented** (2026-09-13) — the cross-runtime gate
 (`scripts/check-runtimes.mjs`, the `runtimes` CI job), the
-`addAsyncCleanupHook` handle fix, the README runtime matrix, and the artifact
-portability gate (`scripts/check-portable.mjs`, wired into `publish.yml`).
-**P2–P5 remain proposals.** The measurements in
+`addAsyncCleanupHook` handle fix, the README runtime matrix, the artifact
+portability gate (`scripts/check-portable.mjs`, wired into `publish.yml`), and
+per-platform licence declarations with their texts. **P3–P5 remain
+proposals**, as does dropping the bundled GCC runtime. The measurements in
 [Findings](#findings-measured-2026-09-13) are real and reproducible.
 
 **Created**: 2026-09-13
@@ -216,7 +217,7 @@ evidence. Its message names the recorded build path verbatim.
 would catch a bundling regression earlier and is worth considering; it needs
 `patchelf` on Linux and codesigning on macOS, so it was not folded in here.
 
-### P2 — Licensing and contents of the platform packages
+### P2 — Licensing and contents of the platform packages — **DONE** (attribution; the size question is recorded, not acted on)
 
 `npm/<platform>/package.json` declares `"license": "MIT"` and ships
 `"*.so*"` / `"*.dylib*"`. The published `@napi-mojo/linux-x64@0.13.0` tarball
@@ -232,19 +233,60 @@ Apache-2.0 WITH LLVM-exception"`, `license-files = ["licenses/*"]`, with
 redistributing Modular's prebuilt runtime binaries (Apache-licensed sources,
 proprietary `LicenseRef-MAX-Platform-Software-License` wheel metadata).
 
-Two separate actions:
+**Attribution — done.** `licenses/` carries the Apache 2.0 + LLVM Exception
+text, GPLv3, the GCC Runtime Library Exception 3.1, and a `NOTICE.bundle.txt`
+naming what each platform ships. `scripts/platforms.mjs` gained per-platform
+`license` and `licenseFiles`, `publish.yml` stages them from that one
+declaration, and `check-platforms.mjs` asserts the manifests and the texts
+agree (sabotage-tested both ways: a reverted `license` field and a deleted
+text each fail it).
 
-1. **Attribution.** Carry equivalent license/NOTICE files in each platform
-   package and correct the `license` field. Cheap, and it is the same
-   determination mojo-http already made — reuse its reasoning rather than
-   redoing it.
-2. **Question `libstdc++`.** 23.9 MB of the ~27 MB package, shipped under the
-   GCC Runtime Library Exception, and it is worth establishing whether the
-   Mojo runtime genuinely needs a bundled copy or whether the host's is
-   adequate. If it is adequate, the package shrinks by ~88%.
+Per-platform, because the packages genuinely differ:
 
-**Done when**: each platform package declares what it actually contains, and
-the `libstdc++` question has a recorded answer either way.
+| | contents beside `index.node` | declared |
+|---|---|---|
+| darwin-arm64 | 4 Mojo runtime dylibs, ~3.3 MB | `MIT AND Apache-2.0 WITH LLVM-exception` |
+| linux-x64 / linux-arm64 | 3 Mojo runtime `.so` + `libgcc_s.so.1` + `libstdc++.so.6`, ~27 MB | the same, `AND GPL-3.0-or-later WITH GCC-exception-3.1` |
+
+macOS ships no GCC runtime — Mojo's runtime links the system libc++ there —
+so shipping GPLv3 in that tarball alongside a declaration that does not
+mention it would be misleading rather than thorough. `bundle-runtime.sh`
+rewrites the rpath / install name of every bundled library, so the Apache
+§4(b) modification notice applies and is recorded.
+
+The GPL declaration on the Linux packages is accurate and will be read by
+licence scanners. That is a real cost, and it is an argument for the next
+item rather than for understating what is in the tarball.
+
+### The bundled GCC runtime — measured, and probably redundant
+
+**`libstdc++.so.6` is 23.9 MB of the 27 MB Linux package. The evidence says
+it is not needed.** Measured on `@napi-mojo/linux-x64@0.13.0`:
+
+- The three Mojo runtime libraries require at most **`GLIBCXX_3.4.30`** and
+  **`CXXABI_1.3.11`**.
+- They also require **`GLIBC_2.35`**, which cannot be bundled — glibc is the
+  loader. So the package already refuses any host below Ubuntu 22.04.
+- Ubuntu 22.04 *is* glibc 2.35, and ships GCC 12's libstdc++, which provides
+  `GLIBCXX_3.4.30`. **The two floors coincide**: every host that can satisfy
+  the un-bundlable requirement already satisfies the bundled one.
+- Node itself is a C++ program linked against `libstdc++.so.6` and
+  `libgcc_s.so.1`, so both are present wherever the addon can run at all.
+- Direct test: deleting both files from the extracted package and loading it
+  with `LD_LIBRARY_PATH` cleared works — `hello()`, `asyncRuntimeInitOk()`,
+  `globalCacheActive()` and an async round trip all pass against the host's
+  own libstdc++.
+
+**Not acted on here**, because the failure it risks is a consumer's
+`ERR_DLOPEN_FAILED` on a host this session cannot simulate: glibc ≥ 2.35 with
+an older libstdc++ is unusual but constructible. Removing them wants (a) an
+old-distribution consume job — mojo-http's `release.yml` already runs one
+against an `oldglibc` container, which is the pattern to copy — and (b) a
+guard that fails if a future Mojo release raises the required `GLIBCXX` above
+what the glibc floor implies, since otherwise that regression is silent.
+
+The prize is real: ~88% off both Linux packages, and the GPL declaration
+above disappears with them.
 
 ### P3 — Publishing scaffolding for addon authors
 

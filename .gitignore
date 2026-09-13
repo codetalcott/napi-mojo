@@ -4,6 +4,9 @@ build/
 *.dylib
 *.so
 *.dll
+# Licence texts STAGED into the platform packages at publish time. The
+# originals live in licenses/ and are tracked; these copies are build output.
+npm/*/licenses/
 # pixi environments
 .pixi/*
 !.pixi/config.toml

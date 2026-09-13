@@ -265,6 +265,12 @@ jobs:
         run: |
           set -euo pipefail
           ls -R artifacts/
+          # The licence texts each platform must carry, read from the one
+          # declaration in scripts/platforms.mjs rather than listed again
+          # here — this staging step is exactly the kind of place where "the
+          # same wrong assumption in four places" has already cost this repo
+          # a broken package. check-platforms.mjs asserts the manifests and
+          # the texts agree; this copies what that declaration names.
           stage() {
             local platform="$1" dest="npm/$1"
             cp "artifacts/${platform}/index.node" "${dest}/index.node"
@@ -272,7 +278,26 @@ jobs:
               [ -n "$lib" ] || continue
               cp "artifacts/${platform}/${lib}" "${dest}/${lib}"
             done < "artifacts/${platform}/bundled-libs.txt"
-            echo "staged ${platform}: index.node + $(wc -l < "artifacts/${platform}/bundled-libs.txt" | tr -d ' ') libraries"
+            mkdir -p "${dest}/licenses"
+            # Read the list into a variable first: piping it into `while read`
+            # runs the loop in a SUBSHELL, where a failing cp under `set -e`
+            # kills only that subshell and staging carries on a file short.
+            local lics count=0
+            lics="$(node --input-type=module -e "
+              import { PLATFORMS } from './scripts/platforms.mjs';
+              const p = PLATFORMS.find((x) => x.key === process.argv[1]);
+              if (!p) { console.error('unknown platform ' + process.argv[1]); process.exit(1); }
+              console.log(p.licenseFiles.join('\n'));
+            " "${platform}")"
+            for lic in $lics; do
+              cp "$lic" "${dest}/licenses/$(basename "$lic")"
+              count=$((count + 1))
+            done
+            test "$count" -eq "$(printf '%s\n' "$lics" | wc -l | tr -d ' ')" \
+              || { echo "::error::${platform}: staged $count licence files, expected more"; exit 1; }
+            test -s "${dest}/licenses/NOTICE.bundle.txt" \
+              || { echo "::error::${platform}: NOTICE.bundle.txt was not staged"; exit 1; }
+            echo "staged ${platform}: index.node + $(wc -l < "artifacts/${platform}/bundled-libs.txt" | tr -d ' ') libraries + $(ls "${dest}/licenses" | wc -l | tr -d ' ') licence files"
           }
           for platform in darwin-arm64 linux-x64 linux-arm64; do
             stage "$platform"

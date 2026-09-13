@@ -1,0 +1,92 @@
+napi-mojo prebuilt platform package — what is inside, and under what terms
+==========================================================================
+
+The `@napi-mojo/<platform>` packages are not source. Each ships a compiled
+`index.node` together with the runtime libraries it needs, so that installing
+it requires no Mojo toolchain. Those libraries are third-party works. This
+file records what they are; the full licence texts are beside it.
+
+`index.node` itself
+-------------------
+
+Compiled from napi-mojo's own Mojo source.
+Copyright (c) 2025-2026 Wm Talcott. MIT — see the repository's LICENSE.
+
+
+Mojo runtime libraries — every platform
+---------------------------------------
+
+From the Modular repository (https://github.com/modular/modular),
+Copyright Modular Inc, under the Apache License 2.0 with LLVM Exceptions.
+Full text: LICENSE.mojo-runtime.txt.
+
+    darwin-arm64   libKGENCompilerRTShared.dylib
+                   libMSupportGlobals.dylib
+                   libAsyncRTRuntimeGlobals.dylib
+                   libAsyncRTMojoBindings.dylib
+
+    linux-x64      libKGENCompilerRTShared.so
+    linux-arm64    libMSupportGlobals.so
+                   libAsyncRTRuntimeGlobals.so
+
+MODIFICATION NOTICE (Apache License 2.0, section 4(b)): each of these files
+has been changed by `scripts/bundle-runtime.sh`. Its install name and rpath
+(Mach-O) or RUNPATH (ELF) were rewritten so the set resolves beside itself
+rather than in the directory it was built in, and on macOS each was re-signed
+ad-hoc because arm64 invalidates a code signature on any Mach-O edit. No
+source was changed and nothing was recompiled: the executable code is
+byte-for-byte as Modular built it.
+
+A note on the licence, recorded because it will be asked again. Modular's
+compiler and tooling were open-sourced on 2026-08-18 under Apache 2.0 with
+LLVM Exceptions, and the runtime sources are in that repository. The wheel
+that ships the prebuilt binaries, however, declares
+`LicenseRef-MAX-Platform-Software-License` in its metadata. The likeliest
+explanation is stale wheel metadata — Mojo 1.0.0 shipped the same day as the
+relicensing — and this notice follows the source licence. The sibling
+mojo-http reached the same conclusion for the same files; see its
+docs/FFI_DISTRIBUTION.md for the longer argument.
+
+
+GCC runtime libraries — Linux packages only
+-------------------------------------------
+
+    linux-x64      libstdc++.so.6
+    linux-arm64    libgcc_s.so.1
+                   (both files, on both Linux platforms)
+
+Part of GCC, Copyright (C) Free Software Foundation, Inc., under the GNU
+General Public License version 3 or later, WITH the GCC Runtime Library
+Exception version 3.1. Full texts: LICENSE.gcc-runtime-gpl3.txt and
+LICENSE.gcc-runtime-exception.txt.
+
+**The Exception is what makes this package distributable under its own
+terms.** It grants permission to propagate Target Code formed by combining
+the Runtime Library with Independent Modules, under terms of your choice,
+provided the Target Code was produced by an Eligible Compilation Process.
+Nothing here changes the licence of napi-mojo's own code or of anything that
+depends on this package.
+
+MODIFICATION NOTICE: these files were also rewritten by
+`scripts/bundle-runtime.sh`, in the same narrow way — RUNPATH set to
+`$ORIGIN` so the set resolves beside itself. No source was changed and
+nothing was recompiled.
+
+The macOS package contains neither file: Mojo's runtime links against the
+system libc++ there, which is not redistributed.
+
+These two are the largest things in the Linux packages by an order of
+magnitude, and there is evidence they are redundant — see "the bundled GCC
+runtime" in docs/plan-distribution.md. Removing them is deferred to a change
+that can test an old-distribution host, not asserted here.
+
+
+Verifying this file
+-------------------
+
+`scripts/check-platforms.mjs` asserts that each platform package declares a
+licence covering what it ships and carries these files. It cannot tell you
+that the list above is complete — `scripts/bundle-runtime.sh` discovers the
+dependency closure at build time, so a toolchain change can add a library.
+`build/bundled-libs.txt` in a release run is the authoritative list for that
+run; if it names something not described here, this file is out of date.

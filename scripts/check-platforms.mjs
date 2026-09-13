@@ -20,7 +20,7 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLATFORMS, PLATFORM_KEYS, PLATFORM_PKGS } from './platforms.mjs';
+import { PLATFORMS, PLATFORM_KEYS, PLATFORM_PKGS, ALL_LICENSE_FILES } from './platforms.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => readFileSync(join(root, rel), 'utf8');
@@ -58,6 +58,30 @@ for (const p of PLATFORMS) {
     fail(rel, `files is missing ${JSON.stringify(p.libGlob)} — versioned sonames would be dropped from the tarball`);
   }
   if (!(m.files ?? []).includes('index.node')) fail(rel, 'files is missing "index.node"');
+
+  // A prebuilt package is not source: it ships third-party runtime libraries
+  // beside index.node, and "MIT" does not describe what is inside it. The
+  // published 0.13.0 packages declared MIT while carrying the Mojo runtime
+  // and, on Linux, GCC's libstdc++ and libgcc_s. The declaration and the
+  // texts move together — a tarball that names a licence it does not carry
+  // is not distributable.
+  if (m.license !== p.license) {
+    fail(rel, `license is ${JSON.stringify(m.license)}, expected ${JSON.stringify(p.license)} — see licenses/NOTICE.bundle.txt`);
+  }
+  if (!(m.files ?? []).includes('licenses/')) {
+    fail(rel, 'files is missing "licenses/" — the licence texts would not reach the tarball');
+  }
+}
+
+// --- 1b. the licence texts themselves ----------------------------------------
+for (const f of ALL_LICENSE_FILES) {
+  if (!existsSync(join(root, f))) {
+    fail(f, 'missing — a platform package declares a licence whose text is not in the tree');
+  } else if (read(f).trim().length < 200) {
+    // Catches a stub or a truncated fetch, which is how a "licence file" ends
+    // up present and meaningless.
+    fail(f, 'is too short to be a licence text');
+  }
 }
 
 // --- 2. root package.json optionalDependencies -------------------------------
@@ -202,5 +226,6 @@ if (problems.length) {
 
 console.log(
   `platforms: ${PLATFORMS.length} prebuild target(s) — ${PLATFORM_KEYS.join(', ')} — ` +
-  'consistent across npm/, package.json, demo.js, pixi.toml, pixi.lock, publish.yml and README.',
+  'consistent across npm/, package.json, demo.js, pixi.toml, pixi.lock, publish.yml and README,',
+  'with each platform package declaring a licence covering what it ships.',
 );
