@@ -390,6 +390,27 @@ its load paths, so the result runs on a machine with no Mojo installed. That is
 what makes an addon publishable to npm: your users install a binary, not a
 toolchain.
 
+That is one platform, built on your machine. To publish for all of them:
+
+```bash
+npx napi-mojo release --scaffold
+```
+
+This writes the parts between "it compiles" and "someone can `npm install`
+it" — `optionalDependencies` on one prebuilt package per platform, a loader
+that picks the right one, `npm/<platform>/` manifests, and a release workflow
+that builds each platform, checks that the bundle does not depend on the
+machine that built it, publishes, and then **installs the result on a machine
+with no checkout and no toolchain**. That last job is the one that matters: a
+test run where the artifact was built passes even when the artifact only works
+there.
+
+One thing it cannot do for you. npm's trusted publishing matches a
+per-package publisher configured on npmjs.com, and a package that has never
+been published has nothing to match — so the first publish of each
+`<name>-<platform>` needs a granular token from your own machine. The command
+prints the exact lines. After that, every release goes over OIDC from CI.
+
 ## Where to go next
 
 - **[docs/api/](api/)** — the framework API reference, generated from the Mojo

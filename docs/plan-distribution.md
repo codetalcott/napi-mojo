@@ -1,11 +1,12 @@
 # Plan: distribution — runtime reach, artifact portability, publishing
 
-**Status**: **P0, P1 and P2 implemented** (2026-09-13) — the cross-runtime gate
+**Status**: **P0–P3 implemented** (2026-09-13) — the cross-runtime gate
 (`scripts/check-runtimes.mjs`, the `runtimes` CI job), the
 `addAsyncCleanupHook` handle fix, the README runtime matrix, the artifact
-portability gate (`scripts/check-portable.mjs`, wired into `publish.yml`), and
-per-platform licence declarations with their texts. **P3–P5 remain
-proposals**, as does dropping the bundled GCC runtime. The measurements in
+portability gate (`scripts/check-portable.mjs`, wired into `publish.yml`),
+per-platform licence declarations with their texts, and `napi-mojo release
+--scaffold` for addon authors. **P4 and P5 remain proposals**, as does
+dropping the bundled GCC runtime. The measurements in
 [Findings](#findings-measured-2026-09-13) are real and reproducible.
 
 **Created**: 2026-09-13
@@ -288,7 +289,7 @@ what the glibc floor implies, since otherwise that regression is silent.
 The prize is real: ~88% off both Linux packages, and the GPL declaration
 above disappears with them.
 
-### P3 — Publishing scaffolding for addon authors
+### P3 — Publishing scaffolding for addon authors — **DONE**
 
 `napi-mojo init` emits `exports.toml`, `fns.mojo`, `lib.mojo`, `.gitignore`,
 `README.md` — no `package.json`. `docs/TUTORIAL.md` §9 is four lines and
@@ -297,25 +298,42 @@ the CI matrix, the `optionalDependencies` fan-out, the npm trusted-publisher
 setup — an author reinvents, and will hit the same `E404 ... PUT`
 first-publish trap that cost this repo a release.
 
-Proposed: `napi-mojo init --publish` (or a `release --scaffold` verb) emitting
-a root `package.json` with `optionalDependencies`, the platform stubs, and a
-matrix release workflow. Two details worth copying from `m0serve` rather than
-inventing:
+**Shipped as `napi-mojo release --scaffold [dir]`.** It patches (never
+overwrites) the project's `package.json` with `optionalDependencies` on one
+prebuilt package per platform, writes a loader that prefers a local build over
+the registry, a `npm/<platform>/package.json` per platform, and a release
+workflow. The platform list comes from `scripts/platforms.mjs` — the same
+single declaration `check-platforms.mjs` gates — rather than a second list in
+the CLI.
 
-- **Measure the platform declaration, do not infer it.** `hatch_build.py`
-  refuses to build without a tag derived from the staged binaries. napi-mojo's
-  platform packages declare `os`/`cpu` by hand.
+What the generated workflow carries, and why:
+
 - **The consume job has no checkout and no toolchain**, and asserts its own
-  cleanliness before it asserts anything about the artifact — otherwise
-  someone adds a checkout "to get a test app" and the proof silently reverts
-  with a green tick.
+  cleanliness before it asserts anything about the artifact. Otherwise someone
+  adds a checkout "to get a test app" and the proof silently reverts with a
+  green tick. Copied from `m0serve`'s release pipeline.
+- **`check-portable.mjs` runs on every platform's bundle** (P1), because a
+  load test where the artifact was built passes even when the artifact only
+  works there.
+- **The `files` glob keeps its trailing `*`** — Linux sonames are versioned,
+  and a bare `*.so` silently drops them. That shipped from this repo twice.
+- **The first-publish bootstrap is spelled out** in the command's own output
+  and in the workflow's header: npm's OIDC trusted publishing matches a
+  per-package publisher, and a package that has never been published has
+  nothing to match, so the `E404 ... PUT` that cost this repo the 0.13.0
+  release is an authorization error wearing a disguise.
 
-**Done when**: a scaffolded project publishes prebuilds for the three
-supported platforms with no hand-written CI, and an e2e CI step exercises the
-scaffold the way the host-mode scaffold step already does.
+**The e2e runs the CLI from the packed tarball, not the checkout.** The CLI
+now imports `scripts/platforms.mjs` and the generated workflow calls
+`scripts/check-portable.mjs`; neither was in `package.json` `files`. Running
+from the repo cannot see that, because the files are on disk either way — and
+a missing entry breaks *every* CLI invocation for an installed user, not just
+this verb. Packing first is the only thing that proves what they get.
 
-**Cost**: the largest item here, but JS tooling only — no FFI, no framework
-surface, no new elaboration coverage.
+Not done: `m0serve`'s measured-not-inferred platform tag. Its `hatch_build.py`
+refuses to build without a tag derived from the staged binaries; both this
+repo's platform packages and the scaffolded ones still declare `os`/`cpu` by
+hand. Worth revisiting if a platform is ever mis-declared.
 
 ### P4 — Positioning
 
