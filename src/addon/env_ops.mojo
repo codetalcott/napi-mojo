@@ -2,7 +2,7 @@
 ##                           coerce ops
 
 from std.memory.alloc import unsafe_alloc
-from napi.types import NapiEnv, NapiValue
+from napi.types import NapiEnv, NapiValue, NAPI_TYPE_EXTERNAL
 from napi.bindings import Bindings
 from napi.error import throw_js_error, check_status
 from napi.raw import (
@@ -17,6 +17,8 @@ from napi.framework.js_boolean import JsBoolean
 from napi.framework.js_null import JsNull
 from napi.framework.js_undefined import JsUndefined
 from napi.framework.js_bigint import JsBigInt
+from napi.framework.js_external import JsExternal
+from napi.framework.js_value import js_typeof
 from napi.framework.js_coerce import (
     js_coerce_to_bool,
     js_coerce_to_number,
@@ -213,21 +215,26 @@ def async_cleanup_hook_noop(
         pass
 
 
+## addAsyncCleanupHook returns the HANDLE, not a bare `true`.
+##
+## It used to return `true` and drop the handle on the floor, which left
+## removeAsyncCleanupHook with nothing to remove: it registered a SECOND hook
+## with an identical (function, data) pair — the same async_cleanup_hook_noop,
+## the same bindings pointer — purely to obtain a handle it could pass to
+## napi_remove_async_cleanup_hook. The pair it removed was therefore never the
+## pair the caller had added, and the caller's hook stayed registered.
+##
+## Node tolerates duplicate (function, data) pairs. Bun asserts on the second
+## registration and ABORTS the process; Deno reports `double free or
+## corruption (fasttop)` at teardown. Both reproduce from a pure C addon that
+## registers the same pair twice (no Mojo involved), so neither is ours to
+## fix — but fabricating a duplicate we never needed is, and the honest API
+## is the fix. See docs/plan-distribution.md.
+##
+## The handle travels to JS as an External rather than a number: it is an
+## opaque napi_async_cleanup_hook_handle on both sides, with no integer
+## round-trip, and remove can type-check what it is handed.
 def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
-    try:
-        var b = CbArgs.get_bindings(env, info)
-        var hook_ref = async_cleanup_hook_noop
-        var hook_ptr = Pointer(to=hook_ref).unsafe_bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
-        _ = add_async_cleanup_hook(b, env, hook_ptr, b.unsafe_bitcast[NoneType]().as_unsafe_any_origin())
-        return JsBoolean.create(b, env, True).value
-    except:
-        throw_js_error(env, "addAsyncCleanupHook failed")
-        return NapiValue(unsafe_from_address=Int(0))
-
-
-def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var hook_ref = async_cleanup_hook_noop
@@ -237,6 +244,26 @@ def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var handle = add_async_cleanup_hook(
             b, env, hook_ptr, b.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         )
+        return JsExternal.create_no_release(b, env, handle).value
+    except:
+        throw_js_error(env, "addAsyncCleanupHook failed")
+        return NapiValue(unsafe_from_address=Int(0))
+
+
+def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        if js_typeof(b, env, arg0) != NAPI_TYPE_EXTERNAL:
+            throw_js_error(
+                env,
+                (
+                    "removeAsyncCleanupHook: pass the handle returned by"
+                    " addAsyncCleanupHook"
+                ),
+            )
+            return NapiValue(unsafe_from_address=Int(0))
+        var handle = JsExternal.get_data(b, env, arg0)
         remove_async_cleanup_hook(b, handle)
         return JsBoolean.create(b, env, True).value
     except:

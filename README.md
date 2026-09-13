@@ -128,6 +128,42 @@ APIs (`readFileSync`), or pass a continuation — build a Mojo callback with
 `JsFunction.create` and give it to `.then()`; `mojo_main` returns, the event
 loop runs, and the callback fires later.
 
+## Runtimes
+
+Node is not the only N-API host. An addon built with napi-mojo also loads under
+**Deno** and **Bun**, and every surface this framework exposes behaves
+identically on all three — including the ones most likely to be missing
+elsewhere: async work on libuv worker threads, ThreadsafeFunction, escapable
+handle scopes, type tagging, and primitives stored in a `napi_ref`.
+
+| | verified | notes |
+|---|---|---|
+| **Node.js** | 22, 24 | the control; the Jest suite runs here |
+| **Deno** | 2.9 | see the async cleanup hook caveat below |
+| **Bun** | 1.3 | reports N-API v9, implements v10 behaviour |
+
+`scripts/check-runtimes.mjs` keeps that true — the `runtimes` CI job runs every
+scenario as its own child process on each runtime and compares against Node,
+because the defects that show up here are process-level (an abort, a heap error
+at teardown) rather than wrong return values, and a same-process assertion
+would miss them.
+
+**Two upstream caveats**, both reproducible from a plain C N-API addon with no
+Mojo involved, so neither is specific to this framework:
+
+- **Deno** double-frees a `napi_async_cleanup_hook_handle` at environment
+  teardown. Any addon that registers an async cleanup hook and lets it run at
+  exit is affected; a hook removed before exit is fine.
+- **Bun** aborts if two async cleanup hooks are registered with the same
+  `(function, data)` pair. N-API permits that; Bun asserts the pair is unique.
+
+Neither affects anything else. `docs/plan-distribution.md` has the measurements
+and the reproducers.
+
+**Do not gate on `napi_get_version`.** Bun answers `9` and supports the N-API
+v10 behaviour this framework relies on anyway, so a version check refuses it
+wrongly. Test the behaviour.
+
 ## Features
 
 - **153 exported functions** and **5 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
