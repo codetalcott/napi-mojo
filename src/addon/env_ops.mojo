@@ -2,9 +2,9 @@
 ##                           coerce ops
 
 from std.memory.alloc import unsafe_alloc
-from napi.types import NapiEnv, NapiValue, NAPI_TYPE_EXTERNAL
+from napi.types import NapiEnv, NapiValue, NapiTypeTag, NAPI_TYPE_EXTERNAL
 from napi.bindings import Bindings
-from napi.error import throw_js_error, check_status
+from napi.error import throw_js_error, throw_js_type_error, check_status
 from napi.raw import (
     raw_set_instance_data,
     raw_get_instance_data,
@@ -19,6 +19,7 @@ from napi.framework.js_undefined import JsUndefined
 from napi.framework.js_bigint import JsBigInt
 from napi.framework.js_external import JsExternal
 from napi.framework.js_value import js_typeof
+from napi.framework.js_class import type_tag_object, check_object_type_tag
 from napi.framework.js_coerce import (
     js_coerce_to_bool,
     js_coerce_to_number,
@@ -234,6 +235,32 @@ def async_cleanup_hook_noop(
 ## The handle travels to JS as an External rather than a number: it is an
 ## opaque napi_async_cleanup_hook_handle on both sides, with no integer
 ## round-trip, and remove can type-check what it is handed.
+##
+## The External does NOT hold the raw handle. napi_remove_async_cleanup_hook
+## FREES the handle, so an External carrying it directly made two misuses
+## reachable from pure JavaScript, both of which crashed the process:
+## removing the same handle twice (use-after-free) and passing any other
+## External (removeAsyncCleanupHook(createExternal(1, 2)) handed napi an
+## arbitrary pointer to delete). Instead the External owns an AsyncHookSlot
+## that remove zeroes, and is type-tagged so remove can refuse an External it
+## did not create. Node, Bun and Deno all support type tags on Externals.
+comptime ASYNC_HOOK_TAG_LOWER: UInt64 = 0x6D2B94E1C7A05F38
+comptime ASYNC_HOOK_TAG_UPPER: UInt64 = 0x3A8E16F5B92D47C0
+
+
+struct AsyncHookSlot(Movable):
+    # Address of the napi_async_cleanup_hook_handle; 0 once removed. Freed by
+    # the External's finalizer, independently of the hook: if the hook is
+    # never removed it fires at env teardown with its own copy of the handle.
+    var handle_addr: Int
+
+    def __init__(out self, handle_addr: Int):
+        self.handle_addr = handle_addr
+
+    def __moveinit__(out self, deinit take: Self):
+        self.handle_addr = take.handle_addr
+
+
 def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -244,7 +271,16 @@ def add_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var handle = add_async_cleanup_hook(
             b, env, hook_ptr, b.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         )
-        return JsExternal.create_no_release(b, env, handle).value
+        var ext = JsExternal.create_typed[AsyncHookSlot](
+            b, env, AsyncHookSlot(Int(handle))
+        )
+        type_tag_object(
+            b,
+            env,
+            ext.value,
+            NapiTypeTag(ASYNC_HOOK_TAG_LOWER, ASYNC_HOOK_TAG_UPPER),
+        )
+        return ext.value
     except:
         throw_js_error(env, "addAsyncCleanupHook failed")
         return NapiValue(unsafe_from_address=Int(0))
@@ -254,8 +290,11 @@ def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var arg0 = CbArgs.get_one(b, env, info)
-        if js_typeof(b, env, arg0) != NAPI_TYPE_EXTERNAL:
-            throw_js_error(
+        # Short-circuits: check_object_type_tag raises on a non-object.
+        if js_typeof(b, env, arg0) != NAPI_TYPE_EXTERNAL or not check_object_type_tag(
+            b, env, arg0, NapiTypeTag(ASYNC_HOOK_TAG_LOWER, ASYNC_HOOK_TAG_UPPER)
+        ):
+            throw_js_type_error(
                 env,
                 (
                     "removeAsyncCleanupHook: pass the handle returned by"
@@ -263,7 +302,18 @@ def remove_async_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
                 ),
             )
             return NapiValue(unsafe_from_address=Int(0))
-        var handle = JsExternal.get_data(b, env, arg0)
+        var slot = JsExternal.get_typed[AsyncHookSlot](
+            b, env, arg0, "removeAsyncCleanupHook"
+        )
+        if slot[].handle_addr == 0:
+            throw_js_error(env, "removeAsyncCleanupHook: handle already removed")
+            return NapiValue(unsafe_from_address=Int(0))
+        var handle = OpaquePointer[MutAnyOrigin](
+            unsafe_from_address=slot[].handle_addr
+        )
+        # Zero BEFORE the call: once napi has been handed the handle it may
+        # have freed it, so it must never be offered again, even on error.
+        slot[].handle_addr = 0
         remove_async_cleanup_hook(b, handle)
         return JsBoolean.create(b, env, True).value
     except:

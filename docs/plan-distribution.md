@@ -353,10 +353,12 @@ setup — an author reinvents, and will hit the same `E404 ... PUT`
 first-publish trap that cost this repo a release.
 
 **Shipped as `napi-mojo release --scaffold [dir]`.** It patches (never
-overwrites) the project's `package.json` with `optionalDependencies` on one
-prebuilt package per platform, writes a loader that prefers a local build over
-the registry, a `npm/<platform>/package.json` per platform, and a release
-workflow. The platform list comes from `scripts/platforms.mjs` — the same
+overwrites) the project's `package.json` — merging `optionalDependencies` on one
+prebuilt package per platform, leaving an existing `main` and an absent `files`
+alone — and each `npm/<platform>/package.json`, so re-running it resyncs
+versions without losing author fields. The loader (which prefers a local build
+over the registry) and the release workflow are written only when absent;
+`--force` overwrites them. The platform list comes from `scripts/platforms.mjs` — the same
 single declaration `check-platforms.mjs` gates — rather than a second list in
 the CLI.
 

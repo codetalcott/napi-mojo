@@ -683,19 +683,32 @@ if (existsSync(local)) {
 }
 `;
 
-const TEMPLATE_PLATFORM_PKG = (p, name, version) => JSON.stringify({
-  name: `${name}-${p.key}`,
-  version,
-  description: `${name} prebuilt binary for ${p.key}`,
-  main: 'index.node',
-  // The trailing `*` is load-bearing on Linux: sonames are versioned
-  // (libstdc++.so.6, libgcc_s.so.1) and a bare "*.so" silently drops them
-  // from the tarball. That shipped from napi-mojo itself, twice.
-  files: ['index.node', p.libGlob],
-  os: [p.os],
-  cpu: [p.cpu],
-  license: 'MIT',
-}, null, 2) + '\n';
+// Takes the manifest already on disk (or {}) and patches it: the fields that
+// must agree with the root package and the platform are reset, everything
+// else the author added — repository, license, keywords — is kept. That is
+// what makes re-running the scaffold a safe way to resync versions.
+const TEMPLATE_PLATFORM_PKG = (p, name, version, existing = {}) => {
+  const owned = {
+    name: `${name}-${p.key}`,
+    version,
+    main: 'index.node',
+    // The trailing `*` is load-bearing on Linux: sonames are versioned
+    // (libstdc++.so.6, libgcc_s.so.1) and a bare "*.so" silently drops them
+    // from the tarball. That shipped from napi-mojo itself, twice.
+    files: [...new Set(['index.node', p.libGlob, ...(existing.files || [])])],
+    os: [p.os],
+    cpu: [p.cpu],
+  };
+  // Listing `owned` first fixes the key order of a new manifest; `existing`
+  // then supplies the author's values, and `owned` again wins where it must.
+  return JSON.stringify({
+    ...owned,
+    description: `${name} prebuilt binary for ${p.key}`,
+    license: 'MIT',
+    ...existing,
+    ...owned,
+  }, null, 2) + '\n';
+};
 
 const TEMPLATE_RELEASE_WORKFLOW = (name) => `# Build a prebuild per platform, prove each one, then publish.
 #
@@ -760,11 +773,22 @@ ${PLATFORMS.map((p) => `          - os: ${p.runner}\n            platform: ${p.k
       - name: Test
         run: npm run test --if-present
 
-      # The property a load attempt on this machine cannot establish.
+      # The property a load attempt on this machine cannot establish. Checked
+      # in a directory holding ONLY what ships, not in build/: there, a
+      # leftover library the manifest forgot would satisfy the check and then
+      # be missing from the published package.
       - name: Verify the bundle does not depend on this machine
         run: |
+          set -euo pipefail
+          stage="\$RUNNER_TEMP/consumer-layout"
+          rm -rf "\$stage" && mkdir -p "\$stage"
+          cp build/index.node "\$stage/"
+          while read -r lib; do
+            [ -n "\$lib" ] || continue
+            cp "build/\$lib" "\$stage/\$lib"
+          done < build/bundled-libs.txt
           node node_modules/napi-mojo/scripts/check-portable.mjs \\
-            --require-self-contained --manifest build/bundled-libs.txt build/index.node
+            --require-self-contained --manifest build/bundled-libs.txt "\$stage/index.node"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -852,20 +876,31 @@ ${PLATFORMS.map((p) => `          - os: ${p.runner}\n            platform: ${p.k
           node -e "const a = require('${name}'); console.log('loaded:', Object.keys(a).length, 'exports');"
 `;
 
-function scaffoldRelease(dir, target) {
+// The scaffold runs inside a project that already exists, so it must never
+// cost the author work they had. Files that are wholly ours (the loader, the
+// workflow) are written only when absent, or with --force. Manifests are
+// PATCHED, never replaced: by the time anyone wants prebuilds there is usually
+// a name, a version, dependencies and scripts worth keeping.
+function scaffoldRelease(dir, target, { force = false } = {}) {
   const created = [];
-  const write = (rel, content) => {
+  const kept = [];
+  const warnings = [];
+  const readJsonIfPresent = (abs) =>
+    existsSync(abs) ? JSON.parse(readFileSync(abs, 'utf8')) : null;
+  const write = (rel, content, { patch = false } = {}) => {
     const abs = join(dir, rel);
+    if (existsSync(abs) && !patch && !force) {
+      if (readFileSync(abs, 'utf8') !== content) kept.push(join(target, rel));
+      return;
+    }
     mkdirSync(dirname(abs), { recursive: true });
     writeFileSync(abs, content);
     created.push(join(target, rel));
   };
 
-  // The project's own package.json is PATCHED, not overwritten: by the time
-  // anyone wants prebuilds there is usually a name, a version and scripts
-  // worth keeping.
   const pkgPath = join(dir, 'package.json');
-  const pkg = existsSync(pkgPath) ? JSON.parse(readFileSync(pkgPath, 'utf8')) : {};
+  const existing = readJsonIfPresent(pkgPath);
+  const pkg = existing || {};
   const name = pkg.name || basename(dir);
   const version = pkg.version || '0.1.0';
   const framework = JSON.parse(
@@ -874,37 +909,57 @@ function scaffoldRelease(dir, target) {
 
   pkg.name = name;
   pkg.version = version;
-  pkg.main = pkg.main || 'index.js';
+  if (!pkg.main) {
+    pkg.main = 'index.js';
+  } else if (pkg.main.replace(/^\.\//, '') !== 'index.js') {
+    // Rewriting it would break whatever the author's entry point does; not
+    // mentioning it leaves the loader unreachable and the prebuilds unused.
+    warnings.push(
+      `package.json "main" is ${JSON.stringify(pkg.main)}, so the generated loader (index.js) ` +
+        `is not your entry point. Point "main" at index.js, or require('./index.js') from ${pkg.main}.`
+    );
+  }
+  // A package with no `files` publishes the whole project; adding a list here
+  // would narrow it to index.js and silently drop everything else, `main`
+  // included. Only a new package, or one that already lists files, gets it.
   // NOT build/index.node: the binary ships in the platform packages, and
   // including it here would publish it twice and defeat the os/cpu split.
-  pkg.files = [...new Set([...(pkg.files || []), 'index.js'])];
-  pkg.optionalDependencies = Object.fromEntries(
-    PLATFORMS.map((p) => [`${name}-${p.key}`, version])
-  );
+  if (!existing || Array.isArray(pkg.files)) {
+    pkg.files = [...new Set([...(pkg.files || []), 'index.js'])];
+  }
+  pkg.optionalDependencies = {
+    ...(pkg.optionalDependencies || {}),
+    ...Object.fromEntries(PLATFORMS.map((p) => [`${name}-${p.key}`, version])),
+  };
   pkg.devDependencies = { ...(pkg.devDependencies || {}), 'napi-mojo': `^${framework}` };
-  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-  created.push(join(target, 'package.json'));
+  write('package.json', JSON.stringify(pkg, null, 2) + '\n', { patch: true });
 
   write('index.js', TEMPLATE_LOADER(name));
   for (const p of PLATFORMS) {
-    write(join('npm', p.key, 'package.json'), TEMPLATE_PLATFORM_PKG(p, name, version));
+    const rel = join('npm', p.key, 'package.json');
+    const manifest = readJsonIfPresent(join(dir, rel)) || {};
+    write(rel, TEMPLATE_PLATFORM_PKG(p, name, version, manifest), { patch: true });
   }
   write(join('.github', 'workflows', 'release.yml'), TEMPLATE_RELEASE_WORKFLOW(name));
 
-  return { created, name, version };
+  return { created, kept, warnings, name, version };
 }
 
 function cmdRelease(argv) {
-  const { opts, positional } = parseArgs(argv, [], ['--scaffold']);
+  const { opts, positional } = parseArgs(argv, [], ['--scaffold', '--force']);
   if (!opts.scaffold) {
-    fail('usage: napi-mojo release --scaffold [dir]');
+    fail('usage: napi-mojo release --scaffold [--force] [dir]');
   }
   const target = positional[0] || '.';
   const dir = resolve(target);
   if (!existsSync(dir)) fail(`${dir} does not exist`);
 
-  const { created, name, version } = scaffoldRelease(dir, target);
-  for (const f of created) console.log(`  created ${f}`);
+  const { created, kept, warnings, name, version } = scaffoldRelease(dir, target, {
+    force: Boolean(opts.force),
+  });
+  for (const f of created) console.log(`  wrote   ${f}`);
+  for (const f of kept) console.log(`  kept    ${f} (it differs from the template; pass --force to overwrite)`);
+  for (const w of warnings) console.log(`\nwarning: ${w}`);
   console.log(`
 Scaffolded prebuild publishing for ${name}@${version}.
 
@@ -942,6 +997,7 @@ Usage:
       --rebuild          force a recompile (runs are cached on input hash)
   napi-mojo release --scaffold [dir]     add prebuild + publish setup to an addon
       (package.json optionalDependencies, npm/<platform>/, a release workflow)
+      --force            overwrite an existing index.js / release.yml
   napi-mojo --version | --help
 `;
 

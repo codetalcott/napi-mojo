@@ -43,10 +43,15 @@
  *   node scripts/check-portable.mjs --self-test
  */
 
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { dirname, basename, join, resolve, normalize } from 'node:path';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 
-const SELF_RELATIVE = ['@loader_path', '@executable_path', '$ORIGIN'];
+// What each format's loader expands relative to the ARTIFACT ITSELF. Not
+// @executable_path: for an addon that is the directory of `node`, not of the
+// .node file, so it travels with nothing we ship.
+const SELF_RELATIVE = { macho: ['@loader_path'], elf: ['$ORIGIN', '${ORIGIN}'] };
 const SYSTEM_PREFIXES = ['/usr/lib/', '/System/Library/', '/lib/', '/lib64/', '/usr/lib64/'];
 
 // ELF names its dependencies by bare soname, so the absolute-prefix rule
@@ -73,7 +78,11 @@ const LC_REEXPORT_DYLIB = 0x8000001f;
 const LC_RPATH = 0x8000001c;
 const LC_BUILD_VERSION = 0x32;
 const LC_VERSION_MIN_MACOSX = 0x24;
-const DYLIB_LOADS = [LC_LOAD_DYLIB, LC_LOAD_WEAK_DYLIB, LC_REEXPORT_DYLIB];
+const LC_LOAD_UPWARD_DYLIB = 0x80000023;
+const LC_LAZY_LOAD_DYLIB = 0x20;
+const DYLIB_LOADS = [
+  LC_LOAD_DYLIB, LC_LOAD_WEAK_DYLIB, LC_REEXPORT_DYLIB, LC_LOAD_UPWARD_DYLIB, LC_LAZY_LOAD_DYLIB,
+];
 
 function decodeVersion(packed) {
   const major = packed >>> 16;
@@ -231,47 +240,63 @@ const startsWithAny = (s, prefixes) => prefixes.some((p) => s.startsWith(p));
 
 export function verdict(path, info) {
   const { format, search, deps, ownName } = info;
-  const selfRelativeSearch = search.filter((p) => startsWithAny(p, SELF_RELATIVE));
-  const foreignSearch = search.filter((p) => !startsWithAny(p, SELF_RELATIVE));
-  const here = dirname(resolve(path)) || '.';
+  const selfRelative = SELF_RELATIVE[format];
+  const isSelfRelative = (p) => startsWithAny(p, selfRelative);
+  const selfRelativeSearch = search.filter(isSelfRelative);
+  const foreignSearch = search.filter((p) => !isSelfRelative(p));
+  const here = dirname(resolve(path));
 
-  // Not just "beside the artifact": a self-relative path may point elsewhere,
-  // and a layout that puts the binary in one directory and its libraries in a
-  // sibling depends on exactly that. Checking only the artifact's own
-  // directory would call such an arrangement satisfiable when it is complete.
-  const resolvesLocally = (dep) => {
-    const base = basename(dep);
-    for (const sp of selfRelativeSearch.length ? selfRelativeSearch : ['@loader_path']) {
-      const prefix = SELF_RELATIVE.find((s) => sp.startsWith(s));
-      if (!prefix) continue;
-      const rel = sp.slice(prefix.length).replace(/^\/+/, '');
-      const resolved = normalize(join(here, rel));
-      if (existsSync(join(resolved, base))) return true;
-    }
-    return false;
+  // '@loader_path/../lib' -> <artifact dir>/../lib. A self-relative path may
+  // point at a sibling directory, and a layout that relies on that is
+  // complete, not merely satisfiable.
+  const expand = (p) => {
+    const prefix = selfRelative.find((s) => p.startsWith(s));
+    return normalize(join(here, p.slice(prefix.length).replace(/^\/+/, '')));
   };
 
+  // Model where the loader LOOKS, then whether the file is there. Every
+  // shortcut in this loop has already been a false pass: a dependency that
+  // exists beside the artifact proves nothing if no path sends the loader to
+  // it, and a self-relative dependency proves nothing if it is not there.
   const unresolved = [];
   const missingBeside = [];
   for (const d of deps) {
-    if (startsWithAny(d, SELF_RELATIVE) || startsWithAny(d, SYSTEM_PREFIXES)) continue;
-    if (format === 'elf' && startsWithAny(d, SYSTEM_SONAMES)) continue;
-    if (d.startsWith('@rpath/') || !d.startsWith('/')) {
-      if (resolvesLocally(d)) continue;
-      // Resolvable by the consumer only if the artifact looks beside itself;
-      // otherwise it can only ever find it on the build box.
-      (selfRelativeSearch.length ? missingBeside : unresolved).push(d);
-    } else {
-      unresolved.push(d);
+    if (startsWithAny(d, SYSTEM_PREFIXES)) continue;
+    if (format === 'elf' && !d.includes('/') && startsWithAny(d, SYSTEM_SONAMES)) continue;
+
+    // A direct self-relative path: the loader tries exactly there.
+    if (isSelfRelative(d)) {
+      if (!existsSync(expand(d))) missingBeside.push(d);
+      continue;
     }
+
+    // Looked up through the search paths: @rpath/ on Mach-O, a bare soname on
+    // ELF. Only self-relative entries travel with the artifact; with none,
+    // the dependency resolves on the build machine or not at all — even if a
+    // copy happens to sit beside the artifact, because nothing says look there.
+    const searched = format === 'macho' ? d.startsWith('@rpath/') : !d.includes('/');
+    if (searched && selfRelativeSearch.length) {
+      const name = format === 'macho' ? d.slice('@rpath/'.length) : d;
+      if (!selfRelativeSearch.some((sp) => existsSync(join(expand(sp), name)))) {
+        missingBeside.push(d);
+      }
+      continue;
+    }
+
+    // Everything else only resolves somewhere that is not the artifact: an
+    // absolute non-system path, @executable_path (node's directory), or a
+    // relative path the loader resolves against the working directory.
+    unresolved.push(d);
   }
 
   // dlopen ignores the install name, so it cannot break loading — but it is
   // recorded into anything that LINKS against this library, which then
-  // inherits the same defect.
+  // inherits the same defect. @executable_path is acceptable HERE: it is
+  // resolved against whatever executable links the library, which is that
+  // linker's decision to make.
   const badOwnName = Boolean(
     ownName &&
-      !(startsWithAny(ownName, SELF_RELATIVE) ||
+      !(startsWithAny(ownName, ['@loader_path', '@executable_path', '$ORIGIN']) ||
         ownName.startsWith('@rpath/') ||
         startsWithAny(ownName, SYSTEM_PREFIXES) ||
         !ownName.includes('/'))
@@ -283,6 +308,40 @@ export function verdict(path, info) {
       ? 'satisfiable'
       : 'self-contained';
   return { state, unresolved, missingBeside, foreignSearch, selfRelativeSearch, badOwnName };
+}
+
+function whyUnresolved(format, d, foreignSearch) {
+  if (d.startsWith('@executable_path')) {
+    return "resolves against the host executable's directory (node's), not this artifact's";
+  }
+  if (d.startsWith('/')) return 'is an absolute path outside the system library directories';
+  const searched = format === 'macho' ? d.startsWith('@rpath/') : !d.includes('/');
+  if (searched) {
+    return (
+      `is looked up only through ${foreignSearch.length ? JSON.stringify(foreignSearch) : '(no search path)'} ` +
+      '— nothing tells the loader to look beside this artifact'
+    );
+  }
+  return "is a relative path, which the loader resolves against the process's working directory";
+}
+
+/**
+ * The bundled libraries a manifest names, split into those present beside
+ * the artifact and those that are not. A missing one is a finding, not a
+ * skip: the manifest is the bundler's record of what must ship, and checking
+ * only the files that happen to exist reports a consumer layout as complete
+ * when it is not.
+ */
+export function manifestTargets(artifact, manifestText) {
+  const targets = [];
+  const missing = [];
+  for (const line of manifestText.split('\n')) {
+    const name = line.trim();
+    if (!name) continue;
+    const p = join(dirname(artifact), basename(name));
+    (existsSync(p) && statSync(p).isFile() ? targets : missing).push(p);
+  }
+  return { targets, missing };
 }
 
 function report(path, requireSelfContained) {
@@ -313,11 +372,7 @@ function report(path, requireSelfContained) {
     console.log('');
     console.log('BROKEN — this artifact only works on the machine that built it:');
     for (const d of v.unresolved) {
-      console.log(
-        `  - dependency ${JSON.stringify(d)} resolves only through ` +
-          `${v.foreignSearch.length ? JSON.stringify(v.foreignSearch) : '(no search path)'}, ` +
-          `which is the build machine's own directory`
-      );
+      console.log(`  - dependency ${JSON.stringify(d)} ${whyUnresolved(info.format, d, v.foreignSearch)}`);
     }
     if (v.badOwnName) {
       console.log(
@@ -335,9 +390,11 @@ function report(path, requireSelfContained) {
 
   if (v.state === 'satisfiable') {
     console.log('');
-    console.log('SATISFIABLE — loads once these are placed beside it:');
-    for (const d of v.missingBeside) console.log(`  - ${basename(d)}`);
-    console.log(`  (search path is ${JSON.stringify(v.selfRelativeSearch)}, so the consumer can supply them)`);
+    console.log('SATISFIABLE — loads once these are placed where it looks:');
+    for (const d of v.missingBeside) console.log(`  - ${d}`);
+    if (v.selfRelativeSearch.length) {
+      console.log(`  (search path is ${JSON.stringify(v.selfRelativeSearch)}, so the consumer can supply them)`);
+    }
     if (requireSelfContained) {
       console.log('');
       console.log('--require-self-contained was given: this is not self-contained.');
@@ -348,10 +405,12 @@ function report(path, requireSelfContained) {
 
   console.log('');
   if (v.foreignSearch.length) {
-    // Nothing resolves through it, so it cannot cause a load failure — but it
-    // still leaks the build directory into a published artifact.
-    console.log('SELF-CONTAINED — nothing is resolved at load time.');
-    console.log(`  note: an inert build-machine path is recorded: ${JSON.stringify(v.foreignSearch)}`);
+    // Nothing needs it, so it cannot cause a load failure here — but the
+    // loader still searches it, in recorded order (on ELF, before any $ORIGIN
+    // entry listed after it), so a library at that path on a consumer's
+    // machine could shadow a bundled one. It also leaks the build directory.
+    console.log('SELF-CONTAINED — every dependency resolves beside the artifact or from the system.');
+    console.log(`  note: a build-machine search path is also recorded: ${JSON.stringify(v.foreignSearch)}`);
     return 0;
   }
   console.log(
@@ -487,6 +546,67 @@ function selfTest() {
     }
   });
 
+  check('upward and lazy dylib loads count as dependencies', () => {
+    const info = parseMachO(machO(6, [
+      lcDylib(LC_LOAD_UPWARD_DYLIB, '@rpath/libup.dylib'),
+      lcDylib(LC_LAZY_LOAD_DYLIB, '@rpath/liblazy.dylib'),
+    ]));
+    eq(info.deps, ['@rpath/libup.dylib', '@rpath/liblazy.dylib'], 'deps');
+  });
+
+  // The cases below need real neighbours on disk, because the verdict's whole
+  // job is to model where the loader looks — and the defects they pin were all
+  // "a library happened to sit beside the artifact, so a path the loader never
+  // consults was reported as resolving". A fixture directory that is empty
+  // hides exactly that; each case here puts the library IN it.
+  const dir = mkdtempSync(join(tmpdir(), 'check-portable-'));
+  const touch = (name) => { writeFileSync(join(dir, name), ''); return join(dir, name); };
+  const artifact = join(dir, 'index.node');
+  touch('index.node');
+  touch('libKGEN.dylib');
+  touch('libKGEN.so');
+  const state = (info) => verdict(artifact, { minOS: null, ownName: null, ...info }).state;
+
+  try {
+    check('positive controls: self-relative search finds the neighbour', () => {
+      eq(state({ format: 'macho', search: ['@loader_path'], deps: ['@rpath/libKGEN.dylib'] }), 'self-contained', 'macho @rpath');
+      eq(state({ format: 'macho', search: [], deps: ['@loader_path/libKGEN.dylib'] }), 'self-contained', 'macho @loader_path dep');
+      eq(state({ format: 'elf', search: ['$ORIGIN'], deps: ['libKGEN.so'] }), 'self-contained', 'elf $ORIGIN');
+      eq(state({ format: 'elf', search: ['${ORIGIN}'], deps: ['libKGEN.so'] }), 'self-contained', 'elf ${ORIGIN}');
+    });
+
+    // bundle-runtime.sh rewrites every macOS dependency to this form, so an
+    // unchecked one meant index.node copied alone reported SELF-CONTAINED.
+    check('a direct @loader_path dependency that is absent is not self-contained', () => {
+      eq(state({ format: 'macho', search: [], deps: ['@loader_path/libAbsent.dylib'] }), 'satisfiable', 'state');
+      eq(state({ format: 'elf', search: [], deps: ['$ORIGIN/libAbsent.so'] }), 'satisfiable', 'elf state');
+    });
+
+    // Neither dyld nor ld.so looks beside the artifact unless a search path
+    // says to. These all load on the build box and nowhere else.
+    check('a neighbour the loader never consults does not count', () => {
+      eq(state({ format: 'elf', search: ['/home/runner/work/x/.pixi/envs/default/lib'], deps: ['libKGEN.so'] }), 'broken', 'elf build-tree RUNPATH');
+      eq(state({ format: 'elf', search: [], deps: ['libKGEN.so'] }), 'broken', 'elf no RUNPATH');
+      eq(state({ format: 'macho', search: ['/Users/runner/work/x/.pixi/lib'], deps: ['@rpath/libKGEN.dylib'] }), 'broken', 'macho build-tree LC_RPATH');
+      eq(state({ format: 'macho', search: [], deps: ['@rpath/libKGEN.dylib'] }), 'broken', 'macho no LC_RPATH');
+      eq(state({ format: 'macho', search: [], deps: ['libKGEN.dylib'] }), 'broken', 'macho bare relative (cwd)');
+    });
+
+    // For a .node file @executable_path is node's own directory.
+    check('@executable_path is the host executable, not the artifact', () => {
+      eq(state({ format: 'macho', search: ['@executable_path'], deps: ['@rpath/libKGEN.dylib'] }), 'broken', 'rpath');
+      eq(state({ format: 'macho', search: [], deps: ['@executable_path/libKGEN.dylib'] }), 'broken', 'dep');
+    });
+
+    check('a manifest entry that is not beside the artifact is reported', () => {
+      const { targets, missing } = manifestTargets(artifact, 'libKGEN.so\nlibAbsent.so\n\n');
+      eq(targets, [join(dir, 'libKGEN.so')], 'targets');
+      eq(missing, [join(dir, 'libAbsent.so')], 'missing');
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
   check('a fat archive is an inspect error, not a pass', () => {
     const fat = Buffer.alloc(32);
     fat.writeUInt32BE(0xcafebabe, 0);
@@ -531,6 +651,7 @@ function main() {
   }
 
   const targets = [artifact];
+  let worst = 0;
   if (manifest) {
     if (!existsSync(manifest)) {
       console.error(`check-portable: manifest ${manifest} does not exist`);
@@ -539,15 +660,15 @@ function main() {
     // Every bundled library is checked too: one of them carrying a build-tree
     // rpath breaks the consumer exactly as surely as the addon doing so, and
     // the addon's own load commands say nothing about it.
-    for (const line of readFileSync(manifest, 'utf8').split('\n')) {
-      const name = line.trim();
-      if (!name) continue;
-      const p = join(dirname(artifact), basename(name));
-      if (existsSync(p) && statSync(p).isFile()) targets.push(p);
+    const listed = manifestTargets(artifact, readFileSync(manifest, 'utf8'));
+    targets.push(...listed.targets);
+    for (const p of listed.missing) {
+      console.log(`MISSING — ${manifest} lists ${JSON.stringify(basename(p))}, which is not beside the artifact at ${p}`);
+      console.log('');
+      worst = 1;
     }
   }
 
-  let worst = 0;
   for (const t of targets) {
     const rc = report(t, requireSelfContained);
     worst = Math.max(worst, rc);
@@ -557,4 +678,6 @@ function main() {
   process.exit(worst);
 }
 
-main();
+// Only when run as a script, so the exported parsers and verdict can be
+// imported without the import calling process.exit.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

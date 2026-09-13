@@ -32,7 +32,11 @@ measurements behind all of it.
   not work: add dropped the handle, so remove registered a *second* hook with
   an identical `(function, data)` pair just to have one to remove, and the
   caller's hook stayed registered. The duplicate also aborted Bun and corrupted
-  Deno's heap.
+  Deno's heap. The handle is type-tagged and remembers its removal, so a second
+  `removeAsyncCleanupHook(handle)` throws `handle already removed` and an
+  External from anywhere else throws a `TypeError` — both were reachable from
+  plain JavaScript and crashed the process, because
+  `napi_remove_async_cleanup_hook` frees the handle it is given.
 
 ### Added
 
@@ -46,10 +50,19 @@ measurements behind all of it.
 - **`napi-mojo release --scaffold`** writes an addon author's prebuild and
   publish setup: `optionalDependencies` per platform, a loader, platform
   manifests, and a release workflow whose consume job has no checkout and no
-  toolchain.
+  toolchain. It is safe to run in an existing project: `package.json` and the
+  platform manifests are patched (dependencies merged, an existing `main` and
+  an absent `files` left alone, author fields kept), and an existing `index.js`
+  or `release.yml` is kept unless you pass `--force`. Re-running it resyncs
+  versions.
 - **`scripts/check-portable.mjs`**, a release gate that reads an artifact's
   Mach-O/ELF load commands and refuses one that depends on the machine that
   built it — the property a load test on the build machine cannot establish.
+  It models where the loader actually looks: a library beside the artifact
+  counts only if a self-relative search path (`@loader_path`, `$ORIGIN`) sends
+  the loader there, a `@loader_path/` dependency must exist, `@executable_path`
+  is node's directory rather than the addon's, and a library the bundler's
+  manifest names but that is not present fails the check.
 - **`publish.yml` preflights its publish targets** before spending three
   platform builds. The 0.13.0 release failed at the last step on a package npm
   had never seen, leaving two platform packages published at the new version
