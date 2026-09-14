@@ -84,7 +84,20 @@ const SCENARIOS = [
       log('asyncDouble', await addon.asyncDouble(21));
       log('asyncSum', await addon.asyncSum(2, 40));
       log('asyncLabel', await addon.asyncLabel('hi'));
-      log('cancel', await addon.cancelAsyncWork().then(() => 'BAD', (e) => e.message));
+      // napi_cancel_async_work cancels queued work only while no threadpool
+      // worker has picked it up yet, and cancelAsyncWork queues then cancels
+      // on the very next line — so BOTH outcomes are legal and which one wins
+      // is a scheduling race. tests/cancel_async.test.js accepts either for
+      // exactly this reason. Assert the invariant (it settles, carrying the
+      // right value on whichever branch ran) rather than which branch won, or
+      // this line reports a Bun-vs-Node scheduling difference as an addon
+      // defect — it did, on PR #113.
+      log('cancel', await addon.cancelAsyncWork().then(
+        (v) => (v === 'completed' ? 'settled' : \`BAD resolve:\${v}\`),
+        (e) => {
+          const m = typeof e === 'string' ? e : (e && e.message) || String(e);
+          return /cancel/i.test(m) ? 'settled' : \`BAD reject:\${m}\`;
+        }));
       const seen = [];
       await addon.asyncProgress(5, (i) => seen.push(i));
       log('tsfnTicks', seen.length);
