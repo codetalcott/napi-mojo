@@ -3,7 +3,20 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
-## Unreleased
+## 0.15.0 — 2026-09-13
+
+**Promise continuations that do not crash or leak.** Host-mode code gets a
+framework primitive for continuing after a JavaScript promise,
+`JsPromise.on_settled`, replacing a hand-rolled pattern the docs recommended
+that crashed the process on rejection, swallowed its own errors, and leaked
+for every promise that rejected or never settled. The reason host mode cannot
+simply wait for a promise is also corrected: it was never that Mojo lacks
+`await`.
+
+No existing Mojo signature changed — `on_settled`, `Settlement` and
+`JsObject.add_finalizer` are additions — so downstream addons compile against
+0.15.0 unmodified. The demo addon's `thenDouble` and `deferredRequire` exports
+do change shape; see Fixed.
 
 ### Added
 
@@ -37,6 +50,11 @@ break the source API that downstream addons compile against.
   Both are rebuilt on `on_settled`. **Their JS signatures changed:** they now
   return the promise `.then()` made, and call `onResult` node-style —
   `onResult(null, value)` on success, `onResult(reason)` on rejection.
+- **`napi-mojo release --scaffold` pinned a stale `setup-pixi`.** The release
+  workflow it writes lives in a template string Dependabot cannot see, so it
+  kept `v0.10.1` after this repo moved to `v0.10.2`. It now matches, and
+  `tests/template_action_pins.test.js` fails whenever an action the template
+  shares with this repo's workflows drifts.
 
 ### Docs
 
