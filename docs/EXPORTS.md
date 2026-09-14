@@ -36,7 +36,7 @@
 | `Counter.fromValue(n)` | `counter_from_value_fn` | Factory: creates `new Counter(n)` via `napi_new_instance` |
 | `sumArgs(...)` | `sum_args_fn` | Returns sum of all number arguments (variable args) |
 | `createCallback()` | `create_callback_fn` | Returns a Mojo-created JS function |
-| `createAdder(n)` | `create_adder_fn` | Returns a function that adds `n` to its argument (closure pattern) |
+| `createAdder(n, counter?)` | `create_adder_fn` | Returns a function that adds `n` to its argument — the closure pattern, its capture freed by the collector (`create_with_data`'s `finalize_cb` overload); the optional `counter` ArrayBuffer(8) counts that finalizer |
 | `getGlobal()` | `get_global_fn` | Returns the global object (`globalThis`) |
 | `testRef()` | `test_ref_fn` | Creates object, stores/retrieves via napi_ref, returns |
 | `testRefObject()` | `test_ref_object_fn` | Object reference round-trip |

@@ -1,30 +1,19 @@
 ## src/addon/function_ops.mojo — function creation, closures, varargs, named fns
 
 from std.memory.alloc import unsafe_alloc
-from napi.types import NapiEnv, NapiValue, NapiStore, NAPI_TYPE_NUMBER
-from napi.bindings import NapiBindings, Bindings
+from napi.types import NapiEnv, NapiValue, NapiRef, NAPI_TYPE_NUMBER
+from napi.bindings import Bindings
 from napi.error import throw_js_error, throw_js_error_dynamic, check_status
 from napi.framework.js_string import JsString
 from napi.framework.js_number import JsNumber
 from napi.framework.js_function import JsFunction
 from napi.framework.args import CbArgs
+from napi.framework.js_arraybuffer import JsArrayBuffer
+from napi.framework.js_ref import JsRef
+from addon.typed_helpers_ops import TypedPayload, typed_payload_finalize
 from napi.framework.js_value import js_typeof, js_type_name, js_get_global
 from napi.framework.register import fn_ptr, ModuleBuilder, ClassRegistry
 from napi.keepalive import pin_across_ffi
-
-
-## AdderCapture — closure data for inner_adder_fn (captured n + bindings)
-struct AdderCapture(Movable):
-    var n: Float64
-    var b_raw: NapiStore
-
-    def __init__(out self, n: Float64, b: Bindings):
-        self.n = n
-        self.b_raw = b.unsafe_bitcast[NoneType]()
-
-    def __moveinit__(out self, deinit take: Self):
-        self.n = take.n
-        self.b_raw = take.b_raw
 
 
 def inner_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -52,31 +41,55 @@ def create_callback_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
 
 def inner_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
-        var raw_data = CbArgs.get_data(env, info)
-        var cap = raw_data.unsafe_bitcast[AdderCapture]()
-        var b = cap[].b_raw.unsafe_bitcast[NapiBindings]()
+        var payload = CbArgs.get_data(env, info).unsafe_bitcast[TypedPayload]()
+        var b = Bindings(unsafe_from_address=payload[].bindings_addr)
         var arg0 = CbArgs.get_one(b, env, info)
         var x = JsNumber.from_napi_value(b, env, arg0)
-        return JsNumber.create(b, env, cap[].n + x).value
+        return JsNumber.create(b, env, payload[].value + x).value
     except:
         throw_js_error(env, "adder callback failed")
         return NapiValue(unsafe_from_address=Int(0))
 
 
+## createAdder(n, counter?) — the closure pattern: a function carrying heap data.
+## The capture (n plus the bindings address) is freed by the collector through
+## JsFunction.create_with_data's finalize_cb overload, never on the call path —
+## an adder may be called many times or never. `counter` is optional: tests pass
+## an ArrayBuffer(8) whose Int64 the capture's finalizer increments (the
+## TypedPayload pattern), which is how a leak here becomes a failing test.
 def create_adder_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
-        var arg0 = CbArgs.get_one(b, env, info)
-        var n = JsNumber.from_napi_value(b, env, arg0)
-        var cap_ptr = unsafe_alloc[AdderCapture](1)
-        cap_ptr.unsafe_write(AdderCapture(n, b))
+        var n: Float64
+        var counter_ptr = Pointer[Int64, MutAnyOrigin](unsafe_from_address=Int(0))
+        var counter_ref = NapiRef(unsafe_from_address=Int(0))
+        if CbArgs.argc(b, env, info) >= 2:
+            var args = CbArgs.get_two(b, env, info)
+            n = JsNumber.from_napi_value(b, env, args[0])
+            counter_ptr = JsArrayBuffer(args[1]).data_ptr(b, env).unsafe_bitcast[
+                Int64
+            ]()
+            # Pin the counter's ArrayBuffer until the finalizer has incremented
+            # it; typed_payload_finalize releases this ref afterwards.
+            counter_ref = JsRef.create(b, env, args[1], 1).handle
+        else:
+            n = JsNumber.from_napi_value(b, env, CbArgs.get_one(b, env, info))
+
+        var payload = unsafe_alloc[TypedPayload](1)
+        payload.unsafe_write(TypedPayload(n, counter_ptr, counter_ref, Int(b)))
         var cb_ref = inner_adder_fn
-        var cb_ptr = Pointer(to=cb_ref).unsafe_bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
-        return JsFunction.create_with_data(
-            b, env, "adder", cb_ptr, cap_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        ).value
+        var fin_ref = typed_payload_finalize
+        var adder = JsFunction.create_with_data(
+            b,
+            env,
+            "adder",
+            fn_ptr(cb_ref),
+            payload.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            fn_ptr(fin_ref),
+        )
+        _ = cb_ref
+        _ = fin_ref
+        return adder.value
     except:
         throw_js_error(env, "createAdder requires one number argument")
         return NapiValue(unsafe_from_address=Int(0))

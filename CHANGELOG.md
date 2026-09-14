@@ -3,6 +3,31 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
+## Unreleased
+
+### Added
+
+- **`JsFunction.create_with_data(b, env, name, cb_ptr, data, finalize_cb)`** —
+  the closure form for heap data. The collector runs `finalize_cb` once the
+  function is gone; `data` is adopted on every path, so if the function
+  cannot be created or the finalizer attached, `finalize_cb` runs before the
+  call raises. Nothing is freed on the call path, because a function may be
+  called many times or never. The existing five-argument form is unchanged
+  and still frees nothing. `JsPromise.on_settled` is now built on this
+  overload, so the adopt-on-failure logic and the one function-pointer cast
+  it needs live in a single place.
+
+### Fixed
+
+- **`createAdder` leaked its capture on every call.** The closure example the
+  docs pointed to allocated its data per call and handed it to a function
+  with no finalizer, so nothing ever freed it — the same defect class 0.15.0
+  fixed for promise continuations. It now uses the `finalize_cb` overload. It
+  takes an optional `counter` ArrayBuffer(8) whose Int64 the capture's
+  finalizer increments, and GC tests pin both halves: the capture is freed
+  when the adder is collected, and is not freed while the adder is reachable.
+  Both regressions were mutation-checked against the suite.
+
 ## 0.15.0 — 2026-09-13
 
 **Promise continuations that do not crash or leak.** Host-mode code gets a

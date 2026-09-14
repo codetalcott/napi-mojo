@@ -19,10 +19,12 @@ object. Use `call_with` for an explicit receiver, or
 `List[NapiValue]` and keep it alive across the FFI call. An empty list
 passes a genuine null argv rather than the data pointer of an empty List.
 
-**Created functions are not garbage-collected on the Mojo side.** Data
-passed via `create_with_data` has no finalizer hook, so it leaks unless
-you free it yourself. Use `JsExternal` or a class wrap when you need the
-GC to own the lifetime.
+**Closure data is freed by the collector, never by a call.** A created
+function may be called many times or never, so there is no "right call" to
+free its data in. Pass heap data to the `finalize_cb` overload of
+`create_with_data`, which frees it when the function is collected. The plain
+overload frees nothing: use it only for data that outlives every function,
+such as the bindings pointer.
 
 ---
 
@@ -174,6 +176,8 @@ Mojo exception escape into C.
 
 ### `create_with_data`
 
+*Overload 1 of 2.*
+
 ```mojo
 def create_with_data(b: Pointer[NapiBindings, MutUntrackedOrigin], env: Pointer[NoneType, MutUntrackedOrigin], name: StringLiteral, cb_ptr: Pointer[NoneType, MutAnyOrigin], data: Pointer[NoneType, MutAnyOrigin]) -> Self
 ```
@@ -183,10 +187,10 @@ Create a JS function carrying an arbitrary data pointer.
 The callback retrieves the pointer with `CbArgs.get_data`. This is the
 closure mechanism for plain functions.
 
-**The data is never freed for you.** Tie heap data to the function's
-lifetime with `JsObject(fn.value).add_finalizer(...)` rather than
-freeing it when the callback fires — a callback may never fire. For a
-promise continuation, use `JsPromise.on_settled`, which does this.
+**The data is never freed for you.** For heap data, use the
+`finalize_cb` overload, which frees it when the function is collected
+— never free it when the callback fires, which may be never or many
+times. For a promise continuation, use `JsPromise.on_settled`.
 
 | argument | type | description |
 |---|---|---|
@@ -200,6 +204,40 @@ promise continuation, use `JsPromise.on_settled`, which does this.
 
 **Raises** — If napi_create_function does not return napi_ok.
 
+*Overload 2 of 2.*
+
+```mojo
+def create_with_data(b: Pointer[NapiBindings, MutUntrackedOrigin], env: Pointer[NoneType, MutUntrackedOrigin], name: StringLiteral, cb_ptr: Pointer[NoneType, MutAnyOrigin], data: Pointer[NoneType, MutAnyOrigin], finalize_cb: Pointer[NoneType, MutAnyOrigin]) -> Self
+```
+
+Create a JS function whose closure data the collector frees.
+
+The closure mechanism for heap data. The callback retrieves `data`
+with `CbArgs.get_data`, on every call, for as long as the function is
+reachable; `finalize_cb(env, data, null)` runs once the function has
+been collected. Nothing is freed on the call path, so a function that
+is called many times — or never — is equally safe.
+
+`data` is ADOPTED on every path: if the function cannot be created or
+the finalizer cannot be attached, `finalize_cb` runs before this
+raises. Never free `data` yourself after passing it.
+
+The finalizer runs on the main thread after collection. Free memory
+there; do not call into JavaScript.
+
+| argument | type | description |
+|---|---|---|
+| `b` | `Bindings` | Cached N-API bindings. |
+| `env` | `NapiEnv` | The N-API environment. |
+| `name` | `StringLiteral` | The function's name, as a compile-time literal. |
+| `cb_ptr` | `Pointer[NoneType, MutAnyOrigin]` | The callback, via `fn_ptr(...)`. |
+| `data` | `Pointer[NoneType, MutAnyOrigin]` | Pointer handed to the callback on every invocation. |
+| `finalize_cb` | `Pointer[NoneType, MutAnyOrigin]` | A `def(env, data, hint)` that frees `data`, via     `fn_ptr(...)`. May be null, making this the plain overload. |
+
+**Returns** — A JsFunction wrapping the new function.
+
+**Raises** — If the function could not be created or the finalizer attached. `data` has been finalized either way.
+
 ### `create_named`
 
 *Overload 1 of 2.*
@@ -211,8 +249,9 @@ def create_named(b: Pointer[NapiBindings, MutUntrackedOrigin], env: Pointer[None
 Create a JS function with a runtime name and declared arity.
 
 The String overload of `create`, for a name computed at runtime. The
-`data_ptr` overload additionally carries closure data, with the same
-no-finalizer caveat as `create_with_data`.
+`data_ptr` overload additionally carries closure data and frees none
+of it, like the plain `create_with_data`; tie heap data to the result
+with `JsObject(fn.value).add_finalizer(...)`.
 
 | argument | type | description |
 |---|---|---|
@@ -235,8 +274,9 @@ def create_named(b: Pointer[NapiBindings, MutUntrackedOrigin], env: Pointer[None
 Create a JS function with a runtime name and declared arity.
 
 The String overload of `create`, for a name computed at runtime. The
-`data_ptr` overload additionally carries closure data, with the same
-no-finalizer caveat as `create_with_data`.
+`data_ptr` overload additionally carries closure data and frees none
+of it, like the plain `create_with_data`; tie heap data to the result
+with `JsObject(fn.value).add_finalizer(...)`.
 
 | argument | type | description |
 |---|---|---|
