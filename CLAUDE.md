@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. All planned phases complete — 153 exported functions + 5 classes covering the full N-API surface (650+ tests, plus 7 GC finalizer tests behind `--expose-gc`; the exact count is whatever `npm test` reports — don't embed it in prose, nothing updates numbers embedded in prose): primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError/SyntaxError), promises (create/resolve/reject), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal/detach, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks (sync + async), type coercion (Boolean/Number/String/Object), TypeScript definition generation with JSDoc, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), version info (N-API + Node.js), script execution, async context + callback scope, type tagging, and external memory tracking. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, parametric array helpers (`to/from_js_array_f64/str`), an `AsyncWork` helper for ergonomic async work (promise + queue + resolve/reject), a TOML code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) with `mojo_fn` auto-trampolines, nullable returns (`Optional[T]` → `T | null`), struct-to-object mapping (`[structs.*]` → bidirectional converters), async/class generation, and auto-generated TypeScript `.d.ts` with interfaces, `MojoFloat64Array` for zero-copy TypedArray output, `parallelize_safe()` for SIMD parallel computation with automatic runtime init, **typed handles** (`JsExternal.create_typed[T]` / `get_typed[T]`, `set_instance_data[T]` / `get_instance_data[T]` with generic finalizers), and **cached NapiBindings** — all 142 N-API function pointers resolved once at module init, passed through callback data to every entry-point callback (zero per-call dlsym). The framework is **bidirectional**: besides addons (JS calls Mojo) it supports **host mode** (`napi-mojo run` — a Mojo program that drives Node and uses npm as its standard library), via `NodeHost`, `JsObject.call_method`, `JsFunction.call_n`/`call_with` and `with_handle_scope`.
+**napi-mojo** — the Mojo equivalent of Rust's `napi-rs`. A framework for building Node.js native addons in Mojo via the Node-API (N-API) C interface. All planned phases complete — 154 exported functions + 5 classes covering the full N-API surface (650+ tests, plus GC finalizer tests behind `--expose-gc`; the exact count is whatever `npm test` reports — don't embed it in prose, nothing updates numbers embedded in prose): primitive types, integer types (Int32/UInt32/Int64), object property reading/enumeration/deletion, function calling/creation, array mapping with handle scopes, variable-length arguments, type checking, error propagation (Error/TypeError/RangeError/SyntaxError), promises (create/resolve/reject, plus Mojo continuations via `JsPromise.on_settled`), async work (worker thread execution + cancellation), ThreadsafeFunction (call JS from worker threads), ArrayBuffer (including external/Mojo-owned memory), Buffer, TypedArray, DataView, class construction (wrap/unwrap, prototype methods, getter/setter, static methods, class inheritance via prototype chain), persistent references, escapable handle scopes, global object access, BigInt (including arbitrary-precision word arrays), Date, Symbol, strict equality, instanceof, object freeze/seal/detach, prototype access, array element has/delete, external data (opaque native pointers with GC finalizers), napi_add_finalizer on arbitrary objects, instance data (per-env singleton), environment cleanup hooks (sync + async), type coercion (Boolean/Number/String/Object), TypeScript definition generation with JSDoc, exception handling (throw/catch any value), property set/has by napi_value key (symbol keys), version info (N-API + Node.js), script execution, async context + callback scope, type tagging, and external memory tracking. Higher-level API includes `fn_ptr()`, `ModuleBuilder`/`ClassBuilder` for ergonomic registration, `unwrap_native[T]()` for class methods, `ToJsValue`/`FromJsValue` conversion traits, parametric array helpers (`to/from_js_array_f64/str`), an `AsyncWork` helper for ergonomic async work (promise + queue + resolve/reject), a TOML code generator (`scripts/generate-addon.mjs` + `src/exports.toml`) with `mojo_fn` auto-trampolines, nullable returns (`Optional[T]` → `T | null`), struct-to-object mapping (`[structs.*]` → bidirectional converters), async/class generation, and auto-generated TypeScript `.d.ts` with interfaces, `MojoFloat64Array` for zero-copy TypedArray output, `parallelize_safe()` for SIMD parallel computation with automatic runtime init, **typed handles** (`JsExternal.create_typed[T]` / `get_typed[T]`, `set_instance_data[T]` / `get_instance_data[T]` with generic finalizers), and **cached NapiBindings** — all 142 N-API function pointers resolved once at module init, passed through callback data to every entry-point callback (zero per-call dlsym). The framework is **bidirectional**: besides addons (JS calls Mojo) it supports **host mode** (`napi-mojo run` — a Mojo program that drives Node and uses npm as its standard library), via `NodeHost`, `JsObject.call_method`, `JsFunction.call_n`/`call_with` and `with_handle_scope`.
 
 ## Commands
 
@@ -113,7 +113,7 @@ src/napi/error.mojo                      # napi_status_name(), check_status(), t
 src/napi/keepalive.mojo                  # pin_across_ffi() — non-elidable keep-alive for a local's stack slot across an N-API call
 src/napi/module.mojo                     # define_property(), register_method()
 src/napi/framework/js_string.mojo        # JsString.create(), create_literal(), from_napi_value(), read_arg_0()
-src/napi/framework/js_object.mojo        # JsObject.create(), set_property(), set_named_property(), set(), get(), get_property(), get_named_property(), has(), has_property(), keys(), has_own(), delete_prop(), instance_of(), freeze(), seal(), prototype()
+src/napi/framework/js_object.mojo        # JsObject.create(), set_property(), set_named_property(), set(), get(), get_property(), get_named_property(), has(), has_property(), keys(), has_own(), delete_prop(), instance_of(), freeze(), seal(), add_finalizer(), prototype()
 src/napi/framework/js_number.mojo        # JsNumber.create(), create_int(), from_napi_value(), to_int()
 src/napi/framework/js_boolean.mojo       # JsBoolean.create(), from_napi_value()
 src/napi/framework/js_int32.mojo         # JsInt32.create(), from_napi_value()
@@ -125,7 +125,7 @@ src/napi/framework/js_array.mojo         # JsArray.create_with_length(), set(), 
 src/napi/framework/js_function.mojo      # JsFunction.call0(), call1(), call2(), create(), create_with_data()
 src/napi/framework/js_value.mojo         # js_typeof(), js_type_name(), js_is_array(), js_strict_equals(), js_get_global()
 src/napi/framework/handle_scope.mojo     # HandleScope.open(), close()
-src/napi/framework/js_promise.mojo       # JsPromise.create(), resolve(), reject()
+src/napi/framework/js_promise.mojo       # JsPromise.create(), resolve(), reject(), on_settled(); Settlement.read(), user_data()
 src/napi/framework/js_arraybuffer.mojo   # JsArrayBuffer.create(), byte_length(), data_ptr(), is_arraybuffer()
 src/napi/framework/js_buffer.mojo        # JsBuffer.create(), data_ptr(), length(), is_buffer()
 src/napi/framework/js_typedarray.mojo    # JsTypedArray.create_float64/uint8/int32/int8/uint8_clamped/int16/uint16/uint32/float32/bigint64/biguint64(), array_type(), length(), data_ptr(), arraybuffer(), is_typedarray()
@@ -161,6 +161,7 @@ spike/ffi_probe.mojo                     # FFI contract + origin-migration recip
 spike/elaboration_probe.mojo             # throwaway: proves per-method lazy elaboration (+ spike/elab_pkg/)
 spike/runtime_probe.mojo                 # throwaway: AsyncRT init + parallelize, run from inside Node
 spike/keepalive_probe.mojo               # counterfactual behind napi.keepalive; IR-checked in CI
+spike/await_probe.mojo (+ .cjs)          # throwaway: proves no blocking wait on a JS Promise works inside a callback
 bin/napi-mojo.mjs                        # CLI: init (--host) / generate (--dts) / build (--bundle) / run — wraps the generators + bundle-runtime.sh; e2e-tested in CI
 scripts/generate-dts.js                  # auto-generate build/index.d.ts from lib.mojo
 scripts/toml-dts.js                      # TOML → .d.ts emitter shared by generate-dts.js and the CLI (one emitter, two callers)
@@ -175,7 +176,7 @@ tests/codegen/                           # compile-only kitchen sink: every gene
 
 ### Exported addon functions
 
-153 exported functions covering the full N-API surface. See `docs/EXPORTS.md` for the complete table.
+154 exported functions covering the full N-API surface. See `docs/EXPORTS.md` for the complete table.
 
 ## Mojo dialect and FFI rules
 
@@ -460,7 +461,7 @@ desc.method = Pointer(to=fn_ref).unsafe_bitcast[OpaquePointer[MutAnyOrigin]]()[]
 
 **Variable-length arguments**: Use `CbArgs.argc(env, info)` to query count, `alloc[NapiValue](count)` for the buffer, `CbArgs.get_argv(env, info, count, argv_ptr)` to fill it. The argv_ptr parameter requires `UnsafePointer[NapiValue, MutAnyOrigin]` (explicit origin). `get_argv` returns the invocation's actual argument count — N-API pads argv with `undefined` when fewer were supplied and drops extras when more were, so compare the return value against `count` to detect either; discard with `_ =` when the buffer was pre-sized via `argc()`.
 
-**Function creation with closure data**: `JsFunction.create_with_data(env, name, cb_ptr, data_ptr)` passes an arbitrary data pointer to the callback. Retrieve in the callback via `CbArgs.get_data(env, info)`. Heap-allocated data leaks unless manually freed (no destructor hook on plain functions).
+**Function creation with closure data**: `JsFunction.create_with_data(env, name, cb_ptr, data_ptr)` passes an arbitrary data pointer to the callback. Retrieve in the callback via `CbArgs.get_data(env, info)`. Heap-allocated data is not freed for you: tie it to the function's lifetime with `JsObject(fn.value).add_finalizer(b, env, data, fin_ptr)` — never free it "when the callback fires", which a callback may never do. For promise continuations use `JsPromise.on_settled`, which does all of this.
 
 **`node_api_symbol_for`**: Uses `node_api_` prefix (not `napi_`). Takes a C string + length, not a napi_value description.
 
@@ -553,18 +554,31 @@ the mistake — it makes Mojo-side validation failures invisible.
 
 **Four constraints that are not bugs:**
 
-1. **Mojo has no `await`.** A JS function returning a Promise hands Mojo a
-   *pending* Promise it cannot suspend on. Supported: synchronous APIs
-   (`readFileSync`), or continuation-passing — build a Mojo callback with
-   `JsFunction.create` and give it to `.then()`; `mojo_main` returns and the
-   event loop runs it later. **Do not add a blocking await helper**: draining
-   the event loop from inside a napi callback re-enters JS on a stack that is
-   already inside one. The CPS path is *tested*, not just asserted
-   (`then_double_fn` / `deferred_require_fn` in `src/addon/host_ops.mojo`).
-   A continuation runs on a later tick, so everything it needs must survive in
-   a `napi_ref` and the bindings pointer must travel in its heap payload —
-   the same designated-carrier rule as async and TSFN. The continuation frees
-   its own payload when it fires.
+1. **Mojo code cannot wait for a JS Promise — and not because Mojo lacks
+   `await`.** It has one (`async def`, `Task`, AsyncRT), but that suspends
+   Mojo coroutines. Host-mode code runs synchronously on the JS thread, a
+   promise settles only after that code returns to the event loop, and N-API
+   has no call that reads a promise's state or result. Measured from inside a
+   callback: polling for 500 ms, closing a callback scope and re-entering
+   `uv_run` all failed to observe a settlement; `uv_run` even ran a timer's JS
+   callback on the nested stack and *still* did not run the promise's `.then`.
+   So: synchronous APIs (`readFileSync`), or a continuation via
+   **`JsPromise.on_settled`**, which `mojo_main` returns past and the event
+   loop fires later. **Do not add a blocking await helper** — that experiment
+   is why. Write continuations on `on_settled`, never a hand-rolled `.then()`:
+   the first hand-rolled version (in `src/addon/host_ops.mojo`) crashed the
+   process on rejection, swallowed its own errors, and leaked its payload and
+   a strongly-referenced `onResult` for every promise that rejected or never
+   settled (209.7 MB for 200 closures over 1 MB). `on_settled` attaches both
+   handlers, passes JS captures as bound arguments the GC traces (no
+   `napi_ref`), adopts native `data` into a GC finalizer (nothing is freed
+   when the continuation fires — it may never fire), and returns the promise
+   `.then()` made so a failure is observable. `tests/finalizer_gc.test.js`
+   pins the lifetimes; each of those three regressions was mutation-checked
+   against the suite. An await that suspends *Mojo* code needs a worker-thread
+   bridge in the napi-rs shape — see
+   [`docs/plan-promise-bridge.md`](docs/plan-promise-bridge.md), deliberately
+   not built.
 2. **Mojo-driven loops that call JS need a per-iteration handle scope.** Every
    napi_value is pinned to the enclosing scope until it closes.
    `with_handle_scope[body](b, env)` encapsulates the open/close-on-both-paths

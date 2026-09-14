@@ -160,7 +160,7 @@ from napi.framework.js_mojo_array import MojoFloat64Array
 from napi.framework.js_null import JsNull
 from napi.framework.js_number import JsNumber
 from napi.framework.js_object import JsObject
-from napi.framework.js_promise import JsPromise
+from napi.framework.js_promise import JsPromise, Settlement
 from napi.framework.js_ref import JsRef
 from napi.framework.js_string import JsString, js_to_string
 from napi.framework.js_symbol import JsSymbol
@@ -603,6 +603,12 @@ def cover_js_object(b: Bindings, env: NapiEnv, v: NapiValue) raises:
     _ = o.instance_of(b, env, v)
     o.freeze(b, env)
     o.seal(b, env)
+    o.add_finalizer(
+        b,
+        env,
+        OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+        OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+    )
     _ = o.prototype(b, env)
     var method_args = List[NapiValue]()
     method_args.append(v)
@@ -628,6 +634,14 @@ def cover_js_promise(b: Bindings, env: NapiEnv, v: NapiValue) raises:
     var p2 = JsPromise.create(b, env)
     p2.resolve(b, env, v)
     p2.reject(b, env, v)
+    var captures = List[NapiValue]()
+    captures.append(v)
+    var null_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
+    _ = JsPromise.on_settled(b, env, v, null_ptr, captures.copy())
+    _ = JsPromise.on_settled(b, env, v, null_ptr, captures^, null_ptr, null_ptr)
+    var s = Settlement.read(env, v)
+    _ = s.user_data()
+    _ = Settlement(b, s.ok, s.value, s.captures.copy(), null_ptr)
 
 
 # --- js_ref.mojo --------------------------------------------------------------

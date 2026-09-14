@@ -188,17 +188,18 @@ describe('with_handle_scope — Mojo-driven loops', () => {
   });
 });
 
-describe('continuation passing — the documented async shape', () => {
-  // Mojo has no `await`. The README, CLAUDE.md and plan doc all say the
-  // supported shape for async is to hand JS a Mojo callback and return, letting
-  // the event loop fire it on a later tick. These tests exist because that
-  // claim shipped with no coverage at all.
+describe('continuation passing — JsPromise.on_settled', () => {
+  // Mojo code cannot wait for a promise: it runs on the JS thread, and a
+  // promise settles only after the calling callback returns. The supported
+  // shape is a continuation. thenDouble / thenScaled / deferredRequire are
+  // built on JsPromise.on_settled and call onResult node-style:
+  // onResult(null, value) on success, onResult(reason) on rejection.
+  const settle = (fn) => new Promise((resolve) => fn((err, v) => resolve({ err, v })));
 
   test('a Mojo continuation fires on a later tick', async () => {
-    const value = await new Promise((resolve) => {
-      addon.thenDouble(Promise.resolve(21), resolve);
-    });
-    expect(value).toBe(42);
+    const { err, v } = await settle((cb) => addon.thenDouble(Promise.resolve(21), cb));
+    expect(err).toBeNull();
+    expect(v).toBe(42);
   });
 
   test('the continuation really is deferred, not synchronous', () => {
@@ -212,47 +213,85 @@ describe('continuation passing — the documented async shape', () => {
 
   test('several continuations in flight stay independent', async () => {
     const results = await Promise.all(
-      [1, 2, 3, 4, 5].map(
-        (n) =>
-          new Promise((resolve) => addon.thenDouble(Promise.resolve(n), resolve))
-      )
+      [1, 2, 3, 4, 5].map((n) => settle((cb) => addon.thenDouble(Promise.resolve(n), cb)))
     );
-    expect(results).toEqual([2, 4, 6, 8, 10]);
+    expect(results.map((r) => r.v)).toEqual([2, 4, 6, 8, 10]);
   });
 
   test('a continuation on an already-settled promise still defers', async () => {
     const p = Promise.resolve(50);
     await null; // let p settle fully
-    const value = await new Promise((resolve) => addon.thenDouble(p, resolve));
-    expect(value).toBe(100);
+    const { v } = await settle((cb) => addon.thenDouble(p, cb));
+    expect(v).toBe(100);
   });
 
-  test('require survives into a later tick via a napi_ref', async () => {
-    // The documented persistence story: a host program can still reach npm
-    // after the call that received `ctx` has returned.
-    const sep = await new Promise((resolve) => {
-      addon.deferredRequire(ctx, resolve);
+  test('a non-promise value is awaited, like `await`', async () => {
+    expect((await settle((cb) => addon.thenDouble(21, cb))).v).toBe(42);
+    const thenable = { then: (res) => res(4) };
+    expect((await settle((cb) => addon.thenDouble(thenable, cb))).v).toBe(8);
+  });
+
+  test('returns the promise .then() made, which settles with onResult', async () => {
+    const derived = addon.thenDouble(Promise.resolve(3), (err, v) => `got ${v}`);
+    expect(typeof derived.then).toBe('function');
+    await expect(derived).resolves.toBe('got 6');
+  });
+
+  test('a rejection reaches onResult with its identity, and is handled', async () => {
+    // The first version attached only onFulfilled, so a rejected source
+    // promise crashed the process with an unhandled rejection and onResult
+    // never ran. Resolving (not rejecting) proves the rejection was consumed.
+    const boom = new Error('boom');
+    await expect(addon.thenDouble(Promise.reject(boom), (err) => err)).resolves.toBe(boom);
+    // Any value can be a rejection reason, primitives included.
+    await expect(addon.thenDouble(Promise.reject(7), (err) => err)).resolves.toBe(7);
+  });
+
+  test('a Mojo-side failure rejects the returned promise instead of vanishing', async () => {
+    // The first version swallowed it (`except: pass`): onResult never ran and
+    // nothing, anywhere, reported why.
+    let called = false;
+    const derived = addon.thenDouble(Promise.resolve('not a number'), () => {
+      called = true;
     });
-    expect(sep).toBe(path.sep);
+    await expect(derived).rejects.toThrow(/napi_number_expected/);
+    expect(called).toBe(false);
+  });
+
+  test('an exception thrown by onResult keeps its identity', async () => {
+    const thrown = new Error('from onResult');
+    const derived = addon.thenDouble(Promise.resolve(1), () => {
+      throw thrown;
+    });
+    await expect(derived).rejects.toBe(thrown);
+  });
+
+  test('native state reaches the continuation through `data`', async () => {
+    const counter = new ArrayBuffer(8);
+    const { err, v } = await settle((cb) => addon.thenScaled(Promise.resolve(5), 3, counter, cb));
+    expect(err).toBeNull();
+    expect(v).toBe(15);
+  });
+
+  test('require survives into a later tick as a capture', async () => {
+    // The persistence story: a host program can still reach npm after the
+    // call that received `ctx` has returned. `require` travels as a bound
+    // argument of the continuation, not in a napi_ref.
+    const { err, v } = await settle((cb) => addon.deferredRequire(ctx, cb));
+    expect(err).toBeNull();
+    expect(v).toBe(path.sep);
   });
 
   test('deferred require rejects a context without require', () => {
     expect(() => addon.deferredRequire({}, () => {})).toThrow(/require/);
   });
 
-  test('many continuations do not leak their payload', async () => {
-    // Each continuation heap-allocates a payload and frees it when it fires.
-    // Run enough that a per-continuation leak would show up under the
-    // checking allocator the async-stress CI job uses.
+  test('many continuations all complete', async () => {
     const N = 2000;
     const results = await Promise.all(
-      Array.from(
-        { length: N },
-        (_, i) =>
-          new Promise((resolve) => addon.thenDouble(Promise.resolve(i), resolve))
-      )
+      Array.from({ length: N }, (_, i) => settle((cb) => addon.thenDouble(Promise.resolve(i), cb)))
     );
     expect(results).toHaveLength(N);
-    expect(results[N - 1]).toBe((N - 1) * 2);
+    expect(results[N - 1].v).toBe((N - 1) * 2);
   });
 });

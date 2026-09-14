@@ -27,7 +27,7 @@
   "src/napi/framework/js_null.mojo": 0,
   "src/napi/framework/js_number.mojo": 0,
   "src/napi/framework/js_object.mojo": 0,
-  "src/napi/framework/js_promise.mojo": 7,
+  "src/napi/framework/js_promise.mojo": 0,
   "src/napi/framework/js_ref.mojo": 9,
   "src/napi/framework/js_symbol.mojo": 5,
   "src/napi/framework/js_typedarray.mojo": 23,

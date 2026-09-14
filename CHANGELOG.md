@@ -3,6 +3,55 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
+## Unreleased
+
+### Added
+
+- **`JsPromise.on_settled`** attaches a Mojo continuation to a promise — or to
+  any value, like `await` — and returns the promise `.then()` made. The
+  continuation reads the outcome with **`Settlement.read(env, info)`**: `ok`,
+  `value`, the JS values passed as `captures`, and native state via
+  `user_data()`. Nothing is freed when the continuation fires, because it may
+  never fire: captures are bound arguments the GC traces, and `data` is
+  adopted by a GC finalizer on every path, including failure.
+- **`JsObject.add_finalizer`** — `napi_add_finalizer` on any object, the way
+  to tie native memory to a JS object's lifetime. Previously raw-only.
+- `thenScaled(value, factor, counter, onResult)` demo export: a continuation
+  with native state whose finalizer is observable from JavaScript.
+
+### Fixed
+
+- **The host-mode continuation examples crashed, hid errors and leaked.**
+  `thenDouble` and `deferredRequire` were the pattern the docs told users to
+  copy, and three things were wrong with it, each now tested and each
+  mutation-checked against the suite:
+  - it attached no rejection handler, so a rejected promise **crashed the
+    process** with an unhandled rejection and `onResult` never ran;
+  - its `except: pass` swallowed Mojo-side failures, so a promise resolving to
+    the wrong type made `onResult` silently never run;
+  - it freed its payload only when the continuation fired and held `onResult`
+    in a strong `napi_ref`, so every promise that rejected or never settled
+    leaked both — **209.7 MB for 200 closures over 1 MB**, where the same
+    shape in plain JavaScript retains nothing.
+
+  Both are rebuilt on `on_settled`. **Their JS signatures changed:** they now
+  return the promise `.then()` made, and call `onResult` node-style —
+  `onResult(null, value)` on success, `onResult(reason)` on rejection.
+
+### Docs
+
+- "Mojo has no `await`" was wrong, and is gone from README, CLAUDE.md,
+  `js_host.mojo` and the plan docs. Mojo has `await`; it suspends Mojo
+  coroutines. What host mode cannot do is wait for a *JS* promise, because
+  its code runs on the JS thread and a promise settles only after that code
+  returns. `spike/await_probe.mojo` records the measurement behind "do not add
+  a blocking await helper": re-entering `uv_run` from a callback runs other JS
+  on the nested stack and still never runs the promise's reactions.
+- [`docs/plan-promise-bridge.md`](docs/plan-promise-bridge.md) records how
+  napi-rs lets Rust await a JS promise (worker thread, threadsafe function,
+  one-shot channel — read from the 3.12.1 source), what napi-mojo would still
+  need, and the gate for building it.
+
 ## 0.14.0 — 2026-09-13
 
 **Distribution.** A napi-mojo addon now runs on Deno and Bun as well as Node,

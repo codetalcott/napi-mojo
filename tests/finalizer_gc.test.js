@@ -92,3 +92,53 @@ describeGC('Finalizer execution (requires --expose-gc)', () => {
     expect(data.y).toBeCloseTo(2.71);
   });
 });
+
+describeGC('JsPromise.on_settled lifetimes (requires --expose-gc)', () => {
+  // on_settled frees nothing when a continuation fires, because a continuation
+  // may never fire. The first continuation example here did free on the call
+  // path, and measured 209.7 MB retained for 200 never-settling promises whose
+  // onResult closed over 1 MB each — against 0 for the same shape in plain JS.
+  // These tests pin both halves of the fix: native state is finalized, and
+  // JS captures are left to the GC.
+  const N = 200;
+  const drainHard = async () => {
+    for (let i = 0; i < 4; i++) await drainGC();
+  };
+
+  test('native state is finalized after the continuation fires', async () => {
+    const counter = new BigInt64Array(new ArrayBuffer(8));
+    await Promise.all(
+      Array.from({ length: N }, (_, i) => addon.thenScaled(Promise.resolve(i), 2, counter.buffer, () => {}))
+    );
+    await drainHard();
+    expect(Number(counter[0])).toBeGreaterThan(0);
+  });
+
+  test('native state is finalized for promises that never settle', async () => {
+    const counter = new BigInt64Array(new ArrayBuffer(8));
+    (function scope() {
+      for (let i = 0; i < N; i++) {
+        addon.thenScaled(new Promise(() => {}), 2, counter.buffer, () => {});
+      }
+    })();
+    await drainHard();
+    expect(Number(counter[0])).toBeGreaterThan(0);
+  });
+
+  test('captures are not rooted: onResult is collectable while its promise is pending', async () => {
+    // A strong napi_ref on onResult (the old shape) keeps every one of them
+    // alive forever, so exactly N would survive. GC timing is not exact, so
+    // the assertion is "not all", which that regression cannot satisfy.
+    const refs = [];
+    (function scope() {
+      for (let i = 0; i < N; i++) {
+        const onResult = () => i;
+        refs.push(new WeakRef(onResult));
+        addon.thenDouble(new Promise(() => {}), onResult);
+      }
+    })();
+    await drainHard();
+    const alive = refs.filter((r) => r.deref() !== undefined).length;
+    expect(alive).toBeLessThan(N);
+  });
+});

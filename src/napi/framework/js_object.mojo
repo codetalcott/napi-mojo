@@ -54,6 +54,7 @@ from napi.raw import (
     raw_object_freeze,
     raw_object_seal,
     raw_get_prototype,
+    raw_add_finalizer,
 )
 from napi.error import check_status
 
@@ -540,6 +541,44 @@ struct JsObject:
             If napi_object_seal does not return napi_ok.
         """
         var status = raw_object_seal(b, env, self.value)
+        check_status(status)
+
+    def add_finalizer(
+        self,
+        b: Bindings,
+        env: NapiEnv,
+        data: OpaquePointer[MutAnyOrigin],
+        finalize_cb: OpaquePointer[MutAnyOrigin],
+    ) raises:
+        """Run `finalize_cb(env, data, hint)` when this object is collected.
+
+        This is how native memory gets tied to a JS object's lifetime instead
+        of to "when a callback fires" — which never happens for a callback that
+        is never called. An object may carry any number of finalizers; each
+        runs once, in no specified order. The hint passed is always null.
+
+        The finalizer runs on the main thread after collection. Free memory
+        there; do not call into JavaScript.
+
+        Args:
+            b: Cached N-API bindings.
+            env: The N-API environment.
+            data: Pointer handed to the finalizer.
+            finalize_cb: A `def(env, data, hint)` function, via `fn_ptr(...)`.
+
+        Raises:
+            If napi_add_finalizer does not return napi_ok. The finalizer was
+            not attached, so `data` is still the caller's to free.
+        """
+        var status = raw_add_finalizer(
+            b,
+            env,
+            self.value,
+            data,
+            finalize_cb,
+            OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+            OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+        )
         check_status(status)
 
     def prototype(self, b: Bindings, env: NapiEnv) raises -> NapiValue:

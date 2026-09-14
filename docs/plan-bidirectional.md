@@ -114,16 +114,23 @@ purpose: it is the regression test.
 
 ## Constraints, and why they are not bugs
 
-1. **No `await`.** A JS function returning a Promise hands Mojo a pending
-   Promise it cannot suspend on. Supported shapes: synchronous APIs, or
-   continuation-passing via `JsFunction.create` + `.then()`. **Do not add a
-   blocking await helper** — draining the event loop from inside a napi
-   callback re-enters JS on a stack already inside one. The CPS path is
-   **verified**, not merely asserted (`then_double_fn` / `deferred_require_fn`
-   in `src/addon/host_ops.mojo`). Because a continuation runs on a later tick,
-   everything it needs must survive in a `napi_ref` and the bindings pointer
-   must travel in its heap payload — the same designated-carrier rule the
-   async and TSFN paths follow. The continuation frees its own payload.
+1. **No waiting on a JS Promise.** Not because Mojo lacks `await` — it has
+   one, for Mojo coroutines — but because host-mode code runs synchronously
+   on the JS thread and a promise settles only after that code returns to
+   the event loop. N-API cannot read a promise's state. Supported shapes:
+   synchronous APIs, or a continuation via `JsPromise.on_settled`. **Do not
+   add a blocking await helper**: re-entering `uv_run` from inside a callback
+   was measured to run a timer's JS callback on the nested stack and still
+   not run the promise's `.then`. A continuation runs on a later tick, and
+   may never run at all, so `on_settled` frees nothing on the call path: JS
+   captures are bound arguments the GC traces, native `data` is owned by a
+   GC finalizer, and the bindings pointer rides in that finalizer-owned
+   context. The hand-rolled continuation it replaced freed its payload when
+   it fired and held `onResult` in a strong `napi_ref` — which crashed on
+   rejection and leaked for every promise that rejected or never settled.
+   Suspending *Mojo* code on a JS promise is a different design (worker
+   thread + threadsafe function + one-shot channel, as napi-rs does it); see
+   [`plan-promise-bridge.md`](plan-promise-bridge.md).
 2. **Handle scopes in Mojo-driven loops** — see `with_handle_scope`.
 3. **A pending JS exception poisons every subsequent N-API call**
    (`napi_pending_exception`). Bail or clear; do not keep calling.

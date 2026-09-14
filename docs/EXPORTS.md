@@ -180,5 +180,6 @@ a foreign wrapped instance (which must be a `TypeError`, not a reinterpret).
 | `callN(fn, args)` | `call_n_fn` | `JsFunction.call_n` — call with a runtime-length argument list |
 | `globalCacheActive()` | `global_cache_active_fn` | True when the bootstrap symbol is served from the data-segment slot rather than a per-call dlsym — guards a silent perf regression |
 | `scopedCall(n, fn)` | `scoped_call_fn` | Calls `fn(i)` n times, each iteration in its own handle scope (`with_handle_scope`) |
-| `thenDouble(promise, onResult)` | `then_double_fn` | Host mode: attaches a Mojo continuation via `.then()`; fires on a later tick and calls `onResult(value * 2)` |
-| `deferredRequire(ctx, onResult)` | `deferred_require_fn` | Host mode: stashes `require` in a `napi_ref` and uses it from a later tick — the continuation persistence story |
+| `thenDouble(value, onResult)` | `then_double_fn` | Host mode: `JsPromise.on_settled` — awaits `value` on a later tick, calls `onResult(null, value * 2)` or `onResult(reason)`; returns the promise `.then()` made |
+| `thenScaled(value, factor, counter, onResult)` | `then_scaled_fn` | Host mode: `on_settled` with native `data` — the factor rides in a heap payload whose GC finalizer bumps the Int64 in `counter`, so tests can see it freed on every path |
+| `deferredRequire(ctx, onResult)` | `deferred_require_fn` | Host mode: captures `require` and calls it from a later tick, `onResult(null, path.sep)` — the continuation persistence story, with no `napi_ref` |
