@@ -25,7 +25,8 @@ addon's own exports are listed separately in [EXPORTS.md](../EXPORTS.md).
 | [`js_int64`](js_int64.md) | 5 / 5 |
 | [`js_null`](js_null.md) | 4 / 4 |
 | [`js_number`](js_number.md) | 7 / 7 |
-| [`js_object`](js_object.md) | 22 / 22 |
+| [`js_object`](js_object.md) | 23 / 23 |
+| [`js_promise`](js_promise.md) | 17 / 17 |
 | [`js_uint32`](js_uint32.md) | 5 / 5 |
 | [`js_undefined`](js_undefined.md) | 4 / 4 |
 | [`js_value`](js_value.md) | 8 / 8 |
@@ -51,7 +52,6 @@ each carries a module header comment with usage examples.
 | [`js_date.mojo`](../../src/napi/framework/js_date.mojo) | 0 / 6 |
 | [`js_exception.mojo`](../../src/napi/framework/js_exception.mojo) | 0 / 5 |
 | [`js_external.mojo`](../../src/napi/framework/js_external.mojo) | 5 / 8 |
-| [`js_promise.mojo`](../../src/napi/framework/js_promise.mojo) | 0 / 7 |
 | [`js_ref.mojo`](../../src/napi/framework/js_ref.mojo) | 0 / 9 |
 | [`js_symbol.mojo`](../../src/napi/framework/js_symbol.mojo) | 0 / 5 |
 | [`js_typedarray.mojo`](../../src/napi/framework/js_typedarray.mojo) | 0 / 23 |

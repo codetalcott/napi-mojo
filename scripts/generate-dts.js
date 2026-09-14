@@ -28,6 +28,11 @@ const OVERRIDES = {
   resolveWith: '(value: any): Promise<any>',
   rejectWith: '(msg: string): Promise<any>',
   asyncProgress: '(count: number, cb: (i: number) => void): Promise<void>',
+  // Host-mode continuations (JsPromise.on_settled): node-style onResult, and
+  // the promise .then() made is returned so a Mojo-side failure is observable.
+  thenDouble: '(value: unknown, onResult: (err: unknown, value?: number) => unknown): Promise<unknown>',
+  thenScaled: '(value: unknown, factor: number, counter: ArrayBuffer, onResult: (err: unknown, value?: number) => unknown): Promise<unknown>',
+  deferredRequire: '(ctx: { require: (id: string) => any }, onResult: (err: unknown, sep?: string) => unknown): Promise<unknown>',
   createCallback: '(): (...args: any[]) => any',
   createAdder: '(n: number): (x: number) => number',
   getGlobal: '(): typeof globalThis',

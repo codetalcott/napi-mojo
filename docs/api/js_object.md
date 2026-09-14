@@ -409,6 +409,31 @@ still be assigned — the difference from `freeze`.
 
 **Raises** — If napi_object_seal does not return napi_ok.
 
+### `add_finalizer`
+
+```mojo
+def add_finalizer(self, b: Pointer[NapiBindings, MutUntrackedOrigin], env: Pointer[NoneType, MutUntrackedOrigin], data: Pointer[NoneType, MutAnyOrigin], finalize_cb: Pointer[NoneType, MutAnyOrigin])
+```
+
+Run `finalize_cb(env, data, hint)` when this object is collected.
+
+This is how native memory gets tied to a JS object's lifetime instead
+of to "when a callback fires" — which never happens for a callback that
+is never called. An object may carry any number of finalizers; each
+runs once, in no specified order. The hint passed is always null.
+
+The finalizer runs on the main thread after collection. Free memory
+there; do not call into JavaScript.
+
+| argument | type | description |
+|---|---|---|
+| `b` | `Bindings` | Cached N-API bindings. |
+| `env` | `NapiEnv` | The N-API environment. |
+| `data` | `Pointer[NoneType, MutAnyOrigin]` | Pointer handed to the finalizer. |
+| `finalize_cb` | `Pointer[NoneType, MutAnyOrigin]` | A `def(env, data, hint)` function, via `fn_ptr(...)`. |
+
+**Raises** — If napi_add_finalizer does not return napi_ok. The finalizer was not attached, so `data` is still the caller's to free.
+
 ### `prototype`
 
 ```mojo

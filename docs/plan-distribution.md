@@ -461,9 +461,13 @@ Unchanged from its previous assessment and still last: the generator's
 `[structs.*]` converters are direction-agnostic but wired only into the addon
 callback path, and the real lever would be the inverse generator (a `.d.ts` or
 TOML declaration of an npm module's shape → typed Mojo wrappers). Above it
-sits a structural ceiling — Mojo has no `await`, which is correctly decided
-and not going to change — and below it, no demand: nothing outside
-`examples/host/` is a host-mode program.
+sits a ceiling — host-mode code runs on the JS thread, so it can continue
+after a promise (`JsPromise.on_settled`) but never wait for one — and below it,
+no demand: nothing outside `examples/host/` is a host-mode program. The ceiling
+is a threading constraint, not a language one: Mojo has `await`, and napi-rs
+shows the worker-thread bridge that would let Mojo code suspend on a JS
+promise. That bridge is costed and gated separately in
+[`plan-promise-bridge.md`](plan-promise-bridge.md).
 
 **Gate**: a host-mode program written by someone, anywhere, that is not in this
 repo.

@@ -27,17 +27,21 @@ ESM or `node -e`. Rather than depend on that, the bootstrap constructs a
 require with `module.createRequire` and hands it to Mojo on the ctx object.
 The bootstrap holds the keys and passes them in; Mojo never scavenges.
 
-**What this cannot do.** Mojo has no `await`. A JS function returning a
-Promise returns a *pending* Promise to Mojo, and Mojo cannot suspend on it.
-Two supported shapes:
+**What this cannot do.** Wait for a JS Promise. This code runs synchronously
+on the JS thread, and a promise settles only after it returns to the event
+loop. Mojo's own `async`/`await` suspends Mojo coroutines, not JS promises,
+and N-API has no call that reads a promise's state or result. Two supported
+shapes:
 
 1. Synchronous APIs (`readFileSync`, `execSync`) — the default, and simplest.
-2. Continuation passing — build a Mojo callback with `JsFunction.create` and
-   hand it to `.then()`. `mojo_main` returns, the event loop runs, and the
-   callback fires later.
+2. A continuation, attached with `JsPromise.on_settled`. `mojo_main` returns,
+   the event loop runs, and the continuation fires later with the outcome.
+   Prefer it to a hand-rolled `.then()`: it handles rejection and ties what
+   the continuation holds to the garbage collector.
 
-Do not add a blocking "await" helper here: draining the event loop from
-inside a napi callback re-enters JS on a stack that is already inside one.
+Do not add a blocking "await" helper here. Re-entering the event loop from
+inside a napi callback runs other JavaScript on a stack that is already inside
+one — and, measured, still never runs the promise's reactions.
 """
 
 from napi.types import NapiEnv, NapiValue

@@ -24,7 +24,7 @@ demo.greet("world"); // "Hello, world!"
 ## Project Status
 
 **Alpha** — napi-mojo is under active development and not yet proven in
-production. The API covers the full N-API v10 surface (153 exported functions, 5
+production. The API covers the full N-API v10 surface (154 exported functions, 5
 classes, 650+ tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
@@ -127,11 +127,15 @@ syscall dwarfs a few hundred nanoseconds, and wrong for a hot numeric loop.
 Keep data on the Mojo side and cross the boundary with few, coarse values
 rather than many fine ones.
 
-**What host mode cannot do:** Mojo has no `await`. A JS function returning a
-Promise hands Mojo a *pending* Promise it cannot suspend on. Use synchronous
-APIs (`readFileSync`), or pass a continuation — build a Mojo callback with
-`JsFunction.create` and give it to `.then()`; `mojo_main` returns, the event
-loop runs, and the callback fires later.
+**What host mode cannot do:** wait for a JS Promise. Host-mode code runs
+synchronously on Node's main thread, and a promise can only settle after that
+code returns to the event loop — Mojo's own `async`/`await` suspends Mojo
+coroutines, not JS promises, and N-API has no way to read a promise's state.
+Use synchronous APIs (`readFileSync`), or attach a continuation with
+`JsPromise.on_settled`: `mojo_main` returns, the event loop runs, and the
+continuation fires later with the outcome. It handles rejection, and it ties
+everything the continuation holds to the garbage collector, so a promise that
+never settles leaks nothing.
 
 ## Shipping Mojo to npm
 
@@ -226,7 +230,7 @@ wrongly. Test the behaviour.
 
 ## Features
 
-- **153 exported functions** and **5 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
+- **154 exported functions** and **5 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
 - Primitives: strings, numbers (Float64/Int32/UInt32/Int64), booleans, null,
   undefined, BigInt, Symbol, Date
 - Objects: create, read/write properties, enumerate keys, freeze/seal, prototype

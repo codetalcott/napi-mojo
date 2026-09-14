@@ -183,8 +183,10 @@ Create a JS function carrying an arbitrary data pointer.
 The callback retrieves the pointer with `CbArgs.get_data`. This is the
 closure mechanism for plain functions.
 
-**The data is never freed for you** — a plain function has no finalizer
-hook, so heap data passed here leaks unless you free it yourself.
+**The data is never freed for you.** Tie heap data to the function's
+lifetime with `JsObject(fn.value).add_finalizer(...)` rather than
+freeing it when the callback fires — a callback may never fire. For a
+promise continuation, use `JsPromise.on_settled`, which does this.
 
 | argument | type | description |
 |---|---|---|
