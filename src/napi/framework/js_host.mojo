@@ -183,3 +183,24 @@ struct NodeHost:
         var args = List[NapiValue]()
         args.append(JsString.create(self.b, self.env, msg).value)
         _ = console.call_method(self.b, self.env, "log", args)
+
+    def console_error(self, msg: String) raises:
+        """Write one line to stderr via `console.error`.
+
+        The diagnostic counterpart to `console_log`. A host-mode program whose
+        stdout is being piped into something else needs its errors kept off
+        that stream, so this is the method for anything the program says about
+        itself rather than produces.
+
+        Args:
+            msg: The line to write.
+
+        Raises:
+            Error: If the console lookup or the call fails.
+        """
+        var console = JsObject(
+            self.global_object().get_named_property(self.b, self.env, "console")
+        )
+        var args = List[NapiValue]()
+        args.append(JsString.create(self.b, self.env, msg).value)
+        _ = console.call_method(self.b, self.env, "error", args)
