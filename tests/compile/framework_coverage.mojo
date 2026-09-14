@@ -518,6 +518,7 @@ def cover_js_function(b: Bindings, env: NapiEnv, v: NapiValue) raises:
 
     _ = JsFunction.create(b, env, "cover", p)
     _ = JsFunction.create_with_data(b, env, "cover", p, _null())
+    _ = JsFunction.create_with_data(b, env, "cover", p, _null(), _null())
     _ = JsFunction.create_named(b, env, String("cover"), 0, p)
     _ = JsFunction.create_named(b, env, String("cover"), 0, p, _null())
 

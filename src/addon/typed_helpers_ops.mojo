@@ -1,6 +1,9 @@
 ## src/addon/typed_helpers_ops.mojo — tests for JsExternal.create_typed /
 ## get_typed and set_instance_data / get_instance_data[T].
 ##
+## TypedPayload is also the shared observable payload for other demo closures
+## (createAdder, thenScaled): any heap data whose release a test must SEE.
+##
 ## The finalizer-count test passes a JS ArrayBuffer(8) as the counter — its
 ## backing store is incremented by the external's finalizer so JavaScript can
 ## observe (via the ArrayBuffer) that finalizers ran. This avoids the need for
@@ -87,6 +90,8 @@ def typed_payload_finalize(
     var b_addr = ptr[].bindings_addr
     ptr.unsafe_deinit_pointee()  # __del__: counter[] += 1 (ArrayBuffer still pinned)
     ptr.unsafe_free()
+    if Int(ab_ref) == 0:
+        return  # a payload created without a counter holds no reference
     try:
         var b = Bindings(unsafe_from_address=b_addr)
         JsRef(ab_ref).delete(b, env)  # release the ArrayBuffer

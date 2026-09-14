@@ -142,3 +142,33 @@ describeGC('JsPromise.on_settled lifetimes (requires --expose-gc)', () => {
     expect(alive).toBeLessThan(N);
   });
 });
+
+describeGC('JsFunction.create_with_data closure lifetimes (requires --expose-gc)', () => {
+  // createAdder's capture used to be allocated per call and never freed: the
+  // plain create_with_data has no finalizer. It is now handed to the
+  // finalize_cb overload, which the collector runs once the adder is gone.
+  const N = 200;
+  const drainHard = async () => {
+    for (let i = 0; i < 4; i++) await drainGC();
+  };
+
+  test('closure data is finalized when the function is collected', async () => {
+    const counter = new BigInt64Array(new ArrayBuffer(8));
+    (function scope() {
+      for (let i = 0; i < N; i++) addon.createAdder(i, counter.buffer);
+    })();
+    await drainHard();
+    expect(Number(counter[0])).toBeGreaterThan(0);
+  });
+
+  test('closure data survives collection while the function is reachable', async () => {
+    // The other half: a finalizer that ran early would be a use-after-free,
+    // so a live adder must keep answering correctly across forced GCs —
+    // and its capture must not be counted as freed.
+    const counter = new BigInt64Array(new ArrayBuffer(8));
+    const add10 = addon.createAdder(10, counter.buffer);
+    await drainHard();
+    expect(add10(5)).toBe(15);
+    expect(Number(counter[0])).toBe(0);
+  });
+});

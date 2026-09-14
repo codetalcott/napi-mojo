@@ -15,16 +15,23 @@ object. Use `call_with` for an explicit receiver, or
 `List[NapiValue]` and keep it alive across the FFI call. An empty list
 passes a genuine null argv rather than the data pointer of an empty List.
 
-**Created functions are not garbage-collected on the Mojo side.** Data
-passed via `create_with_data` has no finalizer hook, so it leaks unless
-you free it yourself. Use `JsExternal` or a class wrap when you need the
-GC to own the lifetime.
+**Closure data is freed by the collector, never by a call.** A created
+function may be called many times or never, so there is no "right call" to
+free its data in. Pass heap data to the `finalize_cb` overload of
+`create_with_data`, which frees it when the function is collected. The plain
+overload frees nothing: use it only for data that outlives every function,
+such as the bindings pointer.
 """
 
 
 from napi.types import NapiEnv, NapiValue, NapiStore, NapiConstStore, NapiPropertyDescriptor
 from napi.bindings import Bindings
-from napi.raw import raw_call_function, raw_get_undefined, raw_create_function
+from napi.raw import (
+    raw_call_function,
+    raw_get_undefined,
+    raw_create_function,
+    raw_add_finalizer,
+)
 from napi.error import check_status
 from napi.module import define_property
 from napi.framework.js_number import JsNumber
@@ -288,10 +295,10 @@ struct JsFunction:
         The callback retrieves the pointer with `CbArgs.get_data`. This is the
         closure mechanism for plain functions.
 
-        **The data is never freed for you.** Tie heap data to the function's
-        lifetime with `JsObject(fn.value).add_finalizer(...)` rather than
-        freeing it when the callback fires — a callback may never fire. For a
-        promise continuation, use `JsPromise.on_settled`, which does this.
+        **The data is never freed for you.** For heap data, use the
+        `finalize_cb` overload, which frees it when the function is collected
+        — never free it when the callback fires, which may be never or many
+        times. For a promise continuation, use `JsPromise.on_settled`.
 
         Args:
             b: Cached N-API bindings.
@@ -322,6 +329,67 @@ struct JsFunction:
         return JsFunction(result)
 
     @staticmethod
+    def create_with_data(
+        b: Bindings,
+        env: NapiEnv,
+        name: StringLiteral,
+        cb_ptr: OpaquePointer[MutAnyOrigin],
+        data: OpaquePointer[MutAnyOrigin],
+        finalize_cb: OpaquePointer[MutAnyOrigin],
+    ) raises -> JsFunction:
+        """Create a JS function whose closure data the collector frees.
+
+        The closure mechanism for heap data. The callback retrieves `data`
+        with `CbArgs.get_data`, on every call, for as long as the function is
+        reachable; `finalize_cb(env, data, null)` runs once the function has
+        been collected. Nothing is freed on the call path, so a function that
+        is called many times — or never — is equally safe.
+
+        `data` is ADOPTED on every path: if the function cannot be created or
+        the finalizer cannot be attached, `finalize_cb` runs before this
+        raises. Never free `data` yourself after passing it.
+
+        The finalizer runs on the main thread after collection. Free memory
+        there; do not call into JavaScript.
+
+        Args:
+            b: Cached N-API bindings.
+            env: The N-API environment.
+            name: The function's name, as a compile-time literal.
+            cb_ptr: The callback, via `fn_ptr(...)`.
+            data: Pointer handed to the callback on every invocation.
+            finalize_cb: A `def(env, data, hint)` that frees `data`, via
+                `fn_ptr(...)`. May be null, making this the plain overload.
+
+        Returns:
+            A JsFunction wrapping the new function.
+
+        Raises:
+            If the function could not be created or the finalizer attached.
+            `data` has been finalized either way.
+        """
+        try:
+            var f = JsFunction.create_with_data(b, env, name, cb_ptr, data)
+            if Int(finalize_cb) != 0:
+                check_status(
+                    raw_add_finalizer(
+                        b,
+                        env,
+                        f.value,
+                        data,
+                        finalize_cb,
+                        OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                        OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+                    )
+                )
+            return f^
+        except e:
+            # Nothing else can reach `data` now: a function that exists but
+            # has no finalizer is never handed out, so it can never be called.
+            _run_finalizer(env, finalize_cb, data)
+            raise e^
+
+    @staticmethod
     def create_named(
         b: Bindings,
         env: NapiEnv,
@@ -332,8 +400,9 @@ struct JsFunction:
         """Create a JS function with a runtime name and declared arity.
 
         The String overload of `create`, for a name computed at runtime. The
-        `data_ptr` overload additionally carries closure data, with the same
-        no-finalizer caveat as `create_with_data`.
+        `data_ptr` overload additionally carries closure data and frees none
+        of it, like the plain `create_with_data`; tie heap data to the result
+        with `JsObject(fn.value).add_finalizer(...)`.
 
         Args:
             b: Cached N-API bindings.
@@ -365,8 +434,9 @@ struct JsFunction:
         """Create a JS function with a runtime name and declared arity.
 
         The String overload of `create`, for a name computed at runtime. The
-        `data_ptr` overload additionally carries closure data, with the same
-        no-finalizer caveat as `create_with_data`.
+        `data_ptr` overload additionally carries closure data and frees none
+        of it, like the plain `create_with_data`; tie heap data to the result
+        with `JsObject(fn.value).add_finalizer(...)`.
 
         Args:
             b: Cached N-API bindings.
@@ -412,3 +482,30 @@ struct JsFunction:
         desc.data = NapiStore(unsafe_from_address=Int(0))
         define_property(b, env, result, desc)
         return JsFunction(result)
+
+
+def _run_finalizer(
+    env: NapiEnv,
+    finalize_cb: OpaquePointer[MutAnyOrigin],
+    data: OpaquePointer[MutAnyOrigin],
+):
+    # Call a napi_finalize-shaped function pointer directly, for the paths
+    # where N-API never will (an adopted pointer whose finalizer could not be
+    # attached). Reinterpret the WORD holding the address, never the address
+    # itself — the trap raw.mojo's _sym documents. This is the only place the
+    # cast is spelled; js_promise.mojo reuses it.
+    if Int(finalize_cb) == 0:
+        return
+    var fn_word = finalize_cb
+    var finalize = Pointer(to=fn_word).unsafe_bitcast[
+        def(
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+            OpaquePointer[MutAnyOrigin],
+        ) thin abi("C") -> None
+    ]()[]
+    finalize(
+        env.as_unsafe_any_origin(),
+        data,
+        OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
+    )

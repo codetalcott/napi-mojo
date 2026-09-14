@@ -51,7 +51,7 @@ from napi.raw import (
 from napi.error import check_status
 from napi.framework.args import CbArgs
 from napi.framework.js_boolean import JsBoolean
-from napi.framework.js_function import JsFunction
+from napi.framework.js_function import JsFunction, _run_finalizer
 from napi.framework.js_object import JsObject
 from napi.framework.js_undefined import JsUndefined
 from napi.framework.js_value import js_get_global
@@ -235,7 +235,17 @@ struct JsPromise:
             _SettleContext(Int(b), len(captures), data, finalize_cb)
         )
         var ctx_data = ctx.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
-        var settle = _create_settle_function(b, env, cb_ptr, ctx_data)
+        # The one native function both handlers are bound from. It adopts ctx:
+        # its finalizer frees ctx and the caller's data, and runs immediately
+        # if the function cannot be created.
+        var fin_ref = _settle_context_finalize
+        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
+            OpaquePointer[MutAnyOrigin]
+        ]()[]
+        var settle = JsFunction.create_with_data(
+            b, env, "mojoSettle", cb_ptr, ctx_data, fin_ptr
+        )
+        _ = fin_ref
 
         # From here the finalizer owns ctx and the adopted data, so a failure
         # below only propagates — freeing anything would race the collector.
@@ -376,66 +386,21 @@ struct _SettleContext(Movable):
         self.user_finalize = user_finalize.unsafe_origin_cast[MutUntrackedOrigin]()
 
 
-def _run_user_finalize(env: NapiEnv, ctx: Pointer[_SettleContext, MutAnyOrigin]):
-    if Int(ctx[].user_finalize) == 0:
-        return
-    # Reinterpret the WORD holding the function address, never the address
-    # itself — the same trap raw.mojo's _sym documents. Keep this the only
-    # place the cast is spelled.
-    var fn_word = ctx[].user_finalize.as_unsafe_any_origin()
-    var finalize = Pointer(to=fn_word).unsafe_bitcast[
-        def(
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-            OpaquePointer[MutAnyOrigin],
-        ) thin abi("C") -> None
-    ]()[]
-    finalize(
-        env.as_unsafe_any_origin(),
-        ctx[].user_data.as_unsafe_any_origin(),
-        OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-    )
-
-
 def _settle_context_finalize(
     env: NapiEnv,
     data: OpaquePointer[MutAnyOrigin],
     hint: OpaquePointer[MutAnyOrigin],
 ):
+    # The one finalizer behind a continuation: frees the caller's adopted
+    # data, then the context itself.
     var ctx = data.unsafe_bitcast[_SettleContext]()
-    _run_user_finalize(env, ctx)
+    _run_finalizer(
+        env,
+        ctx[].user_finalize.as_unsafe_any_origin(),
+        ctx[].user_data.as_unsafe_any_origin(),
+    )
     ctx.unsafe_deinit_pointee()
     ctx.unsafe_free()
-
-
-def _create_settle_function(
-    b: Bindings,
-    env: NapiEnv,
-    cb_ptr: OpaquePointer[MutAnyOrigin],
-    ctx_data: OpaquePointer[MutAnyOrigin],
-) raises -> JsFunction:
-    # Create the one native function both handlers are bound from, and hand
-    # ctx to its finalizer. Until that finalizer is attached nothing else can
-    # free ctx or the adopted data, so a failure here frees both before raising.
-    # (A function that exists but has no finalizer is never handed out, so
-    # freeing ctx under it is safe — it can never be called.)
-    var ctx = ctx_data.unsafe_bitcast[_SettleContext]()
-    try:
-        var settle = JsFunction.create_with_data(
-            b, env, "mojoSettle", cb_ptr, ctx_data
-        )
-        var fin_ref = _settle_context_finalize
-        var fin_ptr = Pointer(to=fin_ref).unsafe_bitcast[
-            OpaquePointer[MutAnyOrigin]
-        ]()[]
-        JsObject(settle.value).add_finalizer(b, env, ctx_data, fin_ptr)
-        _ = fin_ref
-        return settle^
-    except e:
-        _run_user_finalize(env, ctx)
-        ctx.unsafe_deinit_pointee()
-        ctx.unsafe_free()
-        raise e^
 
 
 def _bind_settle(

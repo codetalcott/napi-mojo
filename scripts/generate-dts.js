@@ -34,7 +34,7 @@ const OVERRIDES = {
   thenScaled: '(value: unknown, factor: number, counter: ArrayBuffer, onResult: (err: unknown, value?: number) => unknown): Promise<unknown>',
   deferredRequire: '(ctx: { require: (id: string) => any }, onResult: (err: unknown, sep?: string) => unknown): Promise<unknown>',
   createCallback: '(): (...args: any[]) => any',
-  createAdder: '(n: number): (x: number) => number',
+  createAdder: '(n: number, counter?: ArrayBuffer): (x: number) => number',
   getGlobal: '(): typeof globalThis',
   addAsyncCleanupHook: '(): unknown',
   removeAsyncCleanupHook: '(handle: unknown): boolean',

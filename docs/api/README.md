@@ -19,7 +19,7 @@ addon's own exports are listed separately in [EXPORTS.md](../EXPORTS.md).
 | [`js_boolean`](js_boolean.md) | 5 / 5 |
 | [`js_class`](js_class.md) | 16 / 16 |
 | [`js_coerce`](js_coerce.md) | 4 / 4 |
-| [`js_function`](js_function.md) | 12 / 12 |
+| [`js_function`](js_function.md) | 13 / 13 |
 | [`js_host`](js_host.md) | 10 / 10 |
 | [`js_int32`](js_int32.md) | 5 / 5 |
 | [`js_int64`](js_int64.md) | 5 / 5 |
