@@ -80,6 +80,41 @@ describe('NodeHost — runtime access', () => {
     }
     expect(written.join('')).toContain('from mojo');
   });
+
+  test('console_error writes through the host console', () => {
+    // Same realm accommodation as console_log above: intercept the shared
+    // stream rather than spying on this realm's `console`.
+    const written = [];
+    const real = process.stderr.write;
+    process.stderr.write = (chunk, ...rest) => {
+      written.push(String(chunk));
+      return real.call(process.stderr, chunk, ...rest);
+    };
+    try {
+      addon.hostConsoleError(ctx, 'bad news from mojo');
+    } finally {
+      process.stderr.write = real;
+    }
+    expect(written.join('')).toContain('bad news from mojo');
+  });
+
+  test('console_error goes to stderr, not stdout', () => {
+    // The whole point of the method: diagnostics must not pollute a program
+    // whose stdout is being piped. console_log's test would still pass if
+    // console_error were wired to "log" by mistake, so assert the split.
+    const out = [];
+    const realOut = process.stdout.write;
+    process.stdout.write = (chunk, ...rest) => {
+      out.push(String(chunk));
+      return realOut.call(process.stdout, chunk, ...rest);
+    };
+    try {
+      addon.hostConsoleError(ctx, 'stderr-only-marker');
+    } finally {
+      process.stdout.write = realOut;
+    }
+    expect(out.join('')).not.toContain('stderr-only-marker');
+  });
 });
 
 describe('call_method — `this` binding', () => {

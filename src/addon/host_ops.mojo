@@ -85,6 +85,17 @@ def host_console_log_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     return NapiValue(unsafe_from_address=Int(0))
 
 
+def host_console_error_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var args = CbArgs.get_two(b, env, info)
+        var host = NodeHost.from_context(b, env, args[0])
+        host.console_error(js_to_string(b, env, args[1]))
+    except e:
+        throw_js_error_dynamic(env, String(e))
+    return NapiValue(unsafe_from_address=Int(0))
+
+
 def host_global_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
@@ -320,6 +331,7 @@ def register_host_ops(mut m: ModuleBuilder) raises:
     var host_require_ref = host_require_fn
     var host_argv_ref = host_argv_fn
     var host_console_log_ref = host_console_log_fn
+    var host_console_error_ref = host_console_error_fn
     var host_global_ref = host_global_fn
     var call_method_ref = call_method_fn
     var call_n_ref = call_n_fn
@@ -331,6 +343,7 @@ def register_host_ops(mut m: ModuleBuilder) raises:
     m.method("hostRequire", fn_ptr(host_require_ref))
     m.method("hostArgv", fn_ptr(host_argv_ref))
     m.method("hostConsoleLog", fn_ptr(host_console_log_ref))
+    m.method("hostConsoleError", fn_ptr(host_console_error_ref))
     m.method("hostGlobal", fn_ptr(host_global_ref))
     m.method("callMethod", fn_ptr(call_method_ref))
     m.method("callN", fn_ptr(call_n_ref))
@@ -342,6 +355,7 @@ def register_host_ops(mut m: ModuleBuilder) raises:
     _ = host_require_ref
     _ = host_argv_ref
     _ = host_console_log_ref
+    _ = host_console_error_ref
     _ = host_global_ref
     _ = call_method_ref
     _ = call_n_ref
