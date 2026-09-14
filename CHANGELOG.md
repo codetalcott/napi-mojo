@@ -3,7 +3,16 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
-## Unreleased
+## 0.15.1 — 2026-09-13
+
+**Closure data the collector frees.** The fix 0.15.0 made for promise
+continuations, applied to plain function closures: `JsFunction.create_with_data`
+gains a `finalize_cb` overload that ties heap data to the function's lifetime,
+and the demo `createAdder`, which leaked its capture on every call, uses it.
+
+No existing Mojo signature changed — the overload is an addition — so
+downstream addons compile against 0.15.1 unmodified. `createAdder` gains an
+optional second argument; calling it with one behaves as before.
 
 ### Added
 
