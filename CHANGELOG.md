@@ -3,6 +3,58 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
+## Unreleased
+
+**Mojo 1.1.0 stable toolchain adoption** (`max = "==26.6.0"`, from Mojo 1.0.0 /
+`26.5.0`). Four source files changed; no public Mojo signature changed, so
+downstream addons compile unmodified. Full account in
+[`docs/toolchain-migrations.md`](docs/toolchain-migrations.md).
+
+### Fixed
+
+- **Legacy closure parameters spelled bare `capturing` read a dead stack slot
+  on 1.1.0, silently.** `with_handle_scope` and `parallelize_safe` now declare
+  `capturing[_]`, which binds the captured values' origins. The addon's
+  `scopedCall` was reading a garbage `JsFunction` from a reclaimed slot and
+  failing with `napi_invalid_arg`; `tests/host.test.js` caught it. No warning
+  or error is emitted for the bare form, so the only signal is behaviour.
+- **`parallelize_safe` did not compile against MAX 26.6**, which moved
+  `parallelize` to a unified closure argument (`parallelize(func, n)`). It
+  keeps its legacy public signature and wraps `func` in a unified closure.
+  The breakage was invisible to `build.sh` and to the whole Jest suite —
+  nothing instantiates `parallelize_safe` in the addon graph, so Mojo never
+  elaborated its body — and was surfaced only by
+  `tests/compile/framework_coverage.mojo`.
+
+### Added
+
+- **`parallelSquares(n, scale)`** — returns a `Float64Array` where
+  `[i] = i * i * scale`, computed through `parallelize_safe`. A diagnostic
+  export in the spirit of `asyncRuntimeInitOk()`, covering the other silent
+  failure mode: the work runs but the captures are wrong. Every element
+  depends on both captured values and the buffer is pre-filled with a
+  sentinel, so a broken capture or a skipped index cannot produce a correct
+  array. It is also the only thing that instantiates `parallelize_safe` in the
+  addon graph, so a break there can no longer be invisible to `build.sh` —
+  which is exactly how this bump's breakage hid. Mutation-checked: reverting
+  `runtime.mojo` to bare `capturing` makes it SIGSEGV (node exits 139), so the
+  regression surfaces as a crashed Jest worker rather than an assertion diff.
+
+### Changed
+
+- `@parameter` → `@__parameter` on closures passed as parameters (1.1.0
+  rename; the old spelling warns).
+- `StringLiteral.unsafe_ptr()` → `ptr()` at the 38 sites the compiler flagged.
+  `String.unsafe_ptr()` and `StaticString.unsafe_ptr()` are unchanged.
+- The addon build and the compile-coverage gate are warning-clean again. Five
+  "assignment never used" warnings that the dev2026080905 notes recorded as
+  false positives on `capturing` closures are gone: they were a symptom of the
+  untracked capture, not a compiler quirk.
+- The changelog-diffing recipe in `docs/toolchain-migrations.md` now points at
+  the modular monorepo's current layout (`Mojo/docs/site/...`, release tags
+  `mojo/v<X.Y.Z>`). The old `mojo/docs/...` paths 404, which reads as "no such
+  changelog" rather than "wrong path".
+
 ## 0.15.1 — 2026-09-13
 
 **Closure data the collector frees.** The fix 0.15.0 made for promise

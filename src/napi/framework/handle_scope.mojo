@@ -49,7 +49,7 @@ struct HandleScope:
 
 
 def with_handle_scope[
-    body: def () capturing raises -> None
+    body: def () raises capturing[_] -> None
 ](b: Bindings, env: NapiEnv) raises:
     """Run `body` inside its own handle scope, closing it on both paths.
 
@@ -60,7 +60,7 @@ def with_handle_scope[
     without a per-iteration scope grows handles without bound.
 
         for i in range(n):
-            @parameter
+            @__parameter
             def _step():
                 _ = fs.call_method(b, env, "readFileSync", args)
             with_handle_scope[_step](b, env)

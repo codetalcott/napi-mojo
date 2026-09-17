@@ -128,7 +128,7 @@ struct ModuleBuilder(Movable):
                 + ")"
             )
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+        desc.utf8name = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         desc.method = ptr.unsafe_origin_cast[MutUntrackedOrigin]()
@@ -247,7 +247,7 @@ struct ClassBuilder:
         var b = bindings_from_context(self.data.as_unsafe_any_origin())
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+        desc.utf8name = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         desc.method = ptr.unsafe_origin_cast[MutUntrackedOrigin]()
@@ -262,7 +262,7 @@ struct ClassBuilder:
         var b = bindings_from_context(self.data.as_unsafe_any_origin())
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+        desc.utf8name = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         desc.getter = ptr.unsafe_origin_cast[MutUntrackedOrigin]()
@@ -280,7 +280,7 @@ struct ClassBuilder:
         var b = bindings_from_context(self.data.as_unsafe_any_origin())
         var proto = _get_prototype(b, self.env, self.ctor)
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+        desc.utf8name = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         desc.getter = get_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
@@ -295,7 +295,7 @@ struct ClassBuilder:
     ) raises:
         var b = bindings_from_context(self.data.as_unsafe_any_origin())
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+        desc.utf8name = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         desc.method = ptr.unsafe_origin_cast[MutUntrackedOrigin]()
@@ -309,7 +309,7 @@ struct ClassBuilder:
     ) raises:
         var b = bindings_from_context(self.data.as_unsafe_any_origin())
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+        desc.utf8name = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         desc.getter = ptr.unsafe_origin_cast[MutUntrackedOrigin]()
@@ -326,7 +326,7 @@ struct ClassBuilder:
     ) raises:
         var b = bindings_from_context(self.data.as_unsafe_any_origin())
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+        desc.utf8name = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         desc.getter = get_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
@@ -412,7 +412,7 @@ struct ClassRegistry(Movable):
         if self._count >= 16:
             raise Error("ClassRegistry: capacity exceeded (max 16 classes)")
         var entry = ClassEntry()
-        entry.name_ptr = name.unsafe_ptr().unsafe_bitcast[
+        entry.name_ptr = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         entry.name_len = name.byte_length()
@@ -433,7 +433,7 @@ struct ClassRegistry(Movable):
         argv: OpaquePointer[ImmutAnyOrigin],
     ) raises -> NapiValue:
         var target_len = name.byte_length()
-        var target_ptr = name.unsafe_ptr()
+        var target_ptr = name.ptr()
         for i in range(self._count):
             var ep = self._entries.unsafe_offset(i)
             if ep[].name_len == target_len and _bytes_equal(

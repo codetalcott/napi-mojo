@@ -52,6 +52,9 @@ const OVERRIDES = {
   getPrototype: '(obj: object): object | null',
   getExternalData: '(ext: unknown): { x: number; y: number }',
   doubleFloat64Array: '(arr: Float64Array): Float64Array',
+  // Returns MojoFloat64Array.to_js(), a zero-copy Float64Array that
+  // inference cannot see through.
+  parallelSquares: '(n: number, scale: number): Float64Array',
   sumBuffer: '(buf: Buffer): number',
   // Inference sees the JsNull.create on the miss path and would emit `: null`;
   // the hit path returns the raw property value, which inference can't see.
@@ -523,6 +526,7 @@ const DOCS = {
   createBufferCopy:       'Creates a new Buffer with a copy of the source Buffer\'s bytes.',
   sumBuffer:              'Returns the sum of all bytes in a Node.js Buffer.',
   doubleFloat64Array:     'Doubles each element of a Float64Array in place.',
+  parallelSquares:        'Returns a Float64Array where [i] = i * i * scale, computed through parallelize_safe. A diagnostic export: it makes parallel work\'s results assertable, since a broken capture or a skipped index cannot produce a correct array.',
   createTypedArrayView:   'Creates a typed array view (Int8/Uint8/Int32/Float64 etc.) over an ArrayBuffer.',
   getTypedArrayType:      'Returns the NAPI_*_ARRAY type constant for a TypedArray.',
   getTypedArrayLength:    'Returns the element count (not bytes) of a TypedArray.',

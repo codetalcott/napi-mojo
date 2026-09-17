@@ -27,7 +27,7 @@ content. See the changelog-rotation note below.
 
 ---
 
-> **Current pin: Mojo 1.0.0 (stable), `max = "==26.5.0"` from the stable `https://conda.modular.com/max/` channel.** Adopted 2026-08-12, moving off the `26.6.0.dev2026080905` nightly.
+> **Current pin: Mojo 1.1.0 (stable), `max = "==26.6.0"` from the stable `https://conda.modular.com/max/` channel.** Adopted 2026-09-17, moving off Mojo 1.0.0 / `26.5.0`. The previous pin was Mojo 1.0.0 (`max = "==26.5.0"`), adopted 2026-08-12 off the `26.6.0.dev2026080905` nightly.
 >
 > **The framework tracks STABLE Mojo releases, not nightlies.** napi-mojo ships source that downstream packages compile against (`@qkstat/retrieve` and `@qkstat/embed` build with `-I node_modules/napi-mojo/src`), so the pin is part of the public contract: a nightly pin forces every consumer onto that exact nightly. The Nightly Canary keeps its job — early warning for the *next* release — and is now the only thing in the repo that touches the nightly channel.
 >
@@ -37,24 +37,33 @@ content. See the changelog-rotation note below.
 >
 > **Mojo nightly changelog:** <https://mojolang.org/releases/nightly/> — consult this when a build breaks after a nightly bump, before reverse-engineering the diagnostic. Cross-reference there for the upstream rationale.
 >
-> **Diff the changelog, don't read it.** The web page is a single cumulative section for the whole release cycle, so it can't tell you what changed *since your pin*. The same file lives in the modular monorepo at `modular/modular:mojo/docs/nightly-changelog.md` and is diffable — this is the single highest-value step in a nightly upgrade:
+> **The monorepo layout MOVED (found 2026-09-17, during the 1.1.0 bump).** It is
+> `Mojo/docs/site/...` and `Mojo/stdlib/...` — capitalised, with docs under a
+> `site/` directory. Every path in the recipes below was `mojo/docs/...` and
+> returned a bare `404 Not Found`, which reads as "no such changelog" rather
+> than "wrong path". If a path 404s, list the tree before concluding anything:
+> `gh api 'repos/modular/modular/git/trees/main?recursive=1' --jq '.tree[].path'`.
+> Release tags are `mojo/v<X.Y.Z>` (e.g. `mojo/v1.1.0`), which is how you read
+> the stdlib *as shipped* instead of at `main` (already the next cycle).
+>
+> **Diff the changelog, don't read it.** The web page is a single cumulative section for the whole release cycle, so it can't tell you what changed *since your pin*. The same file lives in the modular monorepo at `modular/modular:Mojo/docs/site/nightly-changelog.md` and is diffable — this is the single highest-value step in a nightly upgrade:
 >
 > ```bash
 > # find the changelog commit at/just-before your current pin's date
-> gh api 'repos/modular/modular/commits?path=mojo/docs/nightly-changelog.md&until=<PIN_DATE>&per_page=3' \
+> gh api 'repos/modular/modular/commits?path=Mojo/docs/site/nightly-changelog.md&until=<PIN_DATE>&per_page=3' \
 >   --jq '.[] | "\(.sha) \(.commit.author.date)"'
 > # then diff that revision against main
-> diff <(gh api "repos/modular/modular/contents/mojo/docs/nightly-changelog.md?ref=<SHA>" --jq .content | base64 -d) \
->      <(gh api "repos/modular/modular/contents/mojo/docs/nightly-changelog.md?ref=main"   --jq .content | base64 -d)
+> diff <(gh api "repos/modular/modular/contents/Mojo/docs/site/nightly-changelog.md?ref=<SHA>" --jq .content | base64 -d) \
+>      <(gh api "repos/modular/modular/contents/Mojo/docs/site/nightly-changelog.md?ref=main"   --jq .content | base64 -d)
 > ```
 >
-> The stdlib source is in the same repo (`mojo/stdlib/std/…`), so you can read the *actual* new signature of anything the changelog mentions — and check whether the replacement API already exists on your current pin. That last check is what let the dev2026072306 upgrade land its 274-site FFI rewrite before bumping.
+> The stdlib source is in the same repo (`Mojo/stdlib/std/…`), so you can read the *actual* new signature of anything the changelog mentions — and check whether the replacement API already exists on your current pin. That last check is what let the dev2026072306 upgrade land its 274-site FFI rewrite before bumping.
 >
-> **Diff BOTH changelogs — content ROTATES OUT of the nightly file at release close.** `nightly-changelog.md` only holds the *current, unreleased* cycle; when a release ships, its entries move to `mojo/docs/releases/vX.Y.Z.md` and the nightly file is truncated to near-empty. So a `nightly-changelog.md` that does not mention a change is **not** evidence the change is unreleased — it is usually evidence the change *shipped*. Grep the release file too:
+> **Diff BOTH changelogs — content ROTATES OUT of the nightly file at release close.** `nightly-changelog.md` only holds the *current, unreleased* cycle; when a release ships, its entries move to `Mojo/docs/site/releases/vX.Y.Z.md` and the nightly file is truncated to near-empty. So a `nightly-changelog.md` that does not mention a change is **not** evidence the change is unreleased — it is usually evidence the change *shipped*. Grep the release file too:
 >
 > ```bash
-> gh api 'repos/modular/modular/contents/mojo/docs/releases?ref=main' --jq '.[].name' | tail
-> gh api "repos/modular/modular/contents/mojo/docs/releases/v1.0.0.md?ref=main" --jq .content | base64 -d > v1.0.0.md
+> gh api 'repos/modular/modular/contents/Mojo/docs/site/releases?ref=main' --jq '.[].name' | tail
+> gh api "repos/modular/modular/contents/Mojo/docs/site/releases/v1.1.0.md?ref=main" --jq .content | base64 -d > v1.1.0.md
 > ```
 >
 > This is exactly what settled the 1.0.0 adoption: every API this codebase had migrated for under "dev2026080905" turned out to live in `releases/v1.0.0.md`, while the 26.6 nightly file held only a handful of *later* changes (`@parameter`→`@__parameter` on parametric closures, `memcmp`→`unsafe_memcmp`, removal of the temporary `InlineArray` alias — **none of which this codebase uses**). That is what made moving from a 26.6 nightly *back* to 1.0.0 stable a zero-source-change operation instead of a 1,500-site revert.
@@ -182,10 +191,141 @@ bindings.create_object = _slot(h, "napi_create_object")   # _slot = get_symbol +
 - `__del__` → **`__deinit__`**; `ImplicitlyDeletable` → **`Deinitable`**.
 - Keyword-form move ctor must name its arg `move`: `def __init__(out self, *, deinit move: Self)`. The positional `__moveinit__(out self, deinit take: Self)` form still counts as a move ctor unchanged.
 - `@export("name", ABI="C")` → `@export("name")` + `abi("C")` effect on the def. Only `examples/codegen/lib.mojo` still had the old form — it sits outside the `examples/*-addon.mojo` CI glob and had rotted (it was also still missing dev2026072306's `.as_unsafe_any_origin()`); consider widening that glob if more non-addon examples appear.
-- New warning: "assignment to 'X' was never used" **false-positives on vars captured by `capturing` closures** (3 sites in `examples/vectors-addon.mojo`, `chunk_size`). Do not delete the "dead" var — it is read inside the closure. Left as warnings.
+- New warning: "assignment to 'X' was never used" **false-positives on vars captured by `capturing` closures** (3 sites in `examples/vectors-addon.mojo`, `chunk_size`). Do not delete the "dead" var — it is read inside the closure. Left as warnings. **RESOLVED by the 1.1.0 bump**, and the diagnosis was wrong: these were not false positives but a *symptom* of the capture not being tracked at all. Spelling the legacy closure parameter `capturing[_]` (see the 1.1.0 entry) made the compiler see the captures as real uses, and all three warnings — plus the two in `src/addon/host_ops.mojo` — disappeared.
 
 **`get_symbol` now borrows the handle** (dev2026080905): it returns `Optional[Pointer[T, origin-of-handle]]` instead of a `MutUntrackedOrigin` pointer, so inside a generic `ref h` function the mutability is symbolic and `.as_unsafe_any_origin()` no longer converts to `MutAnyOrigin` (error names `SomeUnsafeAnyOrigin`; the note says `.mut … is 'h_is_mut'`). `_slot` now spells the widening explicitly: `opt.value().unsafe_mut_cast[True]().unsafe_origin_cast[MutAnyOrigin]()` in `bindings.mojo`, and `…unsafe_origin_cast[MutUntrackedOrigin]()` in `spike/ffi_probe.mojo`, whose cache struct has already been migrated off the field decorator (see `docs/plan-origin-migration.md`) — same soundness argument as before (a symbol address is a static code address; the handle is `dlopen(NULL)`, never unmapped). Related: **`AnyOrigin[mut]` and `UnsafeAnyOrigin[mut]` are now distinct spellings** (identical MLIR attr underneath); upstream documents `UnsafeAnyOrigin` as "slated for deprecation and removal". **That notice is attached to the `Unsafe*` spelling only, and this codebase is on the other one** — re-read against `mojo/stdlib/std/origin/__init__.mojo` on 2026-08-21: `AnyOrigin`/`MutAnyOrigin`/`ImmutAnyOrigin` carry a bare docstring with no deprecation language, and the 26.6 alias-removal sweep deleted `ImmutUnsafeAnyOrigin` while deliberately leaving `ImmutAnyOrigin` alone. So a forced migration of the `MutAnyOrigin` surface is *possible* (the attrs are identical, and upstream could retire the escape hatch wholesale) but is **not** currently scheduled, and nothing in the tree uses a removed spelling. See `docs/handoff-argv-origin-migration.md` for the evidence and for `scripts/derive-population-b.mjs`, which derives the at-risk set from source rather than from a number in a document.
 
 **`parallelize` moved to `max.algorithm`** (dev2026080905): `from std.algorithm import parallelize` no longer resolves — the function now ships in the MAX package: **`from max.algorithm import parallelize`**. Probe trap that cost real time here: an *unused* `from X import name` is NOT verified (imports resolve lazily, like body elaboration) — a probe must **call** the symbol to prove anything.
 
 **Explicit `__moveinit__` fails in a main-module file** (dev2026072306): `def __moveinit__(out self, deinit take: Self)` errors with `'None' has no attributes` on `self` when the struct is declared in a file compiled as the entry module, while the identical spelling compiles inside the `napi` package (`bindings.mojo` still declares its own). `Movable` is auto-derived, so dropping the explicit move ctor is the workaround — `spike/ffi_probe.mojo` does. Don't "fix" one context to match the other without re-checking both. **`mojo doc` compiles its target file as a main module too**, even with `-I src`, so it cannot open the three framework files that declare an explicit move ctor (`js_string.mojo`, `js_mojo_array.mojo`, `register.mojo`). They are listed in `KNOWN_UNDOCUMENTABLE` in `scripts/check-docstring-coverage.mjs`, which fails if one ever starts working — the skip cannot outlive the compiler bug.
+
+---
+
+## Mojo 1.1.0 / `max = "==26.6.0"` (adopted 2026-09-17)
+
+**A four-file source change, and the two that mattered were both invisible to
+`build.sh` and to all 805 tests.** The audit found nothing for most of the
+release's removals — no `InlineArray`, no `memcmp`/`memcpy`, no
+`destroy_pointee`/`init_pointee_move`, no removed origin or pointer alias, no
+`ImplicitlyDeletable`, no `.mojopkg`, no `read` convention, no
+`Atomic[DType.…]`, no `trait_downcast` — because the dev2026072306 and
+dev2026080905 migrations had already moved all of it. `initialize_runtime()`
+was already imported from `std.runtime`, which is exactly where 1.1.0 moved it
+when `std.runtime.asyncrt` went private. What broke was closures.
+
+**1. Bare `capturing` on a legacy closure parameter now reads a DEAD STACK
+SLOT — silently.** No warning, no error, correct-looking code.
+
+```mojo
+# BEFORE (correct on 1.0.0, silently wrong on 1.1.0)
+body: def () capturing raises -> None
+# AFTER
+body: def () raises capturing[_] -> None
+```
+
+`capturing[_]` binds the captured values' origins so their slots stay alive
+across the call; the bare form tracks nothing. Measured with a closure declared
+inside a loop over a loop-local: bare read `4460971520`, then `0`, `0`, where
+`capturing[_]` reads `0`, `1`, `2`. In `src/addon/host_ops.mojo`'s `scopedCall`
+the dead slot held a `JsFunction`, so it surfaced as `napi_invalid_arg` and
+three `tests/host.test.js` failures — which is the only reason this was caught
+at all. **Ordering is fixed**: `raises capturing[_]`; `capturing[_] raises` does
+not parse. This is the same hazard class as `_ = x^` being a no-op: a spelling
+that looks right and keeps nothing alive.
+
+A corollary worth keeping: the dev2026080905 note calling "assignment to 'X'
+was never used" a **false positive on `capturing` closures was a
+misdiagnosis.** It was a symptom of the same untracked capture. Fixing the
+spelling removed all five such warnings (3 in `examples/vectors-addon.mojo`, 2
+in `host_ops.mojo`) — the compiler now sees the captures as real uses.
+
+**2. `@parameter` → `@__parameter`** on a closure passed as a parameter
+(deprecation warning, with a fixit; not yet an error). The decorator is still
+*required* unless the closure declares the `capturing` effect itself
+(`def worker(i: Int) capturing:`), which is why the `parallelize_safe` callers
+in `examples/` and `tests/compile/` needed no change. `@parameter if` /
+`@parameter for` are removed outright — use `comptime if` / `comptime for`;
+this codebase had none.
+
+**3. `parallelize` takes a unified closure ARGUMENT (MAX 26.6).**
+
+```mojo
+parallelize[func](n)      # before
+parallelize(func, n)      # after — func is an argument, not a parameter
+```
+
+A legacy closure parameter does **not** convert to the new
+`FuncType: def(Int) -> None`, so `parallelize_safe` cannot simply forward
+`func`. It keeps its legacy public signature — downstream packages compile
+against this source — and wraps it:
+
+```mojo
+def _work(i: Int) {imm}:
+    func(i)
+
+parallelize(_work, n)
+```
+
+**This is the entry to re-read before the next bump.** `parallelize_safe`'s
+body is never elaborated by the addon build (nothing instantiates it in that
+graph), so the hard error was invisible to `build.sh` *and* to the full Jest
+suite. Only `tests/compile/framework_coverage.mojo` surfaced it — the
+lazy-elaboration gate doing precisely the job it was built for, on a real
+regression rather than a synthetic one. The same run also raised the
+`unsafe_ptr` deprecation count from 26 to 38: **always collect deprecations
+from the coverage target, not from `build.sh`.**
+
+Verified beyond compiling, because `parallelize_safe`'s failure mode is silent
+(it falls back to sequential): a probe against the real `-I src` function wrote
+`i * scale` for 1024 indices through the wrapper with 0 mismatches and
+`init_async_runtime()` succeeding, so it took the parallel path.
+
+**That gap is now closed in the same change.** `parallelSquares(n, scale)`
+(`src/addon/runtime_ops.mojo`) exports real captured work — a `Float64Array`
+where `[i] = i * i * scale` — and `tests/runtime.test.js` asserts the values,
+not just that init returned true. It is also the only thing that instantiates
+`parallelize_safe` in the addon graph, so this class of break can no longer be
+invisible to `build.sh`. **Mutation-checked**, which is what makes it evidence
+rather than decoration: reverting `runtime.mojo` to bare `capturing` and
+rebuilding makes `parallelSquares` **SIGSEGV (node exits 139)** — the dead slot
+holds a garbage *pointer*, not a stale value — so expect that regression to
+appear as a crashed Jest worker rather than an assertion diff. The
+"assignment to 'factor' was never used" warning also reappears, which is the
+same symptom described above.
+
+**4. `StringLiteral.unsafe_ptr()` → `ptr()`** (deprecation). Also renamed on
+`CStringSpan`, `ArcPointer` and `OwnedPointer`: these types always hold a live
+value, so the pointer is never unsafe. **`String.unsafe_ptr()` and
+`StaticString.unsafe_ptr()` are NOT renamed.** 38 of the 54 `unsafe_ptr()`
+sites in `src/` moved; the other 16 are `String`/`StaticString` and must stay,
+so this is a diagnostics-driven edit, not a sed. Applied by `file:line` from
+the compiler's own output (no flagged line held two occurrences).
+
+**Other things checked and found safe.** `MutAnyOrigin` and `ImmutAnyOrigin`
+both survive at the `mojo/v1.1.0` tag — the `Immut`→`Imm` sweep took
+`ImmutUnsafeAnyOrigin` and left `ImmutAnyOrigin` alone, and the
+"slated for removal" docstring is still attached only to the `Unsafe*`
+spellings, so the deferred signature flip is still not forced.
+`from std.benchmark import keep` still resolves (re-exported from
+`.compiler`), so `pin_across_ffi` is intact. `globalCacheActive()` is still
+`true`, so `__mlir_op.pop.global_alloc` survived a major release — worth
+re-checking every bump, since its failure mode is a silent fallback to dlsym.
+
+**New diagnostic, pre-existing dead code:** `spike/ffi_probe.mojo:376` now
+warns `'except' logic is unreachable, try doesn't raise an exception`.
+`_roundtrip` is declared without `raises` and reads raw status codes instead of
+`check_status`, so that `except:` never could run — 1.1.0 simply reports it.
+Left as-is deliberately: the probe passes `originProbe PASS 4/4`, and removing
+a defensive branch from the file that documents the FFI contract buys nothing.
+
+**Verification run for this bump** (all green on darwin-arm64 / Node 24.15.0):
+addon build and the compile-coverage gate both **warning-clean, 0 errors**; 805
+tests; 12 GC finalizer tests; codegen drift gate; codegen kitchen sink; all
+three examples warning-clean; FFI probe `4/4`; keep-alive barrier
+counterfactual; docstring, compile-coverage, exports-doc, API-reference,
+platform, portability and GLIBCXX self-test gates; CLI, tutorial, and all three
+host-mode e2e runs (including the `pipeline.mojo` module-collision regression
+and build-cache byte-identity); 18/18 benchmarks at 12–23% of ceiling; the full
+suite plus `async_stress` under Guard Malloc with `MALLOC_STRICT_SIZE=1`,
+banner confirmed present; and `check-runtimes.mjs` on Bun 1.3.7 (Deno absent
+locally — CI covers it).

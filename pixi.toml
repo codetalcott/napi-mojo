@@ -14,9 +14,9 @@ version = "0.15.1"
 nightly-update = { cmd = "bash ../mojo-nightly-updater/bump-nightly.sh --project .", description = "Update to latest Mojo/MAX nightly (repoint channels to max-nightly first)" }
 
 [dependencies]
-# Mojo 1.0.0 (stable). napi-mojo ships source that downstream packages compile
+# Mojo 1.1.0 (stable). napi-mojo ships source that downstream packages compile
 # against, so the framework pins a STABLE language release, not a nightly —
 # a nightly pin forces every consumer onto that exact nightly. The Nightly
 # Canary still tests the next release ahead of time; it repoints both this pin
 # and the channel above (see .github/workflows/nightly-canary.yml).
-max = "==26.5.0"
+max = "==26.6.0"

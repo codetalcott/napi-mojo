@@ -88,7 +88,7 @@ struct JsString:
         b: Bindings, env: NapiEnv, s: StringLiteral
     ) raises -> JsString:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
-        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().unsafe_bitcast[
+        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.ptr().unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
         var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
@@ -253,7 +253,7 @@ struct JsString:
         b: Bindings, env: NapiEnv, s: StringLiteral
     ) raises -> JsString:
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
-        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.unsafe_ptr().unsafe_bitcast[
+        var str_ptr: OpaquePointer[ImmutAnyOrigin] = s.ptr().unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
         var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(

@@ -66,7 +66,7 @@ def _get_prototype(
             b,
             env,
             constructor,
-            "prototype".unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            "prototype".ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             Pointer(to=proto).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
@@ -104,7 +104,7 @@ def define_class(
         raw_define_class(
             b,
             env,
-            name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            name.ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             auto_length,
             constructor_ptr,
             OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),  # data = NULL
@@ -148,7 +148,7 @@ def define_class(
         raw_define_class(
             b,
             env,
-            name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            name.ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             auto_length,
             constructor_ptr,
             data_ptr,
@@ -183,7 +183,7 @@ def register_instance_method(
     """
     var proto = _get_prototype(b, env, constructor)
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+    desc.utf8name = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
     desc.method = method_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
@@ -212,7 +212,7 @@ def register_getter(
     """
     var proto = _get_prototype(b, env, constructor)
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+    desc.utf8name = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
     desc.getter = getter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
@@ -243,7 +243,7 @@ def register_getter_setter(
     """
     var proto = _get_prototype(b, env, constructor)
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+    desc.utf8name = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
     desc.getter = getter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
@@ -275,7 +275,7 @@ def register_static_method(
         If napi_define_properties does not return napi_ok.
     """
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+    desc.utf8name = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
     desc.method = method_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
@@ -303,7 +303,7 @@ def register_static_getter(
         If napi_define_properties does not return napi_ok.
     """
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+    desc.utf8name = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
     desc.getter = getter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
@@ -345,7 +345,7 @@ def set_class_prototype(
             b,
             env,
             global_obj.value,
-            "Object".unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            "Object".ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             Pointer(to=object_key).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
@@ -355,7 +355,7 @@ def set_class_prototype(
             b,
             env,
             object_key,
-            "setPrototypeOf".unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            "setPrototypeOf".ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             Pointer(to=set_proto_of).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
         )
     )
@@ -385,7 +385,7 @@ def register_static_getter_setter(
         If napi_define_properties does not return napi_ok.
     """
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+    desc.utf8name = name.ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
     desc.getter = getter_ptr.unsafe_origin_cast[MutUntrackedOrigin]()

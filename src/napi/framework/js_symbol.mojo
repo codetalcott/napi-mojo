@@ -44,7 +44,7 @@ struct JsSymbol:
             raw_symbol_for(
                 b,
                 env,
-                key.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                key.ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 UInt(key.byte_length()),
                 Pointer(to=result).unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             )
