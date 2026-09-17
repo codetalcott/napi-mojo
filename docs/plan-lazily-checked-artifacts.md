@@ -246,7 +246,7 @@ them by CI step). Stanza-level rather than block-level so a doc can quote an
 import and a def that are not adjacent — the failure being guarded is a
 spelling that changed, which any stanza catches. A snippet with no compilable
 home is fenced ```` ```mojo fragment ```` and is **counted and printed**, so
-exemptions stay visible (three today: CLAUDE.md's two-line function-pointer
+exemptions stay visible (two today: CLAUDE.md's two-line function-pointer
 idiom and CONTRIBUTING's `...` entry-point skeleton). A doc that yields zero
 blocks fails the parser check, because an empty parse would otherwise read as
 a clean pass — the docstring gate's first-run lesson. `--self-test` proves the
