@@ -26,6 +26,20 @@ downstream addons compile unmodified. Full account in
   elaborated its body — and was surfaced only by
   `tests/compile/framework_coverage.mojo`.
 
+### Added
+
+- **`parallelSquares(n, scale)`** — returns a `Float64Array` where
+  `[i] = i * i * scale`, computed through `parallelize_safe`. A diagnostic
+  export in the spirit of `asyncRuntimeInitOk()`, covering the other silent
+  failure mode: the work runs but the captures are wrong. Every element
+  depends on both captured values and the buffer is pre-filled with a
+  sentinel, so a broken capture or a skipped index cannot produce a correct
+  array. It is also the only thing that instantiates `parallelize_safe` in the
+  addon graph, so a break there can no longer be invisible to `build.sh` —
+  which is exactly how this bump's breakage hid. Mutation-checked: reverting
+  `runtime.mojo` to bare `capturing` makes it SIGSEGV (node exits 139), so the
+  regression surfaces as a crashed Jest worker rather than an assertion diff.
+
 ### Changed
 
 - `@parameter` → `@__parameter` on closures passed as parameters (1.1.0

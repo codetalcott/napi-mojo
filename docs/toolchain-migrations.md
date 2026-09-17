@@ -278,10 +278,20 @@ from the coverage target, not from `build.sh`.**
 Verified beyond compiling, because `parallelize_safe`'s failure mode is silent
 (it falls back to sequential): a probe against the real `-I src` function wrote
 `i * scale` for 1024 indices through the wrapper with 0 mismatches and
-`init_async_runtime()` succeeding, so it took the parallel path. **There is
-still no test asserting `parallelize_safe`'s results** — `tests/runtime.test.js`
-only asserts that init returned true. A wrapper that captured wrongly would
-compile and silently compute garbage.
+`init_async_runtime()` succeeding, so it took the parallel path.
+
+**That gap is now closed in the same change.** `parallelSquares(n, scale)`
+(`src/addon/runtime_ops.mojo`) exports real captured work — a `Float64Array`
+where `[i] = i * i * scale` — and `tests/runtime.test.js` asserts the values,
+not just that init returned true. It is also the only thing that instantiates
+`parallelize_safe` in the addon graph, so this class of break can no longer be
+invisible to `build.sh`. **Mutation-checked**, which is what makes it evidence
+rather than decoration: reverting `runtime.mojo` to bare `capturing` and
+rebuilding makes `parallelSquares` **SIGSEGV (node exits 139)** — the dead slot
+holds a garbage *pointer*, not a stale value — so expect that regression to
+appear as a crashed Jest worker rather than an assertion diff. The
+"assignment to 'factor' was never used" warning also reappears, which is the
+same symptom described above.
 
 **4. `StringLiteral.unsafe_ptr()` → `ptr()`** (deprecation). Also renamed on
 `CStringSpan`, `ArcPointer` and `OwnedPointer`: these types always hold a live

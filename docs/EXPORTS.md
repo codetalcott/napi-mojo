@@ -107,6 +107,7 @@
 | `addAsyncCleanupHook()` | `add_async_cleanup_hook_fn` | Registers an async env cleanup hook, returns its handle as an External |
 | `removeAsyncCleanupHook(handle)` | `remove_async_cleanup_hook_fn` | Removes the async cleanup hook that handle identifies, returns true |
 | `asyncRuntimeInitOk()` | `async_runtime_init_ok_fn` | True when the Mojo async runtime initialized, i.e. `parallelize_safe()` dispatches to threads rather than falling back to a sequential loop |
+| `parallelSquares(n, scale)` | `parallel_squares_fn` | `Float64Array` where `[i] = i * i * scale`, computed through `parallelize_safe`. Exists so the suite can assert parallel work's RESULTS, not just that init succeeded — every element depends on both captured values, so a broken capture cannot produce a correct array |
 | `getErrorMessage(err)` | `get_error_message_fn` | Returns `.message` string from any Error-like object |
 | `getErrorStack(err)` | `get_error_stack_fn` | Returns `.stack` string from any Error-like object |
 | `getOptValue(obj)` | `get_opt_value_fn` | Returns `obj.x` if present, else `null` (tests `JsObject.get_opt`) |
