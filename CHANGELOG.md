@@ -3,12 +3,19 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
-## Unreleased
+## 0.16.0 — 2026-09-17
 
-**Mojo 1.1.0 stable toolchain adoption** (`max = "==26.6.0"`, from Mojo 1.0.0 /
-`26.5.0`). Four source files changed; no public Mojo signature changed, so
-downstream addons compile unmodified. Full account in
+**Adopts the Mojo 1.1.0 stable toolchain** (`max = "==26.6.0"`, from Mojo
+1.0.0 / `26.5.0`). This is a minor rather than a patch for that reason alone:
+downstream addons compile against the published `src/`, so taking this upgrade
+moves them onto that toolchain. No public Mojo signature changed, so they
+compile unmodified once there. Full account in
 [`docs/toolchain-migrations.md`](docs/toolchain-migrations.md).
+
+**It also corrects every computed error message the framework produces.** Those
+trailed heap garbage in every release to date — see Fixed, below. Anything
+asserting on a type-mismatch message with a substring match will keep passing;
+anything comparing one whole will now see the message it expected.
 
 ### Fixed
 
