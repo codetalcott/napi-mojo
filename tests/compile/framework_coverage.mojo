@@ -626,6 +626,7 @@ def cover_js_host(b: Bindings, env: NapiEnv, v: NapiValue) raises:
     _ = h.global_object()
     _ = h.argv()
     h.console_log(String("cover"))
+    h.console_error(String("cover"))
 
 
 # --- js_promise.mojo ----------------------------------------------------------

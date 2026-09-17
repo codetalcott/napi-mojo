@@ -150,7 +150,7 @@ src/napi/framework/runtime.mojo          # init_async_runtime(), parallelize_saf
 src/napi/framework/js_mojo_array.mojo    # MojoFloat64Array — Mojo-owned Float64 buffer with zero-copy to_js() output
 src/napi/framework/js_async_context.mojo # JsAsyncContext — napi_async_init/destroy wrappers
 src/napi/framework/callback_scope.mojo   # CallbackScope — napi_open/close_callback_scope wrappers
-src/napi/framework/js_host.mojo          # NodeHost — host mode: require(), global_object(), argv(), console_log()
+src/napi/framework/js_host.mojo          # NodeHost — host mode: require(), global_object(), argv(), console_log(), console_error()
 src/exports.toml                         # Function/class/struct declarations for code generator
 src/generated/callbacks.mojo             # AUTO-GENERATED callbacks from exports.toml
 src/generated/structs.mojo               # AUTO-GENERATED struct definitions + from_js/to_js converters
