@@ -140,12 +140,16 @@ def scoped_call_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var n = JsNumber.to_int(b, env, args[0])
         var f = JsFunction(args[1])
         for i in range(n):
-            # `f` and `idx` warn "assignment never used" — the documented
-            # false positive for vars read only inside a `capturing` closure.
-            # Do NOT delete them; _body reads both.
+            # Do NOT delete `idx` (or `f` above) — _body reads both, and a
+            # legacy closure's reads are easy to mistake for dead stores.
+            # These used to warn "assignment never used", which was recorded
+            # as a compiler false positive; it was really a symptom of the
+            # capture not being tracked, and spelling with_handle_scope's
+            # parameter `capturing[_]` silenced it. See docs/toolchain-
+            # migrations.md, Mojo 1.1.0.
             var idx = i
 
-            @parameter
+            @__parameter
             def _body() raises:
                 _ = f.call1(b, env, JsNumber.create_int(b, env, idx).value)
 

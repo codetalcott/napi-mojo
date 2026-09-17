@@ -331,7 +331,7 @@ def cover_handle_scope(b: Bindings, env: NapiEnv) raises:
 
     # with_handle_scope is parametric on a capturing closure, so the cover
     # call has to instantiate it with a real body to elaborate it.
-    @parameter
+    @__parameter
     def _scoped_body():
         pass
 

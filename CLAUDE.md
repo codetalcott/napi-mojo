@@ -180,7 +180,7 @@ tests/codegen/                           # compile-only kitchen sink: every gene
 
 ## Mojo dialect and FFI rules
 
-> **Current pin: Mojo 1.0.0 (stable), `max = "==26.5.0"`, stable channel
+> **Current pin: Mojo 1.1.0 (stable), `max = "==26.6.0"`, stable channel
 > `https://conda.modular.com/max/`.**
 >
 > **The framework tracks STABLE Mojo releases, not nightlies.** napi-mojo ships
@@ -212,13 +212,36 @@ API; `docs/toolchain-migrations.md` has the before/after and the reasoning.
   `from std.collections import Optional`. Heap allocation is
   `from std.memory.alloc import unsafe_alloc` — the `std.memory` package
   `__init__` does not re-export it, so the module path is required.
-  **`parallelize` is in MAX, not stdlib**: `from max.algorithm import parallelize`.
+  **`parallelize` is in MAX, not stdlib**: `from max.algorithm import parallelize`,
+  and as of MAX 26.6 it takes its work function as a **unified closure
+  argument** — `parallelize(func, n)`, not `parallelize[func](n)`.
 - **C-ABI function types need `thin abi("C")`**: `def(args…) thin abi("C") -> R`.
   A bare `def(…) -> X` resolves to a callable trait, not a thin function
   pointer, and fails the `TrivialRegisterPassable` constraint. Parametric
-  generics like `parallelize_safe[func: def(Int) capturing -> None]` are not
+  generics like `parallelize_safe[func: def(Int) capturing[_] -> None]` are not
   C-ABI and stay unannotated. Module entry: `@export("name")` + the `abi("C")`
   effect on the def.
+- **A legacy closure parameter is `capturing[_]`, never bare `capturing`, and
+  its closure needs `@__parameter`.** Both halves are load-bearing and neither
+  is optional:
+  - **Bare `capturing` silently reads a DEAD STACK SLOT** on 1.1.0 — no warning,
+    no error. A closure declared in a loop over a loop-local read `4460971520`
+    then `0`, `0` where `capturing[_]` reads `0`, `1`, `2`. In real code this
+    surfaced as `napi_invalid_arg`, because the captured `JsFunction` was
+    garbage. `capturing[_]` binds the captured values' origins so their slots
+    stay alive; the bare form tracks nothing. This is the same class of hazard
+    as `_ = x^` being a no-op — a spelling that looks right and keeps nothing
+    alive. Ordering is fixed: `def () raises capturing[_] -> None`
+    (`capturing[_] raises` does not parse).
+  - **`@__parameter`** (renamed from `@parameter` in 1.1.0) is required on a
+    closure passed as a parameter, unless it declares the `capturing` effect
+    itself (`def worker(i: Int) capturing:`). Without either, the call fails to
+    convert. `@parameter` still works but is deprecated.
+  - **New code should prefer a UNIFIED closure** — passed as an argument with an
+    explicit capture list (`def w(i: Int) {imm a, mut b}:`, `{imm}` for all) and
+    no decorator. That is where the stdlib and MAX are going; `with_handle_scope`
+    and `parallelize_safe` keep legacy signatures only because downstream
+    packages compile against them.
 - **Raw-pointer surface**: `Pointer` (not `UnsafePointer`), `.unsafe_bitcast[T]()`,
   `.unsafe_free()`, `unsafe_alloc[T](n)`, `ptr[unsafe_offset=i]`,
   `ptr.unsafe_offset(n)`, `.unsafe_load[width=w](i)`, `unsafe_write`,
@@ -409,7 +432,7 @@ version — they have outlived every toolchain bump in
 
 **ASAP destruction + string lifetimes**: Mojo's ASAP (eager) destruction frees a value at its last tracked use. Raw pointer derivations (`unsafe_ptr()`) are NOT tracked uses. For FFI string arguments:
 
-- **String literals** for static names: `"propname".unsafe_ptr().unsafe_bitcast[NoneType]()` — static `.rodata` lifetime, never freed. Use `JsString.create_literal` and `JsObject.set_property`.
+- **String literals** for static names: `"propname".ptr().unsafe_bitcast[NoneType]()` — static `.rodata` lifetime, never freed. Use `JsString.create_literal` and `JsObject.set_property`. **`StringLiteral.unsafe_ptr()` is deprecated in favour of `ptr()`** (1.1.0: these types always hold a live value, so the pointer is never unsafe); the same rename applies to `CStringSpan`, `ArcPointer` and `OwnedPointer`. `String.unsafe_ptr()` and `StaticString.unsafe_ptr()` are NOT renamed — 38 of the 54 `unsafe_ptr()` sites in `src/` moved, the rest are `String`/`StaticString` and must stay, so drive this from compiler diagnostics rather than a global sed.
 - **Heap Strings** for dynamic content: bind to a named `var`, derive pointer after binding, keep the var alive past the FFI call. Use `throw_js_error_dynamic` for computed error messages.
 - **`StringLiteral` parameter type** on `throw_js_error` enforces compile-time that only literals are passed.
 
@@ -497,6 +520,7 @@ The `gpu/` subpackage that briefly lived here was a scaffold (handle registry on
 
 `parallelize()` inside a dlopen'd `.node` needs `init_async_runtime()` first (no compiler-generated `main()` runs, so the runtime is never set up). `parallelize_safe()` calls it and, on failure, runs the work **sequentially** — correct results, zero thread dispatch, no error anywhere. That silence is the standing hazard: dev2026072306 renamed the private init symbol and the regression survived a full release with the build and the whole suite green.
 
+- **`parallelize_safe` keeps its legacy-closure API but no longer calls `parallelize[func](n)`.** MAX 26.6 moved `parallelize` to a unified closure *argument*, and a legacy closure parameter does not convert to the new `FuncType`, so the body wraps `func` in a unified closure (`def _work(i: Int) {imm}: func(i)`) and calls `parallelize(_work, n)`. The public signature is unchanged, which is deliberate: downstream packages compile against this source. **This break was invisible to `build.sh` and to all 805 tests** — nothing instantiates `parallelize_safe` in the addon graph, so Mojo never elaborated its body; only `tests/compile/framework_coverage.mojo` caught it, which is exactly why that gate exists.
 - **As of dev2026080905, `init_async_runtime()` delegates to `std.runtime.initialize_runtime()`** — an official, idempotent API Mojo 1.0.0 added for exactly this case (shared-lib Mojo called from a non-Mojo host). The hand-rolled resolution of `KGEN_CompilerRT_AsyncRT_GetOrCreateCPUDevice` from `libKGENCompilerRTShared` is gone from `runtime.mojo`, along with its named-library `_ = lib^` keep-alive. `parallelize` itself now comes from `max.algorithm`.
 - **`asyncRuntimeInitOk()`** (`src/addon/runtime_ops.mojo`) exports the init result and `tests/runtime.test.js` asserts it is `true`, on both CI matrix OSes. A future breakage fails a test instead of halving throughput in silence. Verified `true` under the new API from inside a real Node process.
 - **`spike/runtime_probe.mojo` still probes the raw KGEN entry point** (idempotence, `ParallelismLevel`, a real `parallelize()` result) — useful for diagnosing what the official API does underneath if `runtime.test.js` ever goes red. Its header preserves the hard-won KGEN lore: the exported C wrapper is **nullary** despite its three-argument C++ counterpart, and `nm -gU` cannot see the library's exports (LC_DYLD export trie — use `dyld_info -exports` on macOS, `nm -D` on Linux).

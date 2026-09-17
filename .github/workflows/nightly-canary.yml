@@ -41,7 +41,7 @@ jobs:
       # get to unpin. sed -i.bak is portable across BSD (macOS) and GNU (Linux).
       #
       # The CHANNEL swap is not optional. pixi.toml pins the stable channel
-      # (Mojo 1.0.0), and pixi uses strict channel priority: with only the
+      # (Mojo 1.1.0), and pixi uses strict channel priority: with only the
       # stable channel listed, `max = "*"` resolves to the newest STABLE build
       # and the canary silently stops testing nightlies while still reporting
       # green. Repoint the channel first, then the version.

@@ -42,7 +42,7 @@ def register_method(
     method_ptr: OpaquePointer[MutAnyOrigin],
 ) raises:
     var desc = NapiPropertyDescriptor()
-    desc.utf8name = name.unsafe_ptr().unsafe_bitcast[
+    desc.utf8name = name.ptr().unsafe_bitcast[
         NoneType
     ]().unsafe_origin_cast[ImmUntrackedOrigin]()
     desc.method = method_ptr.unsafe_origin_cast[MutUntrackedOrigin]()

@@ -82,7 +82,7 @@ node scripts/check-docstring-coverage.mjs --update   # rewrite the floor, then c
 
 A module is only rendered once 75% of its public symbols are documented; below that the index lists it with its ratio and links to source. That threshold is the point of the reference — `docs/plan-api-reference.md` measured that a reference of bare signatures is worse than none, because it looks complete and says nothing. Do not lower it to get a module listed.
 
-### Toolchain and Imports (Mojo 1.0.0 stable)
+### Toolchain and Imports (Mojo 1.1.0 stable)
 
 The pin lives in `pixi.toml` and is part of the public contract (downstream packages compile against the published `src/`).
 

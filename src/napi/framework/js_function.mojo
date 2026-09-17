@@ -273,7 +273,7 @@ struct JsFunction:
             raw_create_function(
                 b,
                 env,
-                name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                name.ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 auto_length,
                 cb_ptr,
                 OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
@@ -319,7 +319,7 @@ struct JsFunction:
             raw_create_function(
                 b,
                 env,
-                name.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+                name.ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
                 auto_length,
                 cb_ptr,
                 data,
@@ -473,7 +473,7 @@ struct JsFunction:
         # Set fn.length = length via napi_define_properties
         var len_val = JsNumber.create_int(b, env, length).value
         var desc = NapiPropertyDescriptor()
-        desc.utf8name = "length".unsafe_ptr().unsafe_bitcast[
+        desc.utf8name = "length".ptr().unsafe_bitcast[
             NoneType
         ]().unsafe_origin_cast[ImmUntrackedOrigin]()
         desc.method = NapiStore(unsafe_from_address=Int(0))

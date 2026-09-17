@@ -134,7 +134,7 @@ struct JsObject:
         Raises:
             If napi_set_named_property does not return napi_ok.
         """
-        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().unsafe_bitcast[
+        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.ptr().unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
         var status = raw_set_named_property(b, env, self.value, key_ptr, val)
@@ -249,7 +249,7 @@ struct JsObject:
             If napi_get_named_property does not return napi_ok.
         """
         var result: NapiValue = NapiValue(unsafe_from_address=Int(0))
-        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().unsafe_bitcast[
+        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.ptr().unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
         var result_ptr: OpaquePointer[MutAnyOrigin] = Pointer(
@@ -333,7 +333,7 @@ struct JsObject:
             If napi_has_named_property does not return napi_ok.
         """
         var exists: Bool = False
-        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.unsafe_ptr().unsafe_bitcast[
+        var key_ptr: OpaquePointer[ImmutAnyOrigin] = key.ptr().unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
         var exists_ptr: OpaquePointer[MutAnyOrigin] = Pointer(

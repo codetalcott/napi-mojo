@@ -32,8 +32,8 @@ classes, 650+ tests). Expect breaking changes as the project matures.
   We're not there yet; reaching that bar requires exhaustive real-world testing
   and community feedback. The third prerequisite — a stable Mojo language
   release — arrived with Mojo 1.0.0, which this project now builds against.
-- **Mojo compatibility:** Builds against **Mojo 1.0.0** (stable), pinned in
-  [`pixi.toml`](pixi.toml) as `max = "==26.5.0"`. napi-mojo ships Mojo source
+- **Mojo compatibility:** Builds against **Mojo 1.1.0** (stable), pinned in
+  [`pixi.toml`](pixi.toml) as `max = "==26.6.0"`. napi-mojo ships Mojo source
   that your addon compiles against, so the framework tracks *stable* language
   releases rather than nightlies — pinning a nightly would force every consumer
   onto that exact nightly. A twice-weekly Nightly Canary builds and tests
@@ -337,7 +337,7 @@ npm run build    # compiles Mojo → build/index.node + generates TypeScript def
 npm test         # full Jest suite (7 GC tests need `npm run test:gc`)
 ```
 
-**Prerequisites:** [Mojo 1.0.0](https://mojolang.org/install/) via
+**Prerequisites:** [Mojo 1.1.0](https://mojolang.org/install/) via
 [pixi](https://pixi.sh) (exact version pinned in [`pixi.toml`](pixi.toml);
 `npm run build` provisions it from the stable `max` conda channel
 automatically), Node.js 22.12+ (N-API v10)

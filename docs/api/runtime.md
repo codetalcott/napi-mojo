@@ -35,8 +35,8 @@ def parallelize_safe[func: def(Int) capturing thin -> None](n: Int)
 
 Run func(i) for i in 0..n-1 in parallel, with runtime auto-init.
 
-Equivalent to parallelize[func](n) but safe to call from a .node addon
-without a prior explicit init_async_runtime() call.
+Equivalent to a bare parallelize() call but safe to invoke from a .node
+addon without a prior explicit init_async_runtime() call.
 
 If the async runtime cannot be initialized, this runs the work
 SEQUENTIALLY rather than calling parallelize(). That is not a cosmetic
