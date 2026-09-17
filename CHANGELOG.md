@@ -28,6 +28,14 @@ downstream addons compile unmodified. Full account in
 
 ### Added
 
+- **`NodeHost.console_error(msg)`** and the `hostConsoleError` export (#113) —
+  writes one line to stderr through the host's `console.error`, the diagnostic
+  counterpart to `console_log`. `console_log` was the only output method on
+  `NodeHost`, so a host-mode program whose stdout is piped into something else
+  had no way to say anything about itself without corrupting that stream.
+  Routing through the host console (rather than writing to fd 2 directly)
+  keeps output interleaved correctly with the host's own writes and honours
+  whatever the embedder has done to `console`.
 - **`parallelSquares(n, scale)`** — returns a `Float64Array` where
   `[i] = i * i * scale`, computed through `parallelize_safe`. A diagnostic
   export in the spirit of `asyncRuntimeInitOk()`, covering the other silent
