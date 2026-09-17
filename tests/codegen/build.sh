@@ -25,7 +25,12 @@ NAPI_MOJO_OUT="$KS_DIR/generated" \
 
 # Step 2: compile — this is the actual test. register_generated references
 # every generated callback, so every template's output gets type-checked.
-pixi run mojo build --emit shared-lib \
+# --Werror, like build.sh, and the same NAPI_MOJO_WERROR=0 opt-out for a bump.
+WERROR_FLAG="--Werror"
+if [ "${NAPI_MOJO_WERROR:-1}" = "0" ]; then
+    WERROR_FLAG=""
+fi
+pixi run mojo build --emit shared-lib ${WERROR_FLAG} \
     -I "$ROOT_DIR/src" \
     "$KS_DIR/lib.mojo" \
     -o "$OUT"

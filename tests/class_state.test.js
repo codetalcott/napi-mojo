@@ -54,7 +54,9 @@ describe('native class state — mutation through `mut`', () => {
     const t = new addon.Tally('t', 0);
     expect(() => {
       t.total = 'not a number';
-    }).toThrow(/expected number, got string/);
+      // Whole message, not a substring: an unterminated Mojo String would
+      // append heap garbage here and a regex match would not notice.
+    }).toThrow('total setter: expected number, got string');
     // The failed assignment must not have corrupted the state.
     expect(t.total).toBe(0);
   });

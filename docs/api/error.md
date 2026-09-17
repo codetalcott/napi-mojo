@@ -134,7 +134,9 @@ def throw_js_error_dynamic(env: Pointer[NoneType, MutUntrackedOrigin], msg: Stri
 
 Set a pending JavaScript `Error` with a computed String message.
 
-The String is copied so it stays alive across the FFI call.
+The String is copied, NUL-terminated (napi_throw_* reads a C string,
+and a Mojo String carries no terminator — without this the message
+trails heap garbage), and kept alive across the FFI call.
 
 Does not raise in Mojo and does not return a value — the exception
 surfaces when control returns to JavaScript. A no-op if an exception
@@ -154,7 +156,9 @@ def throw_js_error_dynamic(b: Pointer[NapiBindings, MutUntrackedOrigin], env: Po
 
 Set a pending JavaScript `Error` with a computed String message.
 
-The String is copied so it stays alive across the FFI call.
+The String is copied, NUL-terminated (napi_throw_* reads a C string,
+and a Mojo String carries no terminator — without this the message
+trails heap garbage), and kept alive across the FFI call.
 
 Does not raise in Mojo and does not return a value — the exception
 surfaces when control returns to JavaScript. A no-op if an exception
@@ -222,7 +226,9 @@ def throw_js_type_error_dynamic(env: Pointer[NoneType, MutUntrackedOrigin], msg:
 
 Set a pending JavaScript `TypeError` with a computed String message.
 
-The String is copied so it stays alive across the FFI call.
+The String is copied, NUL-terminated (napi_throw_* reads a C string,
+and a Mojo String carries no terminator — without this the message
+trails heap garbage), and kept alive across the FFI call.
 
 Does not raise in Mojo and does not return a value — the exception
 surfaces when control returns to JavaScript. A no-op if an exception
@@ -242,7 +248,9 @@ def throw_js_type_error_dynamic(b: Pointer[NapiBindings, MutUntrackedOrigin], en
 
 Set a pending JavaScript `TypeError` with a computed String message.
 
-The String is copied so it stays alive across the FFI call.
+The String is copied, NUL-terminated (napi_throw_* reads a C string,
+and a Mojo String carries no terminator — without this the message
+trails heap garbage), and kept alive across the FFI call.
 
 Does not raise in Mojo and does not return a value — the exception
 surfaces when control returns to JavaScript. A no-op if an exception
@@ -310,7 +318,9 @@ def throw_js_range_error_dynamic(env: Pointer[NoneType, MutUntrackedOrigin], msg
 
 Set a pending JavaScript `RangeError` with a computed String message.
 
-The String is copied so it stays alive across the FFI call.
+The String is copied, NUL-terminated (napi_throw_* reads a C string,
+and a Mojo String carries no terminator — without this the message
+trails heap garbage), and kept alive across the FFI call.
 
 Does not raise in Mojo and does not return a value — the exception
 surfaces when control returns to JavaScript. A no-op if an exception
@@ -330,7 +340,9 @@ def throw_js_range_error_dynamic(b: Pointer[NapiBindings, MutUntrackedOrigin], e
 
 Set a pending JavaScript `RangeError` with a computed String message.
 
-The String is copied so it stays alive across the FFI call.
+The String is copied, NUL-terminated (napi_throw_* reads a C string,
+and a Mojo String carries no terminator — without this the message
+trails heap garbage), and kept alive across the FFI call.
 
 Does not raise in Mojo and does not return a value — the exception
 surfaces when control returns to JavaScript. A no-op if an exception
@@ -398,7 +410,9 @@ def throw_js_syntax_error_dynamic(env: Pointer[NoneType, MutUntrackedOrigin], ms
 
 Set a pending JavaScript `SyntaxError` with a computed String message.
 
-The String is copied so it stays alive across the FFI call.
+The String is copied, NUL-terminated (napi_throw_* reads a C string,
+and a Mojo String carries no terminator — without this the message
+trails heap garbage), and kept alive across the FFI call.
 
 Does not raise in Mojo and does not return a value — the exception
 surfaces when control returns to JavaScript. A no-op if an exception
@@ -418,7 +432,9 @@ def throw_js_syntax_error_dynamic(b: Pointer[NapiBindings, MutUntrackedOrigin], 
 
 Set a pending JavaScript `SyntaxError` with a computed String message.
 
-The String is copied so it stays alive across the FFI call.
+The String is copied, NUL-terminated (napi_throw_* reads a C string,
+and a Mojo String carries no terminator — without this the message
+trails heap garbage), and kept alive across the FFI call.
 
 Does not raise in Mojo and does not return a value — the exception
 surfaces when control returns to JavaScript. A no-op if an exception

@@ -12,6 +12,19 @@ downstream addons compile unmodified. Full account in
 
 ### Fixed
 
+- **Every computed error message trailed heap garbage.** The eight
+  `throw_js_*_dynamic` helpers passed a Mojo `String`'s buffer to
+  `napi_throw_*`, which reads a NUL-terminated `const char*`; a Mojo `String`
+  carries no terminator, so JS saw `greet: expected string, got numberuffer`
+  (the tail is whatever the heap held next). Every generated type-mismatch
+  error was affected. The message is now NUL-terminated with
+  `as_c_string_span()` before the call, and the tests assert the whole
+  message with `toBe` rather than `toContain`, which is how the garbage
+  passed. Found by running `examples/codegen/codegen.js` in CI for the first
+  time and reading its output. Mutation-checked: reverting all eight
+  terminations fails 2 of the 6 exact assertions — the tail is whatever the
+  allocator left adjacent, so a given message may come back clean, which is
+  the other reason `toContain` could never have caught this.
 - **Legacy closure parameters spelled bare `capturing` read a dead stack slot
   on 1.1.0, silently.** `with_handle_scope` and `parallelize_safe` now declare
   `capturing[_]`, which binds the captured values' origins. The addon's
@@ -28,6 +41,14 @@ downstream addons compile unmodified. Full account in
 
 ### Added
 
+- **`docs/MOJO-RULES.md` ships in the package** — the "Mojo dialect and FFI
+  rules" section of the repository's `CLAUDE.md`, extracted verbatim by
+  `scripts/generate-rules-extract.mjs` and held in lockstep by CI. A downstream
+  addon compiles against this framework's source and until now got none of the
+  rules that keep that code from crashing: a bare `capturing` reads a dead
+  stack slot, `_ = x^` is not a keep-alive, the function-pointer bitcast is
+  spelled in exactly one place. A hand-copied extract would drift silently,
+  which is why it is generated.
 - **`NodeHost.console_error(msg)`** and the `hostConsoleError` export (#113) —
   writes one line to stderr through the host's `console.error`, the diagnostic
   counterpart to `console_log`. `console_log` was the only output method on
@@ -58,6 +79,17 @@ downstream addons compile unmodified. Full account in
   "assignment never used" warnings that the dev2026080905 notes recorded as
   false positives on `capturing` closures are gone: they were a symptom of the
   untracked capture, not a compiler quirk.
+- **CI now compiles every piece of the repo's own Mojo with `--Werror`**
+  (`build.sh` and `tests/codegen/build.sh` default to it; `NAPI_MOJO_WERROR=0`
+  opts out for a toolchain bump), with `scripts/check-werror.mjs` proving on
+  every run that the flag still fails on a warning inside an imported module.
+  `spike/ffi_probe.mojo`'s dead `except` branch was flattened to get there.
+  The Mojo samples in README, TUTORIAL, CONTRIBUTING and CLAUDE.md are now
+  checked verbatim against CI-compiled source (`scripts/check-doc-samples.mjs`);
+  the README's struct example quoted a function that existed nowhere and now
+  quotes the tutorial's. `examples/codegen/` is built and run in CI for the
+  first time. Decisions and the deliberately ungated remainder are recorded in
+  `docs/plan-lazily-checked-artifacts.md`.
 - The changelog-diffing recipe in `docs/toolchain-migrations.md` now points at
   the modular monorepo's current layout (`Mojo/docs/site/...`, release tags
   `mojo/v<X.Y.Z>`). The old `mojo/docs/...` paths 404, which reads as "no such

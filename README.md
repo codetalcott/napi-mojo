@@ -72,15 +72,21 @@ it:
 def mojo_main(b: Bindings, env: NapiEnv, ctx: NapiValue) raises -> NapiValue:
     var host = NodeHost.from_context(b, env, ctx)
 
-    var fs = host.require("fs")
-    var args = List[NapiValue]()
-    args.append(JsString.create(b, env, "input.txt").value)
-    args.append(JsString.create(b, env, "utf8").value)
-    var text = fs.call_method(b, env, "readFileSync", args)
+    var path_mod = host.require("path")
+    var join_args = List[NapiValue]()
+    join_args.append(JsString.create(b, env, "usr").value)
+    join_args.append(JsString.create(b, env, "local").value)
+    join_args.append(JsString.create(b, env, "bin").value)
+    var joined = path_mod.call_method(b, env, "join", join_args)
+    host.console_log("joined: " + js_to_string(b, env, joined))
 
-    host.console_log("read " + js_to_string(b, env, text))
-    return JsNumber.create_int(b, env, 0).value   # becomes the exit code
+    # A number returned from mojo_main becomes the process exit code.
+    return JsNumber.create_int(b, env, 0).value
 ```
+
+(Quoted from [`examples/host/main.mojo`](examples/host/main.mojo), which CI
+runs; `readFileSync` and every other synchronous Node API is called the same
+way.)
 
 ```bash
 napi-mojo init myprog --host && cd myprog && napi-mojo run main.mojo
@@ -325,6 +331,13 @@ function, a nullable return, a struct in both directions, async work on a
 worker thread, and a class — building [`examples/tutorial/`](examples/tutorial),
 which CI compiles and calls on both platforms.
 
+**Writing Mojo against this framework:** [docs/MOJO-RULES.md](docs/MOJO-RULES.md)
+ships with the package and holds the dialect and FFI rules the framework's own
+maintainers work from — the spellings that compile on the pinned toolchain, and
+the handful of idioms whose wrong form crashes at runtime with no compiler
+signal. Read it before writing FFI code. It is generated from the repository's
+`CLAUDE.md`, so it cannot drift from the source it quotes.
+
 See [`examples/`](examples/) for runnable scripts.
 
 ### Building from source
@@ -508,25 +521,29 @@ host = "string"
 port = "number"
 verbose = "boolean"
 
-[functions.process_config]
-js_name = "processConfig"
+[functions.describe_config]
+js_name = "describeConfig"
 args = ["config"]
 returns = "string"
-mojo_fn = "process_config_pure"
+mojo_fn = "describe_config_pure"
 ```
 
 ```mojo
 from generated.structs import ConfigData
 
-def process_config_pure(c: ConfigData) -> String:
-    return c.host + ":" + String(Int(c.port))
+
+def describe_config_pure(c: ConfigData) -> String:
+    var summary = c.host + ":" + String(Int(c.port))
+    if c.verbose:
+        return summary + " (verbose)"
+    return summary
 ```
 
 Generates TypeScript:
 
 ```ts
 export interface Config { host: string; port: number; verbose: boolean; }
-export function processConfig(arg0: Config): string;
+export function describeConfig(arg0: Config): string;
 ```
 
 ### Other generator features
