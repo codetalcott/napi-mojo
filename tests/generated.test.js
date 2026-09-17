@@ -1,5 +1,9 @@
 const addon = require('../build/index.node');
 
+// Type-mismatch messages are asserted WHOLE (toBe, not toContain): every one
+// of them trailed heap garbage through 0.15.1 — the String handed to
+// napi_throw_type_error had no NUL terminator, so JS read past the end of the
+// message — and a substring match cannot see a suffix. Keep them exact.
 describe('Generated functions (code generator pipeline)', () => {
   // --- exampleAdd ---
 
@@ -25,7 +29,7 @@ describe('Generated functions (code generator pipeline)', () => {
       expect(true).toBe(false);
     } catch (e) {
       expect(e.name).toBe('TypeError');
-      expect(e.message).toContain('expected number');
+      expect(e.message).toBe('exampleAdd: expected number for arg 1, got string');
     }
   });
 
@@ -35,7 +39,7 @@ describe('Generated functions (code generator pipeline)', () => {
       expect(true).toBe(false);
     } catch (e) {
       expect(e.name).toBe('TypeError');
-      expect(e.message).toContain('expected number');
+      expect(e.message).toBe('exampleAdd: expected number for arg 2, got string');
     }
   });
 
@@ -55,7 +59,7 @@ describe('Generated functions (code generator pipeline)', () => {
       expect(true).toBe(false);
     } catch (e) {
       expect(e.name).toBe('TypeError');
-      expect(e.message).toContain('expected string');
+      expect(e.message).toBe('exampleGreet: expected string, got number');
     }
   });
 
@@ -79,7 +83,7 @@ describe('Generated functions (code generator pipeline)', () => {
       expect(true).toBe(false);
     } catch (e) {
       expect(e.name).toBe('TypeError');
-      expect(e.message).toContain('expected number');
+      expect(e.message).toBe('exampleIsPositive: expected number, got string');
     }
   });
 
@@ -103,7 +107,7 @@ describe('Generated functions (code generator pipeline)', () => {
       expect(true).toBe(false);
     } catch (e) {
       expect(e.name).toBe('TypeError');
-      expect(e.message).toContain('expected number');
+      expect(e.message).toBe('exampleClamp: expected number for arg 1, got string');
     }
   });
 });

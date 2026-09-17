@@ -105,8 +105,23 @@ jobs:
           npm run generate:addon
           git diff --exit-code src/generated/
 
+      # build.sh is --Werror (see its header): a deprecation that only warns
+      # is invisible until someone reads the log, and 27 of them sat there
+      # through the Mojo 1.1.0 bump. Every other compile of our own Mojo in
+      # this job carries the flag too.
       - name: Build Mojo addon
         run: pixi run bash build.sh
+
+      # The flag is itself a lazily checked artifact: nothing in the normal
+      # path proves it still turns a warning into a failure, least of all a
+      # warning inside an IMPORTED module (which is where the whole framework
+      # lives from build.sh's point of view). This asserts both halves on a
+      # scratch package with a currently-deprecated spelling: warns without
+      # --Werror, fails with it. If a toolchain retires that deprecation the
+      # first half fails and the probe idiom has to be replaced — the gate
+      # cannot quietly stop proving anything.
+      - name: Warnings-as-errors counterfactual (both halves)
+        run: node scripts/check-werror.mjs
 
       # Does the host's own libstdc++ still satisfy the Mojo runtime?
       #
@@ -134,9 +149,19 @@ jobs:
         run: |
           for ex in examples/*-addon.mojo; do
             echo "::group::$ex"
-            pixi run mojo build --emit shared-lib -I src "$ex" -o "/tmp/$(basename "$ex" .mojo).so"
+            pixi run mojo build --Werror --emit shared-lib -I src "$ex" -o "/tmp/$(basename "$ex" .mojo).so"
             echo "::endgroup::"
           done
+
+      # examples/codegen/ ships in the npm tarball (publish.yml checks for its
+      # build.sh and exports.toml) and was compiled by nothing — the same rot
+      # path the three examples above took. Built through its own build.sh,
+      # which stays free of --Werror because consumers copy it, then run so
+      # the generated callbacks are exercised, not just type-checked.
+      - name: Build and run codegen example
+        run: |
+          bash examples/codegen/build.sh
+          node examples/codegen/codegen.js
 
       # spike/ffi_probe.mojo is the canonical RUNNABLE statement of the FFI
       # contract, and nothing ran it — so its own comptime guard
@@ -151,7 +176,7 @@ jobs:
       # content rather than passing a null check.
       - name: FFI probe (origin-migration recipe, build + run)
         run: |
-          pixi run mojo build --emit shared-lib spike/ffi_probe.mojo \
+          pixi run mojo build --Werror --emit shared-lib spike/ffi_probe.mojo \
             -o "$RUNNER_TEMP/probe.so"
           cp "$RUNNER_TEMP/probe.so" "$RUNNER_TEMP/probe.node"
           node -e "
@@ -212,7 +237,7 @@ jobs:
       # covers whichever methods the examples happen to call.
       - name: Compile framework coverage (compile-only)
         run: |
-          pixi run mojo build --emit shared-lib -I src \
+          pixi run mojo build --Werror --emit shared-lib -I src \
             tests/compile/framework_coverage.mojo -o /tmp/framework_coverage.so
           node scripts/check-compile-coverage.mjs
 
@@ -231,6 +256,16 @@ jobs:
       - name: Docstring coverage (ratchet)
         run: node scripts/check-docstring-coverage.mjs
 
+      # The Mojo blocks in README, TUTORIAL, CONTRIBUTING and CLAUDE.md were
+      # compiled by nothing, and a retired idiom there is what a reader copies
+      # first. Each stanza of each block must be verbatim in a file this
+      # workflow compiles. The self-test runs first so a matcher that drifted
+      # into matching nothing cannot read as a clean pass.
+      - name: Doc code samples are verbatim from compiled Mojo
+        run: |
+          node scripts/check-doc-samples.mjs --self-test
+          node scripts/check-doc-samples.mjs
+
       # docs/api/ is generated from those same docstrings and checked in, so it
       # can drift from its source exactly the way src/generated/ could — and for
       # the same reason: nothing in `npm run build` regenerates it. This is the
@@ -239,6 +274,13 @@ jobs:
       # reference cannot disagree about which modules are in scope.
       - name: API reference is up to date
         run: node scripts/generate-api-reference.mjs --check
+
+      # docs/MOJO-RULES.md ships the FFI rules to consumers (CLAUDE.md does
+      # not ship). It is generated from CLAUDE.md's rules section so the copy
+      # cannot drift from the source it quotes — a hand-maintained extract
+      # would be one more lazily checked artifact.
+      - name: Shipped Mojo rules extract is up to date
+        run: node scripts/generate-rules-extract.mjs --check
 
       # A fourth lazily-checked thing: the exported-function table and the
       # counts embedded in prose. CLAUDE.md already warned that "nothing

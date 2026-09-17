@@ -52,22 +52,26 @@ node scripts/check-benchmark.mjs --update
 Public framework symbols use Mojo `"""` docstrings — not the `##`-above-the-def comments found in older code. Only `"""` is a language feature: it is what `mojo doc` extracts, what an editor hover shows, and what the coverage gate counts. Convert a `##` block opportunistically when you touch the method; there is no sweep planned.
 
 ```mojo
-def create(b: Bindings, env: NapiEnv, value: String) raises -> Self:
-    """Create a JS string from a Mojo String.
+    def has_own(self, b: Bindings, env: NapiEnv, key: NapiValue) raises -> Bool:
+        """Report whether the object has the property as its **own**.
 
-    Args:
-        b: Cached N-API bindings.
-        env: The N-API environment.
-        value: UTF-8 content; the byte length is passed explicitly, so the
-            String need not be NUL-terminated.
+        Unlike `has`, inherited properties do not count.
 
-    Returns:
-        A JsString wrapping the new napi_value.
+        Args:
+            b: Cached N-API bindings.
+            env: The N-API environment.
+            key: The property key, as a JS value.
 
-    Raises:
-        If napi_create_string_utf8 does not return napi_ok.
-    """
+        Returns:
+            True if the property is an own property.
+
+        Raises:
+            If napi_has_own_property does not return napi_ok.
+        """
 ```
+
+(`JsObject.has_own` in `src/napi/framework/js_object.mojo`, quoted verbatim —
+see "Code samples in docs" below for why.)
 
 The gate is a **ratchet, not a target**: it fails when the undocumented count rises, and equally when it falls without `scripts/docstring-floor.json` being updated in the same change (otherwise the coverage you just added can be silently undone). To move the floor:
 
@@ -92,8 +96,8 @@ Stdlib imports use the `std.` prefix:
 
 ```mojo
 from std.ffi import OwnedDLHandle
+from std.sys.info import size_of
 from std.memory.alloc import unsafe_alloc
-from std.collections import Optional
 ```
 
 ### Build Flag
@@ -105,9 +109,11 @@ pixi run mojo build --emit shared-lib -I src src/lib.mojo -o build/index.node  #
 
 (or just `pixi run bash build.sh`; standalone addons compile with `-I <path-to-napi-mojo>/src`).
 
+**Warnings are errors.** `build.sh`, `tests/codegen/build.sh` and every inline `mojo build` of this repo's own source in `test.yml` carry `--Werror`. A deprecation that only warned sat unread in the log through an entire toolchain bump; now it fails the PR. During a bump, set `NAPI_MOJO_WERROR=0` so deprecations stay warnings while you fix the hard errors first, then drop the override before opening the PR. `scripts/check-werror.mjs` runs in CI to prove the flag still fails on a warning inside an imported module — the flag is itself a thing that could silently stop working.
+
 ### Module Entry Point
 
-```mojo
+```mojo fragment
 @export("napi_register_module_v1")
 def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
     ...
@@ -115,6 +121,10 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
 ```
 
 See `examples/hello-addon.mojo` for the full pattern, including the `NapiBindings` allocation that must precede `ModuleBuilder`.
+
+### Code samples in docs
+
+Every ```` ```mojo ```` block in `README.md`, `docs/TUTORIAL.md`, `CLAUDE.md` and this file is checked by `scripts/check-doc-samples.mjs`: the block is split into stanzas on blank lines, a leading comment is treated as a caption, and each stanza must appear **verbatim, indentation included**, in a file CI compiles (the script lists them). Nothing compiled the samples before, and a retired idiom in one is what a reader copies first. So quote real code — `examples/tutorial/fns.mojo`, a framework method, a spike — rather than typing an illustration. A snippet that genuinely has no compilable home (an `...` body, a two-line idiom) is fenced ```` ```mojo fragment ````; the gate counts and prints those so exemptions stay visible. `docs/MOJO-RULES.md` is generated from `CLAUDE.md` by `npm run generate:rules` and is not edited by hand.
 
 ### Adding a prebuild platform
 

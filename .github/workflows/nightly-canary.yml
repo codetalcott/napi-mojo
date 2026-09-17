@@ -29,6 +29,14 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
 
+    # Warnings stay WARNINGS here. build.sh defaults to --Werror (test.yml's
+    # policy for the pinned stable toolchain), but on a nightly a deprecation
+    # between stable releases is expected and is the early signal this
+    # workflow exists to surface — not a failure that would hide a real break
+    # behind it. The build step counts them into the job summary instead.
+    env:
+      NAPI_MOJO_WERROR: '0'
+
     steps:
       - uses: actions/checkout@v7
 
@@ -85,7 +93,18 @@ jobs:
           git diff --exit-code src/generated/
 
       - name: Build Mojo addon
-        run: pixi run bash build.sh
+        run: |
+          # pipefail, not decorative: a step's default `bash -e` takes a
+          # pipeline's status from tee, so without it a FAILED build reads as
+          # green — and this is the workflow whose whole job is to notice a
+          # broken nightly.
+          set -o pipefail
+          pixi run bash build.sh 2>&1 | tee "$RUNNER_TEMP/build.log"
+          n=$(grep -c ': warning: ' "$RUNNER_TEMP/build.log" || true)
+          echo "Mojo warnings in build.sh on this nightly: $n" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$n" != "0" ]; then
+            echo "::warning::$n Mojo warning(s) on this nightly — they become errors under test.yml's --Werror when the pin moves"
+          fi
 
       # Cheap tripwire: `require()` alone only exercises the env-only N-API path
       # (module registration never touches a cached binding slot). The first

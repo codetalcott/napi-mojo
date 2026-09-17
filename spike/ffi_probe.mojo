@@ -334,46 +334,43 @@ def _roundtrip(b: ProbeBindings, env: NapiEnv, msg: StaticString) -> Bool:
     var n = msg.byte_length()
     var buf = unsafe_alloc[UInt8](n + 16)
     var ok = False
-    try:
-        var create = Pointer(to=b.create_string_utf8).unsafe_bitcast[
-            CreateStringFn
-        ]()[]
-        var read = Pointer(to=b.get_value_string_utf8).unsafe_bitcast[
-            GetValueStringFn
-        ]()[]
+    var create = Pointer(to=b.create_string_utf8).unsafe_bitcast[
+        CreateStringFn
+    ]()[]
+    var read = Pointer(to=b.get_value_string_utf8).unsafe_bitcast[
+        GetValueStringFn
+    ]()[]
 
-        var handle = NapiValue(unsafe_from_address=Int(0))
-        var st = create(
+    var handle = NapiValue(unsafe_from_address=Int(0))
+    var st = create(
+        env,
+        msg.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+        UInt(n),
+        Pointer(to=handle).unsafe_bitcast[
+            NoneType
+        ]().as_unsafe_any_origin(),
+    )
+    # Population B: keep the spill slot alive across the FFI write-through.
+    _ = handle
+    if st == NAPI_OK:
+        var written = UInt(0)
+        var st2 = read(
             env,
-            msg.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-            UInt(n),
-            Pointer(to=handle).unsafe_bitcast[
+            handle,
+            buf.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
+            UInt(n + 16),
+            Pointer(to=written).unsafe_bitcast[
                 NoneType
             ]().as_unsafe_any_origin(),
         )
-        # Population B: keep the spill slot alive across the FFI write-through.
-        _ = handle
-        if st == NAPI_OK:
-            var written = UInt(0)
-            var st2 = read(
-                env,
-                handle,
-                buf.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
-                UInt(n + 16),
-                Pointer(to=written).unsafe_bitcast[
-                    NoneType
-                ]().as_unsafe_any_origin(),
-            )
-            _ = written
-            if st2 == NAPI_OK and written == UInt(n):
-                var same = True
-                var src = msg.unsafe_ptr()
-                for i in range(n):
-                    if buf[unsafe_offset=i] != src[unsafe_offset=i]:
-                        same = False
-                ok = same
-    except:
-        ok = False
+        _ = written
+        if st2 == NAPI_OK and written == UInt(n):
+            var same = True
+            var src = msg.unsafe_ptr()
+            for i in range(n):
+                if buf[unsafe_offset=i] != src[unsafe_offset=i]:
+                    same = False
+            ok = same
     buf.unsafe_free()
     return ok
 

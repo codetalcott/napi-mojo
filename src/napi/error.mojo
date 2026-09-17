@@ -206,7 +206,9 @@ def throw_js_error(env: NapiEnv, msg: StringLiteral):
 def throw_js_error_dynamic(env: NapiEnv, msg: String):
     """Set a pending JavaScript `Error` with a computed String message.
 
-    The String is copied so it stays alive across the FFI call.
+    The String is copied, NUL-terminated (napi_throw_* reads a C string,
+    and a Mojo String carries no terminator — without this the message
+    trails heap garbage), and kept alive across the FFI call.
 
     Does not raise in Mojo and does not return a value — the exception
     surfaces when control returns to JavaScript. A no-op if an exception
@@ -221,9 +223,12 @@ def throw_js_error_dynamic(env: NapiEnv, msg: String):
     try:
         var msg_copy = msg  # owns the heap String bytes
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
-        var msg_ptr: OpaquePointer[
-            ImmutAnyOrigin
-        ] = msg_copy.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+        # napi_throw_* reads a NUL-terminated const char*, and a Mojo String's
+        # buffer carries no terminator: as_c_string_span() appends one.
+        var msg_c = msg_copy.as_c_string_span()
+        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_c.ptr().unsafe_bitcast[
+            NoneType
+        ]().as_unsafe_any_origin()
         _ = raw_throw_error(env, null_code, msg_ptr)
         _ = msg_copy^  # keep alive past the FFI call
     except:
@@ -262,7 +267,9 @@ def throw_js_type_error(env: NapiEnv, msg: StringLiteral):
 def throw_js_type_error_dynamic(env: NapiEnv, msg: String):
     """Set a pending JavaScript `TypeError` with a computed String message.
 
-    The String is copied so it stays alive across the FFI call.
+    The String is copied, NUL-terminated (napi_throw_* reads a C string,
+    and a Mojo String carries no terminator — without this the message
+    trails heap garbage), and kept alive across the FFI call.
 
     Does not raise in Mojo and does not return a value — the exception
     surfaces when control returns to JavaScript. A no-op if an exception
@@ -277,9 +284,12 @@ def throw_js_type_error_dynamic(env: NapiEnv, msg: String):
     try:
         var msg_copy = msg
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
-        var msg_ptr: OpaquePointer[
-            ImmutAnyOrigin
-        ] = msg_copy.unsafe_ptr().unsafe_bitcast[NoneType]().as_unsafe_any_origin()
+        # napi_throw_* reads a NUL-terminated const char*, and a Mojo String's
+        # buffer carries no terminator: as_c_string_span() appends one.
+        var msg_c = msg_copy.as_c_string_span()
+        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_c.ptr().unsafe_bitcast[
+            NoneType
+        ]().as_unsafe_any_origin()
         _ = raw_throw_type_error(env, null_code, msg_ptr)
         _ = msg_copy^
     except:
@@ -318,7 +328,9 @@ def throw_js_range_error(env: NapiEnv, msg: StringLiteral):
 def throw_js_range_error_dynamic(env: NapiEnv, msg: String):
     """Set a pending JavaScript `RangeError` with a computed String message.
 
-    The String is copied so it stays alive across the FFI call.
+    The String is copied, NUL-terminated (napi_throw_* reads a C string,
+    and a Mojo String carries no terminator — without this the message
+    trails heap garbage), and kept alive across the FFI call.
 
     Does not raise in Mojo and does not return a value — the exception
     surfaces when control returns to JavaScript. A no-op if an exception
@@ -333,9 +345,10 @@ def throw_js_range_error_dynamic(env: NapiEnv, msg: String):
     try:
         var msg_copy = msg
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
-        var msg_ptr: OpaquePointer[
-            ImmutAnyOrigin
-        ] = msg_copy.unsafe_ptr().unsafe_bitcast[
+        # napi_throw_* reads a NUL-terminated const char*, and a Mojo String's
+        # buffer carries no terminator: as_c_string_span() appends one.
+        var msg_c = msg_copy.as_c_string_span()
+        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_c.ptr().unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
         _ = raw_throw_range_error(env, null_code, msg_ptr)
@@ -373,7 +386,9 @@ def throw_js_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
 def throw_js_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     """Set a pending JavaScript `Error` with a computed String message.
 
-    The String is copied so it stays alive across the FFI call.
+    The String is copied, NUL-terminated (napi_throw_* reads a C string,
+    and a Mojo String carries no terminator — without this the message
+    trails heap garbage), and kept alive across the FFI call.
 
     Does not raise in Mojo and does not return a value — the exception
     surfaces when control returns to JavaScript. A no-op if an exception
@@ -387,7 +402,10 @@ def throw_js_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     """
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
-    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().unsafe_bitcast[
+    # napi_throw_* reads a NUL-terminated const char*, and a Mojo String's
+    # buffer carries no terminator: as_c_string_span() appends one.
+    var msg_c = msg_copy.as_c_string_span()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_c.ptr().unsafe_bitcast[
         NoneType
     ]().as_unsafe_any_origin()
     _ = raw_throw_error(b, env, null_code, msg_ptr)
@@ -420,7 +438,9 @@ def throw_js_type_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
 def throw_js_type_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     """Set a pending JavaScript `TypeError` with a computed String message.
 
-    The String is copied so it stays alive across the FFI call.
+    The String is copied, NUL-terminated (napi_throw_* reads a C string,
+    and a Mojo String carries no terminator — without this the message
+    trails heap garbage), and kept alive across the FFI call.
 
     Does not raise in Mojo and does not return a value — the exception
     surfaces when control returns to JavaScript. A no-op if an exception
@@ -434,7 +454,10 @@ def throw_js_type_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     """
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
-    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().unsafe_bitcast[
+    # napi_throw_* reads a NUL-terminated const char*, and a Mojo String's
+    # buffer carries no terminator: as_c_string_span() appends one.
+    var msg_c = msg_copy.as_c_string_span()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_c.ptr().unsafe_bitcast[
         NoneType
     ]().as_unsafe_any_origin()
     _ = raw_throw_type_error(b, env, null_code, msg_ptr)
@@ -467,7 +490,9 @@ def throw_js_range_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
 def throw_js_range_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     """Set a pending JavaScript `RangeError` with a computed String message.
 
-    The String is copied so it stays alive across the FFI call.
+    The String is copied, NUL-terminated (napi_throw_* reads a C string,
+    and a Mojo String carries no terminator — without this the message
+    trails heap garbage), and kept alive across the FFI call.
 
     Does not raise in Mojo and does not return a value — the exception
     surfaces when control returns to JavaScript. A no-op if an exception
@@ -481,7 +506,10 @@ def throw_js_range_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     """
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
-    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().unsafe_bitcast[
+    # napi_throw_* reads a NUL-terminated const char*, and a Mojo String's
+    # buffer carries no terminator: as_c_string_span() appends one.
+    var msg_c = msg_copy.as_c_string_span()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_c.ptr().unsafe_bitcast[
         NoneType
     ]().as_unsafe_any_origin()
     _ = raw_throw_range_error(b, env, null_code, msg_ptr)
@@ -522,7 +550,9 @@ def throw_js_syntax_error(env: NapiEnv, msg: StringLiteral):
 def throw_js_syntax_error_dynamic(env: NapiEnv, msg: String):
     """Set a pending JavaScript `SyntaxError` with a computed String message.
 
-    The String is copied so it stays alive across the FFI call.
+    The String is copied, NUL-terminated (napi_throw_* reads a C string,
+    and a Mojo String carries no terminator — without this the message
+    trails heap garbage), and kept alive across the FFI call.
 
     Does not raise in Mojo and does not return a value — the exception
     surfaces when control returns to JavaScript. A no-op if an exception
@@ -537,9 +567,10 @@ def throw_js_syntax_error_dynamic(env: NapiEnv, msg: String):
     try:
         var msg_copy = msg
         var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
-        var msg_ptr: OpaquePointer[
-            ImmutAnyOrigin
-        ] = msg_copy.unsafe_ptr().unsafe_bitcast[
+        # napi_throw_* reads a NUL-terminated const char*, and a Mojo String's
+        # buffer carries no terminator: as_c_string_span() appends one.
+        var msg_c = msg_copy.as_c_string_span()
+        var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_c.ptr().unsafe_bitcast[
             NoneType
         ]().as_unsafe_any_origin()
         _ = raw_throw_syntax_error(env, null_code, msg_ptr)
@@ -574,7 +605,9 @@ def throw_js_syntax_error(b: Bindings, env: NapiEnv, msg: StringLiteral):
 def throw_js_syntax_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     """Set a pending JavaScript `SyntaxError` with a computed String message.
 
-    The String is copied so it stays alive across the FFI call.
+    The String is copied, NUL-terminated (napi_throw_* reads a C string,
+    and a Mojo String carries no terminator — without this the message
+    trails heap garbage), and kept alive across the FFI call.
 
     Does not raise in Mojo and does not return a value — the exception
     surfaces when control returns to JavaScript. A no-op if an exception
@@ -588,7 +621,10 @@ def throw_js_syntax_error_dynamic(b: Bindings, env: NapiEnv, msg: String):
     """
     var msg_copy = msg
     var null_code = OpaquePointer[ImmutAnyOrigin](unsafe_from_address=Int(0))
-    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_copy.unsafe_ptr().unsafe_bitcast[
+    # napi_throw_* reads a NUL-terminated const char*, and a Mojo String's
+    # buffer carries no terminator: as_c_string_span() appends one.
+    var msg_c = msg_copy.as_c_string_span()
+    var msg_ptr: OpaquePointer[ImmutAnyOrigin] = msg_c.ptr().unsafe_bitcast[
         NoneType
     ]().as_unsafe_any_origin()
     _ = raw_throw_syntax_error(b, env, null_code, msg_ptr)

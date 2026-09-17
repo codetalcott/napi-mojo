@@ -74,7 +74,7 @@ content. See the changelog-rotation note below.
 2. **Diff the changelog** (above) to get the actual breaking-change list. You are not flying blind after this, which is what makes a single big jump safer than stepping through every intermediate nightly (intermediates carry transient breakage a later one repairs).
 3. **Check whether the new API already exists on your current pin.** If it does, do the risky migration on the compiler you already trust and prove it green *before* bumping. This decouples "my refactor broke it" from "the compiler broke it" — the single most valuable scheduling decision available.
 4. **Validate any new idiom in `spike/ffi_probe.mojo` before mass-editing.** Minutes of work; it de-risked a 274-site edit.
-5. **Bump, then fix hard errors before deprecation warnings.** Doing renames first floods the build log while you still need to read it.
+5. **Bump, then fix hard errors before deprecation warnings.** Doing renames first floods the build log while you still need to read it. Builds are `--Werror` by default (since 2026-09-17), which would make the two the same thing — so run the bump with `NAPI_MOJO_WERROR=0` until the hard errors are gone, then drop the override: CI compiles with the flag, and a leftover deprecation fails the PR instead of sitting in a log.
 6. **Drive mechanical fixes from compiler diagnostics, not global sed.** Build → patch exactly the flagged locations → rebuild → repeat. The origin migration converged 351 → 187 → 65 → 35 → 30, then ~19 needed hand placement. A blind rewrite in this area is how the earlier SIGSEGVs happened.
 7. **Smoke before jest**: `node -e "require('./build/index.node').hello()"`. Module registration uses only the env-only N-API path, so `require()` alone loads fine even with a corrupt bindings cache — the first *call* is the first cached-slot dereference.
 8. **Guard Malloc after any pointer-lifetime change** (recipe below).
@@ -315,8 +315,14 @@ re-checking every bump, since its failure mode is a silent fallback to dlsym.
 warns `'except' logic is unreachable, try doesn't raise an exception`.
 `_roundtrip` is declared without `raises` and reads raw status codes instead of
 `check_status`, so that `except:` never could run — 1.1.0 simply reports it.
-Left as-is deliberately: the probe passes `originProbe PASS 4/4`, and removing
-a defensive branch from the file that documents the FFI contract buys nothing.
+Left as-is at the bump; **fixed on 2026-09-17 when every CI compile went
+`--Werror`** (see `docs/plan-lazily-checked-artifacts.md`, "Decisions"): the
+`try`/`except` was flattened away — `_roundtrip` reads raw status codes and
+never raised, so nothing was lost — and the probe still reports
+`originProbe PASS 4/4`. The one warning that stays, on purpose, is
+`spike/keepalive_probe.mojo`'s `_ = slot^`: that warning IS the counterfactual
+`check-keepalive-barrier.mjs` asserts, so that probe is compiled without the
+flag.
 
 **Verification run for this bump** (all green on darwin-arm64 / Node 24.15.0):
 addon build and the compile-coverage gate both **warning-clean, 0 errors**; 805
