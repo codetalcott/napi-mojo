@@ -429,15 +429,18 @@ describe('the scaffolded loader explains load failures', () => {
 });
 
 // `-I` adds library include roots after the framework's, and `run`'s build
-// cache must see every file that can change the compile. The compiler here is
-// a stub passed through --mojo: it records each invocation and writes a dummy
-// output, so what is tested is exactly what the CLI decides — which roots it
-// passes, in what order, and when it recompiles — with no toolchain. The
-// real compile is the "Host-mode program with library include roots" CI step.
-describe('library include roots (-I)', () => {
+// cache must see every input that can change the compile: the files, and the
+// compiler itself. The compiler here is a stub passed through --mojo: it
+// reports a version from a file the tests can change, records each compile
+// and writes a dummy output, so what is tested is exactly what the CLI
+// decides — which roots it passes, in what order, and when it recompiles —
+// with no toolchain. The real compile is the "Host-mode program with library
+// include roots" CI step.
+describe('run build cache and library include roots (-I)', () => {
   const { writeFileSync, mkdirSync, symlinkSync } = require('fs');
   let log;
   let stub;
+  let versionFile;
 
   const write = (rel, text) => {
     const p = path.join(dir, rel);
@@ -453,8 +456,15 @@ describe('library include roots (-I)', () => {
 
   beforeEach(() => {
     log = path.join(dir, 'compiles.jsonl');
+    versionFile = write('stub-version.txt', 'Mojo 1.1.0 (stub)\n');
     stub = write('stub-mojo.cjs', `const fs = require('fs');
 const args = process.argv.slice(2);
+if (args[0] === '--version') {
+  // What \`run\` asks for the compiler's identity. Not a compile, so not logged.
+  if (!fs.existsSync(${JSON.stringify(versionFile)})) process.exit(1);
+  process.stdout.write(fs.readFileSync(${JSON.stringify(versionFile)}, 'utf8'));
+  process.exit(0);
+}
 fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify(args) + '\\n');
 const o = args.indexOf('-o');
 if (o !== -1) fs.writeFileSync(args[o + 1], 'not a real addon');
@@ -527,6 +537,25 @@ if (o !== -1) fs.writeFileSync(args[o + 1], 'not a real addon');
     write('real/greet/__init__.mojo', 'v2');
     cli('run');
     expect(compiles()).toHaveLength(2);
+  });
+
+  // The command string survives a toolchain upgrade, so the key holds what
+  // the compiler says it is. Without it the old binary skips the new compiler
+  // and loads the new runtime: its RUNPATH points into the environment, which
+  // pixi upgrades in place.
+  test('a compiler that reports another version recompiles', () => {
+    cli('run');
+    write('stub-version.txt', 'Mojo 1.2.0 (stub)\n');
+    cli('run');
+    expect(compiles()).toHaveLength(2);
+  });
+
+  test('a compiler that cannot report its version is never served from the cache', () => {
+    rmSync(versionFile);
+    const first = cli('run');
+    cli('run');
+    expect(compiles()).toHaveLength(2);
+    expect(first.stderr).toContain('run cache is off');
   });
 
   test('reordering library roots recompiles', () => {
