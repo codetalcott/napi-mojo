@@ -3,6 +3,34 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
+## Unreleased
+
+### Added
+
+- **`-I <dir>` on `napi-mojo build` and `run`**: a directory of Mojo packages
+  to import from, repeatable, searched after the framework root so a library
+  can never silently replace `napi`. A root that is missing, not a directory,
+  the framework root again, given twice, or holding its own `napi` package is
+  refused; a root that is itself a package gets a warning that `-I` wants its
+  parent. `run`'s build cache hashes every root, in order.
+- **`examples/m0-session/`**: an existing Mojo library compiled into an addon
+  through `-I`. m0 (mojo-http's application framework, from its PyPI wheel)
+  signs session cookies and verifies stream grants; the example exposes that
+  code to JavaScript unchanged, and `parity.mjs` checks it against an issuer
+  written on `node:crypto` and against mojo-http's pinned vectors. The
+  non-required `m0-interop` job runs it at a pinned m0 version, after checking
+  the wheel was gated on the Mojo `pixi.toml` pins. Mutation-checked: eight
+  reverted rules, on the oracle's side and the addon's, each fail it.
+
+### Fixed
+
+- **`napi-mojo run` served a stale binary after an edit behind a symlinked
+  directory.** Its cache walk skipped symlinked directories, which is how a
+  library usually lands beside an entry, and hashed only `.mojo` files. It
+  now follows symlinks, with a cycle guard, and hashes `.🔥`, `.mojopkg` and
+  `.mojoc` too; `node_modules` is no longer walked. `tests/cli.test.js` covers
+  each rule with a stub compiler, and each was checked by reverting it.
+
 ## 0.16.0 — 2026-09-17
 
 **Adopts the Mojo 1.1.0 stable toolchain** (`max = "==26.6.0"`, from Mojo

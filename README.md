@@ -321,6 +321,19 @@ the Mojo runtime libraries next to the `.node` and rewrites its load paths, so
 the result runs on machines with no Mojo installation (this is how the demo
 packages on npm are produced).
 
+To import another Mojo library, pass the directory that holds its packages
+with `-I` (repeatable; `build` and `run` alike). Roots are searched after the
+framework's, and `run`'s build cache covers every file under them, so an edit
+inside a library recompiles on the next run:
+
+```bash
+npx napi-mojo build -I ../shared-mojo -I vendor/some-lib/src
+```
+
+[`examples/m0-session/`](examples/m0-session/) compiles an existing library
+this way: m0's session and grant code, from its PyPI wheel, checked in CI
+against an independent `node:crypto` issuer.
+
 **API reference:** [docs/api/](docs/api/) documents the framework surface your
 addon calls into — `JsObject`, `CbArgs`, the error helpers — generated from the
 Mojo docstrings. It covers the consumer-facing core today and names the modules

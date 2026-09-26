@@ -40,6 +40,7 @@
     "!examples/tutorial/build",
     "!examples/host/.napi-mojo",
     "!examples/tutorial/generated",
+    "!examples/m0-session/build",
     "bin/",
     "scripts/generate-addon.mjs",
     "scripts/generate-dts.js",
