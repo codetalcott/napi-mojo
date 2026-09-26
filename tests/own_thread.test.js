@@ -26,6 +26,16 @@ function child(script) {
   });
 }
 
+// toEqual, not toMatchObject, so a failure prints how the child died: a
+// signal and whatever it wrote to stderr, not just `status: null`.
+function expectClean(res) {
+  expect({ status: res.status, signal: res.signal, stderr: res.stderr }).toEqual({
+    status: 0,
+    signal: null,
+    stderr: expect.any(String),
+  });
+}
+
 // Four one-second jobs, then a file read 100 ms later: on the pool the read
 // waits for a job to finish, on their own threads it does not wait at all.
 const readBehindJobs = (fn) => `
@@ -46,7 +56,7 @@ describe('long async jobs and the libuv thread pool', () => {
   // nothing about where the jobs ran.
   test('four jobs on the pool stall a file read behind them', () => {
     const res = child(readBehindJobs('asyncSleep'));
-    expect({ status: res.status, stderr: res.stderr }).toMatchObject({ status: 0 });
+    expectClean(res);
     const out = JSON.parse(res.stdout);
     expect(out.values).toEqual([1000, 1000, 1000, 1000]);
     expect(out.readMs).toBeGreaterThan(500);
@@ -54,7 +64,7 @@ describe('long async jobs and the libuv thread pool', () => {
 
   test('the same jobs on their own threads leave the pool free', () => {
     const res = child(readBehindJobs('threadSleep'));
-    expect({ status: res.status, stderr: res.stderr }).toMatchObject({ status: 0 });
+    expectClean(res);
     const out = JSON.parse(res.stdout);
     expect(out.values).toEqual([1000, 1000, 1000, 1000]);
     expect(out.readMs).toBeLessThan(250);
@@ -87,35 +97,62 @@ describe('AsyncWork.queue_on_thread', () => {
     const res = child(`
       require(${JSON.stringify(ADDON)}).threadSleep(300).then((v) => console.log('resolved', v));
     `);
-    expect({ status: res.status, stderr: res.stderr }).toMatchObject({ status: 0 });
+    expectClean(res);
     expect(res.stdout.trim()).toBe('resolved 300');
   }, 30000);
 
-  // The job's thread finishes after its environment is gone. Three things
-  // have to hold: the addon is still mapped (Node dlcloses a Worker's addons
-  // with its environment, and only the Worker loaded this one, so
-  // queue_on_thread pins the image); the thread never touches the threadsafe
-  // function (Node 22 and 24 free it with the environment); and complete
-  // still runs, with a null env, so the job's data is freed. sleep_complete
-  // prints a marker when it sees a null env.
-  test('a Worker terminated with a job in flight leaves the process healthy', () => {
+  // A Worker terminated with a job in flight waits for the job before it
+  // exits, as it does for queued napi_async_work. Anything sooner crashes:
+  // Node 22 and 24 free the job's threadsafe function at teardown even while
+  // its thread holds it, and Node dlcloses a Worker's addons with its
+  // environment, which unmapped this one under a job still in `execute`.
+  // complete then runs with a null env and still frees the data;
+  // sleep_complete prints a marker when it sees one.
+  test('a Worker terminated with a job in flight waits for it, as for queued work', () => {
     const res = child(`
       const { Worker } = require('worker_threads');
       const addon = ${JSON.stringify(ADDON)};
       const w = new Worker(
+        'const started = Date.now();' +
         'require(' + JSON.stringify(addon) + ').threadSleep(500);' +
-        "require('worker_threads').parentPort.postMessage('started');",
+        "require('worker_threads').parentPort.postMessage(started);",
         { eval: true });
-      w.on('message', () => setTimeout(() => w.terminate(), 50));
-      w.on('exit', () => setTimeout(() => {
-        require(addon).threadSleep(10).then((v) => console.log('main still works', v));
-      }, 800));
+      let started;
+      w.on('message', (t) => { started = t; setTimeout(() => w.terminate(), 50); });
+      w.on('exit', () => {
+        // The job cannot have finished before started + 500.
+        console.log('exit after the job', Date.now() >= started + 450);
+        setTimeout(() => {
+          require(addon).threadSleep(10).then((v) => console.log('main still works', v));
+        }, 100);
+      });
     `);
-    expect({ status: res.status, stderr: res.stderr }).toMatchObject({ status: 0 });
+    expectClean(res);
     expect(res.stdout.trim().split('\n')).toEqual([
       'napi-mojo-sleep-completed-without-env',
+      'exit after the job true',
       'main still works 10',
     ]);
+  }, 30000);
+
+  // Each job's thread is joined when its job completes. A thread nobody joins
+  // keeps its 8 MiB stack mapped for the life of the process, which on Linux
+  // shows in VmSize: 100 unjoined jobs would add ~800 MiB. Joined, glibc
+  // reuses the stacks.
+  (process.platform === 'linux' ? test : test.skip)('every job\'s thread is reaped', () => {
+    const res = child(`
+      const m = require(${JSON.stringify(ADDON)});
+      const fs = require('fs');
+      const vmKiB = () => Number(/VmSize:\\s+(\\d+)/.exec(fs.readFileSync('/proc/self/status', 'utf8'))[1]);
+      (async () => {
+        for (let i = 0; i < 10; i++) await m.threadSleep(0);
+        const before = vmKiB();
+        for (let i = 0; i < 100; i++) await m.threadSleep(0);
+        console.log('growth MiB under 100', (vmKiB() - before) / 1024 < 100);
+      })();
+    `);
+    expectClean(res);
+    expect(res.stdout.trim()).toBe('growth MiB under 100 true');
   }, 30000);
 
   test('process.exit with a job in flight exits cleanly', () => {
@@ -123,6 +160,6 @@ describe('AsyncWork.queue_on_thread', () => {
       require(${JSON.stringify(ADDON)}).threadSleep(2000);
       setTimeout(() => process.exit(0), 50);
     `);
-    expect({ status: res.status, stderr: res.stderr }).toMatchObject({ status: 0 });
+    expectClean(res);
   }, 30000);
 });

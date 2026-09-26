@@ -24,9 +24,8 @@
 ## reject_with_error forms accept.
 
 from std.atomic import Atomic
-from std.ffi import OwnedDLHandle, c_char, c_int, external_call
+from std.ffi import c_int, external_call
 from std.memory.alloc import unsafe_alloc
-from std.sys.info import CompilationTarget
 
 from napi.types import (
     NapiEnv,
@@ -129,8 +128,8 @@ struct AsyncWork:
         `queue` runs `execute`: four threads by default (`UV_THREADPOOL_SIZE`),
         shared with `fs`, `dns.lookup`, `crypto` and `zlib`, so four jobs that
         each take a second stall every file read in the process for that
-        second. This starts a detached thread per call, with the 8 MiB stack
-        libuv gives its own threads, and hands the job back to the JS thread
+        second. This starts a thread per call, with the 8 MiB stack libuv
+        gives its own threads, and hands the job back to the JS thread
         through a threadsafe function.
 
         Where it differs from `queue`:
@@ -139,14 +138,13 @@ struct AsyncWork:
           and the `reject_with_error` forms accept the null handle.
         - Starting a thread costs tens of microseconds, so short jobs belong
           on `queue`.
-        - If the environment is torn down first (a terminated `Worker`),
-          `complete` runs with a null `env` and status `napi_closing`,
-          possibly on the job's thread. It must then only free its data, which
-          is all `resolve` and the `reject_with_error` forms do for a null env.
+        - If the environment is torn down with the job in flight (a
+          terminated `Worker`), teardown waits for `execute` to return, as it
+          does for queued work, and `complete` then runs with a null `env` and
+          status `napi_closing`, possibly on the job's thread. It must only
+          free its data then, which is all `resolve` and the
+          `reject_with_error` forms do for a null env.
         - A job in flight keeps the event loop alive, as queued work does.
-        - The addon's image is pinned: never unloaded, even after the last
-          `Worker` that loaded it exits, because a job's thread can still be
-          running its code then.
 
         Args:
             b: The cached bindings.
@@ -162,11 +160,10 @@ struct AsyncWork:
             The promise, its deferred, and a null work handle.
 
         Raises:
-            If the image cannot be pinned, or the promise, the threadsafe
-            function, the cleanup hook or the thread cannot be created.
-            Neither callback runs then, and the caller still owns `data`.
+            If the promise, the threadsafe function, the cleanup hook or the
+            thread cannot be created. Neither callback runs then, and the
+            caller still owns `data`.
         """
-        _pin_this_image()
         var p = JsPromise.create(b, env)
         var resource_name = JsString.create_literal(b, env, name)
         var call_js_ref = _job_call_js
@@ -204,6 +201,9 @@ struct AsyncWork:
         var hook_ptr = Pointer(to=hook_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
+        # _job_call_js removes the hook with this exact pointer, never its own
+        # reference to _job_env_teardown: see _ThreadJob.hook.
+        job[].hook = hook_ptr.unsafe_origin_cast[MutUntrackedOrigin]()
         var added = raw_add_env_cleanup_hook(b, env, hook_ptr, job_arg)
         if added != NAPI_OK:
             _ = raw_release_threadsafe_function(
@@ -214,8 +214,8 @@ struct AsyncWork:
             check_status(added)
 
         var main_ref = _job_thread_main
-        var rc = _spawn_detached(
-            Pointer(to=main_ref).unsafe_bitcast[Int]()[], Int(job)
+        var rc = _spawn_thread(
+            Pointer(to=main_ref).unsafe_bitcast[Int]()[], job.as_unsafe_any_origin()
         )
         if rc != 0:
             _ = raw_remove_env_cleanup_hook(b, env, hook_ptr, job_arg)
@@ -320,35 +320,40 @@ def _delete_work(b: Bindings, env: NapiEnv, work: NapiAsyncWork) raises:
 # ---------------------------------------------------------------------------
 # queue_on_thread's job
 #
-# The job's thread runs this image's code, and Node dlcloses a Worker's
-# addons when that Worker's environment is destroyed: for an addon only a
-# Worker loaded, that unmaps it under a thread still sleeping in `execute`,
-# which then faults on return (measured: SIGSEGV at an unnamed address, every
-# run). A thread cannot release a hold on the code it is running, so
-# queue_on_thread pins the image for good before it starts one.
-#
 # Three parties touch a job: its thread, the threadsafe function's call_js_cb
-# (_job_call_js, on the JS thread) and an environment cleanup hook
-# (_job_env_teardown, on the JS thread at teardown). The hook exists because
-# Node 22 and 24 FREE a threadsafe function when its environment is torn
-# down, even while a thread still holds it, so a thread that finishes after a
-# Worker was terminated would call into freed memory. (Node's main branch
-# waits for the last holder; the versions this framework supports do not.)
+# (_job_call_js) and an environment cleanup hook (_job_env_teardown). The
+# last two run on the environment's own thread, and whichever runs first
+# joins the job's thread before it reads anything the thread wrote. That join
+# is the whole of the synchronisation.
 #
-# `state` settles who completes the job. The thread and the hook race to
-# leave _JOB_RUNNING: if the thread wins it hands the job over, and the hook
-# waits out the two threadsafe-function calls, which are what the teardown
-# after it frees; if the hook wins, the thread never touches the threadsafe
-# function and runs `complete` itself with a null env. `refs` is one
-# reference for the thread and one for the JS side, and whichever party
-# drops the last one frees the job.
+# The hook is for a Worker terminated with the job in flight, and it joins,
+# so teardown waits for the job exactly as it waits for queued
+# napi_async_work (measured: a terminated Worker exits ~950 ms after
+# terminate() with a one-second job in flight, on either path). Returning
+# sooner is a crash two ways over:
+#   - Node 22 and 24 free a threadsafe function at teardown even while a
+#     thread still holds it (Node's main branch waits for the last holder);
+#   - Node dlcloses a Worker's addons when its environment is destroyed,
+#     which unmapped this image under a thread still in `execute` (SIGSEGV on
+#     Linux, every run).
+# Pinning the image instead is not portable. dyld ignores RTLD_NODELETE on an
+# RTLD_NOLOAD re-open, and without NOLOAD it keeps only the image's own pages
+# mapped: it still runs the image's terminators and unmaps the Mojo runtime
+# libraries it depends on (dyld's DyldAPIs.cpp and DyldRuntimeState.cpp).
+# The hook is registered AFTER the threadsafe function, so it runs before
+# that function's own teardown: cleanup hooks run newest first.
+#
+# The hook also raises `closing` before it joins, and a thread that sees it
+# after `execute` completes the job itself instead of queuing it. Node drains
+# a torn-down threadsafe function's queue into call_js_cb with a null env;
+# Deno 2.9.6 and Bun 1.3.11 do not, so a job queued at teardown leaked its
+# data there (check-runtimes.mjs, ownThreadTeardown).
+#
+# _job_call_js joins as well, because the thread still calls
+# napi_release_threadsafe_function after its job is queued, and a Worker
+# terminated inside that window would free the function under it. By then
+# `execute` has returned, so the wait is the thread's last few calls.
 # ---------------------------------------------------------------------------
-
-comptime _JOB_RUNNING: Int64 = 0
-comptime _JOB_HANDING_OFF: Int64 = 1  # the thread is inside the two TSFN calls
-comptime _JOB_QUEUED: Int64 = 2  # handed over: _job_call_js completes the job
-comptime _JOB_NOT_QUEUED: Int64 = 3  # the hand-off failed: the thread completed it
-comptime _JOB_ENV_GONE: Int64 = 4  # the hook won: the thread completes it
 
 comptime _JOB_STACK_BYTES = 8 << 20
 """What libuv gives each pool thread. `execute` is written for either place,
@@ -362,10 +367,19 @@ struct _ThreadJob(Movable):
     var env: NapiEnv
     var tsfn: NapiThreadsafeFunction
     var bindings_addr: Int
-    var state: Int64  # atomic: _JOB_*
-    var refs: Int64  # atomic: the thread's reference and the JS side's
-    var hook_ran: Bool  # JS thread only
-    var completed: Bool  # JS thread only: completed with a null env
+    # The cleanup hook exactly as registered. A `def` taken as a value is a
+    # closure materialised at that use site, so _job_env_teardown's address
+    # in _job_call_js is not the one queue_on_thread registered (measured
+    # 0x1A0 apart), and napi_remove_env_cleanup_hook returns napi_ok whether
+    # it found the pair or not: the hook silently stayed, and Node aborted on
+    # the duplicate pair when a later job reused this job's address.
+    var hook: NapiStore
+    var tid: Int  # pthread_t: set after pthread_create, read by whoever joins
+    var closing: Int64  # atomic: set by the hook before it joins
+    var joined: Bool  # environment thread only
+    var queued: Bool  # written by the job's thread, read after it is joined
+    var hook_ran: Bool  # environment thread only
+    var completed: Bool  # environment thread only: completed with a null env
 
     def __init__(
         out self,
@@ -382,8 +396,11 @@ struct _ThreadJob(Movable):
         self.env = env
         self.tsfn = tsfn
         self.bindings_addr = bindings_addr
-        self.state = _JOB_RUNNING
-        self.refs = 2
+        self.hook = NapiStore(unsafe_from_address=Int(0))
+        self.tid = 0
+        self.closing = 0
+        self.joined = False
+        self.queued = False
         self.hook_ran = False
         self.completed = False
 
@@ -398,10 +415,16 @@ def _atomic(ref word: Int64) -> Pointer[Atomic[Int64], MutUntrackedOrigin]:
     )
 
 
-def _drop_ref(job: _JobPtr):
-    if _atomic(job[].refs)[].fetch_sub(1) == 1:
-        job.unsafe_deinit_pointee()
-        job.unsafe_free()
+def _reap(job: _JobPtr):
+    # Wait for the job's thread to exit, once. Environment thread only.
+    if not job[].joined:
+        _ = external_call["pthread_join", c_int, Int, Int](job[].tid, 0)
+        job[].joined = True
+
+
+def _free_job(job: _JobPtr):
+    job.unsafe_deinit_pointee()
+    job.unsafe_free()
 
 
 def _run_complete(job: _JobPtr, env: NapiEnv, status: NapiStatus):
@@ -427,28 +450,29 @@ def _job_thread_main(arg: Int) -> Int:
     run(job[].env.as_unsafe_any_origin(), job[].data.as_unsafe_any_origin())
 
     var no_env = NapiEnv(unsafe_from_address=Int(0))
-    var expected = _JOB_RUNNING
-    if _atomic(job[].state)[].compare_exchange(expected, _JOB_HANDING_OFF):
-        var b = Bindings(unsafe_from_address=job[].bindings_addr)
-        var tsfn = job[].tsfn
-        var pushed = raw_call_threadsafe_function(
-            b,
-            tsfn,
-            OpaquePointer[MutAnyOrigin](unsafe_from_address=arg),
-            NAPI_TSFN_NONBLOCKING,
-        )
-        if pushed == NAPI_OK:
-            _ = raw_release_threadsafe_function(b, tsfn, NAPI_TSFN_RELEASE)
-            _atomic(job[].state)[].store(_JOB_QUEUED)
-        else:
-            # Not queued, so _job_call_js never sees this job. On napi_closing
-            # the call has already given up this thread's hold: no release.
-            _atomic(job[].state)[].store(_JOB_NOT_QUEUED)
-            _run_complete(job, no_env, NAPI_CLOSING)
-    else:
-        # The environment is gone and so, possibly, is the threadsafe function.
+    if _atomic(job[].closing)[].load() != 0:
+        # The environment is being torn down and its hook is waiting on
+        # this thread: complete here rather than queue behind the teardown.
+        # The threadsafe function is left alone, not even released: that the
+        # hook runs before the function's own teardown is Node's order, and
+        # N-API does not promise it.
         _run_complete(job, no_env, NAPI_CLOSING)
-    _drop_ref(job)
+        return 0
+    var b = Bindings(unsafe_from_address=job[].bindings_addr)
+    var tsfn = job[].tsfn
+    var pushed = raw_call_threadsafe_function(
+        b,
+        tsfn,
+        OpaquePointer[MutAnyOrigin](unsafe_from_address=arg),
+        NAPI_TSFN_NONBLOCKING,
+    )
+    if pushed == NAPI_OK:
+        _ = raw_release_threadsafe_function(b, tsfn, NAPI_TSFN_RELEASE)
+        job[].queued = True  # safe after the push: every reader joins first
+        return 0
+    # Not queued, so _job_call_js never sees this job: complete it here. On
+    # napi_closing the call has already given up this thread's hold.
+    _run_complete(job, no_env, NAPI_CLOSING)
     return 0
 
 
@@ -459,75 +483,35 @@ def _job_call_js(
     data: OpaquePointer[MutAnyOrigin],
 ):
     var job = data.unsafe_bitcast[_ThreadJob]()
+    _reap(job)
     if Int(env) == 0:
-        # Teardown drained the queue: the job was handed over, the env is gone.
+        # Teardown drained the queue: the job was queued, the env is gone.
         _run_complete(job, env, NAPI_CLOSING)
         job[].completed = True
         if job[].hook_ran:
-            _drop_ref(job)
+            _free_job(job)
         return
     var b = Bindings(unsafe_from_address=job[].bindings_addr)
-    var hook_ref = _job_env_teardown
     _ = raw_remove_env_cleanup_hook(
-        b,
-        env,
-        Pointer(to=hook_ref).unsafe_bitcast[OpaquePointer[MutAnyOrigin]]()[],
-        data,
+        b, env, job[].hook.as_unsafe_any_origin(), data
     )
     _run_complete(job, env, NAPI_OK)
-    _drop_ref(job)
+    _free_job(job)
 
 
 def _job_env_teardown(arg: OpaquePointer[MutAnyOrigin]):
     var job = arg.unsafe_bitcast[_ThreadJob]()
     job[].hook_ran = True
-    var expected = _JOB_RUNNING
-    if _atomic(job[].state)[].compare_exchange(expected, _JOB_ENV_GONE):
-        _drop_ref(job)  # _job_call_js will never see this job
-        return
-    # The thread is handing the job over, or has. The teardown after this hook
-    # frees the threadsafe function, so wait until the thread is out of it.
-    while _atomic(job[].state)[].load() == _JOB_HANDING_OFF:
-        _ = external_call["sched_yield", c_int]()
-    if _atomic(job[].state)[].load() == _JOB_NOT_QUEUED or job[].completed:
-        _drop_ref(job)
-    # Otherwise queued: teardown drains it into _job_call_js with a null env,
-    # which drops the JS side's reference.
+    _atomic(job[].closing)[].store(1)
+    _reap(job)
+    if job[].completed or not job[].queued:
+        _free_job(job)
+    # Otherwise queued: on Node the threadsafe function's own teardown, which
+    # runs after this hook, drains it into _job_call_js with a null env.
 
 
-def _pin_flags() -> Int:
-    # RTLD_LAZY | RTLD_NOLOAD | RTLD_NODELETE. glibc refuses a mode with no
-    # binding mode (mojo-http's m0-postgres measured it), NOLOAD so this can
-    # never map a second image, and no RTLD_GLOBAL: Node opened the addon local.
-    comptime if CompilationTarget.is_macos():
-        return 1 | 0x10 | 0x80
-    else:
-        return 1 | 4 | 0x1000
-
-
-def _pin_this_image() raises:
-    # Re-open this image by the name the loader knows it by, flagged
-    # RTLD_NODELETE, which both glibc and dyld apply to an image already
-    # loaded: no dlclose unmaps it after that, this handle's own included.
-    # Through OwnedDLHandle because the stdlib already declares dlopen.
-    var info = unsafe_alloc[Int](4)  # Dl_info: four words, dli_fname first
-    var main_ref = _job_thread_main
-    var found = external_call["dladdr", c_int, Int, Int](
-        Pointer(to=main_ref).unsafe_bitcast[Int]()[], Int(info)
-    )
-    var fname = info[]
-    info.unsafe_free()
-    if found == 0 or fname == 0:
-        raise Error("napi-mojo: dladdr could not name this addon's image")
-    var path = String(
-        unsafe_from_utf8_ptr=Pointer[c_char, MutUntrackedOrigin](
-            unsafe_from_address=fname
-        )
-    )
-    _ = OwnedDLHandle(path, _pin_flags())
-
-
-def _spawn_detached(body: Int, arg: Int) -> Int:
+def _spawn_thread(body: Int, job: _JobPtr) -> Int:
+    # Joinable, with libuv's stack size; returns pthread_create's result.
     # pthread_attr_t is 56 bytes on x86-64 Linux and 64 on arm64 and macOS.
     var attr = unsafe_alloc[Int](16)
     var tid = unsafe_alloc[Int](1)
@@ -538,12 +522,12 @@ def _spawn_detached(body: Int, arg: Int) -> Int:
         )
         rc = Int(
             external_call["pthread_create", c_int, Int, Int, Int, Int](
-                Int(tid), Int(attr), body, arg
+                Int(tid), Int(attr), body, Int(job)
             )
         )
         _ = external_call["pthread_attr_destroy", c_int, Int](Int(attr))
         if rc == 0:
-            _ = external_call["pthread_detach", c_int, Int](tid[])
+            job[].tid = tid[]
     attr.unsafe_free()
     tid.unsafe_free()
     return rc

@@ -29,24 +29,27 @@ break the source API that downstream addons compile against.
   the job's own, with libuv's 8 MiB stack. The same read then took 1-2 ms.
   `tests/own_thread.test.js` asserts both sides. `thread = "own"` on an async
   function in `exports.toml` generates it. A thread costs about 25 µs a call
-  more than the pool, so the pool stays the default. Three consequences for
-  an addon that uses it:
-  - it is never unloaded, because Node `dlclose`s a Worker's addons with the
-    Worker's environment and a job's thread can still be running addon code;
-  - `complete` runs with a null `env` and `napi_closing` if the environment is
-    torn down first, possibly off the JS thread, and must then only free its
-    data;
+  more than the pool, so the pool stays the default. For an addon that uses
+  it:
+  - a terminated `Worker` waits for its in-flight jobs before it exits, as it
+    already does for queued work, and each job's `complete` then runs with a
+    null `env` and `napi_closing`, possibly off the JS thread, and must only
+    free its data;
   - `AsyncWork.resolve` and the `reject_with_error` forms now return at once
     for a null `env`, and skip `napi_delete_async_work` for a null work
     handle. Before, a null handle made `resolve` raise after it had already
     settled the promise.
 
   Node 22 and 24 free a threadsafe function at environment teardown while a
-  thread still holds it, so the job's thread and an env cleanup hook race for
-  the job and only one of them completes it. A terminated `Worker` with a job
-  in flight is tested. So are `process.exit` mid-job and 64 jobs in flight.
-  Removing the image pin, the cleanup hook, the hook's removal or the
-  threadsafe-function release each fails that file.
+  thread still holds it, and Node unloads a Worker's addons with it, so an
+  env cleanup hook joins the job's thread. Pinning the image instead does not
+  hold on macOS, where dyld still unloads its dependencies. Tested: a
+  terminated `Worker` with a job in flight,
+  `process.exit` mid-job, 64 jobs in flight, and every job's thread reaped. A
+  new `ownThreadTeardown` scenario runs the Worker case on Deno and Bun, which
+  do not drain a torn-down threadsafe function's queue. Reverting any of the
+  join in the hook, the join in `call_js_cb`, the hook itself, its removal
+  or the thread's `closing` check fails one of them.
 
 ### Fixed
 
