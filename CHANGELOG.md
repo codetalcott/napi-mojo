@@ -13,6 +13,14 @@ break the source API that downstream addons compile against.
   the framework root again, given twice, or holding its own `napi` package is
   refused; a root that is itself a package gets a warning that `-I` wants its
   parent. `run`'s build cache hashes every root, in order.
+- **`examples/m0-session/`**: an existing Mojo library compiled into an addon
+  through `-I`. m0 (mojo-http's application framework, from its PyPI wheel)
+  signs session cookies and verifies stream grants; the example exposes that
+  code to JavaScript unchanged, and `parity.mjs` checks it against an issuer
+  written on `node:crypto` and against mojo-http's pinned vectors. The
+  non-required `m0-interop` job runs it at a pinned m0 version, after checking
+  the wheel was gated on the Mojo `pixi.toml` pins. Mutation-checked: eight
+  reverted rules, on the oracle's side and the addon's, each fail it.
 
 ### Fixed
 

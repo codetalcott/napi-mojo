@@ -718,6 +718,69 @@ jobs:
       - name: Same behaviour on Node, Deno and Bun
         run: node scripts/check-runtimes.mjs --require-all
 
+  # A real Mojo library compiled into an addon through `napi-mojo build -I`:
+  # m0, mojo-http's application framework, whose PyPI wheel ships its Mojo
+  # source under m0/_mojo. examples/m0-session/parity.mjs checks m0's session
+  # and grant code, running in Node, against an issuer written on node:crypto
+  # and against mojo-http's own pinned vectors.
+  #
+  # The wheel comes from PyPI at a PINNED version, so this repo still has no
+  # build-time dependency on mojo-http: nothing in the package or its build
+  # reads it, and a red job means this framework or that pinned release moved,
+  # never that mojo-http merged something this morning. Bump M0_VERSION
+  # deliberately. The gated_mojo step fails with a sentence, before any
+  # compile, when the wheel was gated on a different Mojo than pixi.toml pins.
+  #
+  # NON-REQUIRED, like runtimes above: a foreign package must not be able to
+  # block a merge here.
+  m0-interop:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      M0_VERSION: '0.2.0'
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install pixi
+        uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          pixi-version: latest
+
+      - name: Fetch the pinned m0 wheel
+        run: |
+          python3 -m pip download "m0==$M0_VERSION" --no-deps --only-binary=:all: \
+            -d "$RUNNER_TEMP/m0-wheel"
+          python3 -m zipfile -e "$RUNNER_TEMP"/m0-wheel/m0-*.whl "$RUNNER_TEMP/m0"
+          test -d "$RUNNER_TEMP/m0/m0/_mojo/m0_http"
+
+      - name: The wheel was gated on the Mojo this repo pins
+        run: |
+          mojo_version=$(pixi run mojo --version | awk '{print $2}')
+          python3 - "$RUNNER_TEMP/m0/m0/_build_info.json" "$mojo_version" <<'PY'
+          import json, sys
+          info, have = json.load(open(sys.argv[1])), sys.argv[2]
+          gated = info.get("gated_mojo", [])
+          if have not in gated:
+              sys.exit(f"m0 {info.get('m0')} was gated on Mojo {', '.join(gated)}, but "
+                       f"pixi.toml resolves Mojo {have}. Move M0_VERSION to a release "
+                       f"gated on {have}.")
+          print(f"m0 {info.get('m0')} was gated on Mojo {', '.join(gated)}; this repo pins {have}")
+          PY
+
+      - name: Build the example through the CLI
+        run: |
+          node bin/napi-mojo.mjs build examples/m0-session/lib.mojo \
+            -I "$RUNNER_TEMP/m0/m0/_mojo" -o examples/m0-session/build/index.node
+
+      - name: Parity with node:crypto and mojo-http's vectors
+        run: node --test examples/m0-session/parity.mjs
+
   async-stress:
     if: github.event_name == 'pull_request'
     strategy:
