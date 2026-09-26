@@ -237,6 +237,33 @@ string by the completion callback. Other tokens are refused, because the data
 struct has to hold the value across the thread boundary. Argument count is not
 limited.
 
+That worker thread comes from libuv's thread pool: four threads by default,
+shared with `fs`, `dns.lookup`, `crypto` and `zlib`. Four jobs that each run
+for a second hold every file read in the process for that second. A job that
+long should say `thread = "own"`, which gives each call a thread of its own:
+
+```toml
+[functions.sum_below]
+js_name = "sumBelow"
+args = ["number"]
+returns = "number"
+async = true
+thread = "own"
+execute_body = """
+var total = 0.0
+for i in range(Int(ptr[].input0)):
+    total += Float64(i)
+ptr[].result = total
+"""
+```
+
+```js
+await sumBelow(5)   // 10
+```
+
+Starting a thread costs tens of microseconds, which is why the pool stays the
+default for short jobs.
+
 ## 7. A class with native state
 
 A class can keep real Mojo data instead of stashing values as JS properties.

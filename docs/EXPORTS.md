@@ -84,6 +84,8 @@
 | `addObservableCleanupHook()` | `add_observable_cleanup_hook_fn` | Registers a cleanup hook that prints a marker at env teardown (observability test) |
 | `removeCleanupHook()` | `remove_cleanup_hook_fn` | Registers and removes a cleanup hook, returns true |
 | `cancelAsyncWork()` | `cancel_async_work_fn` | Queues then cancels async work, returns rejected promise |
+| `asyncSleep(ms)` | `async_sleep_fn` | Returns a promise; sleeps `ms` on a libuv thread-pool thread (`AsyncWork.queue`), resolves with `ms` |
+| `threadSleep(ms)` | `thread_sleep_fn` | Returns a promise; sleeps `ms` on a thread of its own (`AsyncWork.queue_on_thread`), resolves with `ms` |
 | `new Animal(name)` | `animal_constructor_fn` | Class: constructor, `.name` getter, `.speak()`, `Animal.isAnimal()` |
 | `new Dog(name, breed)` | `dog_constructor_fn` | Class: inherits from Animal, `.breed` getter |
 | `runScript(code)` | `run_script_fn` | Evaluates a JS string, returns result |

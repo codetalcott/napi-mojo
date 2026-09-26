@@ -103,6 +103,22 @@ const SCENARIOS = [
       log('tsfnTicks', seen.length);
     })();
   `],
+  // AsyncWork.queue_on_thread: a thread of the addon's own, handing back
+  // through a threadsafe function with no JS function (call_js_cb only), plus
+  // an env cleanup hook per job, the hook removed again on completion. No
+  // other scenario reaches those N-API shapes. The terminated-Worker path is
+  // in tests/own_thread.test.js rather than here: Worker lifetimes differ by
+  // runtime (Bun exits as soon as a terminated Worker was the last handle),
+  // so its output would compare runtimes, not the addon.
+  ['ownThread', `
+    (async () => {
+      log('threadSleep', await addon.threadSleep(5));
+      log('rejects', await addon.threadSleep(-1).then(() => 'BAD', (e) => e.message));
+      const want = Array.from({ length: 16 }, (_, i) => i % 4);
+      const got = await Promise.all(want.map((ms) => addon.threadSleep(ms)));
+      log('inFlight', JSON.stringify(got) === JSON.stringify(want));
+    })();
+  `],
   ['classes', `
     const c = new addon.Counter(0); c.increment(); c.increment();
     log('counter', c.value);

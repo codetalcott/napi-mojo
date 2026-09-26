@@ -5,6 +5,8 @@
 #
 # Async functions: add async = true and execute_body (pure computation, no N-API).
 # Allowed types for async args/returns: number, int32, uint32, int64.
+# thread = "own" runs execute_body on a thread of the job's own instead of
+# libuv's pool (AsyncWork.queue_on_thread), for jobs long enough to stall fs.
 #
 # mojo_fn: instead of body, name a pure Mojo function to call. The generator
 # wraps it with type-checked arg extraction and return-value wrapping.
