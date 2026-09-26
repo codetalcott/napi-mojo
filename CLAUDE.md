@@ -562,12 +562,25 @@ something unique would silently retire the coverage.
 
 **Runs are cached on an input hash** (`.napi-mojo/build.key`), because the
 compile is ~1.8s of a ~2s run and re-running is the whole iterate loop. The key
-covers the user's tree, the framework tree, the include path, the compiler
-command and the CLI version — and that set is COMPLETE precisely because `run`
-accepts exactly one `-I`, so no build can pull from a directory the hash did
-not see. Adding a second include path to `run` without extending the key would
-turn this into a stale-binary trap. `--rebuild` forces a recompile; CI asserts
-a second run is byte-identical.
+covers the CLI version, the compiler command, the framework root, every `-I`
+library root in order, and every file a compile can read under the entry's
+directory, the framework and those roots: `.mojo`, `.🔥`, `.mojopkg` and
+`.mojoc`, following symlinks. Those are the only directories a compile reads
+(Mojo resolves a plain import beside the main module, and otherwise only
+through `-I`), so any new way to hand the compiler a directory must extend the
+key in the same change, or this becomes a stale-binary trap. The walk used to
+skip symlinked directories, and a library symlinked beside the entry, the
+obvious workaround before `-I`, then served the old binary after every edit
+behind the link; `tests/cli.test.js` pins that with a stub compiler. One input
+is still NOT in the key: the compiler's version, so a toolchain upgrade under
+the same `pixi run mojo` keeps the old binary until `--rebuild`. `--rebuild`
+forces a recompile; CI asserts a second run is byte-identical.
+
+**`-I` roots go after the framework's.** Mojo takes the first root holding a
+package of the imported name and says nothing about the rest, so a library
+root placed first could replace `napi` silently. The same rule is why a root
+that holds its own `napi` (directory, `.mojopkg` or `.mojoc`) is refused
+rather than ordered: behind the framework it would be ignored just as silently.
 
 **`require` is module-scoped and unreachable from Mojo.** It is not on
 `globalThis`; `process.mainModule.require` resolves under a CJS entry but is

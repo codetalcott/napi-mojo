@@ -14,8 +14,8 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
-  copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync,
-  symlinkSync, writeFileSync,
+  copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync,
+  rmSync, statSync, symlinkSync, writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -34,15 +34,19 @@ function fail(msg) {
   process.exit(1);
 }
 
-function parseArgs(argv, flagsWithValue, boolFlags = []) {
+// `repeatable` flags take a value and collect every occurrence into an array,
+// in order; any other flag given twice keeps its last value.
+function parseArgs(argv, flagsWithValue, boolFlags = [], repeatable = []) {
   const opts = {};
   const positional = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (flagsWithValue.includes(a)) {
+    if (flagsWithValue.includes(a) || repeatable.includes(a)) {
       const v = argv[++i];
       if (v === undefined) fail(`${a} requires a value`);
-      opts[a.replace(/^--?/, '')] = v;
+      const key = a.replace(/^--?/, '');
+      if (repeatable.includes(a)) (opts[key] ??= []).push(v);
+      else opts[key] = v;
     } else if (boolFlags.includes(a)) {
       opts[a.replace(/^--?/, '')] = true;
     } else if (a.startsWith('-')) {
@@ -351,13 +355,53 @@ function cmdGenerate(argv) {
   }
 }
 
+// --- library include roots (-I) ----------------------------------------------
+//
+// `-I <dir>` adds a directory of Mojo packages an addon or host program may
+// import (another library's source, a wheel's source tree, a team's shared
+// packages). Every root goes to the compiler AFTER the framework's: Mojo takes
+// the first root holding a package of the imported name and says nothing
+// about the rest, so a library root placed first could silently replace
+// `napi`. That is also why a root holding its own `napi` is refused rather
+// than ordered: behind the framework it would be silently ignored instead.
+function libraryRoots(values, include) {
+  const framework = realpathSync(include);
+  const roots = [];
+  const seen = new Set();
+  for (const value of values || []) {
+    const root = resolve(value);
+    if (!existsSync(root)) fail(`-I ${value}: not found`);
+    if (!statSync(root).isDirectory()) fail(`-I ${value}: not a directory`);
+    const real = realpathSync(root);
+    if (real === framework) {
+      fail(`-I ${value} is already the framework include path (--include)`);
+    }
+    if (seen.has(real)) fail(`-I ${value} is given twice`);
+    for (const name of ['napi', 'napi.mojopkg', 'napi.mojoc']) {
+      if (existsSync(join(root, name))) {
+        fail(`-I ${value} contains ${name}, which would clash with the framework's napi package (--include)`);
+      }
+    }
+    if (existsSync(join(root, '__init__.mojo')) || existsSync(join(root, '__init__.🔥'))) {
+      console.error(
+        `napi-mojo: warning: -I ${value} is itself a package (it has an __init__ file); ` +
+        '-I takes the directory that CONTAINS packages, so its parent is likely what you meant'
+      );
+    }
+    seen.add(real);
+    roots.push(root);
+  }
+  return roots;
+}
+
 // --- build --------------------------------------------------------------------
 
 function cmdBuild(argv) {
   const { opts, positional } = parseArgs(
     argv,
     ['-o', '--out', '--include', '--mojo'],
-    ['--bundle']
+    ['--bundle'],
+    ['-I']
   );
   const entry = resolve(positional[0] || 'lib.mojo');
   if (!existsSync(entry)) fail(`entry not found: ${entry}`);
@@ -366,12 +410,15 @@ function cmdBuild(argv) {
   if (!existsSync(join(include, 'napi'))) {
     fail(`include path ${include} does not contain the napi package`);
   }
+  const libs = libraryRoots(opts.I, include);
   mkdirSync(dirname(out), { recursive: true });
 
   const mojo = resolveMojoCmd(opts.mojo);
   const args = [
     ...mojo.slice(1),
-    'build', '--emit', 'shared-lib', '-I', include, entry, '-o', out,
+    'build', '--emit', 'shared-lib', '-I', include,
+    ...libs.flatMap((lib) => ['-I', lib]),
+    entry, '-o', out,
   ];
   console.log(`$ ${mojo[0]} ${args.join(' ')}`);
   const res = spawnSync(mojo[0], args, { stdio: 'inherit' });
@@ -511,34 +558,62 @@ if (typeof rc === 'number' && Number.isInteger(rc)) process.exitCode = rc;
 `;
 }
 
-// Every input `run` supports, hashed: the user's tree, the framework tree, the
-// include path, the compiler command and the generated wrapper. `run` accepts
-// exactly one -I, so that dependency set is COMPLETE — there is no third
-// directory a build could pull from, which is what makes skipping the compile
-// safe rather than a stale-binary trap. `--rebuild` is the escape hatch.
+// Every input `run` supports, hashed: the user's tree, the framework tree,
+// each library root in order, the compiler command and the generated
+// wrapper. The directories a compile can read are exactly the entry's (Mojo
+// resolves a plain import beside the main module), the framework root and
+// the -I roots, and all of them are walked — which is what makes skipping the
+// compile safe rather than a stale-binary trap. `--rebuild` is the escape
+// hatch.
+//
+// The walk hashes every file that can change the compile: source (.mojo,
+// .🔥) and precompiled packages (.mojopkg, .mojoc). It follows symlinks, with
+// a realpath guard against cycles: a symlinked directory is how a library
+// usually lands beside an entry, and a walk that skipped it served the old
+// binary after every edit behind the link. Dot-names are skipped (.napi-mojo
+// is this command's own output), and so is node_modules: Mojo never resolves
+// an import through it, and pnpm's symlinks would otherwise walk every
+// installed package.
+const MOJO_INPUTS = ['.mojo', '.🔥', '.mojopkg', '.mojoc'];
 function mojoFilesUnder(dir) {
   const out = [];
+  const visited = new Set();
   const walk = (d) => {
+    let real;
+    try { real = realpathSync(d); } catch { return; }
+    if (visited.has(real)) return;
+    visited.add(real);
     let entries;
     try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
     for (const e of entries.sort((a, b) => (a.name < b.name ? -1 : 1))) {
       if (e.name.startsWith('.') || e.name.startsWith('_napi_mojo_')) continue;
+      if (e.name === 'node_modules') continue;
       const full = join(d, e.name);
-      if (e.isDirectory()) walk(full);
-      else if (e.name.endsWith('.mojo')) out.push(full);
+      let isDir = e.isDirectory();
+      if (e.isSymbolicLink()) {
+        try { isDir = statSync(full).isDirectory(); } catch { continue; }
+      }
+      if (isDir) walk(full);
+      else if (MOJO_INPUTS.some((ext) => e.name.endsWith(ext))) out.push(full);
     }
   };
   walk(dir);
   return out;
 }
 
-function buildKey({ entryDir, include, mojoCmd, wrapperSrc }) {
+function buildKey({ entryDir, include, libs, mojoCmd, wrapperSrc }) {
   const h = createHash('sha256');
-  for (const part of [VERSION, mojoCmd.join(' '), include, wrapperSrc]) {
+  const parts = [VERSION, mojoCmd.join(' '), include, String(libs.length), ...libs, wrapperSrc];
+  for (const part of parts) {
     h.update(part);
     h.update('\0');
   }
-  for (const f of [...mojoFilesUnder(entryDir), ...mojoFilesUnder(include)]) {
+  const files = [
+    ...mojoFilesUnder(entryDir),
+    ...mojoFilesUnder(include),
+    ...libs.flatMap((lib) => mojoFilesUnder(lib)),
+  ];
+  for (const f of files) {
     h.update(f);
     h.update('\0');
     h.update(readFileSync(f));
@@ -557,7 +632,8 @@ function cmdRun(argv) {
   const { opts, positional } = parseArgs(
     ownArgs,
     ['--include', '--mojo'],
-    ['--keep', '--rebuild']
+    ['--keep', '--rebuild'],
+    ['-I']
   );
   const entry = resolve(positional[0] || 'main.mojo');
   if (!existsSync(entry)) fail(`entry not found: ${entry}`);
@@ -569,6 +645,7 @@ function cmdRun(argv) {
   if (!existsSync(join(include, 'napi'))) {
     fail(`include path ${include} does not contain the napi package`);
   }
+  const libs = libraryRoots(opts.I, include);
 
   const workDir = join(entryDir, '.napi-mojo');
   const wrapper = join(entryDir, '_napi_mojo_host_entry.mojo');
@@ -587,7 +664,7 @@ function cmdRun(argv) {
   const mojo = resolveMojoCmd(opts.mojo);
   const wrapperSrc = hostEntrySource(aliasModule);
   const stamp = join(workDir, 'build.key');
-  const key = buildKey({ entryDir, include, mojoCmd: mojo, wrapperSrc });
+  const key = buildKey({ entryDir, include, libs, mojoCmd: mojo, wrapperSrc });
   const cached =
     !opts.rebuild &&
     existsSync(addon) &&
@@ -611,7 +688,9 @@ function cmdRun(argv) {
 
     const args = [
       ...mojo.slice(1),
-      'build', '--emit', 'shared-lib', '-I', include, wrapper, '-o', addon,
+      'build', '--emit', 'shared-lib', '-I', include,
+      ...libs.flatMap((lib) => ['-I', lib]),
+      wrapper, '-o', addon,
     ];
     // Captured rather than inherited so the alias filename can be rewritten
     // back to the user's own — otherwise every compile error in host mode
@@ -1321,11 +1400,15 @@ Usage:
       entry              main module            (default: lib.mojo)
       -o, --out <file>   output .node path      (default: build/index.node)
       --include <dir>    framework include path (default: this package's src/)
+      -I <dir>           a directory of Mojo packages to import from, searched
+                         after the framework (repeatable)
       --mojo "<cmd>"     compiler command       (default: pixi run mojo | mojo)
       --bundle           bundle Mojo runtime libs next to the .node (self-contained)
   napi-mojo run [entry] [-- <args>]     build and run a Mojo program on Node
       entry              main module            (default: main.mojo)
       --include <dir>    framework include path (default: this package's src/)
+      -I <dir>           a directory of Mojo packages to import from, searched
+                         after the framework (repeatable)
       --mojo "<cmd>"     compiler command       (default: pixi run mojo | mojo)
       --keep             keep the generated wrapper for inspection
       --rebuild          force a recompile (runs are cached on input hash)

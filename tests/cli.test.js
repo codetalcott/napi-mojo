@@ -427,3 +427,160 @@ describe('the scaffolded loader explains load failures', () => {
     expect(out.message).toContain(`no prebuilt binary is installed for ${key}`);
   });
 });
+
+// `-I` adds library include roots after the framework's, and `run`'s build
+// cache must see every file that can change the compile. The compiler here is
+// a stub passed through --mojo: it records each invocation and writes a dummy
+// output, so what is tested is exactly what the CLI decides — which roots it
+// passes, in what order, and when it recompiles — with no toolchain. The
+// real compile is the "Host-mode program with library include roots" CI step.
+describe('library include roots (-I)', () => {
+  const { writeFileSync, mkdirSync, symlinkSync } = require('fs');
+  let log;
+  let stub;
+
+  const write = (rel, text) => {
+    const p = path.join(dir, rel);
+    mkdirSync(path.dirname(p), { recursive: true });
+    writeFileSync(p, text);
+    return p;
+  };
+  const link = (target, rel) => {
+    const p = path.join(dir, rel);
+    mkdirSync(path.dirname(p), { recursive: true });
+    symlinkSync(target, p);
+  };
+
+  beforeEach(() => {
+    log = path.join(dir, 'compiles.jsonl');
+    stub = write('stub-mojo.cjs', `const fs = require('fs');
+const args = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify(args) + '\\n');
+const o = args.indexOf('-o');
+if (o !== -1) fs.writeFileSync(args[o + 1], 'not a real addon');
+`);
+    write('framework/napi/__init__.mojo', '');
+    write('app/main.mojo', 'def mojo_main(): pass\n');
+    write('lib1/greet/__init__.mojo', 'def greet() -> String: return "one"\n');
+    write('lib2/other/__init__.mojo', '');
+  });
+
+  // Every compile the stub saw, as its argv.
+  const compiles = () => (existsSync(log)
+    ? readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l))
+    : []);
+  // `run` then fails to load the stub's output; only the compiles matter here.
+  const cli = (command, extra = [], spawnOpts = {}) => run([
+    command, path.join(dir, 'app', 'main.mojo'),
+    '--include', path.join(dir, 'framework'),
+    '--mojo', `${process.execPath} ${stub}`,
+    ...extra,
+  ], { cwd: dir, ...spawnOpts });
+  const I = (...names) => names.flatMap((n) => ['-I', path.join(dir, n)]);
+  // The -I values one compile was given, in order.
+  const roots = (argv) => argv.filter((_, i) => argv[i - 1] === '-I');
+
+  test('build passes library roots after the framework root, in the order given', () => {
+    const res = cli('build', I('lib1', 'lib2'));
+    expect({ status: res.status, stderr: res.stderr }).toMatchObject({ status: 0 });
+    expect(roots(compiles()[0])).toEqual(
+      ['framework', 'lib1', 'lib2'].map((n) => path.join(dir, n)));
+  });
+
+  test('run passes the same roots, in the same order', () => {
+    cli('run', I('lib2', 'lib1'));
+    expect(roots(compiles()[0])).toEqual(
+      ['framework', 'lib2', 'lib1'].map((n) => path.join(dir, n)));
+  });
+
+  test('a second run with nothing changed does not recompile', () => {
+    cli('run', I('lib1'));
+    cli('run', I('lib1'));
+    expect(compiles()).toHaveLength(1);
+  });
+
+  test.each(['.mojo', '.🔥', '.mojopkg', '.mojoc'])(
+    'changing a %s file in a library root recompiles', (ext) => {
+      write(`lib1/greet/part${ext}`, 'v1');
+      cli('run', I('lib1'));
+      write(`lib1/greet/part${ext}`, 'v2');
+      cli('run', I('lib1'));
+      expect(compiles()).toHaveLength(2);
+    });
+
+  test('changing a file behind a symlinked directory in a library root recompiles', () => {
+    write('real/greet/__init__.mojo', 'v1');
+    link(path.join(dir, 'real', 'greet'), 'linked/greet');
+    cli('run', I('linked'));
+    write('real/greet/__init__.mojo', 'v2');
+    cli('run', I('linked'));
+    expect(compiles()).toHaveLength(2);
+  });
+
+  // The workaround people reach for without -I: a library symlinked next to
+  // the entry. The walk used to skip symlinked directories, so this served
+  // the old binary after every edit behind the link.
+  test('changing a file behind a symlinked directory in the entry tree recompiles', () => {
+    write('real/greet/__init__.mojo', 'v1');
+    link(path.join(dir, 'real', 'greet'), 'app/greet');
+    cli('run');
+    write('real/greet/__init__.mojo', 'v2');
+    cli('run');
+    expect(compiles()).toHaveLength(2);
+  });
+
+  test('reordering library roots recompiles', () => {
+    cli('run', I('lib1', 'lib2'));
+    cli('run', I('lib2', 'lib1'));
+    expect(compiles()).toHaveLength(2);
+  });
+
+  test('a file that cannot change the compile does not recompile', () => {
+    cli('run', I('lib1'));
+    write('lib1/README.md', 'docs');
+    write('app/node_modules/pkg/lib.mojo', 'never an import root');
+    cli('run', I('lib1'));
+    expect(compiles()).toHaveLength(1);
+  });
+
+  // Two links back to the root, because one is not enough to hang: the OS
+  // stops resolving a single self-link chain at its depth limit, while two
+  // make an unguarded walk visit 2^depth directories.
+  test('symlink cycles in a library root do not hang the walk', () => {
+    link(path.join(dir, 'lib1'), 'lib1/loop-a');
+    link(path.join(dir, 'lib1'), 'lib1/loop-b');
+    const res = cli('run', I('lib1'), { timeout: 15000 });
+    expect(res.error).toBeUndefined();
+    expect(compiles()).toHaveLength(1);
+  }, 30000);
+
+  test.each([
+    ['missing', () => [path.join(dir, 'nope')], 'not found'],
+    ['a file', () => [write('file.txt', '')], 'not a directory'],
+    ['the framework root', () => [path.join(dir, 'framework')], 'framework include path'],
+    ['given twice', () => [path.join(dir, 'lib1'), path.join(dir, 'lib1')], 'given twice'],
+    ['holding a napi package', () => {
+      write('shadow/napi/__init__.mojo', '');
+      return [path.join(dir, 'shadow')];
+    }, 'napi package'],
+    ['holding a precompiled napi package', () => {
+      write('shadow/napi.mojopkg', '');
+      return [path.join(dir, 'shadow')];
+    }, 'napi package'],
+  ])('build and run refuse a root that is %s', (_, rootsOf, message) => {
+    const extra = rootsOf().flatMap((r) => ['-I', r]);
+    for (const command of ['build', 'run']) {
+      const res = cli(command, extra);
+      expect(res.status).toBe(1);
+      expect(res.stderr).toContain(message);
+    }
+    expect(compiles()).toHaveLength(0);
+  });
+
+  test('a root that is itself a package still compiles, with a warning', () => {
+    const res = cli('build', I('lib1/greet'));
+    expect(res.status).toBe(0);
+    expect(res.stderr).toContain('is itself a package');
+    expect(compiles()).toHaveLength(1);
+  });
+});

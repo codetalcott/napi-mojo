@@ -505,6 +505,43 @@ jobs:
           test "$out" = "$out2"
           echo "build cache OK"
 
+      # `-I` adds library include roots after the framework's, and the build
+      # cache must see every file a compile can read. tests/cli.test.js proves
+      # what the CLI decides with a stub compiler; this proves Mojo resolves
+      # an import from the root the CLI passes, and that an edit reaches the
+      # next run — through the root, and through a library symlinked beside
+      # the entry, which the cache walk once skipped (serving the old binary).
+      - name: Host-mode program with library include roots
+        run: |
+          fx="$RUNNER_TEMP/library-roots"
+          cp -R tests/fixtures/library-roots "$fx"
+          addon="$fx/app/.napi-mojo/host.node"
+          mtime() { node -p "require('fs').statSync('$addon').mtimeMs"; }
+          edit() { sed -i.bak "s/$1/$2/" "$fx/lib/greeting/__init__.mojo" && rm "$fx/lib/greeting/__init__.mojo.bak"; }
+
+          # Through the -I root: the first run compiles, the second hits the cache.
+          out=$(node bin/napi-mojo.mjs run "$fx/app/main.mojo" -I "$fx/lib")
+          test "$out" = "hello from a library root"
+          before=$(mtime)
+          out=$(node bin/napi-mojo.mjs run "$fx/app/main.mojo" -I "$fx/lib")
+          test "$out" = "hello from a library root"
+          test "$(mtime)" = "$before"
+
+          # An edit inside the root must reach the next run.
+          edit "from a library root" "after an edit"
+          out=$(node bin/napi-mojo.mjs run "$fx/app/main.mojo" -I "$fx/lib")
+          test "$out" = "hello after an edit"
+
+          # The same library symlinked beside the entry, with no -I: an edit
+          # behind the link must reach the next run too.
+          ln -s "$fx/lib/greeting" "$fx/app/greeting"
+          out=$(node bin/napi-mojo.mjs run "$fx/app/main.mojo")
+          test "$out" = "hello after an edit"
+          edit "after an edit" "after a second edit"
+          out=$(node bin/napi-mojo.mjs run "$fx/app/main.mojo")
+          test "$out" = "hello after a second edit"
+          echo "library include roots OK"
+
       # The pipeline demo doubles as the regression test for module-name
       # collision: an entry basename becomes a TOP-LEVEL Mojo module name, and
       # `pipeline` is shadowed by MAX's own `pipeline` package. Before the
