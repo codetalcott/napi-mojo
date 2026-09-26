@@ -30,6 +30,14 @@ break the source API that downstream addons compile against.
   now follows symlinks, with a cycle guard, and hashes `.🔥`, `.mojopkg` and
   `.mojoc` too; `node_modules` is no longer walked. `tests/cli.test.js` covers
   each rule with a stub compiler, and each was checked by reverting it.
+- **`napi-mojo run` reused its cached binary across a toolchain upgrade.** The
+  cache key held the compiler command, which a `pixi.lock` or MAX bump leaves
+  unchanged, so the next run skipped the new compiler and loaded the old binary
+  against the new runtime (the binary finds it through its RUNPATH, which pixi
+  upgrades in place). The key now includes what `<command> --version` reports,
+  build hash and all; that costs one probe per run, ~55 ms through `pixi run`
+  on a ~170 ms cached run. A compiler that runs but reports no version turns
+  the cache off, with a warning.
 
 ## 0.16.0 — 2026-09-17
 

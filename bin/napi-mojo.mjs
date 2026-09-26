@@ -559,12 +559,12 @@ if (typeof rc === 'number' && Number.isInteger(rc)) process.exitCode = rc;
 }
 
 // Every input `run` supports, hashed: the user's tree, the framework tree,
-// each library root in order, the compiler command and the generated
-// wrapper. The directories a compile can read are exactly the entry's (Mojo
-// resolves a plain import beside the main module), the framework root and
-// the -I roots, and all of them are walked — which is what makes skipping the
-// compile safe rather than a stale-binary trap. `--rebuild` is the escape
-// hatch.
+// each library root in order, the compiler command, what that compiler says
+// it is, and the generated wrapper. The directories a compile can read are
+// exactly the entry's (Mojo resolves a plain import beside the main module),
+// the framework root and the -I roots, and all of them are walked — which is
+// what makes skipping the compile safe rather than a stale-binary trap.
+// `--rebuild` is the escape hatch.
 //
 // The walk hashes every file that can change the compile: source (.mojo,
 // .🔥) and precompiled packages (.mojopkg, .mojoc). It follows symlinks, with
@@ -601,9 +601,34 @@ function mojoFilesUnder(dir) {
   return out;
 }
 
-function buildKey({ entryDir, include, libs, mojoCmd, wrapperSrc }) {
+// The compiler's identity, e.g. "Mojo 1.1.0 (8189361e)": the command string
+// survives a toolchain upgrade, and a key without this kept the old binary,
+// which then skipped the new compiler AND loaded the new runtime (the binary
+// finds libKGENCompilerRTShared through its RUNPATH, the environment's lib/,
+// which pixi upgrades in place). The build hash is in the output, so one
+// nightly to the next counts as a change. Measured on a ~170 ms cached run:
+// ~55 ms through `pixi run`, ~17 ms direct. Null when the compiler runs but
+// cannot say, and then nothing is served from the cache; null and silent when
+// it cannot run at all, because the compile will fail with the full advice.
+function compilerIdentity(mojo) {
+  const res = spawnSync(mojo[0], [...mojo.slice(1), '--version'], { encoding: 'utf8' });
+  if (res.error) return null;
+  const id = res.status === 0 ? (res.stdout || '').trim() : '';
+  if (!id) {
+    console.error(
+      `napi-mojo: warning: \`${mojo.join(' ')} --version\` reported no compiler version, ` +
+      'so the run cache is off for this run'
+    );
+    return null;
+  }
+  return id;
+}
+
+function buildKey({ entryDir, include, libs, mojoCmd, compilerId, wrapperSrc }) {
   const h = createHash('sha256');
-  const parts = [VERSION, mojoCmd.join(' '), include, String(libs.length), ...libs, wrapperSrc];
+  const parts = [
+    VERSION, mojoCmd.join(' '), compilerId, include, String(libs.length), ...libs, wrapperSrc,
+  ];
   for (const part of parts) {
     h.update(part);
     h.update('\0');
@@ -664,9 +689,11 @@ function cmdRun(argv) {
   const mojo = resolveMojoCmd(opts.mojo);
   const wrapperSrc = hostEntrySource(aliasModule);
   const stamp = join(workDir, 'build.key');
-  const key = buildKey({ entryDir, include, libs, mojoCmd: mojo, wrapperSrc });
+  const compilerId = compilerIdentity(mojo);
+  const key = buildKey({ entryDir, include, libs, mojoCmd: mojo, compilerId: compilerId ?? '', wrapperSrc });
   const cached =
     !opts.rebuild &&
+    compilerId !== null &&
     existsSync(addon) &&
     existsSync(stamp) &&
     readFileSync(stamp, 'utf8').trim() === key;

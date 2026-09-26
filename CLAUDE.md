@@ -571,10 +571,16 @@ through `-I`), so any new way to hand the compiler a directory must extend the
 key in the same change, or this becomes a stale-binary trap. The walk used to
 skip symlinked directories, and a library symlinked beside the entry, the
 obvious workaround before `-I`, then served the old binary after every edit
-behind the link; `tests/cli.test.js` pins that with a stub compiler. One input
-is still NOT in the key: the compiler's version, so a toolchain upgrade under
-the same `pixi run mojo` keeps the old binary until `--rebuild`. `--rebuild`
-forces a recompile; CI asserts a second run is byte-identical.
+behind the link; `tests/cli.test.js` pins that with a stub compiler. **The
+compiler itself is in the key too**: whatever `<command> --version` prints,
+e.g. `Mojo 1.1.0 (8189361e)`, build hash included, so one nightly to the next
+counts. The command string alone survives a toolchain upgrade, and the old
+binary then skipped the new compiler AND loaded the new runtime: it finds
+`libKGENCompilerRTShared` through its RUNPATH, the environment's `lib/`, which
+pixi upgrades in place. The probe costs ~55 ms through `pixi run` (~17 ms
+direct) on a ~170 ms cached run. A compiler that runs but reports no version
+turns the cache off, with a warning, rather than keying on nothing.
+`--rebuild` forces a recompile; CI asserts a second run is byte-identical.
 
 **`-I` roots go after the framework's.** Mojo takes the first root holding a
 package of the imported name and says nothing about the rest, so a library
