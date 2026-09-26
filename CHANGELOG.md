@@ -3,7 +3,19 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
-## Unreleased
+## 0.17.0 — 2026-09-26
+
+**Adds `AsyncWork.queue_on_thread`**, for async jobs too long for libuv's
+thread pool, and **`-I` on `napi-mojo build` and `run`**, for compiling an
+existing Mojo library into an addon. New API makes this a minor, and so does
+one behaviour change: `AsyncWork.resolve` and the `reject_with_error` forms
+now return at once for a null `env` (see Added). The toolchain is unchanged
+(Mojo 1.1.0, `max = "==26.6.0"`) and no existing public Mojo signature
+changed: `@qkstat/retrieve` and `@qkstat/embed` compile against this source
+unmodified, with no warnings.
+
+**`napi-mojo run` also stops serving stale binaries**, after an edit behind a
+symlinked directory and across a toolchain upgrade (see Fixed).
 
 ### Added
 
