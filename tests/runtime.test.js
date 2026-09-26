@@ -1,4 +1,4 @@
-// Guards parallelize_safe's two otherwise-invisible failure modes.
+// Guards parallelize_safe's otherwise-invisible failure modes.
 //
 // 1. INIT FAILS -> the work silently runs SEQUENTIALLY. Results stay correct,
 //    the build stays green, every other test stays green, and all thread
@@ -19,6 +19,10 @@
 //    instantiated anywhere in the addon graph at all — so Mojo never
 //    elaborated its body and it could fail to COMPILE with build.sh and the
 //    whole suite green. That is what the 1.1.0 bump hit.
+//
+// 3. THE ADDON IS UNLOADED UNDER THE RUNNING RUNTIME -> a crash as a Worker
+//    exits, in a process where nothing else loaded the addon. See the last
+//    describe block.
 //
 // Mutation-checked, which is the only thing that makes a guard evidence:
 // reverting runtime.mojo to bare `capturing` and rebuilding makes
@@ -133,5 +137,100 @@ describe('parallelize_safe computes correct results', () => {
   test('a non-number argument throws rather than reinterpreting', () => {
     expect(() => addon.parallelSquares('8', 1)).toThrow();
     expect(() => addon.parallelSquares(8, 'x')).toThrow();
+  });
+});
+
+// Node unloads a Worker's addons with its environment, and parallelize_safe
+// leaves the async runtime running: its threads outlive the call, and the
+// image that started them. The Jest process holds this file's own `addon`,
+// which keeps everything loaded, so the case runs in a fresh process whose
+// main thread never loads the addon: each Worker holds the only reference,
+// and its exit unloads index.node.
+//
+// On Linux the runtime's libraries are linked NODELETE, so they stay mapped,
+// its threads park, and the next load reuses them. Mutation-checked there:
+// with NODELETE cleared on copies of libKGENCompilerRTShared,
+// libAsyncRTMojoBindings, libAsyncRTRuntimeGlobals and libMSupportGlobals put
+// first on LD_LIBRARY_PATH, the process dies of SIGSEGV as the first Worker
+// exits, whether it ends or is terminated, and unpatched copies on the same
+// path run clean. Mach-O has no NODELETE, so the macOS leg is the evidence
+// for macOS.
+describe('parallelize_safe in a Worker that alone loads the addon', () => {
+  const { spawnSync } = require('child_process');
+  const path = require('path');
+  const ADDON = path.join(__dirname, '..', 'build', 'index.node');
+
+  const WORKER = `
+    const { parentPort, workerData } = require('worker_threads');
+    const addon = require(workerData.addon);
+    const n = 100000;
+    const out = addon.parallelSquares(n, 2);
+    let wrong = 0;
+    for (let i = 0; i < n; i++) if (out[i] !== i * i * 2) wrong++;
+    parentPort.postMessage({ init: addon.asyncRuntimeInitOk(), wrong });
+    if (workerData.stay) setInterval(() => {}, 1000);
+  `;
+
+  // Three Workers in turn, each loading the addon, dispatching and unloading
+  // it. With `terminate`, each stays alive until the main thread terminates
+  // it. The thread count is read once each Worker has gone (Linux; -1
+  // elsewhere).
+  const script = (terminate) => `
+    const { Worker } = require('worker_threads');
+    const fs = require('fs');
+    const threads = () =>
+      fs.existsSync('/proc/self/task') ? fs.readdirSync('/proc/self/task').length : -1;
+    const once = () => new Promise((resolve, reject) => {
+      const w = new Worker(${JSON.stringify(WORKER)}, {
+        eval: true,
+        workerData: { addon: ${JSON.stringify(ADDON)}, stay: ${terminate} },
+      });
+      let result = {};
+      w.on('message', (m) => {
+        result = m;
+        if (${terminate}) w.terminate();
+      });
+      w.on('error', reject);
+      w.on('exit', (code) => resolve({ ...result, code }));
+    });
+    (async () => {
+      const runs = [];
+      for (let i = 0; i < 3; i++) {
+        const run = await once();
+        await new Promise((r) => setTimeout(r, 200));
+        runs.push({ ...run, threads: threads() });
+      }
+      console.log(JSON.stringify(runs));
+    })();
+  `;
+
+  const runWorkers = (terminate) => {
+    const res = spawnSync(process.execPath, ['-e', script(terminate)], {
+      encoding: 'utf8',
+      timeout: 30000,
+    });
+    // toEqual, not toMatchObject, so a failure prints how the child died.
+    expect({ status: res.status, signal: res.signal, stderr: res.stderr }).toEqual({
+      status: 0,
+      signal: null,
+      stderr: expect.any(String),
+    });
+    return JSON.parse(res.stdout);
+  };
+
+  const expectRuns = (runs, exitCode) => {
+    expect(runs.map(({ init, wrong, code }) => ({ init, wrong, code }))).toEqual(
+      Array(3).fill({ init: true, wrong: 0, code: exitCode }),
+    );
+    // Reused, not started again beside the first runtime's parked threads.
+    expect(runs[2].threads).toBe(runs[0].threads);
+  };
+
+  test('a Worker that ends unloads the addon, and the next load reuses the runtime', () => {
+    expectRuns(runWorkers(false), 0);
+  });
+
+  test('a terminated Worker unloads it the same way', () => {
+    expectRuns(runWorkers(true), 1);
   });
 });
