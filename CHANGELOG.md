@@ -67,6 +67,13 @@ break the source API that downstream addons compile against.
   build hash and all; that costs one probe per run, ~55 ms through `pixi run`
   on a ~170 ms cached run. A compiler that runs but reports no version turns
   the cache off, with a warning.
+- **`addObservableCleanupHook()` aborted Node on a second call in one
+  environment.** Every call registered the same `(hook, NULL)` pair, and
+  Node's cleanup queue refuses a duplicate pair with a CHECK that aborts the
+  process; Deno panics on it. It is a test export, called once by
+  `tests/cleanup_hook_observed.test.js`. Each call now registers its own
+  heap `arg`, which the hook frees when it runs, and a new test registers
+  twice and asserts both hooks run at teardown.
 
 ## 0.16.0 — 2026-09-17
 
