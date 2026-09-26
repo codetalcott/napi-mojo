@@ -21,6 +21,35 @@ break the source API that downstream addons compile against.
   non-required `m0-interop` job runs it at a pinned m0 version, after checking
   the wheel was gated on the Mojo `pixi.toml` pins. Mutation-checked: eight
   reverted rules, on the oracle's side and the addon's, each fail it.
+- **`AsyncWork.queue_on_thread`, for async jobs too long for libuv's thread
+  pool.** `AsyncWork.queue` runs `execute` on that pool, which has four
+  threads by default and which `fs`, `dns.lookup`, `crypto` and `zlib` share:
+  behind four one-second jobs, a file read took ~900 ms. `queue_on_thread`
+  takes the same arguments and callbacks and runs `execute` on a thread of
+  the job's own, with libuv's 8 MiB stack. The same read then took 1-2 ms.
+  `tests/own_thread.test.js` asserts both sides. `thread = "own"` on an async
+  function in `exports.toml` generates it. A thread costs about 25 µs a call
+  more than the pool, so the pool stays the default. For an addon that uses
+  it:
+  - a terminated `Worker` waits for its in-flight jobs before it exits, as it
+    already does for queued work, and each job's `complete` then runs with a
+    null `env` and `napi_closing`, possibly off the JS thread, and must only
+    free its data;
+  - `AsyncWork.resolve` and the `reject_with_error` forms now return at once
+    for a null `env`, and skip `napi_delete_async_work` for a null work
+    handle. Before, a null handle made `resolve` raise after it had already
+    settled the promise.
+
+  Node 22 and 24 free a threadsafe function at environment teardown while a
+  thread still holds it, and Node unloads a Worker's addons with it, so an
+  env cleanup hook joins the job's thread. Pinning the image instead does not
+  hold on macOS, where dyld still unloads its dependencies. Tested: a
+  terminated `Worker` with a job in flight,
+  `process.exit` mid-job, 64 jobs in flight, and every job's thread reaped. A
+  new `ownThreadTeardown` scenario runs the Worker case on Deno and Bun, which
+  do not drain a torn-down threadsafe function's queue. Reverting any of the
+  join in the hook, the join in `call_js_cb`, the hook itself, its removal
+  or the thread's `closing` check fails one of them.
 
 ### Fixed
 

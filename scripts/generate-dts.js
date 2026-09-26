@@ -89,6 +89,8 @@ const OVERRIDES = {
   asyncDouble: '(arg: number): Promise<number>',
   asyncTriple: '(arg: number): Promise<number>',
   cancelAsyncWork: '(): Promise<never>',
+  asyncSleep: '(ms: number): Promise<number>',
+  threadSleep: '(ms: number): Promise<number>',
   createTypedArrayView: '(type: string, ab: ArrayBuffer, offset: number, length: number): ArrayBufferView',
   getTypedArrayType: '(ta: ArrayBufferView): number',
   getTypedArrayLength: '(ta: ArrayBufferView): number',
@@ -543,6 +545,8 @@ const DOCS = {
   asyncTriple:    'Returns a Promise that resolves with arg * 3 (computed on a worker thread).',
   asyncProgress:  'Calls cb(i) for i in 0..count-1 from a worker thread via ThreadsafeFunction; returns a Promise.',
   cancelAsyncWork: 'Queues then immediately cancels async work; returns a rejected Promise.',
+  asyncSleep:     'Sleeps ms on a libuv thread-pool thread (AsyncWork.queue); resolves with ms.',
+  threadSleep:    'Sleeps ms on a thread of its own (AsyncWork.queue_on_thread); resolves with ms.',
   // Callbacks & async context
   callFunction:   'Calls fn(arg) and returns the result.',
   createCallback: 'Returns a new Mojo-created JavaScript function.',

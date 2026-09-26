@@ -268,6 +268,41 @@ describe('generator input guards', () => {
     expect(r.stderr).toMatch(/return type "object" is not supported for async/);
   });
 
+  // AsyncWork.queue_on_thread is for jobs long enough to hold libuv's pool
+  // (tests/own_thread.test.js); a generated async function opts in with one key.
+  test('thread = "own" queues an async function on a thread of its own', () => {
+    const decl = (thread) =>
+      '[functions.slow]\njs_name = "slow"\nasync = true\nreturns = "number"\n' +
+      'args = ["number"]\n' + (thread ? `thread = "${thread}"\n` : '') +
+      'execute_body = """\nptr[].result = ptr[].input0\n"""\n';
+    const read = (r) => fs.readFileSync(path.join(r.dir, 'generated', 'callbacks.mojo'), 'utf8');
+    const own = generate(decl('own'));
+    expect(own.code).toBe(0);
+    expect(read(own)).toContain('var aw = AsyncWork.queue_on_thread(_b, env, "slow", ');
+    // "pool" is the default, spelled out or not.
+    for (const r of [generate(decl('pool')), generate(decl(null))]) {
+      expect(r.code).toBe(0);
+      expect(read(r)).toContain('var aw = AsyncWork.queue(_b, env, "slow", ');
+    }
+  });
+
+  test('thread takes only "pool" or "own", and only on an async function', () => {
+    const bad = generate(
+      '[functions.slow]\njs_name = "slow"\nasync = true\nreturns = "number"\n' +
+        'args = ["number"]\nthread = "worker"\nexecute_body = """\nptr[].result = 0\n"""\n'
+    );
+    expect(bad.code).toBe(1);
+    expect(bad.stderr).toMatch(/async function "slow": thread = "worker" is not "pool" \(.*\) or "own"/);
+    // Silently ignored before this key existed; a sync function has no
+    // thread to choose, so saying one is a mistake worth stopping on.
+    const sync = generate(
+      '[functions.quick]\njs_name = "quick"\nreturns = "number"\nargs = ["number"]\n' +
+        'thread = "own"\nbody = """\nreturn arg0\n"""\n'
+    );
+    expect(sync.code).toBe(1);
+    expect(sync.stderr).toMatch(/\[functions\.quick\]: thread = "own" applies only to async = true functions/);
+  });
+
   test('class members are capped at 4 args', () => {
     const r = generate(
       '[classes.thing]\njs_name = "Thing"\n\n' +

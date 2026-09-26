@@ -56,6 +56,20 @@ execute_body = """
 ptr[].result = ptr[].input0 * ptr[].input1
 """
 
+# --- A long job on a thread of its own, off libuv's shared thread pool ---
+[functions.sum_below]
+js_name = "sumBelow"
+args = ["number"]
+returns = "number"
+async = true
+thread = "own"
+execute_body = """
+var total = 0.0
+for i in range(Int(ptr[].input0)):
+    total += Float64(i)
+ptr[].result = total
+"""
+
 # --- An optional argument: Optional[T] in Mojo, `T | null` in TypeScript ---
 [functions.greet_maybe]
 js_name = "greetMaybe"

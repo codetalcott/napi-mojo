@@ -265,6 +265,7 @@ def cover_async_work(b: Bindings, env: NapiEnv, v: NapiValue) raises:
     var deferred = NapiDeferred(unsafe_from_address=Int(0))
     var work = NapiAsyncWork(unsafe_from_address=Int(0))
     _ = AsyncWork.queue(b, env, "cover", _null(), _null(), _null())
+    _ = AsyncWork.queue_on_thread(b, env, "cover", _null(), _null(), _null())
     AsyncWork.resolve(b, env, deferred, work, v)
     AsyncWork.reject_with_error(b, env, deferred, work, "cover")
     AsyncWork.reject_with_error_dynamic(b, env, deferred, work, String("cover"))

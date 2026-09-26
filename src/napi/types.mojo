@@ -38,6 +38,10 @@ comptime NapiStore = OpaquePointer[MutUntrackedOrigin]
 comptime NapiConstStore = OpaquePointer[ImmUntrackedOrigin]
 comptime NapiStatus = Int32
 comptime NAPI_OK: NapiStatus = 0
+# napi_closing: the threadsafe function, or the environment, is going away.
+# Also what AsyncWork.queue_on_thread hands `complete` when the environment
+# was torn down before the job finished.
+comptime NAPI_CLOSING: NapiStatus = 16
 
 # ---------------------------------------------------------------------------
 # napi_valuetype enum constants

@@ -464,6 +464,9 @@ jobs:
             assert.deepStrictEqual(Array.from(scaled), [10, 20, 30]);
             (async () => {
               assert.strictEqual(await m.asyncProduct(6, 7), 42);
+              // thread = "own": the same generated callbacks, queued on a
+              // thread of the job's own instead of libuv's pool.
+              assert.strictEqual(await m.sumBelow(5), 10);
               assert.strictEqual(await m.shoutLater('hey'), 'hey!!!');
               // Several in flight at once: each async work owns its own data
               // struct, including its String result.

@@ -103,6 +103,38 @@ const SCENARIOS = [
       log('tsfnTicks', seen.length);
     })();
   `],
+  // AsyncWork.queue_on_thread: a thread of the addon's own, handing back
+  // through a threadsafe function with no JS function (call_js_cb only), plus
+  // an env cleanup hook per job, the hook removed again on completion. No
+  // other scenario reaches those N-API shapes.
+  ['ownThread', `
+    (async () => {
+      log('threadSleep', await addon.threadSleep(5));
+      log('rejects', await addon.threadSleep(-1).then(() => 'BAD', (e) => e.message));
+      const want = Array.from({ length: 16 }, (_, i) => i % 4);
+      const got = await Promise.all(want.map((ms) => addon.threadSleep(ms)));
+      log('inFlight', JSON.stringify(got) === JSON.stringify(want));
+    })();
+  `],
+  // The same, with the job's Worker terminated mid-job: the job must still
+  // complete, with a null env, which prints a marker from Mojo (sleep_complete)
+  // at ~500 ms. Nothing is logged on the Worker's 'exit', because when that
+  // fires differs by runtime (Deno emits it before the Worker's native
+  // teardown, Node and Bun after), and the main thread proves it still works
+  // at 1300 ms. Deno 2.9.6 does not drain a torn-down threadsafe function's
+  // queue into call_js_cb, so a job queued at teardown never completed there
+  // until the cleanup hook's \`closing\` flag made the thread complete it.
+  ['ownThreadTeardown', `
+    const { Worker } = require('worker_threads');
+    const w = new Worker(
+      'require(' + JSON.stringify(ADDON_PATH) + ').threadSleep(500);' +
+      "require('worker_threads').parentPort.postMessage('started');",
+      { eval: true });
+    w.on('message', () => setTimeout(() => w.terminate(), 50));
+    setTimeout(() => {
+      addon.threadSleep(10).then((v) => log('main still works', v));
+    }, 1300);
+  `],
   ['classes', `
     const c = new addon.Counter(0); c.increment(); c.increment();
     log('counter', c.value);
@@ -224,7 +256,8 @@ const KNOWN_DEFECTS = [
 
 const PRELUDE = (addonPath) => `
 'use strict';
-const addon = require(${JSON.stringify(addonPath)});
+const ADDON_PATH = ${JSON.stringify(addonPath)};
+const addon = require(ADDON_PATH);
 const out = [];
 function log(...parts) { console.log(parts.join(' ')); }
 function tryCatch(fn) { try { fn(); return 'no-throw'; } catch (e) { return 'threw'; } }

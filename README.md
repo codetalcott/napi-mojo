@@ -24,7 +24,7 @@ demo.greet("world"); // "Hello, world!"
 ## Project Status
 
 **Alpha** — napi-mojo is under active development and not yet proven in
-production. The API covers the full N-API v10 surface (156 exported functions, 5
+production. The API covers the full N-API v10 surface (158 exported functions, 5
 classes, 650+ tests). Expect breaking changes as the project matures.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
@@ -236,7 +236,7 @@ wrongly. Test the behaviour.
 
 ## Features
 
-- **156 exported functions** and **5 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
+- **158 exported functions** and **5 classes** covering the full **N-API v10** surface (Node.js 22.12+ / 24+)
 - Primitives: strings, numbers (Float64/Int32/UInt32/Int64), booleans, null,
   undefined, BigInt, Symbol, Date
 - Objects: create, read/write properties, enumerate keys, freeze/seal, prototype
@@ -478,6 +478,16 @@ boolean, the integer tokens, declared structs) arrive as `Optional[T]`, while
 worker thread and consumed by the generated completion callback on the main
 thread, which is also where its destructor runs.
 
+### Long async jobs
+
+`thread = "own"` on an `async = true` function runs `execute_body` on a
+thread of the job's own (`AsyncWork.queue_on_thread`) instead of libuv's
+thread pool. That pool has four threads by default and `fs`, `dns.lookup`,
+`crypto` and `zlib` share it, so four long jobs there stall every file read
+in the process until one finishes. A thread costs tens of microseconds to
+start (about 25 µs a call more than the pool, measured on a 4-core Linux
+VM), so short jobs stay on the pool, which is the default.
+
 ### Classes with native state
 
 ```toml
@@ -581,7 +591,7 @@ build, works in any TypeScript-aware IDE.
 | Objects | `createObject` `makeGreeting` `getProperty` `getKeys` `hasOwn` `deleteProperty` `setPropertyByKey` `hasPropertyByKey` `freezeObject` `sealObject` `getPrototype` |
 | Arrays | `sumArray` `mapArray` `arrayHasElement` `arrayDeleteElement` |
 | Binary data | `createArrayBuffer` `createBuffer` `createBufferCopy` `bufferFromArrayBuffer` `doubleFloat64Array` `createTypedArrayView` `createDataView` `createExternalArrayBuffer` |
-| Async & promises | `asyncDouble` `asyncTriple` `asyncProgress` `resolveWith` `rejectWith` `cancelAsyncWork` |
+| Async & promises | `asyncDouble` `asyncTriple` `asyncProgress` `resolveWith` `rejectWith` `cancelAsyncWork` `asyncSleep` `threadSleep` |
 | Callbacks | `callFunction` `createCallback` `createAdder` `makeCallback` `makeCallback0` `makeCallback2` |
 | Classes | `Counter` (increment/reset/value) · `Animal` (name/speak) · `Dog` (breed) |
 | BigInt / Symbol / Date | `createSymbol` `symbolFor` `addBigInts` `bigIntFromWords` `bigIntToWords` `createDate` `getDateValue` |

@@ -40,7 +40,7 @@ each carries a module header comment with usage examples.
 
 | module | symbols documented |
 |---|---|
-| [`async_work.mojo`](../../src/napi/framework/async_work.mojo) | 0 / 10 |
+| [`async_work.mojo`](../../src/napi/framework/async_work.mojo) | 1 / 11 |
 | [`callback_scope.mojo`](../../src/napi/framework/callback_scope.mojo) | 0 / 5 |
 | [`escapable_handle_scope.mojo`](../../src/napi/framework/escapable_handle_scope.mojo) | 0 / 6 |
 | [`handle_scope.mojo`](../../src/napi/framework/handle_scope.mojo) | 1 / 6 |

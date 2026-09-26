@@ -1,9 +1,10 @@
 ## src/addon/async_ops.mojo — all async work and TSFN callbacks
 ##
 ## Covers: resolveWith, rejectWith, asyncDouble, asyncTriple,
-##         asyncProgress (with TSFN), cancelAsyncWork
+##         asyncProgress (with TSFN), cancelAsyncWork, asyncSleep, threadSleep
 
 from std.memory.alloc import unsafe_alloc
+from std.time import sleep
 from napi.types import (
     NapiEnv,
     NapiValue,
@@ -537,6 +538,135 @@ def cancel_async_work_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue(unsafe_from_address=Int(0))
 
 
+# ---------------------------------------------------------------------------
+# asyncSleep / threadSleep — one job, run on libuv's pool or on its own thread
+#
+# Both sleep `ms` milliseconds in `execute` and resolve with `ms`. They share
+# the data struct and both callbacks, and differ only in the queue call, so
+# tests/own_thread.test.js can hold four of each against a file read and see
+# which one stalls it.
+# ---------------------------------------------------------------------------
+
+
+struct SleepData(Movable):
+    var deferred: NapiDeferred
+    var work: NapiAsyncWork
+    # Cached NapiBindings address (see AsyncDoubleData)
+    var bindings_addr: Int
+    var ms: Float64
+    var ok: Bool
+
+    def __init__(out self, ms: Float64):
+        self.deferred = NapiDeferred(unsafe_from_address=Int(0))
+        self.work = NapiAsyncWork(unsafe_from_address=Int(0))
+        self.bindings_addr = 0
+        self.ms = ms
+        self.ok = True
+
+    def __moveinit__(out self, deinit take: Self):
+        self.deferred = take.deferred
+        self.work = take.work
+        self.bindings_addr = take.bindings_addr
+        self.ms = take.ms
+        self.ok = take.ok
+
+
+def sleep_execute(env: NapiEnv, data: OpaquePointer[MutAnyOrigin]):
+    var ptr = data.unsafe_bitcast[SleepData]()
+    if ptr[].ms < 0:
+        ptr[].ok = False
+        return
+    sleep(ptr[].ms / 1000.0)
+
+
+def sleep_complete(
+    env: NapiEnv, status: NapiStatus, data: OpaquePointer[MutAnyOrigin]
+):
+    var ptr = data.unsafe_bitcast[SleepData]()
+    if Int(env) == 0:
+        # queue_on_thread's job outlived its environment. Printed so a child
+        # process can assert the data was still freed (tests/own_thread.test.js).
+        print("napi-mojo-sleep-completed-without-env")
+    try:
+        var b = Bindings(unsafe_from_address=ptr[].bindings_addr)
+        if status == NAPI_OK and ptr[].ok:
+            var result_val = JsNumber.create(b, env, ptr[].ms)
+            AsyncWork.resolve(
+                b, env, ptr[].deferred, ptr[].work, result_val.value
+            )
+        elif status == NAPI_OK:
+            AsyncWork.reject_with_error(
+                b,
+                env,
+                ptr[].deferred,
+                ptr[].work,
+                "sleep: ms must not be negative",
+            )
+        else:
+            AsyncWork.reject_with_error(
+                b, env, ptr[].deferred, ptr[].work, "sleep: job did not run"
+            )
+    except:
+        pass
+    ptr.unsafe_deinit_pointee()
+    ptr.unsafe_free()
+
+
+def queue_sleep(env: NapiEnv, info: NapiValue, own_thread: Bool) -> NapiValue:
+    try:
+        var b = CbArgs.get_bindings(env, info)
+        var arg0 = CbArgs.get_one(b, env, info)
+        var ms = JsNumber.from_napi_value(b, env, arg0)
+        var data_ptr = unsafe_alloc[SleepData](1)
+        data_ptr.unsafe_write(SleepData(ms))
+        data_ptr[].bindings_addr = Int(b)
+        var data_opaque = data_ptr.unsafe_bitcast[
+            NoneType
+        ]().as_unsafe_any_origin()
+        var exec_ref = sleep_execute
+        var comp_ref = sleep_complete
+        try:
+            if own_thread:
+                var aw = AsyncWork.queue_on_thread(
+                    b,
+                    env,
+                    "threadSleep",
+                    data_opaque,
+                    fn_ptr(exec_ref),
+                    fn_ptr(comp_ref),
+                )
+                data_ptr[].deferred = aw.deferred
+                data_ptr[].work = aw.work
+                return aw.value
+            var aw = AsyncWork.queue(
+                b,
+                env,
+                "asyncSleep",
+                data_opaque,
+                fn_ptr(exec_ref),
+                fn_ptr(comp_ref),
+            )
+            data_ptr[].deferred = aw.deferred
+            data_ptr[].work = aw.work
+            return aw.value
+        except e:
+            # Neither callback runs when the queue call raises: still ours.
+            data_ptr.unsafe_deinit_pointee()
+            data_ptr.unsafe_free()
+            raise e^
+    except:
+        throw_js_error(env, "sleep requires one number argument (ms)")
+        return NapiValue(unsafe_from_address=Int(0))
+
+
+def async_sleep_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    return queue_sleep(env, info, False)
+
+
+def thread_sleep_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    return queue_sleep(env, info, True)
+
+
 def register_async(mut m: ModuleBuilder) raises:
     var resolve_with_ref = resolve_with_fn
     var reject_with_ref = reject_with_fn
@@ -544,9 +674,13 @@ def register_async(mut m: ModuleBuilder) raises:
     var async_triple_ref = async_triple_fn
     var async_progress_ref = async_progress_fn
     var cancel_async_work_ref = cancel_async_work_fn
+    var async_sleep_ref = async_sleep_fn
+    var thread_sleep_ref = thread_sleep_fn
     m.method("resolveWith", fn_ptr(resolve_with_ref))
     m.method("rejectWith", fn_ptr(reject_with_ref))
     m.method("asyncDouble", fn_ptr(async_double_ref))
     m.method("asyncTriple", fn_ptr(async_triple_ref))
     m.method("asyncProgress", fn_ptr(async_progress_ref))
     m.method("cancelAsyncWork", fn_ptr(cancel_async_work_ref))
+    m.method("asyncSleep", fn_ptr(async_sleep_ref))
+    m.method("threadSleep", fn_ptr(thread_sleep_ref))

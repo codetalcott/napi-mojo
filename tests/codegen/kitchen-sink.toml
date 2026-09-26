@@ -21,6 +21,7 @@
 #     field with a destructor, deinitialized on the main thread)
 #   - async arity 0,1,3,4 and every ASYNC_TYPE_MAP return (number,int32,
 #     uint32,int64), nested execute_body indentation
+#   - async on a thread of its own (thread = "own" -> queue_on_thread)
 #   - nullable converting args (Optional[T]): a scalar and a struct
 #   - native class state: state = "<struct>", constructor_mojo_fn, and
 #     mojo_fn on an instance method, a getter, a SETTER (typed value + mut
@@ -242,6 +243,18 @@ returns = "string"
 async = true
 execute_body = """
 ptr[].result = ptr[].input0 + " (async)"
+"""
+
+# --- Async on a thread of its own, not libuv's pool ---
+
+[functions.ks_async_own_thread]
+js_name = "ksAsyncOwnThread"
+args = ["number"]
+returns = "number"
+async = true
+thread = "own"
+execute_body = """
+ptr[].result = ptr[].input0 * 2.0
 """
 
 # --- Nullable converting args: Optional[T] in, descriptive check inside ---

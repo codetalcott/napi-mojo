@@ -491,6 +491,15 @@ function generateAsyncFunction(name, decl) {
     fail(`async function "${name}": return type "${returnsToken}" is not supported for async (worker-thread data structs allow only: ${Object.keys(ASYNC_TYPE_MAP).join(', ')})`);
   }
   const retType = ASYNC_TYPE_MAP[returnsToken];
+  // thread = "own" runs execute_body on a thread of the job's own rather than
+  // libuv's pool, which fs, dns.lookup, crypto and zlib share: four long jobs
+  // there stall every file read in the process. The callbacks are identical;
+  // only the queue call differs (AsyncWork.queue_on_thread's docstring).
+  const thread = decl.thread === undefined ? 'pool' : decl.thread;
+  if (thread !== 'pool' && thread !== 'own') {
+    fail(`async function "${name}": thread = "${thread}" is not "pool" (libuv's thread pool, the default) or "own" (a thread of the job's own)`);
+  }
+  const queueFn = thread === 'own' ? 'queue_on_thread' : 'queue';
   const argMojoTypes = args.map((a, idx) => {
     const tok = a.replace(/\?$/, '');
     if (!ASYNC_TYPE_MAP[tok]) {
@@ -503,7 +512,10 @@ function generateAsyncFunction(name, decl) {
 
   // 1. Data struct (Movable). A `string` field brings a destructor with it;
   // that destructor runs in the complete callback on the MAIN thread, where
-  // the struct is deinitialized, not on the worker.
+  // the struct is deinitialized, not on the worker. (With thread = "own" and
+  // an environment torn down mid-job, complete runs with a null env on the
+  // job's thread instead; it still frees the struct, and malloc does not care
+  // which thread.)
   out.push(`struct ${structName}(Movable):`);
   // NapiDeferred/NapiAsyncWork used to hide AnyOrigin here, which
   // dev2026062206 rejects in struct fields, and the generator emitted
@@ -586,7 +598,7 @@ function generateAsyncFunction(name, decl) {
   out.push(`        var comp_ref = ${name}_complete`);
   // .as_unsafe_any_origin() is required as of dev2026072306: the implicit
   // UnsafePointer -> MutAnyOrigin conversion at C-FFI signatures was removed.
-  out.push(`        var aw = AsyncWork.queue(_b, env, "${jsName}", data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), fn_ptr(exec_ref), fn_ptr(comp_ref))`);
+  out.push(`        var aw = AsyncWork.${queueFn}(_b, env, "${jsName}", data_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin(), fn_ptr(exec_ref), fn_ptr(comp_ref))`);
   out.push(`        data_ptr[].deferred = aw.deferred`);
   out.push(`        data_ptr[].work = aw.work`);
   out.push(`        return aw.value`);
@@ -1170,6 +1182,11 @@ function main() {
   const hasClasses = classEntries.length > 0;
   const asyncEntries = funcEntries.filter(([, d]) => d.async === 'true' || d.async === true);
   const syncEntries = funcEntries.filter(([, d]) => !(d.async === 'true' || d.async === true));
+  for (const [name, d] of syncEntries) {
+    if (d.thread !== undefined) {
+      fail(`[functions.${name}]: thread = "${d.thread}" applies only to async = true functions`);
+    }
+  }
   const hasAsync = asyncEntries.length > 0;
   const hasNPlusArgs = funcEntries.some(([, d]) => (d.args || []).length >= 5) ||
     classEntries.some(([, d]) => (d.constructor_args || []).length >= 5 ||
