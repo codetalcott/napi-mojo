@@ -2,7 +2,7 @@
 ##                           coerce ops
 
 from std.memory.alloc import unsafe_alloc
-from napi.types import NapiEnv, NapiValue, NapiTypeTag, NAPI_TYPE_EXTERNAL
+from napi.types import NapiEnv, NapiValue, NapiTypeTag, NAPI_OK, NAPI_TYPE_EXTERNAL
 from napi.bindings import Bindings
 from napi.error import throw_js_error, throw_js_type_error, check_status
 from napi.raw import (
@@ -123,8 +123,11 @@ def cleanup_hook_noop(arg: OpaquePointer[MutAnyOrigin]):
 ## in cleanup_hook.test.js would all still pass if hooks silently never fired,
 ## which is the same trap finalizer_gc.test.js documents for finalizers.
 ## Asserted by tests/cleanup_hook_observed.test.js.
+##
+## `arg` is the registration's own heap byte, freed here: a hook runs once.
 def observable_cleanup_hook(arg: OpaquePointer[MutAnyOrigin]):
     print("napi-mojo-cleanup-hook-ran")
+    arg.unsafe_bitcast[Byte]().unsafe_free()
 
 
 def add_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
@@ -154,14 +157,16 @@ def add_observable_cleanup_hook_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var hook_ptr = Pointer(to=hook_ref).unsafe_bitcast[
             OpaquePointer[MutAnyOrigin]
         ]()[]
-        check_status(
-            raw_add_env_cleanup_hook(
-                b,
-                env,
-                hook_ptr,
-                OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0)),
-            )
+        # A distinct arg per call. With NULL every call registered the same
+        # (hook, arg) pair, and Node aborts on a duplicate pair (CHECK in
+        # CleanupQueue::Add); Deno panics.
+        var arg_ptr = unsafe_alloc[Byte](1)
+        var added = raw_add_env_cleanup_hook(
+            b, env, hook_ptr, arg_ptr.unsafe_bitcast[NoneType]().as_unsafe_any_origin()
         )
+        if added != NAPI_OK:
+            arg_ptr.unsafe_free()
+        check_status(added)
         return JsBoolean.create(b, env, True).value
     except:
         throw_js_error(env, "addObservableCleanupHook failed")

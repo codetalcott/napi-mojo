@@ -8,7 +8,7 @@
 // prints a marker from the no-env hook context (plain stdio — the one
 // observable channel legal there), and the parent asserts it appeared after
 // the program's own output.
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const path = require('path');
 
 const ADDON = path.join(__dirname, '..', 'build', 'index.node');
@@ -29,6 +29,29 @@ test('sync env cleanup hook runs at env teardown (child process)', () => {
   expect(out).toContain(MARKER);
   // Teardown ordering: the marker must come after normal program output.
   expect(out.indexOf(MARKER)).toBeGreaterThan(out.indexOf('registered'));
+});
+
+// Each call is a hook of its own. Both calls used to register the same
+// (hook, NULL) pair, and Node refuses a duplicate pair with a CHECK that
+// aborts the process; Deno panics the same way.
+test('two registrations in one env are two hooks, and both run at teardown', () => {
+  const res = spawnSync(
+    process.execPath,
+    [
+      '-e',
+      `const m = require(${JSON.stringify(ADDON)});
+       m.addObservableCleanupHook();
+       m.addObservableCleanupHook();
+       console.log('registered twice');`,
+    ],
+    { encoding: 'utf8', timeout: 30000 }
+  );
+  expect({ status: res.status, signal: res.signal, stderr: res.stderr }).toEqual({
+    status: 0,
+    signal: null,
+    stderr: '',
+  });
+  expect(res.stdout.trim().split('\n')).toEqual(['registered twice', MARKER, MARKER]);
 });
 
 test('hook does not fire when never registered', () => {
