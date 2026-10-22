@@ -66,27 +66,29 @@ def js_type_name(t: NapiValueType) -> String:
     Returns:
         The type name, or "unknown" for an unrecognized code.
     """
-    if t == NAPI_TYPE_UNDEFINED:
-        return "undefined"
-    if t == NAPI_TYPE_NULL:
-        return "object"  # typeof null === "object" in JS
-    if t == NAPI_TYPE_BOOLEAN:
-        return "boolean"
-    if t == NAPI_TYPE_NUMBER:
-        return "number"
-    if t == NAPI_TYPE_STRING:
-        return "string"
-    if t == NAPI_TYPE_SYMBOL:
-        return "symbol"
-    if t == NAPI_TYPE_OBJECT:
-        return "object"
-    if t == NAPI_TYPE_FUNCTION:
-        return "function"
-    if t == NAPI_TYPE_EXTERNAL:
-        return "external"
-    if t == NAPI_TYPE_BIGINT:
-        return "bigint"
-    return "unknown"
+    # `case ==`, not `case NAPI_TYPE_X`: a bare name in a pattern binds a new
+    # variable and matches every value.
+    match t:
+        case == NAPI_TYPE_UNDEFINED:
+            return "undefined"
+        case == NAPI_TYPE_NULL | == NAPI_TYPE_OBJECT:
+            return "object"  # typeof null === "object" in JS
+        case == NAPI_TYPE_BOOLEAN:
+            return "boolean"
+        case == NAPI_TYPE_NUMBER:
+            return "number"
+        case == NAPI_TYPE_STRING:
+            return "string"
+        case == NAPI_TYPE_SYMBOL:
+            return "symbol"
+        case == NAPI_TYPE_FUNCTION:
+            return "function"
+        case == NAPI_TYPE_EXTERNAL:
+            return "external"
+        case == NAPI_TYPE_BIGINT:
+            return "bigint"
+        case _:
+            return "unknown"
 
 
 # --- Bindings-aware overloads ---

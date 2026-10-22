@@ -65,55 +65,57 @@ def napi_status_name(status: NapiStatus) -> String:
     Returns:
         The status name, or a generic label for an unknown code.
     """
-    if status == 0:
-        return "napi_ok"
-    if status == 1:
-        return "napi_invalid_arg"
-    if status == 2:
-        return "napi_object_expected"
-    if status == 3:
-        return "napi_string_expected"
-    if status == 4:
-        return "napi_name_expected"
-    if status == 5:
-        return "napi_function_expected"
-    if status == 6:
-        return "napi_number_expected"
-    if status == 7:
-        return "napi_boolean_expected"
-    if status == 8:
-        return "napi_array_expected"
-    if status == 9:
-        return "napi_generic_failure"
-    if status == 10:
-        return "napi_pending_exception"
-    if status == 11:
-        return "napi_cancelled"
-    if status == 12:
-        return "napi_escape_called_twice"
-    if status == 13:
-        return "napi_handle_scope_mismatch"
-    if status == 14:
-        return "napi_callback_scope_mismatch"
-    if status == 15:
-        return "napi_queue_full"
-    if status == 16:
-        return "napi_closing"
-    if status == 17:
-        return "napi_bigint_expected"
-    if status == 18:
-        return "napi_date_expected"
-    if status == 19:
-        return "napi_arraybuffer_expected"
-    if status == 20:
-        return "napi_detachable_arraybuffer_expected"
-    if status == 21:
-        return "napi_would_deadlock"
-    if status == 22:
-        return "napi_no_external_buffers_allowed"
-    if status == 23:
-        return "napi_cannot_run_js"
-    return "napi_status_" + String(status)
+    match status:
+        case 0:
+            return "napi_ok"
+        case 1:
+            return "napi_invalid_arg"
+        case 2:
+            return "napi_object_expected"
+        case 3:
+            return "napi_string_expected"
+        case 4:
+            return "napi_name_expected"
+        case 5:
+            return "napi_function_expected"
+        case 6:
+            return "napi_number_expected"
+        case 7:
+            return "napi_boolean_expected"
+        case 8:
+            return "napi_array_expected"
+        case 9:
+            return "napi_generic_failure"
+        case 10:
+            return "napi_pending_exception"
+        case 11:
+            return "napi_cancelled"
+        case 12:
+            return "napi_escape_called_twice"
+        case 13:
+            return "napi_handle_scope_mismatch"
+        case 14:
+            return "napi_callback_scope_mismatch"
+        case 15:
+            return "napi_queue_full"
+        case 16:
+            return "napi_closing"
+        case 17:
+            return "napi_bigint_expected"
+        case 18:
+            return "napi_date_expected"
+        case 19:
+            return "napi_arraybuffer_expected"
+        case 20:
+            return "napi_detachable_arraybuffer_expected"
+        case 21:
+            return "napi_would_deadlock"
+        case 22:
+            return "napi_no_external_buffers_allowed"
+        case 23:
+            return "napi_cannot_run_js"
+        case _:
+            return "napi_status_" + String(status)
 
 
 # ---------------------------------------------------------------------------

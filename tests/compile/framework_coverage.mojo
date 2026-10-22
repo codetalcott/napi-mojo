@@ -338,6 +338,12 @@ def cover_handle_scope(b: Bindings, env: NapiEnv) raises:
 
     with_handle_scope[_scoped_body](b, env)
 
+    # The unified-closure overload, taking the body as an argument.
+    def _unified_body() raises {imm env}:
+        _ = env
+
+    with_handle_scope(b, env, _unified_body)
+
 
 # --- instance_data.mojo -------------------------------------------------------
 
@@ -782,6 +788,11 @@ def cover_runtime() raises:
         _ = i
 
     parallelize_safe[worker](0)
+
+    def work(i: Int) {imm}:
+        _ = i
+
+    parallelize_safe(work, 0)
 
 
 # --- threadsafe_function.mojo -------------------------------------------------

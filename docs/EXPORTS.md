@@ -110,6 +110,7 @@
 | `removeAsyncCleanupHook(handle)` | `remove_async_cleanup_hook_fn` | Removes the async cleanup hook that handle identifies, returns true |
 | `asyncRuntimeInitOk()` | `async_runtime_init_ok_fn` | True when the Mojo async runtime initialized, i.e. `parallelize_safe()` dispatches to threads rather than falling back to a sequential loop |
 | `parallelSquares(n, scale)` | `parallel_squares_fn` | `Float64Array` where `[i] = i * i * scale`, computed through `parallelize_safe`. Exists so the suite can assert parallel work's RESULTS, not just that init succeeded — every element depends on both captured values, so a broken capture cannot produce a correct array |
+| `parallelSquaresUnified(n, scale)` | `parallel_squares_unified_fn` | The same as `parallelSquares`, dispatched through `parallelize_safe`'s unified closure-argument form; `parallelSquares` uses the legacy closure-parameter form |
 | `getErrorMessage(err)` | `get_error_message_fn` | Returns `.message` string from any Error-like object |
 | `getErrorStack(err)` | `get_error_stack_fn` | Returns `.stack` string from any Error-like object |
 | `getOptValue(obj)` | `get_opt_value_fn` | Returns `obj.x` if present, else `null` (tests `JsObject.get_opt`) |
@@ -183,7 +184,8 @@ a foreign wrapped instance (which must be a `TypeError`, not a reinterpret).
 | `callMethod(obj, name, args)` | `call_method_fn` | `JsObject.call_method` — invoke `obj[name](...args)` with `this` bound to `obj` |
 | `callN(fn, args)` | `call_n_fn` | `JsFunction.call_n` — call with a runtime-length argument list |
 | `globalCacheActive()` | `global_cache_active_fn` | True when the bootstrap symbol is served from the data-segment slot rather than a per-call dlsym — guards a silent perf regression |
-| `scopedCall(n, fn)` | `scoped_call_fn` | Calls `fn(i)` n times, each iteration in its own handle scope (`with_handle_scope`) |
+| `scopedCall(n, fn)` | `scoped_call_fn` | Calls `fn(i)` n times, each iteration in its own handle scope (`with_handle_scope`, legacy closure-parameter form) |
+| `scopedCallUnified(n, fn)` | `scoped_call_unified_fn` | The same loop through `with_handle_scope`'s unified closure-argument form |
 | `thenDouble(value, onResult)` | `then_double_fn` | Host mode: `JsPromise.on_settled` — awaits `value` on a later tick, calls `onResult(null, value * 2)` or `onResult(reason)`; returns the promise `.then()` made |
 | `thenScaled(value, factor, counter, onResult)` | `then_scaled_fn` | Host mode: `on_settled` with native `data` — the factor rides in a heap payload whose GC finalizer bumps the Int64 in `counter`, so tests can see it freed on every path |
 | `deferredRequire(ctx, onResult)` | `deferred_require_fn` | Host mode: captures `require` and calls it from a later tick, `onResult(null, path.sep)` — the continuation persistence story, with no `napi_ref` |

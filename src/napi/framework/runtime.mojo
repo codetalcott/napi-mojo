@@ -35,8 +35,17 @@ def init_async_runtime() raises:
     initialize_runtime()
 
 
-def parallelize_safe[func: def(Int) capturing[_] -> None](n: Int):
+def parallelize_safe(func: Some[def(Int) -> None], n: Int):
     """Run func(i) for i in 0..n-1 in parallel, with runtime auto-init.
+
+    The form to use in new code: `func` is an ordinary argument, a unified
+    closure with an explicit capture list, which is the shape MAX's own
+    `parallelize` takes, so it is forwarded unchanged.
+
+        def _scaled(i: Int) {imm out, imm scale}:
+            out[unsafe_offset=i] = Float64(i) * scale
+
+        parallelize_safe(_scaled, n)
 
     Equivalent to a bare parallelize() call but safe to invoke from a .node
     addon without a prior explicit init_async_runtime() call.
@@ -54,6 +63,10 @@ def parallelize_safe[func: def(Int) capturing[_] -> None](n: Int):
     Crossover point: ~200 ns thread-dispatch overhead means this is only
     faster than scalar for n >= ~64 Float64 elements. For small arrays
     use a plain for loop instead.
+
+    Args:
+        func: The work for one index.
+        n: The number of indices, 0..n-1.
     """
     try:
         init_async_runtime()
@@ -61,10 +74,27 @@ def parallelize_safe[func: def(Int) capturing[_] -> None](n: Int):
         for i in range(n):
             func(i)
         return
-    # MAX 26.6 moved parallelize() to a unified closure ARGUMENT. `func` is a
-    # legacy closure PARAMETER (comptime), which does not convert to the new
-    # `FuncType`, so wrap it in a unified closure whose body calls it.
+    parallelize(func, n)
+
+
+def parallelize_safe[func: def(Int) capturing[_] -> None](n: Int):
+    """Run func(i) for i in 0..n-1 in parallel, with runtime auto-init.
+
+    The legacy-closure form, kept because downstream packages compile against
+    it. New code should pass a unified closure to the overload above, which
+    this delegates to and which documents the full contract, including the
+    sequential fallback when the runtime cannot be initialized.
+
+    Parameters:
+        func: The work for one index, a closure declared `capturing` (or with
+            `@__parameter`).
+
+    Args:
+        n: The number of indices, 0..n-1.
+    """
+    # A legacy closure PARAMETER (comptime) does not convert to a unified
+    # closure argument, so wrap it in one whose body calls it.
     def _work(i: Int) {imm}:
         func(i)
 
-    parallelize(_work, n)
+    parallelize_safe(_work, n)

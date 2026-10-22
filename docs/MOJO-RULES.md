@@ -70,9 +70,18 @@ API; `docs/toolchain-migrations.md` has the before/after and the reasoning.
     convert. `@parameter` still works but is deprecated.
   - **New code should prefer a UNIFIED closure** — passed as an argument with an
     explicit capture list (`def w(i: Int) {imm a, mut b}:`, `{imm}` for all) and
-    no decorator. That is where the stdlib and MAX are going; `with_handle_scope`
-    and `parallelize_safe` keep legacy signatures only because downstream
-    packages compile against them.
+    no decorator. That is where the stdlib and MAX are going, and 1.2.0 moved
+    more of them. `with_handle_scope(b, env, body)` and
+    `parallelize_safe(func, n)` take one as `Some[def(...)]` and hold the
+    implementation. Their legacy `[body]`/`[func]` overloads only wrap the
+    closure and delegate, and are kept because downstream packages compile
+    against them. `scopedCall`/`parallelSquares` exercise the legacy forms at
+    runtime, and their `*Unified` twins the new ones.
+- **`match` on a named constant is `case == NAME:`, never `case NAME:`.** A
+  bare name in a pattern binds a new variable and matches every value, as in
+  Python. `--Werror` catches most shapes (the cases after it become
+  unreachable, or the binding goes unused), but not a last case whose body
+  uses the name. Literals (`case 3:`, `case "int8":`) need no `==`.
 - **Raw-pointer surface**: `Pointer` (not `UnsafePointer`), `.unsafe_bitcast[T]()`,
   `.unsafe_free()`, `unsafe_alloc[T](n)`, `ptr[unsafe_offset=i]`,
   `ptr.unsafe_offset(n)`, `.unsafe_load[width=w](i)`, `unsafe_write`,

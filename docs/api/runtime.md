@@ -29,11 +29,22 @@ callers even though the official API does not raise.
 
 ### `parallelize_safe`
 
+*Overload 1 of 2.*
+
 ```mojo
-def parallelize_safe[func: def(Int) capturing thin -> None](n: Int)
+def parallelize_safe(func: T, n: Int)
 ```
 
 Run func(i) for i in 0..n-1 in parallel, with runtime auto-init.
+
+The form to use in new code: `func` is an ordinary argument, a unified
+closure with an explicit capture list, which is the shape MAX's own
+`parallelize` takes, so it is forwarded unchanged.
+
+    def _scaled(i: Int) {imm out, imm scale}:
+        out[unsafe_offset=i] = Float64(i) * scale
+
+    parallelize_safe(_scaled, n)
 
 Equivalent to a bare parallelize() call but safe to invoke from a .node
 addon without a prior explicit init_async_runtime() call.
@@ -51,3 +62,25 @@ dispatch: func(i) is invoked for every i either way.
 Crossover point: ~200 ns thread-dispatch overhead means this is only
 faster than scalar for n >= ~64 Float64 elements. For small arrays
 use a plain for loop instead.
+
+| argument | type | description |
+|---|---|---|
+| `func` | `T` | The work for one index. |
+| `n` | `Int` | The number of indices, 0..n-1. |
+
+*Overload 2 of 2.*
+
+```mojo
+def parallelize_safe[func: def(Int) capturing thin -> None](n: Int)
+```
+
+Run func(i) for i in 0..n-1 in parallel, with runtime auto-init.
+
+The legacy-closure form, kept because downstream packages compile against
+it. New code should pass a unified closure to the overload above, which
+this delegates to and which documents the full contract, including the
+sequential fallback when the runtime cannot be initialized.
+
+| argument | type | description |
+|---|---|---|
+| `n` | `Int` | The number of indices, 0..n-1. |

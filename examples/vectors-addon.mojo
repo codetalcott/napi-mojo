@@ -73,12 +73,12 @@ def dot_product(
     var chunk_size = size // NUM_WORKERS
     var partials = unsafe_alloc[Float64](NUM_WORKERS)
 
-    def worker(wid: Int) capturing:
+    def worker(wid: Int) {imm chunk_size, imm size, imm partials, imm a, imm b}:
         var s = wid * chunk_size
         var e = s + chunk_size if wid < NUM_WORKERS - 1 else size
         partials[unsafe_offset=wid] = _vectorized_dot(a, b, s, e)
 
-    parallelize_safe[worker](NUM_WORKERS)
+    parallelize_safe(worker, NUM_WORKERS)
     var result: Float64 = 0.0
     for i in range(NUM_WORKERS):
         result += partials[unsafe_offset=i]
@@ -113,7 +113,9 @@ def cosine_similarity(
     var norms_a = unsafe_alloc[Float64](NUM_WORKERS)
     var norms_b = unsafe_alloc[Float64](NUM_WORKERS)
 
-    def worker(wid: Int) capturing:
+    def worker(wid: Int) {
+        imm chunk_size, imm size, imm dots, imm norms_a, imm norms_b, imm a, imm b
+    }:
         var s = wid * chunk_size
         var e = s + chunk_size if wid < NUM_WORKERS - 1 else size
         var local_dot: Float64 = 0.0
@@ -132,7 +134,7 @@ def cosine_similarity(
         norms_a[unsafe_offset=wid] = local_na
         norms_b[unsafe_offset=wid] = local_nb
 
-    parallelize_safe[worker](NUM_WORKERS)
+    parallelize_safe(worker, NUM_WORKERS)
 
     var dot: Float64 = 0.0
     var na: Float64 = 0.0
@@ -158,12 +160,12 @@ def euclidean_distance(
     var chunk_size = size // NUM_WORKERS
     var partials = unsafe_alloc[Float64](NUM_WORKERS)
 
-    def worker(wid: Int) capturing:
+    def worker(wid: Int) {imm chunk_size, imm size, imm partials, imm a, imm b}:
         var s = wid * chunk_size
         var e = s + chunk_size if wid < NUM_WORKERS - 1 else size
         partials[unsafe_offset=wid] = _vectorized_euclid(a, b, s, e)
 
-    parallelize_safe[worker](NUM_WORKERS)
+    parallelize_safe(worker, NUM_WORKERS)
     var sum_sq: Float64 = 0.0
     for i in range(NUM_WORKERS):
         sum_sq += partials[unsafe_offset=i]
