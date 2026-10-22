@@ -3,6 +3,30 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
+## Unreleased
+
+**Mojo 1.2.0 stable toolchain adoption** (`max = "==26.7.0"`, from Mojo 1.1.0 /
+`26.6.0`). No public Mojo signature changed and nothing failed to compile, so
+downstream addons compile unmodified once they are on 1.2.0. Adopting it still
+moves them onto that toolchain, which is what made 0.16.0 a minor. Full
+account in [`docs/toolchain-migrations.md`](docs/toolchain-migrations.md).
+
+### Changed
+
+- **No `^` on arguments to borrowed parameters.** Mojo 1.2.0 warns that such a
+  transfer has no effect, and every CI compile is `--Werror`. Four
+  `captures^` arguments to `JsPromise.on_settled` (which borrows `captures`)
+  lose the `^`. Nothing moved before either, so behaviour is unchanged.
+  Downstream code that does the same gets the same warning.
+
+### Fixed
+
+- **`tests/cleanup_hook_observed.test.js` failed under the Guard Malloc
+  recipe** (`docs/toolchain-migrations.md`), on a clean tree since 0.17.0. The
+  spawned child inherits `DYLD_INSERT_LIBRARIES`, and libgmalloc's banner
+  landed in the stderr the test asserts empty. The test now strips only those
+  banner lines.
+
 ## 0.17.0 — 2026-09-26
 
 **Adds `AsyncWork.queue_on_thread`**, for async jobs too long for libuv's

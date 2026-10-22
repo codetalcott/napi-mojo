@@ -27,7 +27,7 @@ content. See the changelog-rotation note below.
 
 ---
 
-> **Current pin: Mojo 1.1.0 (stable), `max = "==26.6.0"` from the stable `https://conda.modular.com/max/` channel.** Adopted 2026-09-17, moving off Mojo 1.0.0 / `26.5.0`. The previous pin was Mojo 1.0.0 (`max = "==26.5.0"`), adopted 2026-08-12 off the `26.6.0.dev2026080905` nightly.
+> **Current pin: Mojo 1.2.0 (stable), `max = "==26.7.0"` from the stable `https://conda.modular.com/max/` channel.** Adopted 2026-10-22, moving off Mojo 1.1.0 / `26.6.0` (adopted 2026-09-17). Before that, Mojo 1.0.0 (`max = "==26.5.0"`), adopted 2026-08-12 off the `26.6.0.dev2026080905` nightly.
 >
 > **The framework tracks STABLE Mojo releases, not nightlies.** napi-mojo ships source that downstream packages compile against (`@qkstat/retrieve` and `@qkstat/embed` build with `-I node_modules/napi-mojo/src`), so the pin is part of the public contract: a nightly pin forces every consumer onto that exact nightly. The Nightly Canary keeps its job — early warning for the *next* release — and is now the only thing in the repo that touches the nightly channel.
 >
@@ -335,3 +335,77 @@ and build-cache byte-identity); 18/18 benchmarks at 12–23% of ceiling; the ful
 suite plus `async_stress` under Guard Malloc with `MALLOC_STRICT_SIZE=1`,
 banner confirmed present; and `check-runtimes.mjs` on Bun 1.3.7 (Deno absent
 locally — CI covers it).
+
+## Mojo 1.2.0 / `max = "==26.7.0"` (adopted 2026-10-22)
+
+**No hard errors on any compile surface, and four instances of one new
+warning.** The audit of `releases/v1.2.0.md` (plus MAX's `releases/v26.7.md`,
+for `max.algorithm`) found nothing else this tree uses: no `StringSpan`
+mutation (`MutStringSpan`/`MutStringSlice` are removed), no pointer-and-length
+`hash()`, no `std.hashlib`, no `isspace()`, no `FileDescriptor`, no `Layout`,
+no `has_*_gpu_accelerator()`, no `big_endian=`, no `if var x :=`, and none of
+the `Tuple`/`SIMD.reduce` APIs whose closures moved to runtime arguments.
+`parallelize` itself is unchanged in MAX 26.7; the closure move there hit
+`foreach`, warp reductions and the `max.algorithm` *reduction* callbacks, none
+of which are used here. One to know for later: `c_char` now follows the
+target's `char` signedness, which is **unsigned on `linux-arm64`**. Nothing here
+declares FFI through `c_char` today; a future declaration that does would bind
+differently on that prebuild target.
+
+**1. `x^` passed to a borrowed parameter now warns**: `this value is borrowed
+here, so the transfer has no effect and can be removed`. Four sites, all
+`captures^` into `JsPromise.on_settled`, whose `captures: List[NapiValue]` is
+read-only: three in `src/addon/host_ops.mojo`, and one in
+`tests/compile/framework_coverage.mojo` that only the coverage target reported.
+So the rule holds again: **collect diagnostics from the coverage target, not
+from `build.sh`.** The fix drops the `^`. Behaviour is unchanged, because the
+transfer never happened. This is the `_ = x^` family again: a spelling that
+looks like it does something to a lifetime and does not. It was also the only
+thing that would have failed CI, since every compile is `--Werror`.
+
+**2. `async` / `await` → `__async` / `__await`** (a warning; the prefix marks
+async unstable). They appear here only in comments (`spike/await_probe.mojo`,
+`docs/plan-promise-bridge.md`, CLAUDE.md host-mode constraint 1), which now
+note the new spelling.
+
+**Checked and still holding.** `MutAnyOrigin`/`ImmutAnyOrigin` carry no
+deprecation language at `mojo/v1.2.0`; the "slated for removal" notice is still
+attached only to the `Unsafe*` spellings, so the deferred signature flip is not
+forced. `globalCacheActive()` is `true`, so `pop.global_alloc` survived another
+release. `asyncRuntimeInitOk()` is `true` and `parallelSquares` is correct.
+`check-werror.mjs`'s `@parameter` deprecation still warns, so its
+counterfactual stands. `KNOWN_UNDOCUMENTABLE` still holds, so the main-module
+`__moveinit__` bug is still present. The keep-alive IR counterfactual holds
+both ways.
+
+**Three things that look like regressions and are not.**
+
+- **The Guard Malloc recipe failed one test on a clean tree.**
+  `tests/cleanup_hook_observed.test.js`'s two-registrations test (added in
+  0.17.0, after the 1.1.0 baseline) spawns a child that inherits
+  `DYLD_INSERT_LIBRARIES`, and libgmalloc's banner landed in the stderr the test
+  asserts empty. The child exited 0 with no signal. The test now strips
+  `GuardMalloc[` lines and nothing else.
+- **`check-runtimes.mjs` on a local Bun 1.3.7: `ownThread` and
+  `ownThreadTeardown` SIGTRAP.** `main` built with Mojo 1.1.0 fails
+  identically under the same Bun, so the cause is the old Bun, not this bump.
+  CI pins 1.3.11, which those scenarios were verified on in 0.17.0. (The 1.1.0
+  entry's clean "Bun 1.3.7" run predates those scenarios.) Judge this gate on
+  the pinned Bun.
+- **`m0-interop` fails its gate step.** No m0 on PyPI is gated on 1.2.0 yet:
+  0.2.0 (pinned) and 0.12.0 (latest) both say `["1.1.0"]`. That is the gate
+  doing its job. The pinned 0.2.0 source compiles on 1.2.0, and
+  `examples/m0-session/parity.mjs` passes 7/7 against it. Move `M0_VERSION` once
+  mojo-http publishes an m0 gated on 1.2.0.
+
+**Verification run for this bump** (darwin-arm64 / Node 24.15.0): the addon
+build, the compile-coverage target, all three examples and the FFI probe are
+all warning-clean under `--Werror`; 850 tests; 12 GC finalizer tests; codegen
+drift gate, kitchen sink, and the codegen example built and run; FFI probe
+`4/4`; the `--Werror` and keep-alive counterfactuals; docstring,
+compile-coverage, doc-sample, exports-doc, rules-extract, platform, portability
+and GLIBCXX self-test gates; CLI, tutorial, all host-mode e2e runs (including
+the `pipeline.mojo` collision regression, build-cache byte-identity and library
+include roots) and the host scaffold; 18/18 benchmarks at 12–22% of ceiling;
+the full suite and `async_stress` (40 × 80) under Guard Malloc with
+`MALLOC_STRICT_SIZE=1`, banner confirmed present.

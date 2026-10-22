@@ -11,7 +11,7 @@ Studied 2026-09-13 against Mojo 1.0.0, Node 24.15.0 and napi-rs `napi` 3.12.1.
 
 | Question | Answer | Evidence |
 |---|---|---|
-| Does Mojo have `await`? | **Yes.** `async def`, `await`, `Task`, `create_task` | Compiled and ran on the pin; `spike/await_probe.mojo` header |
+| Does Mojo have `await`? | **Yes.** `async def`, `await`, `Task`, `create_task` — spelled `__async def` / `__await` since 1.2.0, which marks async unstable | Compiled and ran on the pin; `spike/await_probe.mojo` header |
 | Can host-mode code wait for a JS promise inside its callback? | **No.** | `spike/await_probe.mojo` — polling, callback scopes and `uv_run` re-entry all fail |
 | Can N-API read a promise's state or result? | **No.** Only `napi_create_promise`, `napi_resolve_deferred`, `napi_reject_deferred`, `napi_is_promise` | `js_native_api.h`, Node 24 |
 | Can Mojo code continue after a promise? | **Yes.** `JsPromise.on_settled` | `tests/host.test.js`, `tests/finalizer_gc.test.js` |

@@ -35,7 +35,8 @@
 ##   def main():
 ##       print(create_task(middle(5)).wait())   # prints 30
 ## `await` exists; it suspends Mojo coroutines, and nothing public makes a JS
-## promise awaitable.
+## promise awaitable. Mojo 1.2.0 renamed the keywords `__async` / `__await` to
+## mark async unstable; the spellings above still compile, with a warning.
 
 from std.memory.alloc import unsafe_alloc
 from std.ffi import OwnedDLHandle

@@ -201,7 +201,7 @@ def then_double_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         captures.append(args[1])
         var cb_ref = continuation_double_fn
         var derived = JsPromise.on_settled(
-            b, env, args[0], fn_ptr(cb_ref), captures^
+            b, env, args[0], fn_ptr(cb_ref), captures
         )
         _ = cb_ref
         return derived
@@ -258,7 +258,7 @@ def then_scaled_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
             env,
             args[0],
             fn_ptr(cb_ref),
-            captures^,
+            captures,
             payload.unsafe_bitcast[NoneType]().as_unsafe_any_origin(),
             fn_ptr(fin_ref),
         )
@@ -305,7 +305,7 @@ def deferred_require_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         # Settling `undefined` is the smallest way to reach a later tick.
         var cb_ref = continuation_require_fn
         var derived = JsPromise.on_settled(
-            b, env, JsUndefined.create(b, env).value, fn_ptr(cb_ref), captures^
+            b, env, JsUndefined.create(b, env).value, fn_ptr(cb_ref), captures
         )
         _ = cb_ref
         return derived
