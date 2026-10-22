@@ -74,7 +74,9 @@ def async_runtime_init_ok_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue(unsafe_from_address=Int(0))
 
 
-def parallel_squares_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+def _parallel_squares[
+    unified: Bool
+](env: NapiEnv, info: NapiValue) -> NapiValue:
     """parallelSquares(n, scale) -> Float64Array where [i] = i * i * scale.
 
     Real work dispatched through `parallelize_safe`, shaped so that a wrong
@@ -83,6 +85,10 @@ def parallel_squares_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
     scalar — so a closure reading a dead or stale slot cannot produce a
     correct array, and the buffer is pre-filled with a sentinel so an index
     the work never visited is distinguishable from one computed wrongly.
+
+    `unified` picks which form of `parallelize_safe` dispatches the work: the
+    unified closure argument, or the legacy closure parameter. Each has its
+    own export so both are exercised at runtime.
 
     Deliberately not a parallelism assertion: the sequential fallback computes
     the same values by design, and `asyncRuntimeInitOk()` is what observes
@@ -109,11 +115,20 @@ def parallel_squares_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         for i in range(n):
             slots[unsafe_offset=i] = UNWRITTEN_SENTINEL
 
-        def worker(i: Int) capturing:
-            var x = Float64(i)
-            slots[unsafe_offset=i] = x * x * factor
+        comptime if unified:
 
-        parallelize_safe[worker](n)
+            def work(i: Int) {imm slots, imm factor}:
+                var x = Float64(i)
+                slots[unsafe_offset=i] = x * x * factor
+
+            parallelize_safe(work, n)
+        else:
+
+            def worker(i: Int) capturing:
+                var x = Float64(i)
+                slots[unsafe_offset=i] = x * x * factor
+
+            parallelize_safe[worker](n)
         return out.to_js(b, env)
     except:
         # Unconditional: napi_throw_error is a documented no-op while an
@@ -123,8 +138,22 @@ def parallel_squares_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue(unsafe_from_address=Int(0))
 
 
+def parallel_squares_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    """parallelSquares(n, scale), through the legacy `parallelize_safe[func]`.
+    """
+    return _parallel_squares[False](env, info)
+
+
+def parallel_squares_unified_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    """parallelSquaresUnified(n, scale), through `parallelize_safe(func, n)`.
+    """
+    return _parallel_squares[True](env, info)
+
+
 def register_runtime_ops(mut m: ModuleBuilder) raises:
     var async_runtime_init_ok_ref = async_runtime_init_ok_fn
     m.method("asyncRuntimeInitOk", fn_ptr(async_runtime_init_ok_ref))
     var parallel_squares_ref = parallel_squares_fn
     m.method("parallelSquares", fn_ptr(parallel_squares_ref))
+    var parallel_squares_unified_ref = parallel_squares_unified_fn
+    m.method("parallelSquaresUnified", fn_ptr(parallel_squares_unified_ref))

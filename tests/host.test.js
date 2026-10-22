@@ -196,16 +196,22 @@ describe('call_n — runtime-length argument lists', () => {
   });
 });
 
-describe('with_handle_scope — Mojo-driven loops', () => {
+// scopedCall runs the loop through with_handle_scope's legacy closure
+// parameter, scopedCallUnified through its unified closure argument.
+const SCOPED_CALLS = ['scopedCall', 'scopedCallUnified'];
+
+describe.each(SCOPED_CALLS)('with_handle_scope — Mojo-driven loops (%s)', (name) => {
+  const scopedCall = (...args) => addon[name](...args);
+
   test('runs the body once per iteration', () => {
     let calls = 0;
-    expect(addon.scopedCall(5, () => calls++)).toBe(5);
+    expect(scopedCall(5, () => calls++)).toBe(5);
     expect(calls).toBe(5);
   });
 
   test('passes the index', () => {
     const seen = [];
-    addon.scopedCall(4, (i) => seen.push(i));
+    scopedCall(4, (i) => seen.push(i));
     expect(seen).toEqual([0, 1, 2, 3]);
   });
 
@@ -214,7 +220,7 @@ describe('with_handle_scope — Mojo-driven loops', () => {
     // the callback's scope for the whole loop. This is the regression guard.
     let calls = 0;
     expect(
-      addon.scopedCall(20000, () => {
+      scopedCall(20000, () => {
         calls++;
         return {};
       })

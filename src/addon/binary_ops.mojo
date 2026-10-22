@@ -158,47 +158,50 @@ def create_typed_array_view_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         var length = Int(JsNumber.from_napi_value(b, env, argv[unsafe_offset=3]))
         argv.unsafe_free()
         var ta: JsTypedArray
-        if type_str == "int8":
-            ta = JsTypedArray.create_int8(
-                b, env, ab, UInt(offset), UInt(length)
-            )
-        elif type_str == "uint8":
-            ta = JsTypedArray.create_uint8(
-                b, env, ab, UInt(offset), UInt(length)
-            )
-        elif type_str == "uint8clamped":
-            ta = JsTypedArray.create_uint8_clamped(
-                b, env, ab, UInt(offset), UInt(length)
-            )
-        elif type_str == "int16":
-            ta = JsTypedArray.create_int16(
-                b, env, ab, UInt(offset), UInt(length)
-            )
-        elif type_str == "uint16":
-            ta = JsTypedArray.create_uint16(
-                b, env, ab, UInt(offset), UInt(length)
-            )
-        elif type_str == "int32":
-            ta = JsTypedArray.create_int32(
-                b, env, ab, UInt(offset), UInt(length)
-            )
-        elif type_str == "uint32":
-            ta = JsTypedArray.create_uint32(
-                b, env, ab, UInt(offset), UInt(length)
-            )
-        elif type_str == "float32":
-            ta = JsTypedArray.create_float32(
-                b, env, ab, UInt(offset), UInt(length)
-            )
-        elif type_str == "float64":
-            ta = JsTypedArray.create_float64(
-                b, env, ab, UInt(offset), UInt(length)
-            )
-        else:
-            throw_js_error_dynamic(
-                b, env, "createTypedArrayView: unknown type '" + type_str + "'"
-            )
-            return NapiValue(unsafe_from_address=Int(0))
+        match type_str:
+            case "int8":
+                ta = JsTypedArray.create_int8(
+                    b, env, ab, UInt(offset), UInt(length)
+                )
+            case "uint8":
+                ta = JsTypedArray.create_uint8(
+                    b, env, ab, UInt(offset), UInt(length)
+                )
+            case "uint8clamped":
+                ta = JsTypedArray.create_uint8_clamped(
+                    b, env, ab, UInt(offset), UInt(length)
+                )
+            case "int16":
+                ta = JsTypedArray.create_int16(
+                    b, env, ab, UInt(offset), UInt(length)
+                )
+            case "uint16":
+                ta = JsTypedArray.create_uint16(
+                    b, env, ab, UInt(offset), UInt(length)
+                )
+            case "int32":
+                ta = JsTypedArray.create_int32(
+                    b, env, ab, UInt(offset), UInt(length)
+                )
+            case "uint32":
+                ta = JsTypedArray.create_uint32(
+                    b, env, ab, UInt(offset), UInt(length)
+                )
+            case "float32":
+                ta = JsTypedArray.create_float32(
+                    b, env, ab, UInt(offset), UInt(length)
+                )
+            case "float64":
+                ta = JsTypedArray.create_float64(
+                    b, env, ab, UInt(offset), UInt(length)
+                )
+            case _:
+                throw_js_error_dynamic(
+                    b,
+                    env,
+                    "createTypedArrayView: unknown type '" + type_str + "'",
+                )
+                return NapiValue(unsafe_from_address=Int(0))
         return ta.value
     except:
         throw_js_error(env, "createTypedArrayView failed")

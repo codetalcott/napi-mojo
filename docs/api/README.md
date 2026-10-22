@@ -30,7 +30,7 @@ addon's own exports are listed separately in [EXPORTS.md](../EXPORTS.md).
 | [`js_uint32`](js_uint32.md) | 5 / 5 |
 | [`js_undefined`](js_undefined.md) | 4 / 4 |
 | [`js_value`](js_value.md) | 8 / 8 |
-| [`runtime`](runtime.md) | 2 / 2 |
+| [`runtime`](runtime.md) | 3 / 3 |
 
 ## Not yet documented
 
@@ -43,7 +43,7 @@ each carries a module header comment with usage examples.
 | [`async_work.mojo`](../../src/napi/framework/async_work.mojo) | 1 / 11 |
 | [`callback_scope.mojo`](../../src/napi/framework/callback_scope.mojo) | 0 / 5 |
 | [`escapable_handle_scope.mojo`](../../src/napi/framework/escapable_handle_scope.mojo) | 0 / 6 |
-| [`handle_scope.mojo`](../../src/napi/framework/handle_scope.mojo) | 1 / 6 |
+| [`handle_scope.mojo`](../../src/napi/framework/handle_scope.mojo) | 2 / 7 |
 | [`js_arraybuffer.mojo`](../../src/napi/framework/js_arraybuffer.mojo) | 0 / 10 |
 | [`js_async_context.mojo`](../../src/napi/framework/js_async_context.mojo) | 0 / 8 |
 | [`js_bigint.mojo`](../../src/napi/framework/js_bigint.mojo) | 0 / 10 |

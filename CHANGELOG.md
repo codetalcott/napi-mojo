@@ -11,6 +11,22 @@ downstream addons compile unmodified once they are on 1.2.0. Adopting it still
 moves them onto that toolchain, which is what made 0.16.0 a minor. Full
 account in [`docs/toolchain-migrations.md`](docs/toolchain-migrations.md).
 
+### Added
+
+- **Unified-closure overloads of `with_handle_scope` and `parallelize_safe`.**
+  `with_handle_scope(b, env, body)` and `parallelize_safe(func, n)` take the
+  closure as an ordinary argument with an explicit capture list
+  (`def step() raises {imm f}:`), the form the stdlib and MAX keep moving to.
+  1.2.0 moved `Tuple.consume_elements`, `SIMD.reduce` and several MAX APIs. The
+  legacy `with_handle_scope[body](b, env)` and `parallelize_safe[func](n)` are
+  unchanged and now delegate to the new forms, so existing code compiles as
+  before. New code should use the argument form, and downstream code can move
+  to it before the legacy form is retired.
+- **`scopedCallUnified(n, fn)` and `parallelSquaresUnified(n, scale)`**, test
+  exports that run the same work as `scopedCall` and `parallelSquares` through
+  the new forms. `tests/host.test.js` and `tests/runtime.test.js` now run
+  every case against both.
+
 ### Changed
 
 - **No `^` on arguments to borrowed parameters.** Mojo 1.2.0 warns that such a
@@ -18,6 +34,14 @@ account in [`docs/toolchain-migrations.md`](docs/toolchain-migrations.md).
   `captures^` arguments to `JsPromise.on_settled` (which borrows `captures`)
   lose the `^`. Nothing moved before either, so behaviour is unchanged.
   Downstream code that does the same gets the same warning.
+- **`examples/vectors-addon.mojo` uses the unified form** of
+  `parallelize_safe`, with explicit capture lists. Its results are
+  bit-identical to the legacy form's.
+- **`scopedCall` is typed** in the generated `.d.ts`:
+  `(n: number, fn: (i: number) => unknown): number`, not
+  `(a: any, b: any): any`.
+- `napi_status_name`, `js_type_name` and `createTypedArrayView`'s type
+  dispatch use `match`. Output is unchanged.
 
 ### Fixed
 

@@ -48,9 +48,9 @@ struct HandleScope:
         check_status(raw_close_handle_scope(b, env, self.scope))
 
 
-def with_handle_scope[
-    body: def () raises capturing[_] -> None
-](b: Bindings, env: NapiEnv) raises:
+def with_handle_scope(
+    b: Bindings, env: NapiEnv, body: Some[def () raises -> None]
+) raises:
     """Run `body` inside its own handle scope, closing it on both paths.
 
     This is the encapsulated form of the try/except discipline this module's
@@ -59,23 +59,24 @@ def with_handle_scope[
     enclosing scope until that scope closes, so a long Mojo-driven loop
     without a per-iteration scope grows handles without bound.
 
+    The form to use in new code: `body` is an ordinary argument, a unified
+    closure with an explicit capture list.
+
         for i in range(n):
-            @__parameter
-            def _step():
+            def _step() raises {imm fs, imm args}:
                 _ = fs.call_method(b, env, "readFileSync", args)
-            with_handle_scope[_step](b, env)
+
+            with_handle_scope(b, env, _step)
 
     The body's error wins: if `body` raises, the scope is still closed, and
     the original error propagates unchanged rather than being replaced by a
     generic wrapper. A failure to close is deliberately swallowed in that
     path, because the body's error is the more useful diagnosis.
 
-    Parameters:
-        body: The work to run inside the scope.
-
     Args:
         b: Cached N-API bindings.
         env: The N-API environment.
+        body: The work to run inside the scope.
 
     Raises:
         Error: Whatever `body` raised, or a scope open/close failure.
@@ -90,3 +91,36 @@ def with_handle_scope[
             pass
         raise e^
     hs.close(b, env)
+
+
+def with_handle_scope[
+    body: def () raises capturing[_] -> None
+](b: Bindings, env: NapiEnv) raises:
+    """Run `body` inside its own handle scope, closing it on both paths.
+
+    The legacy-closure form, kept because downstream packages compile against
+    it. New code should pass a unified closure to the overload above, which
+    this delegates to and which documents the full contract.
+
+        for i in range(n):
+            @__parameter
+            def _step():
+                _ = fs.call_method(b, env, "readFileSync", args)
+            with_handle_scope[_step](b, env)
+
+    Parameters:
+        body: The work to run inside the scope.
+
+    Args:
+        b: Cached N-API bindings.
+        env: The N-API environment.
+
+    Raises:
+        Error: Whatever `body` raised, or a scope open/close failure.
+    """
+    # A legacy closure PARAMETER (comptime) does not convert to a unified
+    # closure argument, so wrap it in one whose body calls it.
+    def _body() raises {imm}:
+        body()
+
+    with_handle_scope(b, env, _body)

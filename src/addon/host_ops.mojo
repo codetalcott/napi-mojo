@@ -141,35 +141,53 @@ def call_n_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue(unsafe_from_address=Int(0))
 
 
-## scopedCall(n, fn) — a Mojo-driven loop that calls JS n times, each
-## iteration in its own handle scope. Returns n. The point is that handles do
-## not accumulate across iterations; a large n must not exhaust the scope.
-def scoped_call_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+## scopedCall(n, fn) / scopedCallUnified(n, fn) — a Mojo-driven loop that
+## calls JS n times, each iteration in its own handle scope. Returns n. The
+## point is that handles do not accumulate across iterations; a large n must
+## not exhaust the scope. The two exports run the same loop through
+## with_handle_scope's two forms, so both are exercised at runtime: the
+## legacy closure parameter and the unified closure argument.
+def _scoped_call[unified: Bool](env: NapiEnv, info: NapiValue) -> NapiValue:
     try:
         var b = CbArgs.get_bindings(env, info)
         var args = CbArgs.get_two(b, env, info)
         var n = JsNumber.to_int(b, env, args[0])
         var f = JsFunction(args[1])
         for i in range(n):
-            # Do NOT delete `idx` (or `f` above) — _body reads both, and a
-            # legacy closure's reads are easy to mistake for dead stores.
-            # These used to warn "assignment never used", which was recorded
-            # as a compiler false positive; it was really a symptom of the
-            # capture not being tracked, and spelling with_handle_scope's
-            # parameter `capturing[_]` silenced it. See docs/toolchain-
-            # migrations.md, Mojo 1.1.0.
-            var idx = i
+            comptime if unified:
 
-            @__parameter
-            def _body() raises:
-                _ = f.call1(b, env, JsNumber.create_int(b, env, idx).value)
+                def _step() raises {imm f, imm b, imm env, imm i}:
+                    _ = f.call1(b, env, JsNumber.create_int(b, env, i).value)
 
-            with_handle_scope[_body](b, env)
+                with_handle_scope(b, env, _step)
+            else:
+                # Do NOT delete `idx` (or `f` above) — _body reads both, and a
+                # legacy closure's reads are easy to mistake for dead stores.
+                # These used to warn "assignment never used", which was
+                # recorded as a compiler false positive; it was really a
+                # symptom of the capture not being tracked, and spelling
+                # with_handle_scope's parameter `capturing[_]` silenced it.
+                # See docs/toolchain-migrations.md, Mojo 1.1.0.
+                var idx = i
+
+                @__parameter
+                def _body() raises:
+                    _ = f.call1(b, env, JsNumber.create_int(b, env, idx).value)
+
+                with_handle_scope[_body](b, env)
         return JsNumber.create_int(b, env, n).value
     except e:
         # No-op when the callee's own exception is already pending.
         throw_js_error_dynamic(env, String(e))
         return NapiValue(unsafe_from_address=Int(0))
+
+
+def scoped_call_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    return _scoped_call[False](env, info)
+
+
+def scoped_call_unified_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
+    return _scoped_call[True](env, info)
 
 
 
@@ -340,6 +358,7 @@ def register_host_ops(mut m: ModuleBuilder) raises:
     var call_method_ref = call_method_fn
     var call_n_ref = call_n_fn
     var scoped_call_ref = scoped_call_fn
+    var scoped_call_unified_ref = scoped_call_unified_fn
     var then_double_ref = then_double_fn
     var deferred_require_ref = deferred_require_fn
     var then_scaled_ref = then_scaled_fn
@@ -352,6 +371,7 @@ def register_host_ops(mut m: ModuleBuilder) raises:
     m.method("callMethod", fn_ptr(call_method_ref))
     m.method("callN", fn_ptr(call_n_ref))
     m.method("scopedCall", fn_ptr(scoped_call_ref))
+    m.method("scopedCallUnified", fn_ptr(scoped_call_unified_ref))
     m.method("thenDouble", fn_ptr(then_double_ref))
     m.method("deferredRequire", fn_ptr(deferred_require_ref))
     m.method("thenScaled", fn_ptr(then_scaled_ref))
@@ -364,6 +384,7 @@ def register_host_ops(mut m: ModuleBuilder) raises:
     _ = call_method_ref
     _ = call_n_ref
     _ = scoped_call_ref
+    _ = scoped_call_unified_ref
     _ = then_double_ref
     _ = deferred_require_ref
     _ = then_scaled_ref
