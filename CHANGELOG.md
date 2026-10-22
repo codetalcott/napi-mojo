@@ -3,13 +3,17 @@
 All notable changes to napi-mojo. The project is in alpha; minor versions may
 break the source API that downstream addons compile against.
 
-## Unreleased
+## 0.18.0 — 2026-10-22
 
-**Mojo 1.2.0 stable toolchain adoption** (`max = "==26.7.0"`, from Mojo 1.1.0 /
-`26.6.0`). No public Mojo signature changed and nothing failed to compile, so
-downstream addons compile unmodified once they are on 1.2.0. Adopting it still
-moves them onto that toolchain, which is what made 0.16.0 a minor. Full
-account in [`docs/toolchain-migrations.md`](docs/toolchain-migrations.md).
+**Adopts the Mojo 1.2.0 stable toolchain** (`max = "==26.7.0"`, from Mojo
+1.1.0 / `26.6.0`), and **adds unified-closure overloads of `with_handle_scope`
+and `parallelize_safe`** (see Added). Each makes this a minor. The framework
+source now requires Mojo 1.2.0, because it uses `match`, so a downstream addon
+moves its own pin to `max = "==26.7.0"` to take this release. No existing
+public Mojo signature changed: on Mojo 1.2.0, `@qkstat/retrieve` and
+`@qkstat/embed` compile against this source unmodified, with no warnings, and
+load in Node. Full toolchain account in
+[`docs/toolchain-migrations.md`](docs/toolchain-migrations.md).
 
 ### Added
 
