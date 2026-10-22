@@ -11,7 +11,7 @@
 
 ## Mojo dialect and FFI rules
 
-> **Current pin: Mojo 1.1.0 (stable), `max = "==26.6.0"`, stable channel
+> **Current pin: Mojo 1.2.0 (stable), `max = "==26.7.0"`, stable channel
 > `https://conda.modular.com/max/`.**
 >
 > **The framework tracks STABLE Mojo releases, not nightlies.** napi-mojo ships
@@ -91,6 +91,11 @@ API; `docs/toolchain-migrations.md` has the before/after and the reasoning.
   written null.
 - **`s.byte_length()`**, not `len(s)`, for the UTF-8 byte count N-API wants
   (`s.count_codepoints()` for logical characters).
+- **No `^` on an argument to a borrowed parameter.** It moves nothing; the
+  value lives to its own last use either way. 1.2.0 warns (`this value is
+  borrowed here, so the transfer has no effect`), so under `--Werror` it fails
+  the build. `^` belongs on a `var` parameter. It is no keep-alive either —
+  that is `pin_across_ffi`, below.
 - **Explicit `__moveinit__` fails in a main-module file** — `'None' has no
   attributes` on `self` — while compiling fine inside the `napi` package.
   `Movable` is auto-derived, so drop the explicit move ctor there. `mojo doc`

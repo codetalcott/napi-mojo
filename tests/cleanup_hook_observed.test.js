@@ -46,7 +46,10 @@ test('two registrations in one env are two hooks, and both run at teardown', () 
     ],
     { encoding: 'utf8', timeout: 30000 }
   );
-  expect({ status: res.status, signal: res.signal, stderr: res.stderr }).toEqual({
+  // Under the Guard Malloc recipe the child inherits DYLD_INSERT_LIBRARIES and
+  // libgmalloc announces itself on stderr. That banner is not program output.
+  const stderr = res.stderr.replace(/^GuardMalloc\[.*\n/gm, '');
+  expect({ status: res.status, signal: res.signal, stderr }).toEqual({
     status: 0,
     signal: null,
     stderr: '',

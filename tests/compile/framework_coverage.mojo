@@ -641,7 +641,7 @@ def cover_js_promise(b: Bindings, env: NapiEnv, v: NapiValue) raises:
     captures.append(v)
     var null_ptr = OpaquePointer[MutAnyOrigin](unsafe_from_address=Int(0))
     _ = JsPromise.on_settled(b, env, v, null_ptr, captures.copy())
-    _ = JsPromise.on_settled(b, env, v, null_ptr, captures^, null_ptr, null_ptr)
+    _ = JsPromise.on_settled(b, env, v, null_ptr, captures, null_ptr, null_ptr)
     var s = Settlement.read(env, v)
     _ = s.user_data()
     _ = Settlement(b, s.ok, s.value, s.captures.copy(), null_ptr)
