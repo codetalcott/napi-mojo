@@ -34,7 +34,7 @@ directions, surfacing Mojo-side failures while leaving a pending JS error
 intact. `tests/host.test.js` pins it with a `MODULE_NOT_FOUND` assertion.
 
 So this was **surfacing and ergonomics, not a new subsystem** — which is what
-made it affordable while the project is still Alpha.
+made it affordable while the project was still in alpha.
 
 ### The one real gap: `require`
 

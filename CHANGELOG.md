@@ -1,7 +1,8 @@
 # Changelog
 
-All notable changes to napi-mojo. The project is in alpha; minor versions may
-break the source API that downstream addons compile against.
+All notable changes to napi-mojo. The project is in beta; a minor version may
+move the required Mojo toolchain or, rarely, break the source API that
+downstream addons compile against.
 
 ## 0.18.0 — 2026-10-22
 
