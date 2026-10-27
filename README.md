@@ -23,9 +23,10 @@ demo.greet("world"); // "Hello, world!"
 
 ## Project Status
 
-**Alpha** — napi-mojo is under active development and not yet proven in
-production. The API covers the full N-API v10 surface (160 exported functions, 5
-classes, 650+ tests). Expect breaking changes as the project matures.
+**Beta** — napi-mojo covers the full N-API v10 surface (160 exported
+functions, 5 classes, 650+ tests). Source-API breaks are rare and called out in
+the [CHANGELOG](CHANGELOG.md); a minor version may also move the required Mojo
+toolchain, which downstream addons must follow.
 
 - **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
   complete, ergonomic framework for building Node.js native addons in Mojo.
@@ -43,8 +44,6 @@ classes, 650+ tests). Expect breaking changes as the project matures.
   handling, TypeScript definition generation, and a TOML-driven code generator
   with `mojo_fn` auto-trampolines, nullable returns, and struct-to-object
   mapping — all validated by the test suite.
-- **What's missing:** Production hardening, and documentation beyond this
-  README, the [API reference](docs/api/) and the generated `.d.ts`.
 - **Prebuilt platforms:** darwin-arm64, linux-x64, linux-arm64 — which is
   every platform the Mojo toolchain itself targets. The `max` package
   publishes no osx-64 (Intel Mac) or win-64 build, so a prebuild for either is
