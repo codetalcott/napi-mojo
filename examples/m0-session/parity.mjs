@@ -43,14 +43,9 @@ function issueSession(key, subject, exp) {
 // A MAC over the session's own tag, under a domain-separating prefix.
 const csrfFor = (key, cookie) => b64url(hmac(key, `m0csrf1.${cookie.split('.')[4]}`));
 
-function fnv1a(text) {
-  let h = 0x811c9dc5;
-  for (const byte of Buffer.from(text, 'utf8')) h = Math.imul(h ^ byte, 0x01000193) >>> 0;
-  return h;
-}
-
 // --- Pinned vectors -----------------------------------------------------------
-// mojo-http's constants at m0 0.2.0. Grants: packages/m0-http/test/
+// mojo-http's constants, taken at m0 0.2.0 and still verified by the m0 this
+// example pins (0.14.0). Grants: packages/m0-http/test/
 // test_grant.mojo, the bound ones bound to the cookie value "abc". Sessions:
 // packages/m0-http/test/test_session.mojo.
 
@@ -238,21 +233,15 @@ test('arguments are checked, and the message names the function and argument', (
   throwsWith(() => m0.verifyGrant('g', ['k']), 'expected at least 3 arguments');
   throwsWith(() => m0.verifySession('c', ['k'], '0'), 'verifySession: now must be a whole number');
   throwsWith(() => m0.issueSession(['k'], 'notes', 2 ** 53), 'issueSession: exp must be a whole number');
-  throwsWith(() => m0.xxhash32('a', 2 ** 32), 'xxhash32: seed must be a whole number from 0 to 4294967295');
 });
 
-// --- Hashes -------------------------------------------------------------------
+// --- Text crossing ------------------------------------------------------------
 
-test('hashes match the pinned vectors and read the UTF-8 bytes', () => {
-  // mojo-http: packages/m0-core/test/test_hashing.mojo and the smoke-ffi task.
-  assert.equal(m0.fnv1a('a'), 0xe40c292c);
-  assert.equal(m0.fnv1a('foobar'), 0xbf9cf968);
-  assert.equal(m0.xxhash32(''), 0x02cc5d05);
-  assert.equal(m0.xxhash32('', 0), 0x02cc5d05);
-  assert.notEqual(m0.xxhash32('hello', 42), m0.xxhash32('hello'));
+test('text crosses as its UTF-8 bytes', () => {
   // Past the 256-byte fast path of the string read, a NUL inside, and a lone
-  // surrogate (which both sides encode as U+FFFD).
+  // surrogate (which both sides encode as U+FFFD). sessionBinding is SHA-256
+  // over the cookie's bytes, so one wrong byte changes the answer.
   for (const text of ['', 'é', 'Ж中🔥', `${'x'.repeat(1000)}🔥`, 'nul\u0000inside', 'lone \ud800']) {
-    assert.equal(m0.fnv1a(text), fnv1a(text), JSON.stringify(text));
+    assert.equal(m0.sessionBinding(text), binding(text), JSON.stringify(text));
   }
 });

@@ -14,6 +14,9 @@ or, rarely, break the source API that downstream addons compile against.
   measurements behind the decision. No code changed.
 - **The Nightly Canary no longer runs on a schedule.** It can still be
   dispatched by hand.
+- **`examples/m0-session/` moves from m0 0.2.0 to 0.14.0**, a release built
+  for Mojo 1.2.0. m0 no longer ships `fnv1a` or `xxhash32`, so the example no
+  longer exports them; its session and grant functions are unchanged.
 
 ## 0.18.0 — 2026-10-22
 

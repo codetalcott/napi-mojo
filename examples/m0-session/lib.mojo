@@ -9,8 +9,8 @@
 ## here was written for napi-mojo: the wheel ships its Mojo source under
 ## m0/_mojo, and -I puts that directory after the framework's.
 ##
-##   pip download m0==0.2.0 --no-deps -d /tmp/m0
-##   python3 -m zipfile -e /tmp/m0/m0-0.2.0-py3-none-any.whl /tmp/m0
+##   pip download m0==0.14.0 --no-deps -d /tmp/m0
+##   python3 -m zipfile -e /tmp/m0/m0-0.14.0-py3-none-any.whl /tmp/m0
 ##   napi-mojo build examples/m0-session/lib.mojo -I /tmp/m0/m0/_mojo \
 ##       -o examples/m0-session/build/index.node
 ##   node --test examples/m0-session/parity.mjs
@@ -21,7 +21,6 @@
 from std.collections import Optional
 from std.memory.alloc import unsafe_alloc
 
-from m0_core import fnv1a, xxhash32
 from m0_http.grant import GrantKeys, grant_key_id, session_binding, verify_grant
 from m0_http.session import SessionKeys, issue_session, verify_session
 
@@ -191,41 +190,6 @@ def verify_session_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
         return NapiValue(unsafe_from_address=Int(0))
 
 
-# --- Hashes -------------------------------------------------------------------
-# m0_core's public hashes take a String and hash its UTF-8 bytes, so a JS
-# string crosses as exactly the bytes Buffer.from(text, 'utf8') holds.
-
-
-def fnv1a_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
-    """`fnv1a(text)`: 32-bit FNV-1a of the text's UTF-8 bytes."""
-    try:
-        var b = CbArgs.get_bindings(env, info)
-        var text = _string(b, env, CbArgs.get_one(b, env, info), "fnv1a: text")
-        return JsNumber.create(b, env, Float64(fnv1a(text))).value
-    except e:
-        throw_js_error_dynamic(env, String(e))
-        return NapiValue(unsafe_from_address=Int(0))
-
-
-def xxhash32_fn(env: NapiEnv, info: NapiValue) -> NapiValue:
-    """`xxhash32(text, seed = 0)`: xxHash32 of the text's UTF-8 bytes."""
-    try:
-        var b = CbArgs.get_bindings(env, info)
-        var text = _string(b, env, CbArgs.get_one(b, env, info), "xxhash32: text")
-        var seed: UInt32 = 0
-        if CbArgs.argc(b, env, info) >= 2:
-            var second = CbArgs.get_two(b, env, info)[1]
-            if not _null_like(b, env, second):
-                var n = _whole(b, env, second, "xxhash32: seed")
-                if n < 0 or n > 4294967295:
-                    raise Error("xxhash32: seed must be a whole number from 0 to 4294967295")
-                seed = UInt32(n)
-        return JsNumber.create(b, env, Float64(xxhash32(text, seed))).value
-    except e:
-        throw_js_error_dynamic(env, String(e))
-        return NapiValue(unsafe_from_address=Int(0))
-
-
 # --- Module entry point -------------------------------------------------------
 
 
@@ -247,8 +211,6 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
     var verify_grant_ref = verify_grant_fn
     var issue_session_ref = issue_session_fn
     var verify_session_ref = verify_session_fn
-    var fnv1a_ref = fnv1a_fn
-    var xxhash32_ref = xxhash32_fn
 
     try:
         var m = ModuleBuilder(env, exports, cb_data)
@@ -257,8 +219,6 @@ def register_module(env: NapiEnv, exports: NapiValue) abi("C") -> NapiValue:
         m.method("verifyGrant", fn_ptr(verify_grant_ref))
         m.method("issueSession", fn_ptr(issue_session_ref))
         m.method("verifySession", fn_ptr(verify_session_ref))
-        m.method("fnv1a", fn_ptr(fnv1a_ref))
-        m.method("xxhash32", fn_ptr(xxhash32_ref))
         m.flush()
     except:
         pass

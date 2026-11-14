@@ -740,7 +740,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     env:
-      M0_VERSION: '0.2.0'
+      M0_VERSION: '0.14.0'
 
     steps:
       - uses: actions/checkout@v7

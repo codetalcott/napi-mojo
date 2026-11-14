@@ -13,8 +13,8 @@ JavaScript copy of the format kept in step by hand.
 From a checkout of this repository:
 
 ```bash
-python3 -m pip download m0==0.2.0 --no-deps -d /tmp/m0
-python3 -m zipfile -e /tmp/m0/m0-0.2.0-py3-none-any.whl /tmp/m0
+python3 -m pip download m0==0.14.0 --no-deps -d /tmp/m0
+python3 -m zipfile -e /tmp/m0/m0-0.14.0-py3-none-any.whl /tmp/m0
 node bin/napi-mojo.mjs build examples/m0-session/lib.mojo -I /tmp/m0/m0/_mojo \
     -o examples/m0-session/build/index.node
 node --test examples/m0-session/parity.mjs
@@ -34,7 +34,6 @@ steps above at a pinned m0 version, and checks `gated_mojo` first.
 | `verifyGrant(grant, keys, now, cookie?)` | `{ok, channel, reason}` |
 | `issueSession(keys, subject, exp)` | a session cookie value signed by `keys[0]` |
 | `verifySession(cookie, keys, now)` | `{ok, subject, csrf, reason}` |
-| `fnv1a(text)`, `xxhash32(text, seed = 0)` | m0_core's hashes of the text's UTF-8 bytes |
 
 - Keys are strings, read as their UTF-8 bytes. The first key signs; the rest
   only verify, which is how a key rotation is carried out.
@@ -58,8 +57,8 @@ would hold it in a class or in instance data instead.
   oracle.
 - Every refusal class, including a forgery checked before its expiry.
 - m0's own refusal messages and the addon's argument checks, compared whole.
-- The hashes' pinned vectors, and that text crosses as its UTF-8 bytes: a
-  string past 256 bytes, an embedded NUL, a lone surrogate.
+- That text crosses as its UTF-8 bytes: a string past 256 bytes, an embedded
+  NUL, a lone surrogate.
 
 It is named without `.test.` so Jest's default match never collects it into
 `npm test`, where no m0 build exists.
