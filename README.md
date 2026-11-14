@@ -2,6 +2,9 @@
 
 [![CI](https://github.com/codetalcott/napi-mojo/actions/workflows/test.yml/badge.svg)](https://github.com/codetalcott/napi-mojo/actions/workflows/test.yml)
 
+> **Not maintained.** Development stopped on 2026-11-14 at 0.18.0; see
+> [Project Status](#project-status). For a new addon, use [napi-rs](https://napi.rs).
+
 Build Node.js native addons in [Mojo](https://www.modular.com/mojo) — the Mojo
 equivalent of Rust's [napi-rs](https://napi.rs).
 
@@ -23,34 +26,36 @@ demo.greet("world"); // "Hello, world!"
 
 ## Project Status
 
-**Beta** — napi-mojo covers the full N-API v10 surface (160 exported
-functions, 5 classes, 650+ tests). Source-API breaks are rare and called out in
-the [CHANGELOG](CHANGELOG.md); a minor version may also move the required Mojo
-toolchain, which downstream addons must follow.
+**Not maintained.** Development stopped on 2026-11-14 at version 0.18.0. For a
+new native addon, use [napi-rs](https://napi.rs).
 
-- **Goal:** Become the Mojo equivalent of Rust's [napi-rs](https://napi.rs) — a
-  complete, ergonomic framework for building Node.js native addons in Mojo.
-  We're not there yet; reaching that bar requires exhaustive real-world testing
-  and community feedback. The third prerequisite — a stable Mojo language
-  release — arrived with Mojo 1.0.0, which this project now builds against.
-- **Mojo compatibility:** Builds against **Mojo 1.2.0** (stable), pinned in
-  [`pixi.toml`](pixi.toml) as `max = "==26.7.0"`. napi-mojo ships Mojo source
-  that your addon compiles against, so the framework tracks *stable* language
-  releases rather than nightlies — pinning a nightly would force every consumer
-  onto that exact nightly. A twice-weekly Nightly Canary builds and tests
-  against the newest nightly to catch breaking changes ahead of the next
-  release.
-- **What works:** Core N-API bindings, type wrappers, async work, classes, error
-  handling, TypeScript definition generation, and a TOML-driven code generator
-  with `mojo_fn` auto-trampolines, nullable returns, and struct-to-object
-  mapping — all validated by the test suite.
-- **Prebuilt platforms:** darwin-arm64, linux-x64, linux-arm64 — which is
-  every platform the Mojo toolchain itself targets. The `max` package
-  publishes no osx-64 (Intel Mac) or win-64 build, so a prebuild for either is
-  not something this project can produce; building from source on those
-  platforms is equally blocked, for the same reason.
-- **Performance vs napi-rs:** measured — **median 0.42x**, i.e. about 2.4x
-  faster per call. See [Performance](#performance) for the method and caveats.
+- **Why:** in November 2026 napi-mojo was tested against napi-rs,
+  onnxruntime-node and WebGPU on three claims, with the pass lines fixed
+  beforehand. Five of six verdicts were fails: a parallel Mojo kernel ran at
+  0.77x to 0.98x of Rust's speed, and Mojo's GPU path at 0.20x to 0.87x of a
+  WebGPU kernel. The one pass, sentence embeddings on an Apple-silicon GPU,
+  found no user who needed it through Node. Numbers, machines and limits are in
+  [`docs/comparison-2026-11.md`](docs/comparison-2026-11.md).
+- **What 0.18.0 is:** the full N-API v10 surface (160 exported functions, 5
+  classes, 650+ tests), built against **Mojo 1.2.0** (stable), pinned in
+  [`pixi.toml`](pixi.toml) as `max = "==26.7.0"`. It will not be updated for
+  later Mojo releases, and past releases have each needed source changes, so
+  expect it to stop compiling on a newer toolchain. The rest of this README
+  describes 0.18.0 on that toolchain.
+- **What works at that version:** core N-API bindings, type wrappers, async
+  work, classes, error handling, TypeScript definition generation, and a
+  TOML-driven code generator with `mojo_fn` auto-trampolines, nullable returns,
+  and struct-to-object mapping, all validated by the test suite.
+- **Prebuilt platforms:** darwin-arm64, linux-x64, linux-arm64, which is every
+  platform the Mojo toolchain itself targets. The `max` package publishes no
+  osx-64 (Intel Mac) or win-64 build, so there is no prebuild or source build
+  for either.
+- **Performance vs napi-rs:** per-call binding overhead measured at a **median
+  0.42x**, about 2.4x faster per call. That is the cost of crossing the
+  boundary only; on a real parallel kernel napi-rs was as fast or faster. See
+  [Performance](#performance) and the comparison above.
+- **No scheduled CI.** The twice-weekly nightly-toolchain canary no longer
+  runs on a schedule; it can still be dispatched by hand.
 
 ## Two directions
 
