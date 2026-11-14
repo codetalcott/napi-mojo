@@ -1,5 +1,7 @@
 # Contributor's Guide
 
+> **The project is not maintained** (since 2026-11-14; see the README's Project Status). Issues and pull requests may go unanswered. The standards below describe how 0.18.0 was built.
+
 Standards and rules for all contributions to `napi-mojo`, including LLM agents acting as pair programmers.
 
 ## Core Directives

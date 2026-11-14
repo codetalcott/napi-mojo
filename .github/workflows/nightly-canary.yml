@@ -1,9 +1,8 @@
 name: Nightly Canary
 
+# The Tue/Fri schedule was removed on 2026-11-14, when the project stopped
+# being maintained (docs/comparison-2026-11.md). Manual dispatch still works.
 on:
-  schedule:
-    - cron: '0 22 * * 2'  # Tuesday 10pm UTC
-    - cron: '0 22 * * 5'  # Friday 10pm UTC
   workflow_dispatch:
     inputs:
       max_version:

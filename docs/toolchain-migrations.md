@@ -397,6 +397,9 @@ both ways.
   doing its job. The pinned 0.2.0 source compiles on 1.2.0, and
   `examples/m0-session/parity.mjs` passes 7/7 against it. Move `M0_VERSION` once
   mojo-http publishes an m0 gated on 1.2.0.
+  **Done 2026-11-14:** `M0_VERSION` moved to 0.14.0 (0.13.0 was the first
+  release gated on 1.2.0). m0 had dropped `fnv1a` and `xxhash32` from `m0_core`
+  by 0.12.0, so the example no longer exports them; `parity.mjs` passes 7/7.
 
 **Verification run for this bump** (darwin-arm64 / Node 24.15.0): the addon
 build, the compile-coverage target, all three examples and the FFI probe are

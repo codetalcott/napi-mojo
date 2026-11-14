@@ -1,8 +1,22 @@
 # Changelog
 
-All notable changes to napi-mojo. The project is in beta; a minor version may
-move the required Mojo toolchain or, rarely, break the source API that
-downstream addons compile against.
+All notable changes to napi-mojo. The project is no longer maintained: 0.18.0
+is the last release (see [`docs/comparison-2026-11.md`](docs/comparison-2026-11.md)).
+While it was developed, a minor version could move the required Mojo toolchain
+or, rarely, break the source API that downstream addons compile against.
+
+## Unreleased
+
+### Changed
+
+- **The project is no longer maintained** as of 2026-11-14. The README says so
+  and [`docs/comparison-2026-11.md`](docs/comparison-2026-11.md) records the
+  measurements behind the decision. No code changed.
+- **The Nightly Canary no longer runs on a schedule.** It can still be
+  dispatched by hand.
+- **`examples/m0-session/` moves from m0 0.2.0 to 0.14.0**, a release built
+  for Mojo 1.2.0. m0 no longer ships `fnv1a` or `xxhash32`, so the example no
+  longer exports them; its session and grant functions are unchanged.
 
 ## 0.18.0 — 2026-10-22
 
